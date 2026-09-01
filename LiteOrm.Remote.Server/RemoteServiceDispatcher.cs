@@ -185,9 +185,11 @@ namespace LiteOrm.Remote.Server
             if (root.TryGetProperty("Method", out var methodProp) && methodProp.ValueKind == JsonValueKind.String)
                 methodName = methodProp.GetString();
 
-            var method = ResolveMethod(serviceType, methodName);
+            // 泛型方法时方法名形如 GetConfig<string,User>，解析出基础方法名与类型参数名
+            var parsedMethodName = ParseGenericMethodName(methodName);
+            var method = ResolveMethod(serviceType, parsedMethodName.BaseName, parsedMethodName.GenericArgNames);
             if (method is null)
-                throw new ServiceException($"Method '{methodName}' with matching signature not found on service '{serviceName}'.");
+                throw new ServiceException($"Method '{parsedMethodName.BaseName}' with matching signature not found on service '{serviceName}'.");
 
             // 3. 按方法参数类型反序列化 Arguments
             object?[] arguments = Array.Empty<object?>();
@@ -219,13 +221,103 @@ namespace LiteOrm.Remote.Server
         }
 
         /// <summary>
-        /// 在服务类型上按方法名查找 <see cref="MethodInfo"/>。
+        /// 解析方法名。泛型方法名形如 <c>GetConfig&lt;string,User&gt;</c>（客户端序列化时拼接实际类型参数），
+        /// 解析为 <c>("GetConfig", ["string","User"])</c>；非泛型方法名原样返回，泛型参数为 null。
         /// </summary>
-        private static MethodInfo? ResolveMethod(Type serviceType, string? methodName)
+        private static (string? BaseName, string[]? GenericArgNames) ParseGenericMethodName(string? methodName)
+        {
+            if (string.IsNullOrEmpty(methodName)) return (null, null);
+
+            var ltIndex = methodName.IndexOf('<');
+            if (ltIndex <= 0 || methodName[methodName.Length - 1] != '>')
+                return (methodName, null);
+
+            var argsPart = methodName.Substring(ltIndex + 1, methodName.Length - ltIndex - 2);
+            var argNames = SplitTopLevelCommas(argsPart);
+            return (methodName.Substring(0, ltIndex), argNames.Length > 0 ? argNames : null);
+        }
+
+        /// <summary>
+        /// 按顶层逗号分割字符串，忽略嵌套尖括号内部的逗号。
+        /// 例如 <c>"Dictionary&lt;string,int&gt;,User"</c> 分割为 <c>["Dictionary&lt;string,int&gt;", "User"]</c>。
+        /// </summary>
+        private static string[] SplitTopLevelCommas(string s)
+        {
+            var result = new System.Collections.Generic.List<string>();
+            int depth = 0;
+            int start = 0;
+            for (int i = 0; i < s.Length; i++)
+            {
+                var c = s[i];
+                if (c == '<') depth++;
+                else if (c == '>') { if (depth > 0) depth--; }
+                else if (c == ',' && depth == 0)
+                {
+                    result.Add(s.Substring(start, i - start).Trim());
+                    start = i + 1;
+                }
+            }
+            result.Add(s.Substring(start).Trim());
+            return result.ToArray();
+        }
+
+        /// <summary>
+        /// 在服务类型上按方法名查找 <see cref="MethodInfo"/>。
+        /// <para>
+        /// 若命中方法为开放泛型定义且提供了 <paramref name="genericArgNames"/>，
+        /// 调用 <see cref="EnsureClosedMethod"/> 构造封闭泛型方法返回。
+        /// </para>
+        /// </summary>
+        private MethodInfo? ResolveMethod(Type serviceType, string? methodName, string[]? genericArgNames)
         {
             if (string.IsNullOrEmpty(methodName)) return null;
             var methodCache = _methodCache.GetOrAdd(serviceType, BuildMethodCache);
-            return methodCache.TryGetValue(methodName, out var method) ? method : null;
+            if (!methodCache.TryGetValue(methodName, out var method)) return null;
+            return EnsureClosedMethod(method, genericArgNames);
+        }
+
+        /// <summary>
+        /// 若 <paramref name="method"/> 为开放泛型方法定义，使用 <paramref name="genericArgNames"/>
+        /// 解析并调用 <see cref="MethodInfo.MakeGenericMethod"/> 构造封闭方法；非泛型或已封闭方法原样返回。
+        /// </summary>
+        private MethodInfo EnsureClosedMethod(MethodInfo method, string[]? genericArgNames)
+        {
+            if (!method.ContainsGenericParameters) return method;
+
+            if (!method.IsGenericMethodDefinition)
+                throw new NotSupportedException(
+                    $"Method '{method.Name}' is declared on an open generic type and cannot be invoked remotely without binding the declaring type's generic arguments.");
+
+            var typeParams = method.GetGenericArguments();
+            if (genericArgNames is null || genericArgNames.Length != typeParams.Length)
+                throw new InvalidOperationException(
+                    $"Cannot invoke generic method '{method.Name}': expected {typeParams.Length} generic type argument(s) with names, but received {(genericArgNames?.Length ?? 0)}.");
+
+            var args = new Type[genericArgNames.Length];
+            for (int i = 0; i < genericArgNames.Length; i++)
+            {
+                args[i] = ResolveTypeArgument(_resolver, genericArgNames[i])
+                    ?? throw new InvalidOperationException(
+                        $"Cannot resolve generic type argument '{genericArgNames[i]}' for method '{method.Name}'.");
+            }
+            return method.MakeGenericMethod(args);
+        }
+
+        /// <summary>
+        /// 解析泛型方法类型参数名。依次尝试：解析器（预注册/短名扫描）→ 全名或程序集限定名
+        /// （<see cref="Type.GetType(string)"/>）→ 基本类型 CLR 短名（如 <c>Int32</c> → <see cref="int"/>）。
+        /// </summary>
+        private static Type? ResolveTypeArgument(ITypeNameResolver resolver, string name)
+        {
+            var type = resolver.GetType(name);
+            if (type is not null) return type;
+
+            type = Type.GetType(name, throwOnError: false);
+            if (type is not null) return type;
+
+            if (name.IndexOf('.') < 0)
+                return Type.GetType("System." + name, throwOnError: false);
+            return null;
         }
 
         /// <summary>

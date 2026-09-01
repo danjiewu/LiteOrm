@@ -231,7 +231,8 @@ namespace LiteOrm.Remote
             var desc = GetDescription(invocation);
             if (!desc.IsService) throw new NotSupportedException($"Method '{desc.ServiceName}.{invocation.Method.Name}' does not support remote invocation.");
 
-            var method = invocation.Method;
+            // 泛型方法用实际类型参数构造封闭方法，确保返回类型/参数类型为具体类型（而非 T）
+            var method = GetClosedMethod(invocation);
             var returnType = method.ReturnType;
 
             var cancellationToken = ExtractCancellationToken(invocation);
@@ -431,15 +432,16 @@ namespace LiteOrm.Remote
 
         /// <summary>
         /// 从当前方法调用构建远程调用请求。
-        /// 直接使用 <see cref="MethodInfo"/> 作为 <see cref="RemoteInvocationRequest.Method"/>，
-        /// 序列化时由 <see cref="RemoteInvocationRequestConverter"/> 从中提取方法名与参数类型。
+        /// 使用闭合后的 <see cref="MethodInfo"/>（泛型方法已绑定实际类型参数）作为
+        /// <see cref="RemoteInvocationRequest.Method"/>，序列化时由
+        /// <see cref="RemoteInvocationRequestConverter"/> 提取方法名（含泛型参数）与参数类型。
         /// </summary>
         /// <param name="invocation">方法调用信息</param>
         /// <returns>远程调用请求</returns>
         protected virtual RemoteInvocationRequest BuildRequest(IInvocation invocation)
         {
             var serviceType = GetServiceType(invocation);
-            var method = invocation.Method;
+            var method = GetClosedMethod(invocation);
             var parameters = method.GetParameters();
             var arguments = invocation.Arguments ?? Array.Empty<object>();
 
@@ -460,6 +462,23 @@ namespace LiteOrm.Remote
                 Arguments = args.ToArray(),
             };
             return request;
+        }
+
+        /// <summary>
+        /// 获取本次调用的封闭方法。泛型方法拦截时 <see cref="IInvocation.Method"/> 可能为开放泛型定义
+        /// （含未绑定类型参数），此时用 <see cref="IInvocation.GenericArguments"/> 提供的实际类型参数
+        /// 构造封闭方法，供返回类型判断、参数类型提取与序列化使用。非泛型方法原样返回。
+        /// </summary>
+        private static MethodInfo GetClosedMethod(IInvocation invocation)
+        {
+            var method = invocation.Method;
+            if (method.IsGenericMethod && method.ContainsGenericParameters && method.IsGenericMethodDefinition)
+            {
+                var genericArgs = invocation.GenericArguments;
+                if (genericArgs is { Length: > 0 })
+                    method = method.MakeGenericMethod(genericArgs);
+            }
+            return method;
         }
 
         /// <summary>

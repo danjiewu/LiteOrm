@@ -130,8 +130,9 @@ namespace LiteOrm.Remote
             writer.WriteString("RequestID", value.RequestID);
             writer.WriteString("ServiceName", value.ServiceName);
 
-            // Method (MethodInfo) 按名称序列化
-            writer.WriteString("Method", value.Method?.Name);
+            // Method (MethodInfo) 按名称序列化。优先使用 [ServiceMethod(MethodName=...)] 配置名；
+            // 泛型方法在方法名后拼接实际类型参数，形如 GetConfig<string>。
+            writer.WriteString("Method", GetMethodName(value.Method));
 
             writer.WritePropertyName("Arguments");
             writer.WriteStartArray();
@@ -160,6 +161,39 @@ namespace LiteOrm.Remote
                 .Where(p => p.ParameterType != typeof(CancellationToken))
                 .Select(p => p.ParameterType)
                 .ToArray();
+        }
+
+        /// <summary>
+        /// 生成方法名。优先使用 <see cref="ServiceMethodAttribute.MethodName"/> 配置名，否则用实际方法名；
+        /// 泛型方法在方法名后拼接实际类型参数名称，形如 <c>GetConfig&lt;string&gt;</c>，
+        /// 供服务端解析后调用 <see cref="MethodInfo.MakeGenericMethod"/> 构造封闭泛型方法。
+        /// </summary>
+        private static string? GetMethodName(MethodInfo? method)
+        {
+            if (method is null) return null;
+
+            var attr = GetServiceMethodAttribute(method);
+            var name = !string.IsNullOrEmpty(attr?.MethodName) ? attr!.MethodName : method.Name;
+
+            if (method.IsGenericMethod && !method.ContainsGenericParameters)
+            {
+                var argNames = method.GetGenericArguments().Select(ResolveTypeName);
+                return name + "<" + string.Join(",", argNames) + ">";
+            }
+            return name;
+        }
+
+        /// <summary>
+        /// 获取方法的 <see cref="ServiceMethodAttribute"/>。封闭泛型方法（<see cref="MethodInfo.MakeGenericMethod"/> 构造）
+        /// 上直接取特性可能取不到，需回退到泛型方法定义上读取。
+        /// </summary>
+        private static ServiceMethodAttribute? GetServiceMethodAttribute(MethodInfo method)
+        {
+            var attr = method.GetCustomAttribute<ServiceMethodAttribute>(true);
+            if (attr is not null) return attr;
+            return method.IsGenericMethod
+                ? method.GetGenericMethodDefinition().GetCustomAttribute<ServiceMethodAttribute>(true)
+                : null;
         }
 
         /// <summary>

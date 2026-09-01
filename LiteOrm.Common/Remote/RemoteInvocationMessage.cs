@@ -40,7 +40,7 @@ namespace LiteOrm.Remote
         /// 请求唯一标识。客户端生成，使用 12 位 <see cref="ShortId"/>，
         /// 服务端处理后在 <see cref="RemoteInvocationResponse"/> 中原样返回，用于日志关联与请求追踪。
         /// </summary>
-        public string? RequestID { get; set; } = ShortId.NewId(12);
+        public string? RequestID { get; set; } = ShortId.NewId(6);
 
         /// <summary>
         /// 方法信息。客户端构建请求时直接赋值 <c>invocation.Method</c>；
