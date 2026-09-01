@@ -13,6 +13,7 @@
 8.1.4:
 - 同步 LiteOrm.Common 8.1.4（Regex Lambda 支持、复杂类型映射变更、SQL 函数方言补全、字符串常量内联）。
 - RemoteViewServiceAsyncProxy 的 SearchAsAsync / SearchOneAsAsync 补充 CancellationToken 参数。
+- 增加泛型方法支持。
 
 8.1.3:
 - LiteOrm.Common 更新至 8.1.3。
