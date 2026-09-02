@@ -136,15 +136,15 @@ namespace LiteOrm.Remote
         /// <returns>修改后的服务集合</returns>
         public static IServiceCollection AddLiteOrmRemote(this IServiceCollection services)
         {
-            return AddLiteOrmRemote(services, null);
+            return AddLiteOrmRemote(services, (Action<LiteOrmRemoteOptions>?)null);
         }
 
         /// <summary>
         /// 注册LiteOrm框架到服务集合，并允许配置选项。
         /// <para>
         /// 通过 <paramref name="configureOptions"/> 回调构建默认选项；若要使用注入工厂方式配置，
-        /// 可调用 <see cref="AddRemoteOptions"/> 注册 <see cref="LiteOrmRemoteOptions"/> 工厂，
-        /// 运行时以工厂构造的选项为准（覆盖 <paramref name="configureOptions"/>）。
+        /// 可调用 <see cref="AddLiteOrmRemote(IServiceCollection, Func{IServiceProvider, LiteOrmRemoteOptions})"/> 重载
+        /// 注册 <see cref="LiteOrmRemoteOptions"/> 工厂，运行时以工厂构造的选项为准（覆盖 <paramref name="configureOptions"/>）。
         /// </para>
         /// </summary>
         /// <param name="services">服务集合</param>
@@ -162,11 +162,11 @@ namespace LiteOrm.Remote
                 throw new InvalidOperationException("Failed to initialize LiteOrm options", ex);
             }
 
-            // 1. 将默认选项注册进 DI：若通过 AddRemoteOptions 注册了工厂，用户工厂优先（运行时覆盖 configureOptions）。
+            // 1. 将默认选项注册进 DI：若通过 AddLiteOrmRemote(工厂重载) 注册了工厂，用户工厂优先（运行时覆盖 configureOptions）。
             services.TryAddSingleton(options);
 
             // 2. 注册 ICredentialsResolver：工厂优先，其次实例；未提供时解析为 null 进行匿名连接。
-            //    延迟从 DI 解析选项，以支持 AddRemoteOptions 工厂在运行时提供参数。
+            //    延迟从 DI 解析选项，以支持 AddLiteOrmRemote(工厂重载) 在运行时提供参数。
             //    自定义凭据解析器通常依赖 IHttpContextAccessor，
             //    调用方需自行调用 services.AddHttpContextAccessor() 注册（避免在客户端库中硬依赖 ASP.NET Core）。
             services.TryAddSingleton<ICredentialsResolver>(sp =>
@@ -223,7 +223,7 @@ namespace LiteOrm.Remote
 
                 throw new InvalidOperationException(
                     "LiteOrm.Remote requires either LiteOrmRemoteOptions.Transport or LiteOrmRemoteOptions.RemoteServiceUri to be set. " +
-                    "Configure one of them in AddLiteOrmRemote(opts => { ... }) or register a factory via AddRemoteOptions(...).");
+                    "Configure one of them in AddLiteOrmRemote(opts => { ... }) or register a factory via AddLiteOrmRemote(sp => ...).");
             });
 
             services.AddSingleton<RemoteServiceInvokeInterceptor>();
@@ -249,8 +249,9 @@ namespace LiteOrm.Remote
         /// <summary>
         /// 以工厂方式注册 <see cref="LiteOrmRemoteOptions"/> 到 DI 容器，便于在配置服务(<see cref="IConfiguration"/>)或其他 DI 服务基础上构造参数。
         /// <para>
-        /// 工厂接收 <see cref="IServiceProvider"/>，可从其中解析 <see cref="IConfiguration"/> 等依赖后返回选项。
-        /// 若同时调用了 <see cref="AddLiteOrmRemote"/>，则运行时以本工厂构造的选项为准（覆盖 configureOptions）。
+        /// 本方法是 <see cref="AddLiteOrmRemote(IServiceCollection, Action{LiteOrmRemoteOptions})"/> 的重载：
+        /// 工厂接收 <see cref="IServiceProvider"/>，可从其中解析 <see cref="IConfiguration"/> 等依赖后返回选项，
+        /// 运行时以工厂构造的选项为准（覆盖 configure 回调）。
         /// </para>
         /// </summary>
         /// <param name="services">服务集合。</param>
@@ -259,7 +260,7 @@ namespace LiteOrm.Remote
         /// <example>
         /// <code>
         /// var builder = Host.CreateApplicationBuilder(args);
-        /// builder.Services.AddRemoteOptions(sp =>
+        /// builder.Services.AddLiteOrmRemote(sp =>
         /// {
         ///     var config = sp.GetRequiredService&lt;IConfiguration&gt;();
         ///     return new LiteOrmRemoteOptions
@@ -270,7 +271,7 @@ namespace LiteOrm.Remote
         /// });
         /// </code>
         /// </example>
-        public static IServiceCollection AddRemoteOptions(
+        public static IServiceCollection AddLiteOrmRemote(
             this IServiceCollection services,
             Func<IServiceProvider, LiteOrmRemoteOptions> optionsFactory)
         {

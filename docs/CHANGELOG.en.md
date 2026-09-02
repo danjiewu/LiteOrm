@@ -4,21 +4,25 @@
 
 ### Breaking Changes
 
-- **Removed** **`LiteOrmRemoteOptions.TransportFactory`** (`LiteOrm.Remote` client): custom transports are now configured uniformly via the `Transport` instance or an `AddRemoteOptions()` injected factory.
+- **Removed** **`LiteOrmRemoteOptions.TransportFactory`** (`LiteOrm.Remote` client): custom transports are now configured uniformly via the `Transport` instance or the `AddLiteOrmRemote` factory overload.
+
+- **Removed** **`AddRemoteOptions(Func<IServiceProvider, LiteOrmRemoteOptions>)`** (`LiteOrm.Remote` client): its capability was folded into the new `AddLiteOrmRemote(Func<IServiceProvider, LiteOrmRemoteOptions>)` overload. Migrate `services.AddRemoteOptions(sp => ...)` to `services.AddLiteOrmRemote(sp => ...)`.
+
+- **Removed** **`AddLiteOrmOptions`** **and** **`RegisterLiteOrmOptions`**: folded into the factory overloads of core `AddLiteOrm` and DI `RegisterLiteOrm` respectively. Core migration: `services.AddLiteOrmOptions(sp => ...)` → `services.AddLiteOrm(sp => ...)`. DI migration: `builder.ConfigureServices(s => s.RegisterLiteOrmOptions(sp => ...))` → `builder.RegisterLiteOrm(sp => ...)`.
 
 - **`AddLiteOrmRemote` is now an `IServiceCollection` extension**: its signature changed from `IHostBuilder AddLiteOrmRemote(this IHostBuilder, ...)` to `IServiceCollection AddLiteOrmRemote(this IServiceCollection, ...)`, returning the service collection for chained registration. Usage changed from `Host.CreateDefaultBuilder(args).AddLiteOrmRemote(...)` to `Host.CreateApplicationBuilder(args).Services.AddLiteOrmRemote(...)`.
 
+- **Removed** **`AddRemoteServerOptions(Func<IServiceProvider, RemoteServerOptions>)`** (`LiteOrm.Remote.Server`): server options are now configured through the `AddRemoteServer(configure)` callback. The factory's runtime override conflicted in timing with registration-time side effects (e.g. `EnableAuthentication` registering the Cookie authentication scheme), so the entry point was removed.
+
 ### Enhancements
 
-- **Remote client registration supports the injected-factory pattern**: added `AddRemoteOptions(Func<IServiceProvider, LiteOrmRemoteOptions>)`. The factory receives `IServiceProvider` (can resolve e.g. `IConfiguration`) and takes precedence over the `configure` callback of `AddLiteOrmRemote` at runtime.
-
-- **Remote server registration supports the injected-factory pattern**: added `AddRemoteServerOptions(Func<IServiceProvider, RemoteServerOptions>)`, taking precedence over the `configure` callback of `AddRemoteServer` at runtime.
+- **Remote client registration supports the injected-factory pattern**: `AddLiteOrmRemote` gained a factory overload `AddLiteOrmRemote(Func<IServiceProvider, LiteOrmRemoteOptions>)` (formerly `AddRemoteOptions`). The factory receives `IServiceProvider` (can resolve e.g. `IConfiguration`) and takes precedence over the `configure`-callback overload at runtime.
 
 - `IRemoteServiceTransport` now resolves `LiteOrmRemoteOptions` lazily from DI; `RemoteServerOptions` and `ITypeNameResolver` are likewise lazily resolved so factory-provided configuration takes effect. An `InvalidOperationException` is thrown at validation when no transport is configured.
 
-- **Core** **`AddLiteOrm`** **supports an injected factory**: added `AddLiteOrmOptions(Func<IServiceProvider, LiteOrmOptions>)`.
+- **Core** **`AddLiteOrm`** **supports an injected factory**: added the factory overload `AddLiteOrm(Func<IServiceProvider, LiteOrmOptions>)` (formerly `AddLiteOrmOptions`).
 
-- **DI** **`RegisterLiteOrm`** **supports an injected factory**: added `RegisterLiteOrmOptions(Func<IServiceProvider, LiteOrmOptions>)` (the options instance is now registered through `IServiceCollection` so the factory always wins).
+- **DI** **`RegisterLiteOrm`** **supports an injected factory**: added the factory overload `RegisterLiteOrm(Func<IServiceProvider, LiteOrmOptions>)` (the options instance is now registered through `IServiceCollection` so the factory always wins).
 
 ***
 

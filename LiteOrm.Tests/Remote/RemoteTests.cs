@@ -295,12 +295,12 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
-        public void AddRemoteOptions_Factory_Overrides_Parameters_From_DI()
+        public void AddLiteOrmRemote_Factory_Overrides_Parameters_From_DI()
         {
             // 不通过 AddLiteOrmRemote(configure) 配置远程地址，而是用注入工厂从 DI 构造选项。
             var stub = new StubTransport(req => Ok(1));
             var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder();
-            builder.Services.AddRemoteOptions(sp =>
+            builder.Services.AddLiteOrmRemote(sp =>
             {
                 Assert.NotNull(sp.GetService<Microsoft.Extensions.Configuration.IConfiguration>());
                 return new LiteOrmRemoteOptions

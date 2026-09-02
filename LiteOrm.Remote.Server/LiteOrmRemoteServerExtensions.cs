@@ -76,13 +76,13 @@ namespace LiteOrm.Remote.Server
         /// <summary>
         /// 是否启用 Cookie 身份认证。启用后 SignIn 端点通过 <c>HttpContext.SignInAsync</c>
         /// 创建身份票据，Invoke 端点通过 <c>HttpContext.User</c> 恢复用户上下文。
-        /// 默认为 true。
+        /// 默认为 false。
         /// <para>
         /// 设置为 false 时，SignIn 端点不会尝试创建身份票据，Invoke 端点的
         /// <c>HttpContext.User</c> 由用户自行配置的身份认证中间件填充（如 JWT、自定义方案等）。
         /// </para>
         /// </summary>
-        public bool EnableAuthentication { get; set; } = true;
+        public bool EnableAuthentication { get; set; }
 
         /// <summary>
         /// 是否在日志中记录服务端接收到的请求 JSON 与返回的响应 JSON 报文。默认为 false。
@@ -103,9 +103,9 @@ namespace LiteOrm.Remote.Server
         /// <summary>
         /// 注册远程服务服务端到 DI 容器。
         /// <para>
-        /// 通过 <paramref name="configure"/> 回调构建默认选项；若要使用注入工厂方式配置，
-        /// 可调用 <see cref="AddRemoteServerOptions"/> 注册 <see cref="RemoteServerOptions"/> 工厂，
-        /// 运行时以工厂构造的选项为准（覆盖 <paramref name="configure"/>）。
+        /// 所有选项统一通过 <paramref name="configure"/> 回调配置
+        /// （端点路径、解析器、<see cref="RemoteServerOptions.EnableAuthentication"/> 等），
+        /// 注册后以解析出的单例实例为准。
         /// </para>
         /// 默认使用 <see cref="DefaultServiceTypeResolver"/>（全程序集短名扫描）解析服务类型，
         /// 可通过 <see cref="RemoteServerOptions.ServiceTypeResolver"/> 或 <see cref="RemoteServerOptions.TypeNameResolverFactory"/> 替换。
@@ -132,11 +132,10 @@ namespace LiteOrm.Remote.Server
                 AutoRegisterServiceTypes(options.Assemblies);
             }
 
-            // 注册 RemoteServerOptions 单例：若通过 AddRemoteServerOptions 注册了工厂，则以工厂构造的选项为准（运行时覆盖）。
+            // 注册 RemoteServerOptions 单例，所有选项以该实例为准。
             services.TryAddSingleton(options);
 
-            // 注册 ITypeNameResolver：工厂优先，否则使用实例（默认 DefaultServiceTypeResolver）。
-            // 延迟从 DI 解析选项，以支持 AddRemoteServerOptions 工厂在运行时提供解析器配置。
+            // 注册 ITypeNameResolver：TypeNameResolverFactory 优先，否则使用实例（默认 DefaultServiceTypeResolver）。
             services.TryAddSingleton<ITypeNameResolver>(sp =>
             {
                 var serverOptions = sp.GetRequiredService<RemoteServerOptions>();
@@ -158,39 +157,6 @@ namespace LiteOrm.Remote.Server
             }
 
             services.AddScoped<RemoteServiceDispatcher>();
-            return services;
-        }
-
-        /// <summary>
-        /// 以工厂方式注册 <see cref="RemoteServerOptions"/> 到 DI 容器，便于在配置服务(<see cref="IConfiguration"/>)或其他 DI 服务基础上构造参数。
-        /// <para>
-        /// 工厂接收 <see cref="IServiceProvider"/>，可从其中解析 <see cref="IConfiguration"/> 等依赖后返回选项。
-        /// 若同时调用了 <see cref="AddRemoteServer(Action{RemoteServerOptions})"/>，则运行时以本工厂构造的选项为准。
-        /// </para>
-        /// </summary>
-        /// <param name="services">服务集合。</param>
-        /// <param name="optionsFactory">选项工厂，接收 <see cref="IServiceProvider"/>，返回 <see cref="RemoteServerOptions"/>。</param>
-        /// <returns>返回修改后的服务集合以支持链式调用。</returns>
-        /// <example>
-        /// <code>
-        /// services.AddRemoteServerOptions(sp =>
-        /// {
-        ///     var config = sp.GetRequiredService&lt;IConfiguration&gt;();
-        ///     return new RemoteServerOptions
-        ///     {
-        ///         InvokePath = config["MyServer:InvokePath"],
-        ///         SignInPath = config["MyServer:SignInPath"],
-        ///     };
-        /// });
-        /// </code>
-        /// </example>
-        public static IServiceCollection AddRemoteServerOptions(
-            this IServiceCollection services,
-            Func<IServiceProvider, RemoteServerOptions> optionsFactory)
-        {
-            if (optionsFactory is null)
-                throw new ArgumentNullException(nameof(optionsFactory));
-            services.AddSingleton(optionsFactory);
             return services;
         }
 

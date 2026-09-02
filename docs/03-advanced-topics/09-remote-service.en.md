@@ -207,7 +207,7 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 |----------|------|---------|-------------|
 | `InvokePath` | `string` | `"api/remote/invoke"` | Remote invocation HTTP endpoint path |
 | `SignInPath` | `string` | `"api/remote/signin"` | HTTP endpoint path for signing in (issuing identity tickets) |
-| `EnableAuthentication` | `bool` | `true` | Enables Cookie authentication. When enabled, the SignIn endpoint creates an identity ticket via `HttpContext.SignInAsync`; the Invoke endpoint restores user context via `HttpContext.User` |
+| `EnableAuthentication` | `bool` | `false` | Enables Cookie authentication. Must be turned on in the `AddRemoteServer` `configure` callback; the framework registers the Cookie authentication scheme at registration time based on it |
 | `JsonSerializerOptions` | `JsonSerializerOptions` | `UnsafeRelaxedJsonEscaping` + case-insensitive | JSON serialization options |
 | `ServiceTypeResolver` | `IRemoteServiceTypeResolver` | `DefaultServiceTypeResolver` | Service type resolver instance |
 | `TypeNameResolverFactory` | `Func<IServiceProvider, ITypeNameResolver>?` | `null` | Type name resolver factory, takes precedence over `ServiceTypeResolver`; allows injecting DI services into the resolver |
@@ -215,21 +215,27 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | `AutoRegisterEntityServices` | `bool` | `true` | Auto-scan interfaces with `[Service]` attribute |
 | `Assemblies` | `Assembly[]?` | `null` | Scan assembly list; scans all referenced assemblies if not set |
 
-#### Read configuration via the `AddRemoteServerOptions()` injected factory
+#### Read configuration via the `AddRemoteServer(configure)` callback
 
-`AddRemoteServerOptions()` registers `RemoteServerOptions` via a factory that receives `IServiceProvider`, from which dependencies such as `IConfiguration` can be resolved. At runtime the factory-built options take precedence (over the `configure` callback of `AddRemoteServer`). Use `.Get<T>()` to bind the whole options from the `LiteOrm:RemoteServer` section; properties not present in configuration keep their defaults:
+Server options are configured through the `configure` callback of `AddRemoteServer()` (switches such as `EnableAuthentication` take effect here). Combine it with `IConfiguration` to read a configuration section; properties not present keep their defaults:
 
 ```csharp
-builder.Services.AddRemoteServerOptions(sp =>
+var serverSection = builder.Configuration.GetSection("LiteOrm:RemoteServer");
+
+builder.Services.AddRemoteServer(options =>
 {
-    var config = sp.GetRequiredService<IConfiguration>();
-    return config.GetSection("LiteOrm:RemoteServer").Get<RemoteServerOptions>()
-        ?? new RemoteServerOptions();
+    options.InvokePath = serverSection["InvokePath"] ?? options.InvokePath;
+    options.SignInPath = serverSection["SignInPath"] ?? options.SignInPath;
+    options.EnableAuthentication = serverSection.GetValue("EnableAuthentication", options.EnableAuthentication);
+    options.LogJsonPayloads = serverSection.GetValue("LogJsonPayloads", options.LogJsonPayloads);
+    options.AutoRegisterEntityServices = serverSection.GetValue("AutoRegisterEntityServices", options.AutoRegisterEntityServices);
+
+    // Interface/delegate properties cannot be built from configuration; assign them manually here if needed
+    // options.TypeNameResolverFactory = sp => ...;
 });
-builder.Services.AddRemoteServer();
 ```
 
-> **Note**: `.Get<T>()` only binds string/value-type properties convertible from configuration; interface/delegate properties such as `ServiceTypeResolver` and `TypeNameResolverFactory` cannot be built from configuration (.NET 8+ skips binding them). Assign them manually after binding if you need custom resolvers.
+> **Note**: `EnableAuthentication` registers the Cookie authentication scheme at `AddRemoteServer` registration time (when enabled), so it must be set in the `configure` callback — there is no other deferred injection path.
 
 ### 4.2 Client Configuration (`LiteOrmRemoteOptions`)
 
@@ -248,13 +254,13 @@ builder.Services.AddRemoteServer();
 
 > **Required**: At least one of `Transport` or `RemoteServiceUri` must be set, otherwise `InvalidOperationException` is thrown when resolving `IRemoteServiceTransport`.
 
-#### Read configuration via the `AddRemoteOptions()` injected factory
+#### Read configuration via the `AddLiteOrmRemote(Factory overload)`
 
-`AddRemoteOptions()` registers `LiteOrmRemoteOptions` via a factory that receives `IServiceProvider`, from which dependencies such as `IConfiguration` can be resolved. At runtime the factory-built options take precedence (over the `configure` callback of `AddLiteOrmRemote`). Use `.Get<T>()` to bind the whole options from the `LiteOrm:Remote` section; delegate properties must be assigned manually because they cannot be read from configuration:
+`AddLiteOrmRemote` provides a factory overload that registers `LiteOrmRemoteOptions`: the factory receives `IServiceProvider`, from which dependencies such as `IConfiguration` can be resolved. At runtime the factory-built options take precedence (over the `configure`-callback overload). Use `.Get<T>()` to bind the whole options from the `LiteOrm:Remote` section; delegate properties must be assigned manually because they cannot be read from configuration:
 
 ```csharp
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddRemoteOptions(sp =>
+builder.Services.AddLiteOrmRemote(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
     var options = config.GetSection("LiteOrm:Remote").Get<LiteOrmRemoteOptions>() ?? new LiteOrmRemoteOptions();
@@ -268,7 +274,6 @@ builder.Services.AddRemoteOptions(sp =>
 
     return options;
 });
-builder.Services.AddLiteOrmRemote();
 var host = builder.Build();
 ```
 
@@ -509,7 +514,7 @@ public class JwtAuthHandler : IRemoteAuthenticationHandler
 
 ```csharp
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddRemoteOptions(sp =>
+builder.Services.AddLiteOrmRemote(sp =>
 {
     var opts = new LiteOrmRemoteOptions
     {
@@ -535,7 +540,6 @@ builder.Services.AddRemoteOptions(sp =>
     };
     return opts;
 });
-builder.Services.AddLiteOrmRemote();
 var host = builder.Build();
 
 // Log in once at startup to obtain the JWT token
@@ -635,7 +639,7 @@ graph LR
 ```csharp
 builder.Services.AddHttpContextAccessor(); // required
 
-builder.Host.ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
+builder.Host.ConfigureServices((_, services) => services.AddLiteOrmRemote(sp =>
 {
     var opts = new LiteOrmRemoteOptions
     {

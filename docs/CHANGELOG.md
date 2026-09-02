@@ -4,23 +4,19 @@
 
 ### 破坏性变更
 
-- **移除** **`LiteOrmRemoteOptions.TransportFactory`**（`LiteOrm.Remote` 客户端）：自定义传输层统一通过 `Transport` 实例或 `AddRemoteOptions()` 注入工厂注册。
+- **移除** **`LiteOrmRemoteOptions.TransportFactory`**（`LiteOrm.Remote` 客户端）：自定义传输层统一通过 `Transport` 实例或 `AddLiteOrmRemote` 工厂重载注册。
 
 - **移除** **`AddLiteOrmRemote(string configSection, ...)`** **与** **`AddRemoteServer(string configSection, ...)`** **的配置节重载**（含内部 `BindFromConfiguration`）：不再通过 `configSection` 参数绑定配置节，改为通过注入工厂从 `IConfiguration` 读取参数。
 
-- **`AddLiteOrmRemote` 改为 `IServiceCollection` 扩展**：签名由 `IHostBuilder AddLiteOrmRemote(this IHostBuilder, ...)` 变更为 `IServiceCollection AddLiteOrmRemote(this IServiceCollection, ...)`，返回服务集合以支持链式注册；用法从 `Host.CreateDefaultBuilder(args).AddLiteOrmRemote(...)` 调整为 `Host.CreateApplicationBuilder(args).Services.AddLiteOrmRemote(...)`。
+- **`AddLiteOrmRemote`** **改为** **`IServiceCollection`** **扩展**：签名由 `IHostBuilder AddLiteOrmRemote(this IHostBuilder, ...)` 变更为 `IServiceCollection AddLiteOrmRemote(this IServiceCollection, ...)`，返回服务集合以支持链式注册；用法从 `Host.CreateDefaultBuilder(args).AddLiteOrmRemote(...)` 调整为 `Host.CreateApplicationBuilder(args).Services.AddLiteOrmRemote(...)`。
 
 ### 改进
 
-- **Remote 客户端注册支持注入工厂模式**：新增 `AddRemoteOptions(Func<IServiceProvider, LiteOrmRemoteOptions>)`，工厂接收 `IServiceProvider`（可从 `IConfiguration` 等解析参数），运行时优先于 `AddLiteOrmRemote` 的 `configure` 回调。
+- **核心库** **`AddLiteOrm`** **支持注入工厂**：新增工厂重载 `AddLiteOrm(Func<IServiceProvider, LiteOrmOptions>)`。
 
-- **Remote 服务端注册支持注入工厂模式**：新增 `AddRemoteServerOptions(Func<IServiceProvider, RemoteServerOptions>)`，运行时优先于 `AddRemoteServer` 的 `configure` 回调。
+- **DI 版** **`RegisterLiteOrm`** **支持注入工厂**：新增工厂重载 `RegisterLiteOrm(Func<IServiceProvider, LiteOrmOptions>)`。
 
-- `IRemoteServiceTransport` 改为从 DI 延迟解析 `LiteOrmRemoteOptions`；`RemoteServerOptions` 与 `ITypeNameResolver` 同样延迟解析，工厂注入的配置得以生效；未配置传输层时在校验阶段抛出 `InvalidOperationException`。
-
-- **核心库** **`AddLiteOrm`** **支持注入工厂**：新增 `AddLiteOrmOptions(Func<IServiceProvider, LiteOrmOptions>)`。
-
-- **DI 版** **`RegisterLiteOrm`** **支持注入工厂**：新增 `RegisterLiteOrmOptions(Func<IServiceProvider, LiteOrmOptions>)`（选项实例改经 `IServiceCollection` 注册，保证工厂始终优先）。
+- **Remote 客户端注册支持注入工厂模式**：`AddLiteOrmRemote` 新增工厂重载 `AddLiteOrmRemote(Func<IServiceProvider, LiteOrmRemoteOptions>)`，工厂接收 `IServiceProvider`（可从 `IConfiguration` 等解析参数）。
 
 ***
 

@@ -108,15 +108,15 @@ namespace LiteOrm.Tests
         {
             var services = CreateServices();
             Assert.Throws<InvalidOperationException>(() =>
-                services.AddLiteOrm(_ => throw new InvalidOperationException("boom")));
+                services.AddLiteOrm((Action<LiteOrmOptions>?)(_ => throw new InvalidOperationException("boom"))));
         }
 
         [Fact]
-        public void AddLiteOrmOptions_Factory_Overrides_Parameters_From_DI()
+        public void AddLiteOrm_Factory_Overrides_Parameters_From_DI()
         {
             // 不通过 AddLiteOrm(configure) 配置，而是用注入工厂从 DI（含 IConfiguration）构造选项。
             var services = CreateServices()
-                .AddLiteOrmOptions(sp =>
+                .AddLiteOrm(sp =>
                 {
                     Assert.NotNull(sp.GetRequiredService<IConfiguration>());
                     return new LiteOrmOptions { AutoRegisterServices = false };

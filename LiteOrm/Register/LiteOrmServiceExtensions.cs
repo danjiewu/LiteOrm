@@ -20,15 +20,15 @@ namespace LiteOrm
         /// <returns>配置后的服务集合</returns>
         public static IServiceCollection AddLiteOrm(this IServiceCollection services)
         {
-            return AddLiteOrm(services, null);
+            return AddLiteOrm(services, (Action<LiteOrmOptions>?)null);
         }
 
         /// <summary>
         /// 添加 LiteOrm 服务到依赖注入容器，并配置选项。
         /// <para>
         /// 通过 <paramref name="configureOptions"/> 回调驱动注册期配置；若要使用注入工厂方式配置，
-        /// 可调用 <see cref="AddLiteOrmOptions"/> 注册 <see cref="LiteOrmOptions"/> 工厂，
-        /// 运行时可通过 DI 解析到该工厂构造的选项（覆盖 <paramref name="configureOptions"/>）。
+        /// 可调用 <see cref="AddLiteOrm(IServiceCollection, Func{IServiceProvider, LiteOrmOptions})"/> 重载
+        /// 注册 <see cref="LiteOrmOptions"/> 工厂，运行时可通过 DI 解析到该工厂构造的选项（覆盖 <paramref name="configureOptions"/>）。
         /// </para>
         /// </summary>
         /// <param name="services">依赖注入服务集合</param>
@@ -46,7 +46,7 @@ namespace LiteOrm
                 throw new InvalidOperationException("Failed to initialize LiteOrm options", ex);
             }
 
-            // 将选项注册进 DI：若已通过 AddLiteOrmOptions 注册了工厂，则以工厂构造的选项为准（运行时覆盖 configureOptions）。
+            // 将选项注册进 DI：若已通过 AddLiteOrm(工厂重载) 注册了工厂，则以工厂构造的选项为准（运行时覆盖 configureOptions）。
             services.TryAddSingleton(options);
 
             // 在此注册 LiteOrm 所需的服务
@@ -106,9 +106,9 @@ namespace LiteOrm
         /// <summary>
         /// 以工厂方式注册 <see cref="LiteOrmOptions"/> 到 DI 容器，便于在配置服务(<see cref="IConfiguration"/>)或其他 DI 服务基础上构造参数。
         /// <para>
-        /// 工厂接收 <see cref="IServiceProvider"/>，可从其中解析 <see cref="IConfiguration"/> 等依赖后返回选项。
-        /// 若同时调用了 <see cref="AddLiteOrm(IServiceCollection, Action{LiteOrmOptions})"/>，则运行时解析
-        /// <see cref="LiteOrmOptions"/> 时以本工厂构造的选项为准（覆盖 configure 回调默认值）。
+        /// 本方法是 <see cref="AddLiteOrm(IServiceCollection, Action{LiteOrmOptions})"/> 的重载：
+        /// 工厂接收 <see cref="IServiceProvider"/>，可从其中解析 <see cref="IConfiguration"/> 等依赖后返回选项，
+        /// 运行时解析 <see cref="LiteOrmOptions"/> 时以本工厂构造的选项为准（覆盖 configure 回调默认值）。
         /// </para>
         /// </summary>
         /// <param name="services">服务集合。</param>
@@ -117,7 +117,7 @@ namespace LiteOrm
         /// <example>
         /// <code>
         /// builder.ConfigureServices(services =>
-        ///     services.AddLiteOrmOptions(sp =>
+        ///     services.AddLiteOrm(sp =>
         ///     {
         ///         var config = sp.GetRequiredService&lt;IConfiguration&gt;();
         ///         return new LiteOrmOptions
@@ -127,7 +127,7 @@ namespace LiteOrm
         ///     }));
         /// </code>
         /// </example>
-        public static IServiceCollection AddLiteOrmOptions(
+        public static IServiceCollection AddLiteOrm(
             this IServiceCollection services,
             Func<IServiceProvider, LiteOrmOptions> optionsFactory)
         {

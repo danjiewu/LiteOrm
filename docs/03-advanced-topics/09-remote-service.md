@@ -209,7 +209,7 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | ---------------------------- | -------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------- |
 | `InvokePath`                 | `string`                                     | `"api/remote/invoke"`                | 远程调用 HTTP 端点路径                                                                                           |
 | `SignInPath`                 | `string`                                     | `"api/remote/signin"`                | 登录（签发身份票据）的 HTTP 端点路径                                                                                    |
-| `EnableAuthentication`       | `bool`                                       | `true`                               | 是否启用 Cookie 身份认证。启用后 SignIn 端点通过 `HttpContext.SignInAsync` 创建身份票据，Invoke 端点通过 `HttpContext.User` 恢复用户上下文 |
+| `EnableAuthentication`       | `bool`                                       | `false`                              | 是否启用 Cookie 身份认证。需在 `AddRemoteServer` 的 `configure` 回调中开启，框架在注册阶段据此注册 Cookie 认证方案 |
 | `JsonSerializerOptions`      | `JsonSerializerOptions`                      | `UnsafeRelaxedJsonEscaping` + 大小写不敏感 | JSON 序列化选项                                                                                               |
 | `ServiceTypeResolver`        | `IRemoteServiceTypeResolver`                 | `DefaultServiceTypeResolver`         | 服务类型解析器实例                                                                                                |
 | `TypeNameResolverFactory`    | `Func<IServiceProvider, ITypeNameResolver>?` | `null`                               | 类型名称解析器工厂，优先级高于 `ServiceTypeResolver`，便于在解析器中注入其他 DI 服务                                                  |
@@ -217,21 +217,27 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | `AutoRegisterEntityServices` | `bool`                                       | `true`                               | 自动扫描带 `[Service]` 特性的接口                                                                                  |
 | `Assemblies`                 | `Assembly[]?`                                | `null`                               | 扫描程序集列表，未设置则扫描所有引用程序集                                                                                    |
 
-#### 通过 `AddRemoteServerOptions()` 注入工厂读取配置
+#### 通过 `AddRemoteServer(configure)` 读取配置
 
-`AddRemoteServerOptions()` 以工厂方式注册 `RemoteServerOptions`，工厂接收 `IServiceProvider`，可从中解析 `IConfiguration` 等依赖构造参数。运行时以工厂构造的选项为准（优先于 `AddRemoteServer` 的 `configure` 回调）。使用 `.Get<T>()` 从 `LiteOrm:RemoteServer` 节点整体绑定，未提供的属性保持默认值：
+服务端选项统一通过 `AddRemoteServer()` 的 `configure` 回调配置（`EnableAuthentication` 等开关在此设置即生效）。可结合 `IConfiguration` 读取配置节点，未提供的属性保持默认值：
 
 ```csharp
-builder.Services.AddRemoteServerOptions(sp =>
+var serverSection = builder.Configuration.GetSection("LiteOrm:RemoteServer");
+
+builder.Services.AddRemoteServer(options =>
 {
-    var config = sp.GetRequiredService<IConfiguration>();
-    return config.GetSection("LiteOrm:RemoteServer").Get<RemoteServerOptions>()
-        ?? new RemoteServerOptions();
+    options.InvokePath = serverSection["InvokePath"] ?? options.InvokePath;
+    options.SignInPath = serverSection["SignInPath"] ?? options.SignInPath;
+    options.EnableAuthentication = serverSection.GetValue("EnableAuthentication", options.EnableAuthentication);
+    options.LogJsonPayloads = serverSection.GetValue("LogJsonPayloads", options.LogJsonPayloads);
+    options.AutoRegisterEntityServices = serverSection.GetValue("AutoRegisterEntityServices", options.AutoRegisterEntityServices);
+
+    // 接口/委托属性无法从配置构造实例，如需自定义请在此手动赋值
+    // options.TypeNameResolverFactory = sp => ...;
 });
-builder.Services.AddRemoteServer();
 ```
 
-> **提示**：`.Get<T>()` 只绑定字符串/值类型等可由配置转换的属性；`ServiceTypeResolver`、`TypeNameResolverFactory` 等接口/委托属性无法从配置构造实例（.NET 8+ 会跳过绑定），如需自定义请在绑定后手动赋值。
+> **提示**：`EnableAuthentication` 会在 `AddRemoteServer` 注册阶段（若开启）注册 Cookie 认证方案，因此必须在 `configure` 回调中设置，不存在其它延迟注入方式。
 
 ### 4.2 客户端配置（`LiteOrmRemoteOptions`）
 
@@ -250,13 +256,13 @@ builder.Services.AddRemoteServer();
 
 > **必填项**：`Transport` 或 `RemoteServiceUri` 至少设置一个，否则解析 `IRemoteServiceTransport` 时抛出 `InvalidOperationException`。
 
-#### 通过 `AddRemoteOptions()` 注入工厂读取配置
+#### 通过 `AddLiteOrmRemote(工厂重载)` 读取配置
 
-`AddRemoteOptions()` 以工厂方式注册 `LiteOrmRemoteOptions`，工厂接收 `IServiceProvider`，可从中解析 `IConfiguration` 等依赖构造参数。运行时以工厂构造的选项为准（优先于 `AddLiteOrmRemote` 的 `configure` 回调）。使用 `.Get<T>()` 从 `LiteOrm:Remote` 节点整体绑定，委托型属性无法从配置读取，需手动赋值：
+`AddLiteOrmRemote` 提供工厂重载注册 `LiteOrmRemoteOptions`：工厂接收 `IServiceProvider`，可从中解析 `IConfiguration` 等依赖构造参数，运行时以工厂构造的选项为准（优先于 configure 回调重载）。使用 `.Get<T>()` 从 `LiteOrm:Remote` 节点整体绑定，委托型属性无法从配置读取，需手动赋值：
 
 ```csharp
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddRemoteOptions(sp =>
+builder.Services.AddLiteOrmRemote(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
     var options = config.GetSection("LiteOrm:Remote").Get<LiteOrmRemoteOptions>() ?? new LiteOrmRemoteOptions();
@@ -270,7 +276,6 @@ builder.Services.AddRemoteOptions(sp =>
 
     return options;
 });
-builder.Services.AddLiteOrmRemote();
 var host = builder.Build();
 ```
 
@@ -516,7 +521,7 @@ public class JwtAuthHandler : IRemoteAuthenticationHandler
 
 ```csharp
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddRemoteOptions(sp =>
+builder.Services.AddLiteOrmRemote(sp =>
 {
     var opts = new LiteOrmRemoteOptions
     {
@@ -542,7 +547,6 @@ builder.Services.AddRemoteOptions(sp =>
     };
     return opts;
 });
-builder.Services.AddLiteOrmRemote();
 var host = builder.Build();
 
 // 启动时登录一次，获取 JWT token
@@ -643,7 +647,7 @@ graph LR
 ```csharp
 builder.Services.AddHttpContextAccessor(); // 必须注册
 
-builder.Host.ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
+builder.Host.ConfigureServices((_, services) => services.AddLiteOrmRemote(sp =>
 {
     var opts = new LiteOrmRemoteOptions
     {
