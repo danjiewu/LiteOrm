@@ -1,8 +1,8 @@
 # 第一个完整示例（仅基础库）
 
-本文通过一个最小可运行示例展示**仅使用 `LiteOrm` 基础库**（不引入 `LiteOrm.DependencyInjection`、Autofac、Castle 动态代理）的典型使用流程：手动初始化、定义实体、插入数据、查询数据和分页查询。
+本文通过一个最小可运行示例展示**仅使用** **`LiteOrm`** **基础库**（不引入 `LiteOrm.DependencyInjection`、Autofac、Castle 动态代理）的典型使用流程：使用 `AddLiteOrm()` 初始化、定义实体，并通过泛型实体服务 `EntityService<User>` 完成插入、查询、分页等操作。
 
-> **适用场景**：控制台应用、批处理脚本、不依赖 DI 容器的项目，或希望对生命周期完全自管理的场景。
+> **适用场景**：控制台应用、批处理脚本、单元测试，或希望使用 MS DI 管理生命周期但不需要 AOP 拦截的项目。
 >
 > 如果你使用 ASP.NET Core 且需要 Autofac 集成、AOP 事务/权限/日志等能力，请参考 [第一个完整示例（DI 版）](./05-first-example-di.md)。
 
@@ -40,61 +40,22 @@ public class User
 ```
 
 > - `[Table("Users")]`：映射到数据库 `Users` 表。
+>
 > - `[Column("Id", IsPrimaryKey = true, IsIdentity = true)]`：主键且自增。
+>
 > - 实体类不要求继承 `ObjectBase`，普通 POCO 即可。
 
 ## 2. 初始化 LiteOrm
 
-基础库提供两种初始化方式：无需 DI 容器的手动构造（见下），以及纯 MS DI 注册 `AddLiteOrm()`。先看手动构造——数据源配置支持两种方式：代码内手动添加，或从 `appsettings.json` 等 `IConfiguration` 来源读取。
+推荐直接使用基础库内置的 `AddLiteOrm()`（纯 MS DI）完成初始化——它会从 `IConfiguration` 的 `LiteOrm` 节点自动加载数据源、注册核心服务，并支持注册自定义服务，无需手动 new 各种底层对象。
 
 > **注意**：8.1 起，`RegisterLiteOrm()` 已从 `LiteOrm` 基础库移至 `LiteOrm.DependencyInjection` 包（命名空间由 `LiteOrm` 改为 `LiteOrm.DependencyInjection`）。如需 Autofac 集成 / AOP，请使用 `LiteOrm.DependencyInjection` 包中的 `RegisterLiteOrm()`；基础库仅提供 `AddLiteOrm()`（纯 MS DI）。
 
-### 2.1 手动初始化 LiteOrm
+### 2.1 通过 AddLiteOrm 初始化（推荐）
 
-#### 方式一：代码内手动配置
+`AddLiteOrm()` 定义于基础库（`LiteOrm` 命名空间，无需额外安装包），从 `IConfiguration` 的 `LiteOrm` 节点自动加载数据源，并注册 `SessionManager`、DAO、泛型实体服务等核心服务。使用它时无需手动调用 `SessionManager.SetCurrent(...)`——框架在注册 `SessionManager` 时会自动绑定当前作用域实例。
 
-```csharp
-using LiteOrm;
-using LiteOrm.Common;
-using LiteOrm.Service;
-using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.DependencyInjection;
-
-// 1. 配置数据源
-var dataSourceProvider = new DataSourceProvider();
-dataSourceProvider.AddDataSource(new DataSourceConfig
-{
-    Name = "DefaultConnection",
-    ConnectionString = "Data Source=LiteOrmDemo.db",
-    Provider = typeof(SqliteConnection).AssemblyQualifiedName,
-    SyncTable = true  // 自动建表（开发阶段推荐）
-});
-dataSourceProvider.SetDefaultDataSource("DefaultConnection");
-
-// 2. 创建连接池工厂
-var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
-
-// 3. 创建会话管理器并设为当前会话
-var sessionManager = new SessionManager(poolFactory);
-SessionManager.SetCurrent(() => sessionManager);
-
-// 4. 构建最小服务提供程序并解析服务（8.1.3 起，EntityService/EntityViewService 构造函数接收 IServiceProvider）
-var services = new ServiceCollection();
-services.AddScoped(_ => sessionManager);
-services.AddScoped(typeof(ObjectDAO<>));
-services.AddScoped(typeof(ObjectViewDAO<>));
-services.AddScoped(typeof(EntityService<>));
-services.AddScoped(typeof(EntityViewService<>));
-var serviceProvider = services.BuildServiceProvider();
-
-var userService = serviceProvider.GetRequiredService<EntityService<User>>();
-```
-
-#### 方式二：从配置文件读取
-
-基础库内置 `LoadConfiguration` 扩展方法，可直接从 `IConfiguration` 的 `LiteOrm` 节点加载数据源配置，无需逐个调用 `AddDataSource`。
-
-先准备 `appsettings.json`：
+#### 第一步：准备 appsettings.json 配置数据源
 
 ```json
 {
@@ -112,60 +73,7 @@ var userService = serviceProvider.GetRequiredService<EntityService<User>>();
 }
 ```
 
-然后用 `LoadConfiguration` 替代手动 `AddDataSource`：
-
-```csharp
-using LiteOrm;
-using LiteOrm.Common;
-using LiteOrm.Service;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-
-// 1. 读取配置文件
-var configuration = new ConfigurationBuilder()
-    .SetBasePath(AppContext.BaseDirectory)
-    .AddJsonFile("appsettings.json")
-    .Build();
-
-// 2. 通过 LoadConfiguration 从 LiteOrm 节点加载数据源
-var dataSourceProvider = new DataSourceProvider();
-dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
-
-// 3. 创建连接池工厂
-var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
-
-// 4. 创建会话管理器并设为当前会话
-var sessionManager = new SessionManager(poolFactory);
-SessionManager.SetCurrent(() => sessionManager);
-
-// 5. 构建最小服务提供程序并解析服务（8.1.3 起，EntityService/EntityViewService 构造函数接收 IServiceProvider）
-var services = new ServiceCollection();
-services.AddScoped(_ => sessionManager);
-services.AddScoped(typeof(ObjectDAO<>));
-services.AddScoped(typeof(ObjectViewDAO<>));
-services.AddScoped(typeof(EntityService<>));
-services.AddScoped(typeof(EntityViewService<>));
-var serviceProvider = services.BuildServiceProvider();
-
-var userService = serviceProvider.GetRequiredService<EntityService<User>>();
-```
-
-> 使用 `LoadConfiguration` 需额外安装 `Microsoft.Extensions.Configuration` 和 `Microsoft.Extensions.Configuration.Json` 包。基础库本身仅依赖 `Microsoft.Extensions.Configuration.Abstractions`（提供 `IConfiguration` 接口）。
-
-> **逐行解释**：
-> - `DataSourceProvider`：管理数据源配置。通过 `AddDataSource` 显式添加，或通过 `LoadConfiguration` 从 `IConfiguration` 批量加载；`SetDefaultDataSource` 或配置节中的 `Default` 键指定默认数据源。
-> - `LiteOrmSqlFunctionInitializer.Initialize()`：SQL 函数映射在首次访问 SqlBuilder 时由静态构造函数自动注册，无需手动调用。
-> - `DAOContextPoolFactory`：根据数据源配置创建连接池，管理连接的获取与回收。通过构造函数传入 `SessionManager`，DAO 内部通过 `SessionManager.GetDAOContextPool()` 获取连接池以解析提供程序类型。
-> - `SessionManager`：管理数据库会话、事务和异步上下文。通过 `SetCurrent` 设置为当前异步上下文的会话。
-> - `ObjectDAO<T>` / `ObjectViewDAO<T>`：分别负责增删改和查询的数据访问对象。两者自 8.1.1 起构造时需传入 `SessionManager`，内部通过 `TableInfoProvider.Instance` 获取全局单例。依赖注入场景下由容器自动解析，手动构造则需自行传入已创建好的 `sessionManager`。
-> - `ServiceCollection` / `ServiceProvider`：自 8.1.3 起 `EntityService<T>` / `EntityViewService<T>` 构造函数接收 `IServiceProvider`，由容器解析其所需的 `ObjectDAO<T>` / `ObjectViewDAO<T>`。此处仅注册最少服务以演示手动场景；常规项目建议使用下文 2.2 的 `AddLiteOrm()`。
-> - `EntityService<T>`：封装了 DAO 的业务服务，提供 `InsertAsync`、`SearchAsync`、`UpdateAsync`、`DeleteAsync` 等方法。
-
-### 2.2 通过 AddLiteOrm 注册和获取服务（推荐）
-
-上一节展示了纯手动构造依赖链的方式。如果你希望使用 `Microsoft.Extensions.DependencyInjection`（以下简称 MS DI）来管理服务生命周期，但**不引入 LiteOrm.DependencyInjection / Autofac**，可以直接调用基础库内置的 `AddLiteOrm()` 完成注册。
-
-`AddLiteOrm()` 定义于基础库（`LiteOrm` 命名空间，无需额外安装包），适合需要依赖注入但不需要 AOP 拦截的场景，例如单元测试、轻量级 Web API、或希望按作用域（Scope）管理 `SessionManager` 生命周期的项目。
+#### 第二步：调用 AddLiteOrm 注册
 
 ```csharp
 using LiteOrm;
@@ -174,44 +82,34 @@ using Microsoft.Extensions.DependencyInjection;
 
 // 1. 创建 Host（自动加载 appsettings.json），并在其上注册 LiteOrm
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddLiteOrm(options =>
-{
-    options.AutoRegisterServices = true;   // 默认 true：应用 [AutoRegister] 编译期注册
-    options.ConfigureServices = s => { /* 追加自定义服务注册 */ };
-});
+builder.Services.AddLiteOrm();
 
 // 2. 构建 Host，其 Services 即为 ServiceProvider
 var host = builder.Build();
 var serviceProvider = host.Services;
 ```
 
-> **`AddLiteOrm()` 注册了哪些服务？**
+> **`AddLiteOrm()`** **注册了哪些服务？**
+>
 > - 单例：`IDataSourceProvider`（从 `IConfiguration` 的 `LiteOrm` 节点加载）、`DAOContextPoolFactory`、`TableInfoProvider`。
+>
 > - Scoped：`SessionManager`、泛型 `ObjectDAO<>` / `ObjectViewDAO<>`、`EntityService<>` / `EntityViewService<>`（含 `IObjectDAO<>`、`IEntityService<>` 等接口注册）。
+>
 > - `AddLiteOrm()` 会在注册 `SessionManager` 时自动绑定 `SessionManager.Current`, 无需手动调用 `SessionManager.SetCurrent(...)`。
-> - 若 `AutoRegisterServices = true`（默认），还会应用 `[AutoRegister]` 自定义服务与 DAO 的编译期自动注册。
+>
+> - 若 `AutoRegisterServices = true`（默认），还会自动注册带 `[AutoRegister]` 特性的自定义服务与 DAO（非 AOT 模式运行时扫描程序集；AOT 模式由源生成器在编译期登记）。基础示例直接使用泛型实体服务，无需自定义服务。
 
 > **需要安装哪些包？** `AddLiteOrm()` 从 DI 容器中解析 `IConfiguration`。`Host.CreateApplicationBuilder` 会自动加载 `appsettings.json` 并注册配置（含 `IConfiguration`），因此控制台应用只需额外安装 `Microsoft.Extensions.Hosting` 包，无需再手动构建 `ServiceCollection`。
 
-注册完成后，通过创建作用域并解析服务来执行数据库操作：
+#### 第三步：创建作用域并解析服务
 
 ```csharp
-// 创建作用域（每个作用域拥有独立的 SessionManager 实例）
+// 创建作用域（每个作用域拥有独立的 SessionManager 与 Scoped 服务实例）
 using var scope = serviceProvider.CreateScope();
 var sp = scope.ServiceProvider;
 
-// 从 DI 容器解析服务
+// 解析泛型实体服务（AddLiteOrm 已注册 EntityService<>）
 var userService = sp.GetRequiredService<EntityService<User>>();
-
-// 后续操作与手动构造方式完全一致
-var user = new User
-{
-    UserName = "admin",
-    Age = 30,
-    CreateTime = DateTime.Now
-};
-await userService.InsertAsync(user);
-Console.WriteLine($"插入成功，自增 Id = {user.Id}");
 ```
 
 > **作用域与 SessionManager 的关系**：
@@ -226,47 +124,47 @@ Console.WriteLine($"插入成功，自增 Id = {user.Id}");
 await host.DisposeAsync();
 ```
 
-## 3. 插入一条数据
+### 2.2 注册自定义服务的两种方式（可选）
+
+基础示例直接使用泛型 `EntityService<>`，无需自定义服务。如果你的项目需要把业务方法封装成服务，可通过以下两种方式将自定义服务注册到容器：
+
+#### 方式一：`[AutoRegister]` 自动注册（推荐）
+
+给自定义服务实现类加上 `[AutoRegister]` 特性，`AddLiteOrm()` 在 `AutoRegisterServices = true`（默认）时会自动扫描并注册。特性支持指定生命周期、注册策略与键：
 
 ```csharp
-var user = new User
+[AutoRegister(Lifetime.Scoped, RegisterPolicy.All)]         // 注册实现类自身 + 接口（默认）
+public class UserAppService : IUserAppService { /* ... */ }
+
+[AutoRegister(Lifetime.Transient, RegisterPolicy.Interface)] // 仅注册接口
+public class ReportService : IReportService { /* ... */ }
+
+[AutoRegister(Lifetime.Singleton, RegisterPolicy.Self)]      // 仅注册实现类自身
+public class CacheHelper { /* ... */ }
+```
+
+> `Lifetime`：`Singleton` / `Scoped` / `Transient`；`RegisterPolicy`：`All`（自身 + 接口，默认）/ `Interface`（仅接口）/ `Self`（仅自身）。依赖 Scoped 服务的自定义服务应使用 `Scoped` 或 `Transient` 生命周期。
+
+#### 方式二：`options.ConfigureServices` 手动注册
+
+`LiteOrmOptions.ConfigureServices` 在核心服务注册完成后执行，可在此注册任意自定义服务，与普通 MS DI 注册一致：
+
+```csharp
+builder.Services.AddLiteOrm(options =>
 {
-    UserName = "admin",
-    Age = 30,
-    CreateTime = DateTime.Now
-};
-
-await userService.InsertAsync(user);
-Console.WriteLine($"插入成功，自增 Id = {user.Id}");
+    options.ConfigureServices = services =>
+    {
+        services.AddScoped<IUserAppService, UserAppService>();
+        services.AddSingleton<ICacheService, CacheService>();
+    };
+});
 ```
 
-> `InsertAsync` 会将实体插入数据库。如果 `Id` 是自增列（`IsIdentity = true`），插入后实体的 `Id` 属性会自动填充。
+> 两种方式可混用。`ConfigureServices` 中的注册在 `[AutoRegister]` 自动注册之后执行，同一类型的注册以后者为准。
 
-## 4. 执行查询
+## 3. 完整调用闭环（插入、查询、分页）
 
-```csharp
-// 条件查询
-var adults = await userService.SearchAsync(u => u.Age >= 18);
-Console.WriteLine($"成年用户数量：{adults.Count}");
-
-// 单条查询
-var admin = await userService.SearchOneAsync(u => u.UserName == "admin");
-Console.WriteLine($"查询到：{admin?.UserName}, Age = {admin?.Age}");
-```
-
-## 5. 执行分页
-
-```csharp
-var page = await userService.SearchAsync(
-    q => q.Where(u => u.Age >= 18)
-          .OrderByDescending(u => u.CreateTime)
-          .Skip(0)
-          .Take(10)
-);
-Console.WriteLine($"分页结果：{page.Count} 条");
-```
-
-## 6. 完整调用闭环
+下面用一个闭环示例依次演示插入、条件查询、单条查询、分页、更新、统计、存在性判断与删除：
 
 ```csharp
 // 1. 插入
@@ -277,21 +175,36 @@ var user = new User
     CreateTime = DateTime.Now
 };
 await userService.InsertAsync(user);
+Console.WriteLine($"插入成功，自增 Id = {user.Id}");
 
-// 2. 查询
+// 2. 条件查询
+var adults = await userService.SearchAsync(u => u.Age >= 18);
+Console.WriteLine($"成年用户数量：{adults.Count}");
+
+// 3. 单条查询
 var current = await userService.SearchOneAsync(u => u.Id == user.Id);
+Console.WriteLine($"查询到：{current?.UserName}, Age = {current?.Age}");
 
-// 3. 更新
+// 4. 分页查询
+var page = await userService.SearchAsync(
+    q => q.Where(u => u.Age >= 18)
+          .OrderByDescending(u => u.CreateTime)
+          .Skip(0)
+          .Take(10)
+);
+Console.WriteLine($"分页结果：{page.Count} 条");
+
+// 5. 更新
 current!.UserName = "updated-demo-user";
 await userService.UpdateAsync(current);
 
-// 4. 统计
+// 6. 统计
 var count = await userService.CountAsync(u => u.Age >= 18);
 
-// 5. 判断是否存在
+// 7. 判断是否存在
 var exists = await userService.ExistsAsync(u => u.UserName == "updated-demo-user");
 
-// 6. 删除
+// 8. 删除
 if (exists)
 {
     await userService.DeleteAsync(current);
@@ -300,54 +213,28 @@ if (exists)
 Console.WriteLine($"Count={count}, Exists={exists}");
 ```
 
-## 7. 手动事务
+> - `InsertAsync`：将实体插入数据库。如果 `Id` 是自增列（`IsIdentity = true`），插入后实体的 `Id` 属性会自动填充。
+>
+> - `SearchAsync`：返回集合；`SearchOneAsync`：返回单条，无匹配时返回 `null`。
+>
+> - `SearchAsync` 的查询构建器支持 `Where` / `OrderByDescending` / `Skip` / `Take` 组合实现分页排序。
 
-基础库不提供 AOP 声明式事务（`[Transaction]` 特性需要 `LiteOrm.DependencyInjection` 的 Castle 拦截器），但可以通过 `SessionManager` 手动控制：
+## 4. 基础库与 LiteOrm.DependencyInjection 的能力对比
 
-```csharp
-sessionManager.BeginTransaction();
-try
-{
-    await userService.InsertAsync(new User { UserName = "user1", Age = 20, CreateTime = DateTime.Now });
-    await userService.InsertAsync(new User { UserName = "user2", Age = 25, CreateTime = DateTime.Now });
-    sessionManager.Commit();
-}
-catch
-{
-    sessionManager.Rollback();
-    throw;
-}
-```
-
-## 8. 资源释放
-
-基础库场景下，`SessionManager` 和 `DAOContextPoolFactory` 持有数据库连接，使用完毕后需要释放：
-
-```csharp
-// 应用退出时
-sessionManager.Dispose();
-poolFactory.Dispose();
-
-// 如果使用了 SyncTable=true，数据库文件会自动创建
-// 如果是 SQLite in-memory（Data Source=:memory:），连接关闭后数据丢失
-```
-
-## 9. 基础库与 LiteOrm.DependencyInjection 的能力对比
-
-| 能力 | 仅基础库 (`LiteOrm`) | 宿主集成 (`LiteOrm.DependencyInjection`) |
-|------|----------------------|--------------------------------|
-| 实体映射 / CRUD / 查询 | ✅ | ✅ |
-| 手动事务 | ✅ `SessionManager.BeginTransaction()` | ✅ |
-| 声明式事务 `[Transaction]` | ❌ | ✅ AOP 拦截 |
-| 权限过滤 `[ServicePermission]` | ❌ | ✅ AOP 拦截 |
-| 自动日志 `[ServiceLog]` / `[Log]` | ❌ | ✅ AOP 拦截 |
-| DI 容器注册 | ✅ `AddLiteOrm()`（MS DI，见上文） | ✅ `RegisterLiteOrm()`（Autofac） |
-| 配置文件绑定 | ✅ `LoadConfiguration` 或 `AddLiteOrm()` 读取 `IConfiguration` | ✅ `appsettings.json` 自动绑定 |
-| 批量导入 `IBulkProvider` | ✅ 直接设置 `SqlBuilder.BulkProvider` | ✅ 直接设置 `SqlBuilder.BulkProvider` |
+| 能力                            | 仅基础库 (`LiteOrm`)                                           | 宿主集成 (`LiteOrm.DependencyInjection`) |
+| ----------------------------- | ---------------------------------------------------------- | ------------------------------------ |
+| 实体映射 / CRUD / 查询              | ✅                                                          | ✅                                    |
+| 手动事务                          | ✅ `SessionManager.BeginTransaction()`                      | ✅                                    |
+| 声明式事务 `[Transaction]`         | ❌                                                          | ✅ AOP 拦截                             |
+| 权限过滤 `[ServicePermission]`    | ❌                                                          | ✅ AOP 拦截                             |
+| 自动日志 `[ServiceLog]` / `[Log]` | ❌                                                          | ✅ AOP 拦截                             |
+| DI 容器注册                       | ✅ `AddLiteOrm()`（MS DI，见上文）                                | ✅ `RegisterLiteOrm()`（Autofac）       |
+| 配置文件绑定                        | ✅ `LoadConfiguration` 或 `AddLiteOrm()` 读取 `IConfiguration` | ✅ `appsettings.json` 自动绑定            |
+| 批量导入 `IBulkProvider`          | ✅ 直接设置 `SqlBuilder.BulkProvider`                           | ✅ 直接设置 `SqlBuilder.BulkProvider`     |
 
 > 如果你后续需要 AOP 能力，可以从基础库平滑迁移到宿主集成（`LiteOrm.DependencyInjection`），实体定义和 DAO/Service 用法完全一致。
 
-## 10. 新手常见问题
+## 5. 新手常见问题
 
 ### 问题一：`SQLite Error 1: 'no such table: Users'`
 
@@ -370,17 +257,27 @@ poolFactory.Dispose();
 ## 运行验证清单
 
 - [ ] `dotnet build` 编译通过，无错误。
+
 - [ ] 手动构造方式下已调用 `SessionManager.SetCurrent(...)`；使用 `AddLiteOrm()` 时自动绑定，无需手动调用。
+
 - [ ] 实体类使用了 `[Table]` 和 `[Column]` 特性标注。
-- [ ] 插入和查询操作返回了预期的结果。
-- [ ] 应用退出前释放了 `ServiceProvider`（或 `SessionManager`）和 `DAOContextPoolFactory`。
+
+- [ ] 插入、查询和分页操作返回了预期的结果。
+
+- [ ] 应用退出前调用了 `await host.DisposeAsync()` 释放资源（连接池等）。
 
 ## 相关链接
 
 - [返回目录](../README.md)
+
 - [安装](./02-installation.md)
+
 - [配置参考](../05-reference/01-configuration-reference.md)
+
 - [第一个完整示例（DI 版）](./05-first-example-di.md)
+
 - [实体映射与数据源](../02-core-usage/01-entity-mapping.md)
+
 - [查询总览](../02-core-usage/04-query-overview.md)
+
 - [CRUD 指南](../02-core-usage/03-crud-guide.md)

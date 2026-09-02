@@ -1,8 +1,8 @@
 # First End-to-End Example (Base Library Only)
 
-This article walks through a minimal runnable example demonstrating the typical workflow of using **only the `LiteOrm` base library** (without `LiteOrm.DependencyInjection`, Autofac, or Castle dynamic proxies): manual initialization, defining entities, inserting data, querying data, and paginated queries.
+This article walks through a minimal runnable example demonstrating the typical workflow of using **only the `LiteOrm` base library** (without `LiteOrm.DependencyInjection`, Autofac, or Castle dynamic proxies): initializing with `AddLiteOrm()`, defining entities, and performing insert, query, and pagination operations through the generic entity service `EntityService<User>`.
 
-> **Applicable scenarios**: console apps, batch scripts, projects without a DI container, or scenarios where you want full control over lifetimes.
+> **Applicable scenarios**: console apps, batch scripts, unit tests, or projects that want MS DI-managed lifetimes without AOP interception.
 >
 > If you use ASP.NET Core and need Autofac integration, AOP transactions/permissions/logging, and similar capabilities, see [First End-to-End Example (DI)](./05-first-example-di.en.md).
 
@@ -45,57 +45,15 @@ public class User
 
 ## 2. Initialize LiteOrm
 
-It offers two initialization styles: manual construction without a DI container (below), and `AddLiteOrm()`, the plain MS DI registration. For manual construction, data source configuration supports two approaches: manual code-based setup, or reading from `IConfiguration` sources such as `appsettings.json`.
+The recommended way is to use the base library's built-in `AddLiteOrm()` (plain MS DI) to complete initialization — it loads data sources from the `LiteOrm` section of `IConfiguration`, registers core services, and supports registering custom services, without manually `new`-ing various low-level objects.
 
 > **Note**: Since 8.1, `RegisterLiteOrm()` moved from the `LiteOrm` base package to `LiteOrm.DependencyInjection` (namespace changed from `LiteOrm` to `LiteOrm.DependencyInjection`). If you need Autofac integration / AOP, use `RegisterLiteOrm()` from the `LiteOrm.DependencyInjection` package; the base library only provides `AddLiteOrm()` (plain MS DI).
 
-### 2.1 Manually Initialize LiteOrm
+### 2.1 Initialize via AddLiteOrm (Recommended)
 
-#### Option A: Manual Code-Based Configuration
+`AddLiteOrm()` lives in the base library (namespace `LiteOrm`, no extra package required). It loads data sources from the `LiteOrm` section of `IConfiguration` and registers core services such as `SessionManager`, DAOs, and generic entity services. When using it, there is no need to call `SessionManager.SetCurrent(...)` manually — the framework binds the current scope instance automatically when registering `SessionManager`.
 
-```csharp
-using LiteOrm;
-using LiteOrm.Common;
-using LiteOrm.Service;
-using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.DependencyInjection;
-
-// 1. Configure data source
-var dataSourceProvider = new DataSourceProvider();
-dataSourceProvider.AddDataSource(new DataSourceConfig
-{
-    Name = "DefaultConnection",
-    ConnectionString = "Data Source=LiteOrmDemo.db",
-    Provider = typeof(SqliteConnection).AssemblyQualifiedName,
-    SyncTable = true  // auto-create table (recommended for development)
-});
-dataSourceProvider.SetDefaultDataSource("DefaultConnection");
-
-// 2. Create connection pool factory
-var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
-
-// 3. Create session manager and set as current session
-var sessionManager = new SessionManager(poolFactory);
-SessionManager.SetCurrent(() => sessionManager);
-
-// 4. Build a minimal service provider and resolve the entity service
-//    (as of 8.1.3, EntityService/EntityViewService constructors take an IServiceProvider)
-var services = new ServiceCollection();
-services.AddScoped(_ => sessionManager);
-services.AddScoped(typeof(ObjectDAO<>));
-services.AddScoped(typeof(ObjectViewDAO<>));
-services.AddScoped(typeof(EntityService<>));
-services.AddScoped(typeof(EntityViewService<>));
-var serviceProvider = services.BuildServiceProvider();
-
-var userService = serviceProvider.GetRequiredService<EntityService<User>>();
-```
-
-#### Option B: Read from Configuration File
-
-The base library includes a built-in `LoadConfiguration` extension method that loads data source configuration directly from the `LiteOrm` section of an `IConfiguration`, eliminating the need to call `AddDataSource` one by one.
-
-First, prepare `appsettings.json`:
+#### Step 1: Prepare the Data Source in appsettings.json
 
 ```json
 {
@@ -113,61 +71,7 @@ First, prepare `appsettings.json`:
 }
 ```
 
-Then use `LoadConfiguration` in place of manual `AddDataSource`:
-
-```csharp
-using LiteOrm;
-using LiteOrm.Common;
-using LiteOrm.Service;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-
-// 1. Read configuration file
-var configuration = new ConfigurationBuilder()
-    .SetBasePath(AppContext.BaseDirectory)
-    .AddJsonFile("appsettings.json")
-    .Build();
-
-// 2. Load data sources from the LiteOrm section via LoadConfiguration
-var dataSourceProvider = new DataSourceProvider();
-dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
-
-// 3. Create connection pool factory
-var poolFactory = new DAOContextPoolFactory(dataSourceProvider);
-
-// 4. Create session manager and set as current session
-var sessionManager = new SessionManager(poolFactory);
-SessionManager.SetCurrent(() => sessionManager);
-
-// 5. Build a minimal service provider and resolve the entity service
-//    (as of 8.1.3, EntityService/EntityViewService constructors take an IServiceProvider)
-var services = new ServiceCollection();
-services.AddScoped(_ => sessionManager);
-services.AddScoped(typeof(ObjectDAO<>));
-services.AddScoped(typeof(ObjectViewDAO<>));
-services.AddScoped(typeof(EntityService<>));
-services.AddScoped(typeof(EntityViewService<>));
-var serviceProvider = services.BuildServiceProvider();
-
-var userService = serviceProvider.GetRequiredService<EntityService<User>>();
-```
-
-> Using `LoadConfiguration` requires additionally installing the `Microsoft.Extensions.Configuration` and `Microsoft.Extensions.Configuration.Json` packages. The base library itself only depends on `Microsoft.Extensions.Configuration.Abstractions` (which provides the `IConfiguration` interface).
-
-> **Line-by-line explanation**:
-> - `DataSourceProvider`: manages data source configuration. Add sources explicitly via `AddDataSource`, or load them in bulk from `IConfiguration` via `LoadConfiguration`; designate the default via `SetDefaultDataSource` or the `Default` key in the config section.
-> - `LiteOrmSqlFunctionInitializer.Initialize()`: SQL function mappings are automatically registered via SqlBuilder's static constructor on first access—no manual call needed.
-> - `DAOContextPoolFactory`: creates connection pools based on data source configuration and manages connection acquisition and recycling. It is passed to `SessionManager` via the constructor; DAOs obtain the pool internally via `SessionManager.GetDAOContextPool()` to resolve the provider type.
-> - `SessionManager`: manages database sessions, transactions, and async context. `SetCurrent` sets it as the session for the current async context.
-> - `ObjectDAO<T>` / `ObjectViewDAO<T>`: data access objects for insert/update/delete and queries, respectively. As of 8.1.1 their constructors require a `SessionManager`; internally they obtain global singletons via `TableInfoProvider.Instance`. Under DI the container resolves the `SessionManager` automatically; when constructing manually, pass the session manager you created.
-> - `ServiceCollection` / `ServiceProvider`: as of 8.1.3, the `EntityService<T>` / `EntityViewService<T>` constructors take an `IServiceProvider`, from which the container resolves their required `ObjectDAO<T>` / `ObjectViewDAO<T>`. Only the minimal services are registered here to demonstrate the manual scenario; for regular projects prefer `AddLiteOrm()` in section 2.2 below.
-> - `EntityService<T>`: a business service wrapping the DAOs, providing methods such as `InsertAsync`, `SearchAsync`, `UpdateAsync`, and `DeleteAsync`.
-
-### 2.2 Register and Resolve Services via AddLiteOrm (Recommended)
-
-The previous section showed how to build the dependency chain entirely by hand. If you prefer to use `Microsoft.Extensions.DependencyInjection` (MS DI) for lifetime management **without introducing LiteOrm.DependencyInjection / Autofac**, you can use the base library's built-in `AddLiteOrm()` extension.
-
-`AddLiteOrm()` lives in the base library (namespace `LiteOrm`, no extra package required). It suits scenarios that need dependency injection but not AOP interception — unit tests, lightweight web APIs, or projects that want per-scope `SessionManager` lifetime management.
+#### Step 2: Call AddLiteOrm to Register
 
 ```csharp
 using LiteOrm;
@@ -176,11 +80,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 // 1. Create a Host (loads appsettings.json automatically) and register LiteOrm on it
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddLiteOrm(options =>
-{
-    options.AutoRegisterServices = true;   // default true: apply [AutoRegister] compile-time registrations
-    options.ConfigureServices = s => { /* add custom service registrations */ };
-});
+builder.Services.AddLiteOrm();
 
 // 2. Build the Host; its Services property is the ServiceProvider
 var host = builder.Build();
@@ -190,34 +90,24 @@ var serviceProvider = host.Services;
 > **What does `AddLiteOrm()` register?**
 > - Singleton: `IDataSourceProvider` (loaded from the `LiteOrm` section of `IConfiguration`), `DAOContextPoolFactory`, `TableInfoProvider`.
 > - Scoped: `SessionManager`, generic `ObjectDAO<>` / `ObjectViewDAO<>`, `EntityService<>` / `EntityViewService<>` (including interface registrations such as `IObjectDAO<>`, `IEntityService<>`).
-> - `AddLiteOrm()` binds `SessionManager.Current` automatically when registering `SessionManager` (resolving to the scope's instance), so no manual `SessionManager.SetCurrent(...)` call is required.
-> - If `AutoRegisterServices = true` (default), compile-time auto-registration of `[AutoRegister]` custom services and DAOs is applied as well.
+> - `AddLiteOrm()` binds `SessionManager.Current` automatically when registering `SessionManager`, so no manual `SessionManager.SetCurrent(...)` call is required.
+> - If `AutoRegisterServices = true` (default), custom services and DAOs marked with `[AutoRegister]` are auto-registered as well (runtime assembly scanning in non-AOT mode; registered at compile time by the source generator in AOT mode). This example uses the generic entity service directly, so no custom service is needed.
 
 > **Which packages do I need?** `AddLiteOrm()` resolves `IConfiguration` from the DI container. `Host.CreateApplicationBuilder` automatically loads `appsettings.json` and registers configuration (including `IConfiguration`), so a console app only needs the `Microsoft.Extensions.Hosting` package — no manual `ServiceCollection` construction required.
 
-After registration, create a scope and resolve services to perform database operations:
+#### Step 3: Create a Scope and Resolve Services
 
 ```csharp
-// Create a scope (each scope gets its own SessionManager instance)
+// Create a scope (each scope gets its own SessionManager and Scoped service instances)
 using var scope = serviceProvider.CreateScope();
 var sp = scope.ServiceProvider;
 
-// Resolve service from the DI container
+// Resolve the generic entity service (EntityService<> registered by AddLiteOrm)
 var userService = sp.GetRequiredService<EntityService<User>>();
-
-// Subsequent operations are identical to the manual approach
-var user = new User
-{
-    UserName = "admin",
-    Age = 30,
-    CreateTime = DateTime.Now
-};
-await userService.InsertAsync(user);
-Console.WriteLine($"Insert succeeded, auto-increment Id = {user.Id}");
 ```
 
 > **Scopes and SessionManager**:
-> `SessionManager` is registered as Scoped, so each `CreateScope()` call (e.g., each web request) produces an independent instance. `AddLiteOrm()` binds `SessionManager.Current` automatically when registering `SessionManager` (resolving to the scope's instance), so no manual `SetCurrent` call or middleware is required.
+> `SessionManager` is registered as Scoped, so each `CreateScope()` call (e.g., each web request) produces an independent `SessionManager` instance. `AddLiteOrm()` binds `SessionManager.Current` automatically when registering `SessionManager` (resolving to the scope's instance), so no manual `SetCurrent` call or middleware is required.
 >
 > Tip: with `LiteOrm.DependencyInjection` (Autofac) no configuration is needed either — `RegisterLiteOrm()` enables scope tracking automatically and updates the current session on scope enter/exit.
 
@@ -228,47 +118,47 @@ Release resources when the application exits:
 await host.DisposeAsync();
 ```
 
-## 3. Insert a Record
+### 2.2 Two Ways to Register Custom Services (Optional)
+
+This example uses the generic `EntityService<>` directly, so no custom service is needed. If your project needs to encapsulate business methods into services, register them with one of the following two approaches:
+
+#### Method 1: `[AutoRegister]` Automatic Registration (Recommended)
+
+Add the `[AutoRegister]` attribute to your custom service implementation class, and `AddLiteOrm()` scans and registers it automatically when `AutoRegisterServices = true` (default). The attribute supports specifying lifetime, registration policy, and key:
 
 ```csharp
-var user = new User
+[AutoRegister(Lifetime.Scoped, RegisterPolicy.All)]         // register implementation type + interfaces (default)
+public class UserAppService : IUserAppService { /* ... */ }
+
+[AutoRegister(Lifetime.Transient, RegisterPolicy.Interface)] // register interfaces only
+public class ReportService : IReportService { /* ... */ }
+
+[AutoRegister(Lifetime.Singleton, RegisterPolicy.Self)]      // register implementation type only
+public class CacheHelper { /* ... */ }
+```
+
+> `Lifetime`: `Singleton` / `Scoped` / `Transient`; `RegisterPolicy`: `All` (type + interfaces, default) / `Interface` (interfaces only) / `Self` (type only). Custom services that depend on Scoped services should use `Scoped` or `Transient` lifetimes.
+
+#### Method 2: Manual Registration via `options.ConfigureServices`
+
+`LiteOrmOptions.ConfigureServices` runs after the core services are registered; register any custom service here, exactly like normal MS DI registration:
+
+```csharp
+builder.Services.AddLiteOrm(options =>
 {
-    UserName = "admin",
-    Age = 30,
-    CreateTime = DateTime.Now
-};
-
-await userService.InsertAsync(user);
-Console.WriteLine($"插入成功，自增 Id = {user.Id}");
+    options.ConfigureServices = services =>
+    {
+        services.AddScoped<IUserAppService, UserAppService>();
+        services.AddSingleton<ICacheService, CacheService>();
+    };
+});
 ```
 
-> `InsertAsync` inserts the entity into the database. If `Id` is an auto-increment column (`IsIdentity = true`), the entity's `Id` property is auto-populated after insertion.
+> The two methods can be mixed. Registrations in `ConfigureServices` run after `[AutoRegister]` auto-registration; for the same type, the later registration wins.
 
-## 4. Run a Query
+## 3. Full Call Loop (Insert, Query, Pagination)
 
-```csharp
-// 条件查询
-var adults = await userService.SearchAsync(u => u.Age >= 18);
-Console.WriteLine($"成年用户数量：{adults.Count}");
-
-// 单条查询
-var admin = await userService.SearchOneAsync(u => u.UserName == "admin");
-Console.WriteLine($"查询到：{admin?.UserName}, Age = {admin?.Age}");
-```
-
-## 5. Pagination
-
-```csharp
-var page = await userService.SearchAsync(
-    q => q.Where(u => u.Age >= 18)
-          .OrderByDescending(u => u.CreateTime)
-          .Skip(0)
-          .Take(10)
-);
-Console.WriteLine($"分页结果：{page.Count} 条");
-```
-
-## 6. Full Call Loop
+The following closed-loop example walks through insert, conditional query, single-record query, pagination, update, count, existence check, and delete in sequence:
 
 ```csharp
 // 1. 插入
@@ -279,21 +169,36 @@ var user = new User
     CreateTime = DateTime.Now
 };
 await userService.InsertAsync(user);
+Console.WriteLine($"插入成功，自增 Id = {user.Id}");
 
-// 2. 查询
+// 2. 条件查询
+var adults = await userService.SearchAsync(u => u.Age >= 18);
+Console.WriteLine($"成年用户数量：{adults.Count}");
+
+// 3. 单条查询
 var current = await userService.SearchOneAsync(u => u.Id == user.Id);
+Console.WriteLine($"查询到：{current?.UserName}, Age = {current?.Age}");
 
-// 3. 更新
+// 4. 分页查询
+var page = await userService.SearchAsync(
+    q => q.Where(u => u.Age >= 18)
+          .OrderByDescending(u => u.CreateTime)
+          .Skip(0)
+          .Take(10)
+);
+Console.WriteLine($"分页结果：{page.Count} 条");
+
+// 5. 更新
 current!.UserName = "updated-demo-user";
 await userService.UpdateAsync(current);
 
-// 4. 统计
+// 6. 统计
 var count = await userService.CountAsync(u => u.Age >= 18);
 
-// 5. 判断是否存在
+// 7. 判断是否存在
 var exists = await userService.ExistsAsync(u => u.UserName == "updated-demo-user");
 
-// 6. 删除
+// 8. 删除
 if (exists)
 {
     await userService.DeleteAsync(current);
@@ -302,39 +207,11 @@ if (exists)
 Console.WriteLine($"Count={count}, Exists={exists}");
 ```
 
-## 7. Manual Transaction
+> - `InsertAsync`: inserts the entity into the database. If `Id` is an auto-increment column (`IsIdentity = true`), the entity's `Id` property is auto-populated after insertion.
+> - `SearchAsync`: returns a collection; `SearchOneAsync`: returns a single record, or `null` when there is no match.
+> - `SearchAsync`'s query builder supports combining `Where` / `OrderByDescending` / `Skip` / `Take` for pagination and sorting.
 
-The base library does not provide AOP declarative transactions (the `[Transaction]` attribute requires the `LiteOrm.DependencyInjection` Castle interceptor), but you can control transactions manually via `SessionManager`:
-
-```csharp
-sessionManager.BeginTransaction();
-try
-{
-    await userService.InsertAsync(new User { UserName = "user1", Age = 20, CreateTime = DateTime.Now });
-    await userService.InsertAsync(new User { UserName = "user2", Age = 25, CreateTime = DateTime.Now });
-    sessionManager.Commit();
-}
-catch
-{
-    sessionManager.Rollback();
-    throw;
-}
-```
-
-## 8. Resource Cleanup
-
-In the core-library scenario, `SessionManager` and `DAOContextPoolFactory` hold database connections and should be disposed when done:
-
-```csharp
-// 应用退出时
-sessionManager.Dispose();
-poolFactory.Dispose();
-
-// 如果使用了 SyncTable=true，数据库文件会自动创建
-// 如果是 SQLite in-memory（Data Source=:memory:），连接关闭后数据丢失
-```
-
-## 9. Base Library vs. LiteOrm.DependencyInjection Capability Comparison
+## 4. Base Library vs. LiteOrm.DependencyInjection Capability Comparison
 
 | Capability | Base Library Only (`LiteOrm`) | Host Integration (`LiteOrm.DependencyInjection`) |
 |------|----------------------|--------------------------------|
@@ -349,7 +226,7 @@ poolFactory.Dispose();
 
 > If you later need AOP capabilities, you can migrate smoothly from the base library to the host integration (`LiteOrm.DependencyInjection`); entity definitions and DAO/Service usage remain identical.
 
-## 10. Common Beginner Issues
+## 5. Common Beginner Issues
 
 ### Issue 1: `SQLite Error 1: 'no such table: Users'`
 
@@ -374,8 +251,8 @@ poolFactory.Dispose();
 - [ ] `dotnet build` compiles without errors.
 - [ ] For manual construction, `SessionManager.SetCurrent(...)` is called; with `AddLiteOrm()` the binding is automatic — no manual call needed.
 - [ ] Entity classes are annotated with `[Table]` and `[Column]` attributes.
-- [ ] Insert and query operations return the expected results.
-- [ ] `ServiceProvider` (or `SessionManager`) and `DAOContextPoolFactory` are disposed before the application exits.
+- [ ] Insert, query, and pagination operations return the expected results.
+- [ ] `await host.DisposeAsync()` is called before the application exits to release resources (connection pool, etc.).
 
 ## Related Links
 

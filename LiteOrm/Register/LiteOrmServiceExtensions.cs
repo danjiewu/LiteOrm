@@ -50,24 +50,24 @@ namespace LiteOrm
             services.TryAddSingleton(options);
 
             // 在此注册 LiteOrm 所需的服务
-            services.AddSingleton<IDataSourceProvider>(sp =>
+            services.TryAddSingleton<IDataSourceProvider>(sp =>
             {
                 var configuration = sp.GetRequiredService<IConfiguration>();
                 var dataSourceProvider = new DataSourceProvider();
                 dataSourceProvider.LoadConfiguration(configuration.GetSection("LiteOrm"));
                 return dataSourceProvider;
             });
-            services.AddSingleton<DAOContextPoolFactory>(sp =>
+            services.TryAddSingleton<DAOContextPoolFactory>(sp =>
             {
                 return new DAOContextPoolFactory(sp.GetRequiredService<IDataSourceProvider>());
             });
 
-            services.AddSingleton<TableInfoProvider>(_ => TableInfoProvider.Instance);
+            services.TryAddSingleton<TableInfoProvider>(_ => TableInfoProvider.Instance);
 
             // Scoped 服务——每个作用域获得独立的 SessionManager。
             // 通过工厂构造并绑定 SessionManager.Current，使 Current 仅作为供外部使用的便捷入口，
             // 而 DAO 内的会话由构造参数注入，不再依赖 Current。
-            services.AddScoped<SessionManager>(sp =>
+            services.TryAddScoped<SessionManager>(sp =>
             {
                 var sessionManager = new SessionManager(
                     sp.GetRequiredService<DAOContextPoolFactory>(),
@@ -85,16 +85,16 @@ namespace LiteOrm
             else
             {
                 // 泛型 DAO 与服务（Scoped）。
-                services.AddScoped(typeof(ObjectDAO<>));
-                services.AddScoped(typeof(ObjectViewDAO<>));
-                services.AddScoped(typeof(IObjectDAO<>), typeof(ObjectDAO<>));
-                services.AddScoped(typeof(IObjectViewDAO<>), typeof(ObjectViewDAO<>));
-                services.AddScoped(typeof(EntityService<>));
-                services.AddScoped(typeof(EntityViewService<>));
-                services.AddScoped(typeof(IEntityService<>), typeof(EntityService<>));
-                services.AddScoped(typeof(IEntityViewService<>), typeof(EntityViewService<>));
-                services.AddScoped(typeof(IEntityServiceAsync<>), typeof(EntityService<>));
-                services.AddScoped(typeof(IEntityViewServiceAsync<>), typeof(EntityViewService<>));
+                services.TryAddScoped(typeof(ObjectDAO<>));
+                services.TryAddScoped(typeof(ObjectViewDAO<>));
+                services.TryAddScoped(typeof(IObjectDAO<>), typeof(ObjectDAO<>));
+                services.TryAddScoped(typeof(IObjectViewDAO<>), typeof(ObjectViewDAO<>));
+                services.TryAddScoped(typeof(EntityService<>));
+                services.TryAddScoped(typeof(EntityViewService<>));
+                services.TryAddScoped(typeof(IEntityService<>), typeof(EntityService<>));
+                services.TryAddScoped(typeof(IEntityViewService<>), typeof(EntityViewService<>));
+                services.TryAddScoped(typeof(IEntityServiceAsync<>), typeof(EntityService<>));
+                services.TryAddScoped(typeof(IEntityViewServiceAsync<>), typeof(EntityViewService<>));
             }
 
             // 追加自定义服务注册
