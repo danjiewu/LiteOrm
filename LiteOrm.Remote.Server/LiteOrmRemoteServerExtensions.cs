@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Text.Json;
 using LiteOrm.Common;
@@ -82,6 +83,16 @@ namespace LiteOrm.Remote.Server
         /// </para>
         /// </summary>
         public bool EnableAuthentication { get; set; } = true;
+
+        /// <summary>
+        /// 是否在日志中记录服务端接收到的请求 JSON 与返回的响应 JSON 报文。默认为 false。
+        /// <para>
+        /// 设置为 true 时，<see cref="LiteOrmRemoteServerExtensions.MapRemoteInvokeEndpoint"/>
+        /// 在解析请求后与输出响应前，会以 Debug 级别记录请求 JSON 与响应 JSON
+        /// （需关闭相应日志提供程序的低级别过滤以观察到输出）。
+        /// </para>
+        /// </summary>
+        public bool LogJsonPayloads { get; set; }
     }
 
     /// <summary>
@@ -259,9 +270,25 @@ namespace LiteOrm.Remote.Server
                     return;
                 }
 
+                // 记录服务端接收到的请求 JSON 报文（排障用）
+                if (options.LogJsonPayloads)
+                {
+                    var logger = context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("LiteOrm.Remote.Server.Invoke");
+                    logger?.LogDebug(">>> RemoteInvoke Request JSON: {RequestJson}", json);
+                }
+
                 var response = await dispatcher.InvokeAsync(request, context.RequestAborted).ConfigureAwait(false);
+
+                // 记录服务端返回的响应 JSON 报文（排障用）
+                var responseJson = JsonSerializer.Serialize(response, serializerOptions);
+                if (options.LogJsonPayloads)
+                {
+                    var logger = context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("LiteOrm.Remote.Server.Invoke");
+                    logger?.LogDebug("<<< RemoteInvoke Response JSON: {ResponseJson}", responseJson);
+                }
+
                 context.Response.ContentType = "application/json; charset=utf-8";
-                await JsonSerializer.SerializeAsync(context.Response.Body, response, serializerOptions, context.RequestAborted)
+                await context.Response.WriteAsync(responseJson, context.RequestAborted)
                     .ConfigureAwait(false);
             });
 

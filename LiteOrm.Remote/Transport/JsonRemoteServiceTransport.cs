@@ -1,4 +1,5 @@
 using LiteOrm.Common;
+using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Text.Json;
 
@@ -15,14 +16,49 @@ namespace LiteOrm.Remote
             PropertyNameCaseInsensitive = true,
         };
 
+        /// <summary>
+        /// 用于记录请求/响应 JSON 报文的日志记录器。仅在 <see cref="LogJsonPayloads"/> 启用时使用。
+        /// </summary>
+        protected ILogger? Logger { get; set; }
+
+        /// <summary>
+        /// 是否启用 JSON 报文日志。可通过 <see cref="ConfigureJsonLogging"/> 设置。
+        /// </summary>
+        protected bool LogJsonPayloads { get; set; }
+
+        /// <summary>
+        /// 配置 JSON 报文日志。启用后，每次 <see cref="InvokeAsync"/> 会以 Debug 级别记录请求与响应 JSON。
+        /// </summary>
+        /// <param name="logger">日志记录器。</param>
+        /// <param name="logJsonPayloads">是否启用 JSON 报文日志。</param>
+        public void ConfigureJsonLogging(ILogger? logger, bool logJsonPayloads)
+        {
+            Logger = logger;
+            LogJsonPayloads = logJsonPayloads;
+        }
+
         /// <inheritdoc />
         public virtual async Task<RemoteInvocationResponse> InvokeAsync(RemoteInvocationRequest request, CancellationToken cancellationToken = default)
         {
             if (request is null) throw new ArgumentNullException(nameof(request));
             var json = JsonSerializer.Serialize(request, _serializerOptions);
+            LogPayload(">>> RemoteInvoke Request JSON: {Json}", json);
             var responseJson = await GetResponseJsonAsync(json, cancellationToken).ConfigureAwait(false);
+            LogPayload("<<< RemoteInvoke Response JSON: {Json}", responseJson);
             return JsonSerializer.Deserialize<RemoteInvocationResponse>(responseJson, _serializerOptions)
                 ?? throw new RemoteTransportException("Remote service returned an empty response.");
+        }
+
+        /// <summary>
+        /// 以 Debug 级别记录 JSON 报文（若已启用 <see cref="LogJsonPayloads"/> 且提供了 <see cref="Logger"/>）。
+        /// </summary>
+        /// <param name="message">日志消息模板。</param>
+        /// <param name="json">JSON 报文。</param>
+        private void LogPayload(string message, string json)
+        {
+            if (!LogJsonPayloads || Logger is null)
+                return;
+            Logger.LogDebug(message, json);
         }
 
         /// <summary>

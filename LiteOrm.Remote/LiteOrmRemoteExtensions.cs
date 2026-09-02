@@ -115,7 +115,17 @@ namespace LiteOrm.Remote
 
                         // 解析 ICredentialsResolver：若 DI 中已注册则使用，否则匿名连接
                         var resolver = sp.GetService<ICredentialsResolver>();
-                        return new HttpRemoteServiceTransport(httpClient, resolver, opts.RemoteServicePath);
+                        var transport = new HttpRemoteServiceTransport(httpClient, resolver, opts.RemoteServicePath);
+
+                        // 记录请求/响应 JSON 报文（排障用），从 DI 解析 ILoggerFactory 提供日志
+                        if (opts.LogJsonPayloads)
+                        {
+                            var loggerFactory = sp.GetService<ILoggerFactory>();
+                            transport.ConfigureJsonLogging(
+                                loggerFactory?.CreateLogger<HttpRemoteServiceTransport>(),
+                                true);
+                        }
+                        return transport;
                     }
 
                     throw new InvalidOperationException(
@@ -192,6 +202,15 @@ namespace LiteOrm.Remote
             /// 默认为控制台输出，最低级别为 <see cref="ServiceLogLevel.Information"/>。
             /// </summary>
             public ILoggerFactory? LoggerFactory { get; set; }
+
+            /// <summary>
+            /// 是否在日志中记录远程调用的请求与响应 JSON 报文。默认为 false。
+            /// <para>
+            /// 设置为 true 时，默认的 <see cref="JsonRemoteServiceTransport"/> 在发送请求前与接收响应后，
+            /// 会以 Debug 级别记录请求 JSON 与响应 JSON（需关闭相应日志提供程序的低级别过滤以观察到输出）。
+            /// </para>
+            /// </summary>
+            public bool LogJsonPayloads { get; set; }
 
             /// <summary>
             /// 远程服务的基础地址。设置该值将自动注册基于 HttpClient 的 <see cref="HttpRemoteServiceTransport"/>。
