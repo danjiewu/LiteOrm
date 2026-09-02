@@ -261,7 +261,7 @@ var host = Host.CreateDefaultBuilder(args)
 
         // Ensure the required URI exists
         if (options.RemoteServiceUri == null)
-            throw new InvalidOperationException("RemoteService:Uri is required in configuration.");
+            throw new InvalidOperationException("LiteOrm:Remote:RemoteServiceUri is required in configuration.");
 
         // Hard-coded delegates cannot be read from configuration; assign them manually
         options.ConfigureHttpClient = client => client.Timeout = TimeSpan.FromSeconds(30);

@@ -219,24 +219,21 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 
 #### 通过 `AddRemoteServerOptions()` 注入工厂读取配置
 
-`AddRemoteServerOptions()` 以工厂方式注册 `RemoteServerOptions`，工厂接收 `IServiceProvider`，可从中解析 `IConfiguration` 等依赖构造参数。运行时以工厂构造的选项为准（优先于 `AddRemoteServer` 的 `configure` 回调）。将服务端参数集中在 `appsettings.json` 后可逐项从配置读取：
+`AddRemoteServerOptions()` 以工厂方式注册 `RemoteServerOptions`，工厂接收 `IServiceProvider`，可从中解析 `IConfiguration` 等依赖构造参数。运行时以工厂构造的选项为准（优先于 `AddRemoteServer` 的 `configure` 回调）。使用 `.Get<T>()` 从 `LiteOrm:RemoteServer` 节点整体绑定，未提供的属性保持默认值：
 
 ```csharp
 builder.Services.AddRemoteServerOptions(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
-    var section = config.GetSection("RemoteServer");
-    return new RemoteServerOptions
-    {
-        InvokePath = section["InvokePath"] ?? "api/remote/invoke",
-        EnableAuthentication = section.GetValue<bool>("EnableAuthentication", true),
-        LogJsonPayloads = section.GetValue<bool>("LogJsonPayloads", false),
-    };
+    return config.GetSection("LiteOrm:RemoteServer").Get<RemoteServerOptions>()
+        ?? new RemoteServerOptions();
 });
 builder.Services.AddRemoteServer();
 ```
 
-### 4.2 客户端配置（`LiteOrmOptions`）
+> **提示**：`.Get<T>()` 只绑定字符串/值类型等可由配置转换的属性；`ServiceTypeResolver`、`TypeNameResolverFactory` 等接口/委托属性无法从配置构造实例（.NET 8+ 会跳过绑定），如需自定义请在绑定后手动赋值。
+
+### 4.2 客户端配置（`LiteOrmRemoteOptions`）
 
 | 属性                           | 类型                                              | 说明                                                                                                       |
 | ---------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
@@ -255,25 +252,29 @@ builder.Services.AddRemoteServer();
 
 #### 通过 `AddRemoteOptions()` 注入工厂读取配置
 
-`AddRemoteOptions()` 以工厂方式注册 `LiteOrmOptions`，工厂接收 `IServiceProvider`，可从中解析 `IConfiguration` 等依赖构造参数。运行时以工厂构造的选项为准（优先于 `RegisterLiteOrmRemote` 的 `configure` 回调），适合将连接参数与调试开关集中放在 `appsettings.json` 的场景：
+`AddRemoteOptions()` 以工厂方式注册 `LiteOrmRemoteOptions`，工厂接收 `IServiceProvider`，可从中解析 `IConfiguration` 等依赖构造参数。运行时以工厂构造的选项为准（优先于 `RegisterLiteOrmRemote` 的 `configure` 回调）。使用 `.Get<T>()` 从 `LiteOrm:Remote` 节点整体绑定，委托型属性无法从配置读取，需手动赋值：
 
 ```csharp
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
     {
         var config = sp.GetRequiredService<IConfiguration>();
-        var section = config.GetSection("RemoteService");
-        return new LiteOrmOptions
-        {
-            RemoteServiceUri = new Uri(section["Uri"]!),
-            RemoteServicePath = section["Path"] ?? "api/remote/invoke",
-            ConfigureHttpClient = client => client.Timeout = TimeSpan.FromSeconds(30),
-            LogJsonPayloads = section.GetValue<bool>("LogJsonPayloads", false),
-        };
+        var options = config.GetSection("LiteOrm:Remote").Get<LiteOrmRemoteOptions>() ?? new LiteOrmRemoteOptions();
+
+        // 确保必填的 Uri 存在
+        if (options.RemoteServiceUri == null)
+            throw new InvalidOperationException("LiteOrm:Remote:RemoteServiceUri is required in configuration.");
+
+        // 硬编码的委托无法从配置读取，必须手动赋值
+        options.ConfigureHttpClient = client => client.Timeout = TimeSpan.FromSeconds(30);
+
+        return options;
     }))
     .RegisterLiteOrmRemote()
     .Build();
 ```
+
+> **提示**：`.Get<T>()` 只绑定字符串/值类型等可由配置转换的属性；`CredentialsResolver`、`CredentialsResolverFactory`、`Transport`、`ConfigureHttpClient` 等接口/委托属性无法从配置构造实例（.NET 8+ 会跳过绑定），必须在绑定后手动赋值。使用 `.Get<T>()` 需要 `Microsoft.Extensions.Configuration.Binder` 包。
 
 自定义传输层同样通过工厂返回 `Transport` 实例注入（见 [5.2](#52-服务端实现-iremoteauthenticationhandler) 的 JWT 示例）。
 
@@ -517,7 +518,7 @@ public class JwtAuthHandler : IRemoteAuthenticationHandler
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
     {
-        var opts = new LiteOrmOptions
+        var opts = new LiteOrmRemoteOptions
         {
             RemoteServiceUri = new Uri("http://localhost:5000"),
         };
@@ -584,7 +585,7 @@ public interface ICredentialsResolver
 
 框架内置 `StaticCredentialsResolver`，适用于单用户场景（后台服务、桌面客户端）：通过 `LoginAsync` 向服务端 SignIn 端点提交凭据，登录成功后服务端返回的票据被保存到本地，后续 `GetTicketAsync` 直接返回该票据。
 
-#### 通过 `LiteOrmOptions` 注册
+#### 通过 `LiteOrmRemoteOptions` 注册
 
 使用 `CredentialsResolverFactory` 工厂注册 `StaticCredentialsResolver`，由 DI 容器统一管理生命周期，便于在传输层中通过 `ICredentialsResolver` 接口解析注入：
 
@@ -644,7 +645,7 @@ builder.Services.AddHttpContextAccessor(); // 必须注册
 
 builder.Host.ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
 {
-    var opts = new LiteOrmOptions
+    var opts = new LiteOrmRemoteOptions
     {
         RemoteServiceUri = new Uri("http://localhost:5000"),
     };
