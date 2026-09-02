@@ -247,6 +247,13 @@ namespace LiteOrm.Remote.Server
                     return;
                 }
 
+                // 记录服务端接收到的请求 JSON 报文（排障用）
+                if (options.LogJsonPayloads)
+                {
+                    var logger = context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("LiteOrm.Remote.Server");
+                    logger?.LogDebug(">>> RemoteInvoke Request JSON: {RequestJson}", json);
+                }
+
                 // 通过 dispatcher.ParseRequest 解析请求：匹配服务 → 查找方法 → 反序列化参数
                 RemoteInvocationRequest request;
                 try
@@ -268,13 +275,6 @@ namespace LiteOrm.Remote.Server
                     await JsonSerializer.SerializeAsync(context.Response.Body, errorResponse, serializerOptions, context.RequestAborted)
                         .ConfigureAwait(false);
                     return;
-                }
-
-                // 记录服务端接收到的请求 JSON 报文（排障用）
-                if (options.LogJsonPayloads)
-                {
-                    var logger = context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("LiteOrm.Remote.Server.Invoke");
-                    logger?.LogDebug(">>> RemoteInvoke Request JSON: {RequestJson}", json);
                 }
 
                 var response = await dispatcher.InvokeAsync(request, context.RequestAborted).ConfigureAwait(false);
