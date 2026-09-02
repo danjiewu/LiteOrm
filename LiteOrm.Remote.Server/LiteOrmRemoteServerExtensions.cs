@@ -270,9 +270,16 @@ namespace LiteOrm.Remote.Server
                         {
                             Type = ex.GetType().FullName,
                             Message = $"Failed to parse request: {ex.Message}",
-                        }                        
+                        }
                     };
-                    await JsonSerializer.SerializeAsync(context.Response.Body, errorResponse, serializerOptions, context.RequestAborted)
+                    var errorResponseJson = JsonSerializer.Serialize(errorResponse, serializerOptions);
+                    if (options.LogJsonPayloads)
+                    {
+                        var logger = context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("LiteOrm.Remote.Server");
+                        logger?.LogDebug(ex, "Failed to parse remote invocation request, returning: {ResponseJson}", errorResponseJson);
+                    }
+                    context.Response.ContentType = "application/json; charset=utf-8";
+                    await context.Response.WriteAsync(errorResponseJson, context.RequestAborted)
                         .ConfigureAwait(false);
                     return;
                 }
@@ -283,7 +290,7 @@ namespace LiteOrm.Remote.Server
                 var responseJson = JsonSerializer.Serialize(response, serializerOptions);
                 if (options.LogJsonPayloads)
                 {
-                    var logger = context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("LiteOrm.Remote.Server.Invoke");
+                    var logger = context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger("LiteOrm.Remote.Server");
                     logger?.LogDebug("<<< RemoteInvoke Response JSON: {ResponseJson}", responseJson);
                 }
 
