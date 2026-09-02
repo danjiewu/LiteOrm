@@ -97,12 +97,12 @@ dotnet add package LiteOrm.Remote
 ```csharp
 using LiteOrm.Remote;
 
-var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrmRemote(opts =>
-    {
-        opts.RemoteServiceUri = new Uri("http://localhost:5000");
-    })
-    .Build();
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000");
+});
+var host = builder.Build();
 ```
 
 ### 2.4 调用——与本地服务完全一致
@@ -252,26 +252,26 @@ builder.Services.AddRemoteServer();
 
 #### 通过 `AddRemoteOptions()` 注入工厂读取配置
 
-`AddRemoteOptions()` 以工厂方式注册 `LiteOrmRemoteOptions`，工厂接收 `IServiceProvider`，可从中解析 `IConfiguration` 等依赖构造参数。运行时以工厂构造的选项为准（优先于 `RegisterLiteOrmRemote` 的 `configure` 回调）。使用 `.Get<T>()` 从 `LiteOrm:Remote` 节点整体绑定，委托型属性无法从配置读取，需手动赋值：
+`AddRemoteOptions()` 以工厂方式注册 `LiteOrmRemoteOptions`，工厂接收 `IServiceProvider`，可从中解析 `IConfiguration` 等依赖构造参数。运行时以工厂构造的选项为准（优先于 `AddLiteOrmRemote` 的 `configure` 回调）。使用 `.Get<T>()` 从 `LiteOrm:Remote` 节点整体绑定，委托型属性无法从配置读取，需手动赋值：
 
 ```csharp
-var host = Host.CreateDefaultBuilder(args)
-    .ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
-    {
-        var config = sp.GetRequiredService<IConfiguration>();
-        var options = config.GetSection("LiteOrm:Remote").Get<LiteOrmRemoteOptions>() ?? new LiteOrmRemoteOptions();
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddRemoteOptions(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var options = config.GetSection("LiteOrm:Remote").Get<LiteOrmRemoteOptions>() ?? new LiteOrmRemoteOptions();
 
-        // 确保必填的 Uri 存在
-        if (options.RemoteServiceUri == null)
-            throw new InvalidOperationException("LiteOrm:Remote:RemoteServiceUri is required in configuration.");
+    // 确保必填的 Uri 存在
+    if (options.RemoteServiceUri == null)
+        throw new InvalidOperationException("LiteOrm:Remote:RemoteServiceUri is required in configuration.");
 
-        // 硬编码的委托无法从配置读取，必须手动赋值
-        options.ConfigureHttpClient = client => client.Timeout = TimeSpan.FromSeconds(30);
+    // 硬编码的委托无法从配置读取，必须手动赋值
+    options.ConfigureHttpClient = client => client.Timeout = TimeSpan.FromSeconds(30);
 
-        return options;
-    }))
-    .RegisterLiteOrmRemote()
-    .Build();
+    return options;
+});
+builder.Services.AddLiteOrmRemote();
+var host = builder.Build();
 ```
 
 > **提示**：`.Get<T>()` 只绑定字符串/值类型等可由配置转换的属性；`CredentialsResolver`、`CredentialsResolverFactory`、`Transport`、`ConfigureHttpClient` 等接口/委托属性无法从配置构造实例（.NET 8+ 会跳过绑定），必须在绑定后手动赋值。使用 `.Get<T>()` 需要 `Microsoft.Extensions.Configuration.Binder` 包。
@@ -515,35 +515,35 @@ public class JwtAuthHandler : IRemoteAuthenticationHandler
 **客户端配置（JWT 写入** **`Authorization`** **头）：**
 
 ```csharp
-var host = Host.CreateDefaultBuilder(args)
-    .ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddRemoteOptions(sp =>
+{
+    var opts = new LiteOrmRemoteOptions
     {
-        var opts = new LiteOrmRemoteOptions
-        {
-            RemoteServiceUri = new Uri("http://localhost:5000"),
-        };
+        RemoteServiceUri = new Uri("http://localhost:5000"),
+    };
 
-        // 使用 CredentialsResolverFactory 注册 StaticCredentialsResolver
-        opts.CredentialsResolverFactory = sp2 =>
-        {
-            var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
-            opts.ConfigureHttpClient?.Invoke(httpClient);
-            return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
-        };
-
-        // 通过 Transport 注入传输层，从 DI 解析 ICredentialsResolver（由上面的工厂提供）
-        var resolver = sp.GetRequiredService<ICredentialsResolver>();
+    // 使用 CredentialsResolverFactory 注册 StaticCredentialsResolver
+    opts.CredentialsResolverFactory = sp2 =>
+    {
         var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
         opts.ConfigureHttpClient?.Invoke(httpClient);
-        opts.Transport = new HttpRemoteServiceTransport(httpClient, resolver)
-        {
-            TicketHeaderName = "Authorization",  // 默认 Cookie，JWT 改为 Authorization
-            TicketFormat = "Bearer {0}",         // 拼接为 "Bearer <token>"
-        };
-        return opts;
-    }))
-    .RegisterLiteOrmRemote()
-    .Build();
+        return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
+    };
+
+    // 通过 Transport 注入传输层，从 DI 解析 ICredentialsResolver（由上面的工厂提供）
+    var resolver = sp.GetRequiredService<ICredentialsResolver>();
+    var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
+    opts.ConfigureHttpClient?.Invoke(httpClient);
+    opts.Transport = new HttpRemoteServiceTransport(httpClient, resolver)
+    {
+        TicketHeaderName = "Authorization",  // 默认 Cookie，JWT 改为 Authorization
+        TicketFormat = "Bearer {0}",         // 拼接为 "Bearer <token>"
+    };
+    return opts;
+});
+builder.Services.AddLiteOrmRemote();
+var host = builder.Build();
 
 // 启动时登录一次，获取 JWT token
 using var scope = host.Services.CreateScope();
@@ -590,20 +590,20 @@ public interface ICredentialsResolver
 使用 `CredentialsResolverFactory` 工厂注册 `StaticCredentialsResolver`，由 DI 容器统一管理生命周期，便于在传输层中通过 `ICredentialsResolver` 接口解析注入：
 
 ```csharp
-var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrmRemote(opts =>
-    {
-        opts.RemoteServiceUri = new Uri("http://localhost:5000");
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000");
 
-        // 使用 CredentialsResolverFactory 注册 StaticCredentialsResolver
-        opts.CredentialsResolverFactory = sp =>
-        {
-            var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
-            opts.ConfigureHttpClient?.Invoke(httpClient);
-            return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
-        };
-    })
-    .Build();
+    // 使用 CredentialsResolverFactory 注册 StaticCredentialsResolver
+    opts.CredentialsResolverFactory = sp =>
+    {
+        var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
+        opts.ConfigureHttpClient?.Invoke(httpClient);
+        return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
+    };
+});
+var host = builder.Build();
 
 // 启动时登录一次（从 DI 容器解析出 resolver 实例）
 using (var scope = host.Services.CreateScope())
@@ -1059,7 +1059,7 @@ opts.Transport = new MyTransport();
 
 | 维度             | 本地服务                               | 远程服务                                             |
 | -------------- | ---------------------------------- | ------------------------------------------------ |
-| 注册方式           | `RegisterLiteOrm` 自动扫描 `[Service]` | `RegisterLiteOrmRemote` + 代理注册                   |
+| 注册方式           | `RegisterLiteOrm` 自动扫描 `[Service]` | `AddLiteOrmRemote` + 代理注册                   |
 | 调用方式           | 直接反射调用                             | 动态代理拦截 + HTTP 转发                                 |
 | 事务             | `[Transaction]` AOP                | 不支持跨进程事务（详见 [事务指南](../06-di/01-transactions.md)） |
 | `ForEachAsync` | 流式遍历                               | 抛出 `NotSupportedException`                       |
@@ -1078,13 +1078,13 @@ opts.Transport = new MyTransport();
 | **灵活的传输层**        | 内置 HTTP 传输，可通过继承 `JsonRemoteServiceTransport` 快速实现 named pipe、gRPC 等自定义传输 |
 | **智能类型解析**        | `$type` 包装策略自动处理参数类型多态；`TypeResolverHelper` 支持自定义服务名注册                    |
 | **自动注册**          | `AutoRegisterEntityServices` 默认开启，扫描 `[Service]` 特性自动完成名称映射和代理注册          |
-| **渐进式演进**         | 可从单体应用（`RegisterLiteOrm`）平滑演进到前后端分离（`RegisterLiteOrmRemote`），服务接口定义不变     |
+| **渐进式演进**         | 可从单体应用（`RegisterLiteOrm`）平滑演进到前后端分离（`AddLiteOrmRemote`），服务接口定义不变     |
 
 ***
 
 ## 相关链接
 
-- [配置参考](../05-reference/01-configuration-reference.md) — `RegisterLiteOrm` / `RegisterLiteOrmRemote` 的完整说明
+- [配置参考](../05-reference/01-configuration-reference.md) — `RegisterLiteOrm` / `AddLiteOrmRemote` 的完整说明
 
 - [表达式指南](../02-core-usage/06-expr-guide.md) — Lambda 条件查询，远程调用同样适用
 

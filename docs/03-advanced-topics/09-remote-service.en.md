@@ -95,12 +95,12 @@ dotnet add package LiteOrm.Remote
 ```csharp
 using LiteOrm.Remote;
 
-var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrmRemote(opts =>
-    {
-        opts.RemoteServiceUri = new Uri("http://localhost:5000");
-    })
-    .Build();
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000");
+});
+var host = builder.Build();
 ```
 
 ### 2.4 Calling — Identical to Local Services
@@ -250,26 +250,26 @@ builder.Services.AddRemoteServer();
 
 #### Read configuration via the `AddRemoteOptions()` injected factory
 
-`AddRemoteOptions()` registers `LiteOrmRemoteOptions` via a factory that receives `IServiceProvider`, from which dependencies such as `IConfiguration` can be resolved. At runtime the factory-built options take precedence (over the `configure` callback of `RegisterLiteOrmRemote`). Use `.Get<T>()` to bind the whole options from the `LiteOrm:Remote` section; delegate properties must be assigned manually because they cannot be read from configuration:
+`AddRemoteOptions()` registers `LiteOrmRemoteOptions` via a factory that receives `IServiceProvider`, from which dependencies such as `IConfiguration` can be resolved. At runtime the factory-built options take precedence (over the `configure` callback of `AddLiteOrmRemote`). Use `.Get<T>()` to bind the whole options from the `LiteOrm:Remote` section; delegate properties must be assigned manually because they cannot be read from configuration:
 
 ```csharp
-var host = Host.CreateDefaultBuilder(args)
-    .ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
-    {
-        var config = sp.GetRequiredService<IConfiguration>();
-        var options = config.GetSection("LiteOrm:Remote").Get<LiteOrmRemoteOptions>() ?? new LiteOrmRemoteOptions();
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddRemoteOptions(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var options = config.GetSection("LiteOrm:Remote").Get<LiteOrmRemoteOptions>() ?? new LiteOrmRemoteOptions();
 
-        // Ensure the required URI exists
-        if (options.RemoteServiceUri == null)
-            throw new InvalidOperationException("LiteOrm:Remote:RemoteServiceUri is required in configuration.");
+    // Ensure the required URI exists
+    if (options.RemoteServiceUri == null)
+        throw new InvalidOperationException("LiteOrm:Remote:RemoteServiceUri is required in configuration.");
 
-        // Hard-coded delegates cannot be read from configuration; assign them manually
-        options.ConfigureHttpClient = client => client.Timeout = TimeSpan.FromSeconds(30);
+    // Hard-coded delegates cannot be read from configuration; assign them manually
+    options.ConfigureHttpClient = client => client.Timeout = TimeSpan.FromSeconds(30);
 
-        return options;
-    }))
-    .RegisterLiteOrmRemote()
-    .Build();
+    return options;
+});
+builder.Services.AddLiteOrmRemote();
+var host = builder.Build();
 ```
 
 > **Note**: `.Get<T>()` only binds string/value-type properties convertible from configuration; interface/delegate properties such as `CredentialsResolver`, `CredentialsResolverFactory`, `Transport`, and `ConfigureHttpClient` cannot be built from configuration (.NET 8+ skips binding them) and must be assigned manually after binding. Using `.Get<T>()` requires the `Microsoft.Extensions.Configuration.Binder` package.
@@ -508,35 +508,35 @@ public class JwtAuthHandler : IRemoteAuthenticationHandler
 **Client configuration (JWT written to the `Authorization` header):**
 
 ```csharp
-var host = Host.CreateDefaultBuilder(args)
-    .ConfigureServices((_, services) => services.AddRemoteOptions(sp =>
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddRemoteOptions(sp =>
+{
+    var opts = new LiteOrmRemoteOptions
     {
-        var opts = new LiteOrmRemoteOptions
-        {
-            RemoteServiceUri = new Uri("http://localhost:5000"),
-        };
+        RemoteServiceUri = new Uri("http://localhost:5000"),
+    };
 
-        // Register StaticCredentialsResolver via CredentialsResolverFactory
-        opts.CredentialsResolverFactory = sp2 =>
-        {
-            var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
-            opts.ConfigureHttpClient?.Invoke(httpClient);
-            return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
-        };
-
-        // Inject the transport layer via Transport, resolving ICredentialsResolver from DI (provided by the factory above)
-        var resolver = sp.GetRequiredService<ICredentialsResolver>();
+    // Register StaticCredentialsResolver via CredentialsResolverFactory
+    opts.CredentialsResolverFactory = sp2 =>
+    {
         var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
         opts.ConfigureHttpClient?.Invoke(httpClient);
-        opts.Transport = new HttpRemoteServiceTransport(httpClient, resolver)
-        {
-            TicketHeaderName = "Authorization",  // default Cookie; switch to Authorization for JWT
-            TicketFormat = "Bearer {0}",         // produces "Bearer <token>"
-        };
-        return opts;
-    }))
-    .RegisterLiteOrmRemote()
-    .Build();
+        return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
+    };
+
+    // Inject the transport layer via Transport, resolving ICredentialsResolver from DI (provided by the factory above)
+    var resolver = sp.GetRequiredService<ICredentialsResolver>();
+    var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
+    opts.ConfigureHttpClient?.Invoke(httpClient);
+    opts.Transport = new HttpRemoteServiceTransport(httpClient, resolver)
+    {
+        TicketHeaderName = "Authorization",  // default Cookie; switch to Authorization for JWT
+        TicketFormat = "Bearer {0}",         // produces "Bearer <token>"
+    };
+    return opts;
+});
+builder.Services.AddLiteOrmRemote();
+var host = builder.Build();
 
 // Log in once at startup to obtain the JWT token
 using var scope = host.Services.CreateScope();
@@ -583,20 +583,20 @@ The framework provides `StaticCredentialsResolver` for single-user scenarios (ba
 Register `StaticCredentialsResolver` via the `CredentialsResolverFactory` so the DI container manages its lifetime, and the transport layer can resolve it via the `ICredentialsResolver` interface:
 
 ```csharp
-var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrmRemote(opts =>
-    {
-        opts.RemoteServiceUri = new Uri("http://localhost:5000");
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000");
 
-        // Register StaticCredentialsResolver via the factory
-        opts.CredentialsResolverFactory = sp =>
-        {
-            var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
-            opts.ConfigureHttpClient?.Invoke(httpClient);
-            return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
-        };
-    })
-    .Build();
+    // Register StaticCredentialsResolver via the factory
+    opts.CredentialsResolverFactory = sp =>
+    {
+        var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
+        opts.ConfigureHttpClient?.Invoke(httpClient);
+        return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
+    };
+});
+var host = builder.Build();
 
 // Log in once at startup (resolve the resolver instance from the DI container)
 using (var scope = host.Services.CreateScope())
@@ -1047,7 +1047,7 @@ For the JSON structure of requests and responses, see [Expression Serialization]
 
 | Dimension | Local Service | Remote Service |
 |-----------|---------------|----------------|
-| Registration | `RegisterLiteOrm` auto-scans `[Service]` | `RegisterLiteOrmRemote` + proxy registration |
+| Registration | `RegisterLiteOrm` auto-scans `[Service]` | `AddLiteOrmRemote` + proxy registration |
 | Invocation | Direct reflection call | Dynamic proxy interception + HTTP forwarding |
 | Transactions | `[Transaction]` AOP | Cross-process transactions not supported (see [Transactions Guide](../06-di/01-transactions.en.md)) |
 | `ForEachAsync` | Streaming iteration | Throws `NotSupportedException` |
@@ -1066,13 +1066,13 @@ For the JSON structure of requests and responses, see [Expression Serialization]
 | **Flexible transport layer** | Built-in HTTP transport; quickly implement named pipe, gRPC, and other custom transports by inheriting `JsonRemoteServiceTransport` |
 | **Smart type resolution** | `$type` wrapping strategy automatically handles parameter type polymorphism; `TypeResolverHelper` supports custom service name registration |
 | **Auto-registration** | `AutoRegisterEntityServices` enabled by default; scans `[Service]` attribute to automatically complete name mapping and proxy registration |
-| **Progressive evolution** | Smoothly evolve from a monolithic app (`RegisterLiteOrm`) to frontend-backend separation (`RegisterLiteOrmRemote`) without changing service interface definitions |
+| **Progressive evolution** | Smoothly evolve from a monolithic app (`RegisterLiteOrm`) to frontend-backend separation (`AddLiteOrmRemote`) without changing service interface definitions |
 
 ---
 
 ## Related Links
 
-- [Configuration Reference](../05-reference/01-configuration-reference.en.md) — Full documentation for `RegisterLiteOrm` / `RegisterLiteOrmRemote`
+- [Configuration Reference](../05-reference/01-configuration-reference.en.md) — Full documentation for `RegisterLiteOrm` / `AddLiteOrmRemote`
 - [Expression Guide](../02-core-usage/06-expr-guide.en.md) — Lambda condition queries, also applicable to remote calls
 - [Expression Serialization](../04-extensibility/04-expr-serialization.en.md) — Serialization mechanism for `Expr` expression trees
 - [RemoteServiceDemo.cs](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo/Demos/RemoteServiceDemo.cs) — 13 typical client operation scenarios

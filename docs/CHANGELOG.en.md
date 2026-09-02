@@ -6,9 +6,11 @@
 
 - **Removed** **`LiteOrmRemoteOptions.TransportFactory`** (`LiteOrm.Remote` client): custom transports are now configured uniformly via the `Transport` instance or an `AddRemoteOptions()` injected factory.
 
+- **`AddLiteOrmRemote` is now an `IServiceCollection` extension**: its signature changed from `IHostBuilder AddLiteOrmRemote(this IHostBuilder, ...)` to `IServiceCollection AddLiteOrmRemote(this IServiceCollection, ...)`, returning the service collection for chained registration. Usage changed from `Host.CreateDefaultBuilder(args).AddLiteOrmRemote(...)` to `Host.CreateApplicationBuilder(args).Services.AddLiteOrmRemote(...)`.
+
 ### Enhancements
 
-- **Remote client registration supports the injected-factory pattern**: added `AddRemoteOptions(Func<IServiceProvider, LiteOrmRemoteOptions>)`. The factory receives `IServiceProvider` (can resolve e.g. `IConfiguration`) and takes precedence over the `configure` callback of `RegisterLiteOrmRemote` at runtime.
+- **Remote client registration supports the injected-factory pattern**: added `AddRemoteOptions(Func<IServiceProvider, LiteOrmRemoteOptions>)`. The factory receives `IServiceProvider` (can resolve e.g. `IConfiguration`) and takes precedence over the `configure` callback of `AddLiteOrmRemote` at runtime.
 
 - **Remote server registration supports the injected-factory pattern**: added `AddRemoteServerOptions(Func<IServiceProvider, RemoteServerOptions>)`, taking precedence over the `configure` callback of `AddRemoteServer` at runtime.
 

@@ -240,11 +240,11 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
-        public void RegisterLiteOrmRemote_Without_Transport_Or_Uri_Throws()
+        public void AddLiteOrmRemote_Without_Transport_Or_Uri_Throws()
         {
-            var host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
-                .RegisterLiteOrmRemote()
-                .Build();
+            var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder();
+            builder.Services.AddLiteOrmRemote();
+            var host = builder.Build();
             try
             {
                 // 传输层现为延迟解析（工厂模式）：未配置 Transport/RemoteServiceUri 时，
@@ -260,7 +260,7 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
-        public async Task RegisterLiteOrmRemote_With_Custom_Transport_Registers_It()
+        public async Task AddLiteOrmRemote_With_Custom_Transport_Registers_It()
         {
             var tcs = new TaskCompletionSource<RemoteInvocationRequest>();
             var stub = new StubTransport(req =>
@@ -269,9 +269,9 @@ namespace LiteOrm.Tests
                 return Ok(5);
             });
 
-            var host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
-                .RegisterLiteOrmRemote(opts => opts.Transport = stub)
-                .Build();
+            var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder();
+            builder.Services.AddLiteOrmRemote(opts => opts.Transport = stub);
+            var host = builder.Build();
 
             try
             {
@@ -297,20 +297,19 @@ namespace LiteOrm.Tests
         [Fact]
         public void AddRemoteOptions_Factory_Overrides_Parameters_From_DI()
         {
-            // 不通过 RegisterLiteOrmRemote(configure) 配置远程地址，而是用注入工厂从 DI 构造选项。
+            // 不通过 AddLiteOrmRemote(configure) 配置远程地址，而是用注入工厂从 DI 构造选项。
             var stub = new StubTransport(req => Ok(1));
-            var host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
-                .ConfigureServices((hostContext, services) =>
-                    services.AddRemoteOptions(sp =>
-                    {
-                        Assert.NotNull(sp.GetService<Microsoft.Extensions.Configuration.IConfiguration>());
-                        return new LiteOrmRemoteExtensions.LiteOrmRemoteOptions
-                        {
-                            Transport = stub,
-                        };
-                    }))
-                .RegisterLiteOrmRemote()
-                .Build();
+            var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder();
+            builder.Services.AddRemoteOptions(sp =>
+            {
+                Assert.NotNull(sp.GetService<Microsoft.Extensions.Configuration.IConfiguration>());
+                return new LiteOrmRemoteOptions
+                {
+                    Transport = stub,
+                };
+            });
+            builder.Services.AddLiteOrmRemote();
+            var host = builder.Build();
 
             try
             {

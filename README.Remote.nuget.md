@@ -32,30 +32,30 @@ dotnet add package LiteOrm.Remote
 ```csharp
 using LiteOrm.Remote;
 
-var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrmRemote(opts =>
-    {
-        opts.RemoteServiceUri = new Uri("http://localhost:5000");
-    })
-    .Build();
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000");
+});
+var host = builder.Build();
 ```
 
 For authenticated connections, use `StaticCredentialsResolver` to obtain a ticket from the server's SignIn endpoint:
 
 ```csharp
-var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrmRemote(opts =>
-    {
-        opts.RemoteServiceUri = new Uri("http://localhost:5000");
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000");
 
-        // Register StaticCredentialsResolver via factory
-        opts.CredentialsResolverFactory = sp =>
-        {
-            var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
-            return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
-        };
-    })
-    .Build();
+    // Register StaticCredentialsResolver via factory
+    opts.CredentialsResolverFactory = sp =>
+    {
+        var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
+        return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
+    };
+});
+var host = builder.Build();
 
 // Log in once at startup (resolve the resolver from the DI container)
 using (var scope = host.Services.CreateScope())
@@ -121,30 +121,30 @@ dotnet add package LiteOrm.Remote
 ```csharp
 using LiteOrm.Remote;
 
-var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrmRemote(opts =>
-    {
-        opts.RemoteServiceUri = new Uri("http://localhost:5000");
-    })
-    .Build();
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000");
+});
+var host = builder.Build();
 ```
 
 已认证连接需使用 `StaticCredentialsResolver`，从服务端 SignIn 端点获取票据：
 
 ```csharp
-var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrmRemote(opts =>
-    {
-        opts.RemoteServiceUri = new Uri("http://localhost:5000");
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000");
 
-        // 使用工厂注册 StaticCredentialsResolver
-        opts.CredentialsResolverFactory = sp =>
-        {
-            var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
-            return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
-        };
-    })
-    .Build();
+    // 使用工厂注册 StaticCredentialsResolver
+    opts.CredentialsResolverFactory = sp =>
+    {
+        var httpClient = new HttpClient { BaseAddress = opts.RemoteServiceUri };
+        return new StaticCredentialsResolver(httpClient, opts.RemoteSignInPath);
+    };
+});
+var host = builder.Build();
 
 // 启动时登录一次（从 DI 容器解析出 resolver 实例）
 using (var scope = host.Services.CreateScope())

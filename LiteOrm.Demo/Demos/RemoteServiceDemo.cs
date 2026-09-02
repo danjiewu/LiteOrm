@@ -14,7 +14,7 @@ namespace LiteOrm.Demo.Demos
     /// <para>
     /// 演示完整的远程客户端配置流程：
     /// 1. 从 <c>appsettings.json</c> 读取 <c>RemoteService</c> 配置节（远程服务地址与路径）；
-    /// 2. 通过 <see cref="LiteOrmRemoteExtensions.RegisterLiteOrmRemote"/> 注册远程调用基础设施
+    /// 2. 通过 <see cref="LiteOrmRemoteExtensions.AddLiteOrmRemote"/> 注册远程调用基础设施
     ///    （传输层、AutoRegister 扫描、<c>RemoteServiceInvokeInterceptor</c> 等）；
     /// 3. 通过 <see cref="LiteOrmRemoteExtensions.AddRemoteServiceGenerator{TService}"/>
     ///    注册 <see cref="RemoteServiceFactory"/> 工厂代理——该方法自动扫描工厂的所有属性与方法返回类型，
@@ -70,7 +70,7 @@ namespace LiteOrm.Demo.Demos
             Console.WriteLine($"远程服务地址：{remoteUri}（路径：{remotePath}）");
 
             // 2. 构建远程客户端主机
-            //    RegisterLiteOrmRemote 完成：
+            //    AddLiteOrmRemote 完成：
             //    - 注册 IRemoteServiceTransport（基于 HttpClient 的 HttpRemoteServiceTransport）
             //    - 注册 RemoteServiceInvokeInterceptor、RemoteServiceGenerateInterceptor
             //    - AutoRegisterEntityServices = true 时：
@@ -81,13 +81,25 @@ namespace LiteOrm.Demo.Demos
             //         IEntityViewServiceAsync<T> → RemoteViewServiceAsyncProxy<T>
             //      b) 扫描程序集，将继承自上述泛型接口的自定义接口（如 IDemoUserService）注册为远程代理
             var host = Host.CreateDefaultBuilder()
-                .RegisterLiteOrmRemote(opts =>
+                .ConfigureServices((hostContext, services) =>
                 {
-                    opts.RemoteServiceUri = new Uri(remoteUri);
-                    opts.RemoteServicePath = remotePath;
-                })
-                .ConfigureServices(services =>
-                {
+                    // 2. 注册 LiteOrm 远程调用基础设施（IServiceCollection 扩展）
+                    //    AddLiteOrmRemote 完成：
+                    //    - 注册 IRemoteServiceTransport（基于 HttpClient 的 HttpRemoteServiceTransport）
+                    //    - 注册 RemoteServiceInvokeInterceptor、RemoteServiceGenerateInterceptor
+                    //    - AutoRegisterEntityServices = true 时：
+                    //      a) 通过 RegisterGeneric 注册 4 个开放泛型接口的具体代理实现类：
+                    //         IEntityService<T> → RemoteServiceProxy<T>、
+                    //         IEntityServiceAsync<T> → RemoteServiceAsyncProxy<T>、
+                    //         IEntityViewService<T> → RemoteViewServiceProxy<T>、
+                    //         IEntityViewServiceAsync<T> → RemoteViewServiceAsyncProxy<T>
+                    //      b) 扫描程序集，将继承自上述泛型接口的自定义接口（如 IDemoUserService）注册为远程代理
+                    services.AddLiteOrmRemote(opts =>
+                    {
+                        opts.RemoteServiceUri = new Uri(remoteUri);
+                        opts.RemoteServicePath = remotePath;
+                    });
+
                     // 3. 注册远程服务工厂代理
                     //    由于 AutoRegisterEntityServices 已通过 IRegistrationSource 按需注册所有实体服务接口，
                     //    此处注册工厂代理仅是为了演示工厂模式访问方式。

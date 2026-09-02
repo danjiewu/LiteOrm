@@ -6,11 +6,13 @@
 
 - **移除** **`LiteOrmRemoteOptions.TransportFactory`**（`LiteOrm.Remote` 客户端）：自定义传输层统一通过 `Transport` 实例或 `AddRemoteOptions()` 注入工厂注册。
 
-- **移除** **`RegisterLiteOrmRemote(string configSection, ...)`** **与** **`AddRemoteServer(string configSection, ...)`** **的配置节重载**（含内部 `BindFromConfiguration`）：不再通过 `configSection` 参数绑定配置节，改为通过注入工厂从 `IConfiguration` 读取参数。
+- **移除** **`AddLiteOrmRemote(string configSection, ...)`** **与** **`AddRemoteServer(string configSection, ...)`** **的配置节重载**（含内部 `BindFromConfiguration`）：不再通过 `configSection` 参数绑定配置节，改为通过注入工厂从 `IConfiguration` 读取参数。
+
+- **`AddLiteOrmRemote` 改为 `IServiceCollection` 扩展**：签名由 `IHostBuilder AddLiteOrmRemote(this IHostBuilder, ...)` 变更为 `IServiceCollection AddLiteOrmRemote(this IServiceCollection, ...)`，返回服务集合以支持链式注册；用法从 `Host.CreateDefaultBuilder(args).AddLiteOrmRemote(...)` 调整为 `Host.CreateApplicationBuilder(args).Services.AddLiteOrmRemote(...)`。
 
 ### 改进
 
-- **Remote 客户端注册支持注入工厂模式**：新增 `AddRemoteOptions(Func<IServiceProvider, LiteOrmRemoteOptions>)`，工厂接收 `IServiceProvider`（可从 `IConfiguration` 等解析参数），运行时优先于 `RegisterLiteOrmRemote` 的 `configure` 回调。
+- **Remote 客户端注册支持注入工厂模式**：新增 `AddRemoteOptions(Func<IServiceProvider, LiteOrmRemoteOptions>)`，工厂接收 `IServiceProvider`（可从 `IConfiguration` 等解析参数），运行时优先于 `AddLiteOrmRemote` 的 `configure` 回调。
 
 - **Remote 服务端注册支持注入工厂模式**：新增 `AddRemoteServerOptions(Func<IServiceProvider, RemoteServerOptions>)`，运行时优先于 `AddRemoteServer` 的 `configure` 回调。
 
