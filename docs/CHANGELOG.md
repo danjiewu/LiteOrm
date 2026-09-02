@@ -4,17 +4,17 @@
 
 ### 破坏性变更
 
-- **移除** **`LiteOrmOptions.TransportFactory`**（`LiteOrm.Remote` 客户端）：自定义传输层统一通过 `Transport` 实例或 `AddRemoteOptions()` 注入工厂注册。
+- **移除** **`LiteOrmRemoteOptions.TransportFactory`**（`LiteOrm.Remote` 客户端）：自定义传输层统一通过 `Transport` 实例或 `AddRemoteOptions()` 注入工厂注册。
 
 - **移除** **`RegisterLiteOrmRemote(string configSection, ...)`** **与** **`AddRemoteServer(string configSection, ...)`** **的配置节重载**（含内部 `BindFromConfiguration`）：不再通过 `configSection` 参数绑定配置节，改为通过注入工厂从 `IConfiguration` 读取参数。
 
 ### 改进
 
-- **Remote 客户端注册支持注入工厂模式**：新增 `AddRemoteOptions(Func<IServiceProvider, LiteOrmOptions>)`，工厂接收 `IServiceProvider`（可从 `IConfiguration` 等解析参数），运行时优先于 `RegisterLiteOrmRemote` 的 `configure` 回调。
+- **Remote 客户端注册支持注入工厂模式**：新增 `AddRemoteOptions(Func<IServiceProvider, LiteOrmRemoteOptions>)`，工厂接收 `IServiceProvider`（可从 `IConfiguration` 等解析参数），运行时优先于 `RegisterLiteOrmRemote` 的 `configure` 回调。
 
 - **Remote 服务端注册支持注入工厂模式**：新增 `AddRemoteServerOptions(Func<IServiceProvider, RemoteServerOptions>)`，运行时优先于 `AddRemoteServer` 的 `configure` 回调。
 
-- `IRemoteServiceTransport` 改为从 DI 延迟解析 `LiteOrmOptions`；`RemoteServerOptions` 与 `ITypeNameResolver` 同样延迟解析，工厂注入的配置得以生效；未配置传输层时在校验阶段抛出 `InvalidOperationException`。
+- `IRemoteServiceTransport` 改为从 DI 延迟解析 `LiteOrmRemoteOptions`；`RemoteServerOptions` 与 `ITypeNameResolver` 同样延迟解析，工厂注入的配置得以生效；未配置传输层时在校验阶段抛出 `InvalidOperationException`。
 
 - **核心库** **`AddLiteOrm`** **支持注入工厂**：新增 `AddLiteOrmOptions(Func<IServiceProvider, LiteOrmOptions>)`。
 

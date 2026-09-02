@@ -48,16 +48,16 @@ namespace LiteOrm.Remote
         /// 注册LiteOrm框架到主机构建器，并允许配置选项。
         /// <para>
         /// 通过 <paramref name="configureOptions"/> 回调构建默认选项；若要使用注入工厂方式配置，
-        /// 可在 <c>ConfigureServices</c> 中调用 <see cref="AddRemoteOptions"/> 注册 <see cref="LiteOrmOptions"/> 工厂，
+        /// 可在 <c>ConfigureServices</c> 中调用 <see cref="AddRemoteOptions"/> 注册 <see cref="LiteOrmRemoteOptions"/> 工厂，
         /// 运行时以工厂构造的选项为准（覆盖 <paramref name="configureOptions"/>）。
         /// </para>
         /// </summary>
         /// <param name="hostBuilder">主机构建器</param>
         /// <param name="configureOptions">配置选项的回调函数</param>
         /// <returns>配置后的主机构建器</returns>
-        public static IHostBuilder RegisterLiteOrmRemote(this IHostBuilder hostBuilder, Action<LiteOrmOptions>? configureOptions)
+        public static IHostBuilder RegisterLiteOrmRemote(this IHostBuilder hostBuilder, Action<LiteOrmRemoteOptions>? configureOptions)
         {
-            var options = new LiteOrmOptions();
+            var options = new LiteOrmRemoteOptions();
             try
             {
                 configureOptions?.Invoke(options);
@@ -78,7 +78,7 @@ namespace LiteOrm.Remote
                 //    调用方需自行调用 services.AddHttpContextAccessor() 注册（避免在客户端库中硬依赖 ASP.NET Core）。
                 services.TryAddSingleton<ICredentialsResolver>(sp =>
                 {
-                    var opts = sp.GetRequiredService<LiteOrmOptions>();
+                    var opts = sp.GetRequiredService<LiteOrmRemoteOptions>();
                     if (opts.CredentialsResolverFactory is not null)
                         return opts.CredentialsResolverFactory(sp);
                     return opts.CredentialsResolver!;
@@ -87,7 +87,7 @@ namespace LiteOrm.Remote
                 // 3. 注册 IRemoteServiceTransport（HttpRemoteServiceTransport 或用户自定义实现），统一延迟解析选项。
                 services.TryAddSingleton<IRemoteServiceTransport>(sp =>
                 {
-                    var opts = sp.GetRequiredService<LiteOrmOptions>();
+                    var opts = sp.GetRequiredService<LiteOrmRemoteOptions>();
 
                     // 用户自定义传输层实例：原样注册为 Singleton
                     if (opts.Transport is not null)
@@ -129,7 +129,7 @@ namespace LiteOrm.Remote
                     }
 
                     throw new InvalidOperationException(
-                        "LiteOrm.Remote requires either LiteOrmOptions.Transport or LiteOrmOptions.RemoteServiceUri to be set. " +
+                        "LiteOrm.Remote requires either LiteOrmRemoteOptions.Transport or LiteOrmRemoteOptions.RemoteServiceUri to be set. " +
                         "Configure one of them in RegisterLiteOrmRemote(opts => { ... }) or register a factory via AddRemoteOptions(...).");
                 });
 
@@ -153,14 +153,14 @@ namespace LiteOrm.Remote
         }
 
         /// <summary>
-        /// 以工厂方式注册 <see cref="LiteOrmOptions"/> 到 DI 容器，便于在配置服务(<see cref="IConfiguration"/>)或其他 DI 服务基础上构造参数。
+        /// 以工厂方式注册 <see cref="LiteOrmRemoteOptions"/> 到 DI 容器，便于在配置服务(<see cref="IConfiguration"/>)或其他 DI 服务基础上构造参数。
         /// <para>
         /// 工厂接收 <see cref="IServiceProvider"/>，可从其中解析 <see cref="IConfiguration"/> 等依赖后返回选项。
         /// 若同时调用了 <see cref="RegisterLiteOrmRemote"/>，则运行时以本工厂构造的选项为准（覆盖 configureOptions）。
         /// </para>
         /// </summary>
         /// <param name="services">服务集合。</param>
-        /// <param name="optionsFactory">选项工厂，接收 <see cref="IServiceProvider"/>，返回 <see cref="LiteOrmOptions"/>。</param>
+        /// <param name="optionsFactory">选项工厂，接收 <see cref="IServiceProvider"/>，返回 <see cref="LiteOrmRemoteOptions"/>。</param>
         /// <returns>返回修改后的服务集合以支持链式调用。</returns>
         /// <example>
         /// <code>
@@ -168,7 +168,7 @@ namespace LiteOrm.Remote
         ///     services.AddRemoteOptions(sp =>
         ///     {
         ///         var config = sp.GetRequiredService&lt;IConfiguration&gt;();
-        ///         return new LiteOrmOptions
+        ///         return new LiteOrmRemoteOptions
         ///         {
         ///             RemoteServiceUri = new Uri(config["MyRemote:Uri"]),
         ///             RemoteServicePath = config["MyRemote:Path"],
@@ -178,7 +178,7 @@ namespace LiteOrm.Remote
         /// </example>
         public static IServiceCollection AddRemoteOptions(
             this IServiceCollection services,
-            Func<IServiceProvider, LiteOrmOptions> optionsFactory)
+            Func<IServiceProvider, LiteOrmRemoteOptions> optionsFactory)
         {
             if (optionsFactory is null)
                 throw new ArgumentNullException(nameof(optionsFactory));
@@ -189,7 +189,7 @@ namespace LiteOrm.Remote
         /// <summary>
         /// LiteOrm配置选项
         /// </summary>
-        public class LiteOrmOptions
+        public class LiteOrmRemoteOptions
         {
             /// <summary>
             /// 要扫描的程序集列表（用于 <see cref="AutoRegisterEntityServices"/> 扫描带 <see cref="ServiceAttribute"/> 特性的接口）。

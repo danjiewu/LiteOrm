@@ -304,7 +304,7 @@ namespace LiteOrm.Tests
                     services.AddRemoteOptions(sp =>
                     {
                         Assert.NotNull(sp.GetService<Microsoft.Extensions.Configuration.IConfiguration>());
-                        return new LiteOrmRemoteExtensions.LiteOrmOptions
+                        return new LiteOrmRemoteExtensions.LiteOrmRemoteOptions
                         {
                             Transport = stub,
                         };

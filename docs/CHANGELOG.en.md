@@ -4,15 +4,15 @@
 
 ### Breaking Changes
 
-- **Removed** **`LiteOrmOptions.TransportFactory`** (`LiteOrm.Remote` client): custom transports are now configured uniformly via the `Transport` instance or an `AddRemoteOptions()` injected factory.
+- **Removed** **`LiteOrmRemoteOptions.TransportFactory`** (`LiteOrm.Remote` client): custom transports are now configured uniformly via the `Transport` instance or an `AddRemoteOptions()` injected factory.
 
 ### Enhancements
 
-- **Remote client registration supports the injected-factory pattern**: added `AddRemoteOptions(Func<IServiceProvider, LiteOrmOptions>)`. The factory receives `IServiceProvider` (can resolve e.g. `IConfiguration`) and takes precedence over the `configure` callback of `RegisterLiteOrmRemote` at runtime.
+- **Remote client registration supports the injected-factory pattern**: added `AddRemoteOptions(Func<IServiceProvider, LiteOrmRemoteOptions>)`. The factory receives `IServiceProvider` (can resolve e.g. `IConfiguration`) and takes precedence over the `configure` callback of `RegisterLiteOrmRemote` at runtime.
 
 - **Remote server registration supports the injected-factory pattern**: added `AddRemoteServerOptions(Func<IServiceProvider, RemoteServerOptions>)`, taking precedence over the `configure` callback of `AddRemoteServer` at runtime.
 
-- `IRemoteServiceTransport` now resolves `LiteOrmOptions` lazily from DI; `RemoteServerOptions` and `ITypeNameResolver` are likewise lazily resolved so factory-provided configuration takes effect. An `InvalidOperationException` is thrown at validation when no transport is configured.
+- `IRemoteServiceTransport` now resolves `LiteOrmRemoteOptions` lazily from DI; `RemoteServerOptions` and `ITypeNameResolver` are likewise lazily resolved so factory-provided configuration takes effect. An `InvalidOperationException` is thrown at validation when no transport is configured.
 
 - **Core** **`AddLiteOrm`** **supports an injected factory**: added `AddLiteOrmOptions(Func<IServiceProvider, LiteOrmOptions>)`.
 
