@@ -237,10 +237,10 @@ namespace LiteOrm.Remote
                 // 2. 注册 4 个开放泛型接口的具体代理实现类
                 //    当解析 IEntityService<T>、IEntityServiceAsync<T>、IEntityViewService<T>、IEntityViewServiceAsync<T> 时，
                 //    DI 容器自动构造对应的代理类（内部持有 RemoteServiceInvokeInterceptor 创建的动态代理）
-                services.AddScoped(typeof(IEntityService<>), typeof(RemoteServiceProxy<>));
-                services.AddScoped(typeof(IEntityServiceAsync<>), typeof(RemoteServiceAsyncProxy<>));
-                services.AddScoped(typeof(IEntityViewService<>), typeof(RemoteViewServiceProxy<>));
-                services.AddScoped(typeof(IEntityViewServiceAsync<>), typeof(RemoteViewServiceAsyncProxy<>));
+                services.AddSingleton(typeof(IEntityService<>), typeof(RemoteServiceProxy<>));
+                services.AddSingleton(typeof(IEntityServiceAsync<>), typeof(RemoteServiceAsyncProxy<>));
+                services.AddSingleton(typeof(IEntityViewService<>), typeof(RemoteViewServiceProxy<>));
+                services.AddSingleton(typeof(IEntityViewServiceAsync<>), typeof(RemoteViewServiceAsyncProxy<>));
             }
 
             return services;
@@ -469,7 +469,7 @@ namespace LiteOrm.Remote
                     var capturedType = type;
                     services.Add(new ServiceDescriptor(type,
                         sp => RemoteProxyGenerator.CreateRemoteServiceProxy(capturedType, sp),
-                        ServiceLifetime.Scoped));
+                        ServiceLifetime.Singleton));
                 }
             }
         }
