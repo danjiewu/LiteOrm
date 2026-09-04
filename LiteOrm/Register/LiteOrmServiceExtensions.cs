@@ -134,7 +134,7 @@ namespace LiteOrm
             if (optionsFactory is null)
                 throw new ArgumentNullException(nameof(optionsFactory));
             services.AddSingleton(optionsFactory);
-            return services;
+            return AddLiteOrm(services);
         }
     }
 }

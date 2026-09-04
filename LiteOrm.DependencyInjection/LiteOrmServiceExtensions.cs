@@ -214,7 +214,8 @@ namespace LiteOrm.DependencyInjection
         {
             if (optionsFactory is null)
                 throw new ArgumentNullException(nameof(optionsFactory));
-            return hostBuilder.ConfigureServices((_, services) => services.AddSingleton(optionsFactory));
+            hostBuilder.ConfigureServices((_, services) => services.AddSingleton(optionsFactory));
+            return hostBuilder.RegisterLiteOrm();
         }
 
         /// <summary>
