@@ -123,7 +123,7 @@ namespace LiteOrm
             for (int i = 0; i < TableDefinition.Keys.Count; i++)
             {
                 var key = TableDefinition.Keys[i];
-                getObjectCommand.Parameters[i].Value = key.ToDbValue(keys[i]);
+                getObjectCommand.Parameters[i].Value = key.ToDbValue(keys[i], SqlBuilder);
             }
             return new EnumerableResult<T>(getObjectCommand, DataReaderConverter.GetConverterByTable<T>(SqlBuilder));
         }
@@ -175,7 +175,7 @@ namespace LiteOrm
             for (int i = 0; i < TableDefinition.Keys.Count; i++)
             {
                 var key = TableDefinition.Keys[i];
-                objectExistsCommand.Parameters[i].Value = key.ToDbValue(keys[i]);
+                objectExistsCommand.Parameters[i].Value = key.ToDbValue(keys[i], SqlBuilder);
             }
             return new ValueResult<bool>(objectExistsCommand, (obj) => obj != null && Convert.ToInt32(obj) > 0);
         }
@@ -257,7 +257,7 @@ namespace LiteOrm
         /// var users = objectViewDAO.Search($"WHERE {Expr.Prop("Age") > 20 }");
         /// </code>
         /// </example>
-        public virtual EnumerableResult<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody,bool isFull = false)
+        public virtual EnumerableResult<T> Search([InterpolatedStringHandlerArgument("")] ref ExprString sqlBody, bool isFull = false)
         {
             string sql = isFull ? sqlBody.GetSql() : $"SELECT {AllFields} \nFROM {From} \n{sqlBody.GetSql()}";
             var prepared = new PreparedSql(sql, sqlBody.GetParams());

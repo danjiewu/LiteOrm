@@ -30,6 +30,7 @@ namespace LiteOrm
     /// </remarks>
     [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class ObjectDAO<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : DAOBase, IObjectDAO<T>
+        where T : notnull
     {
         /// <summary>
         /// 初始化 <see cref="ObjectDAO{T}"/> 类的新实例。
@@ -432,7 +433,7 @@ namespace LiteOrm
                 for (int j = 0; j < keyCount; j++)
                 {
                     ColumnDefinition key = keyColumns[j];
-                    parameters[paramIndex++].Value = key.ToDbValue(keys[j]);
+                    parameters[paramIndex++].Value = key.ToDbValue(keys[j], SqlBuilder);
                 }
             }
         }
@@ -603,7 +604,7 @@ namespace LiteOrm
             if (timestamp != null)
             {
                 if (TimestampColumn == null) throw new InvalidOperationException("Entity does not have a timestamp column for concurrency control.");
-                parameters[paramIndex++].Value = TimestampColumn.ToDbValue(timestamp);
+                parameters[paramIndex++].Value = TimestampColumn.ToDbValue(timestamp, SqlBuilder);
             }
 
             return updateCommand.ExecuteNonQuery() > 0;
@@ -827,7 +828,7 @@ namespace LiteOrm
 
             for (int i = 0; i < count; i++)
             {
-                parameters[i].Value = keyColumns[i].ToDbValue(keys[i]);
+                parameters[i].Value = keyColumns[i].ToDbValue(keys[i], SqlBuilder);
             }
             return deleteCommand.ExecuteNonQuery() > 0;
         }
@@ -1064,7 +1065,7 @@ namespace LiteOrm
             if (timestamp != null)
             {
                 var timestampCol = TableDefinition.Columns.First(c => c.IsTimestamp);
-                parameters[paramIndex].Value = timestampCol.ToDbValue(timestamp);
+                parameters[paramIndex].Value = timestampCol.ToDbValue(timestamp, SqlBuilder);
             }
             return await updateCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
         }
@@ -1270,7 +1271,7 @@ namespace LiteOrm
 
             for (int i = 0; i < count; i++)
             {
-                parameters[i].Value = keyColumns[i].ToDbValue(keys[i]);
+                parameters[i].Value = keyColumns[i].ToDbValue(keys[i], SqlBuilder);
             }
             return await deleteCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false) > 0;
         }

@@ -55,7 +55,8 @@ namespace LiteOrm.Service
     /// </remarks>
     [AutoRegister(Lifetime = Lifetime.Scoped)]
     public class EntityService<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TView> : EntityViewService<TView>, IEntityService<T>, IEntityServiceAsync<T>, IEntityService, IEntityServiceAsync
-    where TView : T
+        where T : notnull
+        where TView : T
     {
         /// <summary>
         /// 获取实体数据访问对象。
@@ -1063,6 +1064,7 @@ namespace LiteOrm.Service
     /// </remarks>
     /// <typeparam name="T">实体类型，同时也是实体视图类型。</typeparam>
     public class EntityService<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : EntityService<T, T>
+        where T : notnull
     {
         /// <summary>
         /// 初始化 <see cref="EntityService{T}"/> 类的新实例。

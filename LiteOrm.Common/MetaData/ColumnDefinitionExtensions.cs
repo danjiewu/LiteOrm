@@ -47,15 +47,17 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 从 <paramref name="target"/> 取列值并转换为数据库可接受的值（写入方向的列级入口，从实体取值场景）：
-        /// 等价于 <see cref="ToDbValue(ColumnDefinition, object?)"/>(<see cref="SqlColumn.GetValue"/> 的结果)。
+        /// 等价于 <see cref="ToDbValue(ColumnDefinition, object?,IDbConverter?)"/>(<see cref="SqlColumn.GetValue"/> 的结果)。
         /// </summary>
         /// <param name="column">列定义。</param>
         /// <param name="target">实体对象（从中取列值）。</param>
         /// <returns>数据库可接受的值。</returns>
-        public static object GetToDbValue(this ColumnDefinition column, object? target)
+        public static object GetToDbValue(this ColumnDefinition column, object target)
         {
             if (column is null) throw new ArgumentNullException(nameof(column));
-            return column.ToDbValue(column.GetValue(target));
+            object? value = column.GetValue(target);
+            if (value is null) return DBNull.Value;
+            return column.DbValueConverter?.DbWriteConverter?.Invoke(value) ?? value;
         }
 
         /// <summary>
@@ -64,12 +66,22 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="column">列定义（提供列级转换器与列取值类型上下文）。</param>
         /// <param name="value">要转换的裸值（非从实体属性取得）。</param>
+        /// <param name="dbConverter">数据库类型转换器，用于值类型与列类型不匹配时的转换。</param>
         /// <returns>数据库可接受的值。</returns>
-        public static object ToDbValue(this ColumnDefinition column, object? value)
+        public static object ToDbValue(this ColumnDefinition column, object? value, IDbConverter? dbConverter = null)
         {
             if (column is null) throw new ArgumentNullException(nameof(column));
             if (value is null) return DBNull.Value;
-            return column.DbValueConverter?.DbWriteConverter is DbConvertHandler write ? write(value) : value;
+            if (column.DbValueConverter == null || column.DbValueConverter.ValueType != value.GetType())
+            {
+                if (dbConverter != null)
+                {
+                    var converter = dbConverter.GetDbValueConverter(value.GetType(), column.GetDbValueType(dbConverter))?.DbWriteConverter;
+                    return converter?.Invoke(value) ?? value;
+                }
+                return value;
+            }
+            return column.DbValueConverter?.DbWriteConverter?.Invoke(value) ?? value;
         }
 
         /// <summary>
