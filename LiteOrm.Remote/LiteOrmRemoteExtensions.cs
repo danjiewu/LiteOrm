@@ -278,6 +278,7 @@ namespace LiteOrm.Remote
             if (optionsFactory is null)
                 throw new ArgumentNullException(nameof(optionsFactory));
             services.AddSingleton(optionsFactory);
+            AddLiteOrmRemote(services);
             return services;
         }        
 
