@@ -26,6 +26,17 @@ namespace LiteOrm.Generators
         private const string TableAttributeFullTypeName = "LiteOrm.Common.TableAttribute";
         private const string DisableCodeGenAttributeFullTypeName = "LiteOrm.Common.DisableLiteOrmCodeGenAttribute";
 
+        // 与 LiteOrm.Common.LiteOrmCodeGenKind 的位值一一对应（按位比较，避免反射依赖）。
+        private const int Kind_TableInfo = 1 << 0;            // TableInfo = 1
+        private const int Kind_DataReaderMappers = 1 << 1;    // DataReaderMappers = 2
+        private const int Kind_PropertyAccessors = 1 << 2;    // PropertyAccessors = 4
+        private const int Kind_AotTypeRegistration = 1 << 3;  // AotTypeRegistration = 8
+        // AutoRegister = 1 << 4 (16) 由 AutoRegisterGenerator 处理，实体管道不涉及。
+        // AotTypeRegistration = 1 << 3 (8) 由独立管道（CompilationProvider + aotMode）处理，
+        // 实体管道仅关心 TableInfo | DataReaderMappers | PropertyAccessors 三个实体相关位。
+        private const int EntityGeneratorRelevantKinds =
+            Kind_TableInfo | Kind_DataReaderMappers | Kind_PropertyAccessors;
+
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             // 1) 收集 class/record 声明，类型自身或基类链上带 [Table] 特性即视为实体/视图。
@@ -80,8 +91,8 @@ namespace LiteOrm.Generators
                     {
                         return;
                     }
-                    // 用户可通过 [assembly: DisableLiteOrmCodeGen] 手动关闭代码生成
-                    if (IsCodeGenDisabled(compilation))
+                    // 用户可通过 [assembly: DisableLiteOrmCodeGen(AotTypeRegistration)] 手动关闭 AOT 类型注册
+                    if (IsCodeGenDisabled(compilation, Kind_AotTypeRegistration))
                     {
                         return;
                     }
@@ -102,7 +113,10 @@ namespace LiteOrm.Generators
                 {
                     return;
                 }
-                if (IsCodeGenDisabled(compilation))
+                // 按 DisableLiteOrmCodeGen 细粒度关闭：仅当实体相关位（TableInfo/DataReaderMappers/
+                // PropertyAccessors）全被关闭时才跳过，否则把仍启用的位传给 GenerateAll 逐项控制。
+                int enabledKinds = EntityGeneratorRelevantKinds & ~GetDisabledKinds(compilation);
+                if (enabledKinds == 0)
                 {
                     return;
                 }
@@ -111,7 +125,7 @@ namespace LiteOrm.Generators
                     return;
                 }
 
-                GenerateAll(spc, compilation, entities);
+                GenerateAll(spc, compilation, entities, enabledKinds);
             });
         }
 
@@ -135,7 +149,7 @@ namespace LiteOrm.Generators
         // ──────────────────────────────────────────────────────────────
         // 主入口：生成三个文件 + 模块初始化器
         // ──────────────────────────────────────────────────────────────
-        private static void GenerateAll(SourceProductionContext spc, Compilation compilation, IReadOnlyList<INamedTypeSymbol> entities)
+        private static void GenerateAll(SourceProductionContext spc, Compilation compilation, IReadOnlyList<INamedTypeSymbol> entities, int enabledKinds)
         {
             // AOT 类型注册已由独立管道（CompilationProvider.Combine(aotMode)）统一生成，
             // 此处仅生成与实体相关的元数据与映射代码。
@@ -172,20 +186,29 @@ namespace LiteOrm.Generators
             if (entityInfos.Count == 0)
                 return;
 
-            // 1. 生成 TableInfo.g.cs
-            var tableInfoCode = GenerateTableInfoRegistration(entityInfos, resolved);
-            spc.AddSource("TableInfo.g.cs", tableInfoCode);
+            // 1. 生成 TableInfo.g.cs（仅当未关闭 TableInfo）
+            if ((enabledKinds & Kind_TableInfo) != 0)
+            {
+                var tableInfoCode = GenerateTableInfoRegistration(entityInfos, resolved);
+                spc.AddSource("TableInfo.g.cs", tableInfoCode);
+            }
 
-            // 2. 生成 DataReaderMappers.g.cs
-            var mapperCode = GenerateDataReaderMappers(entityInfos, resolved, compilation);
-            spc.AddSource("DataReaderMappers.g.cs", mapperCode);
+            // 2. 生成 DataReaderMappers.g.cs（仅当未关闭 DataReaderMappers）
+            if ((enabledKinds & Kind_DataReaderMappers) != 0)
+            {
+                var mapperCode = GenerateDataReaderMappers(entityInfos, resolved, compilation);
+                spc.AddSource("DataReaderMappers.g.cs", mapperCode);
+            }
 
-            // 3. 生成 PropertyAccessors.g.cs
-            var accessorCode = GeneratePropertyAccessors(entityInfos, resolved);
-            spc.AddSource("PropertyAccessors.g.cs", accessorCode);
+            // 3. 生成 PropertyAccessors.g.cs（仅当未关闭 PropertyAccessors）
+            if ((enabledKinds & Kind_PropertyAccessors) != 0)
+            {
+                var accessorCode = GeneratePropertyAccessors(entityInfos, resolved);
+                spc.AddSource("PropertyAccessors.g.cs", accessorCode);
+            }
 
-            // 4. 生成模块初始化器
-            var initCode = GenerateModuleInitializer(entityInfos, resolved);
+            // 4. 生成模块初始化器（其内部按 enabledKinds 选择调用哪些已生成的 RegisterAll）
+            var initCode = GenerateModuleInitializer(entityInfos, resolved, enabledKinds);
             spc.AddSource("ModuleInitializer.g.cs", initCode);
         }
 
@@ -781,10 +804,15 @@ namespace LiteOrm.Generators
             sb.AppendLine();
 
             // 为每个实体生成映射委托
+            // resolver：类型→实体信息，用于把继承列解析到基类定义转换器的实体；
+            // fullColumnIndexMap：声明类型→(属性符号→在声明类型 Columns 中的下标)，用于拼接基类转换器字段名。
+            var resolver = BuildTypeResolver(entities);
+            var fullColumnIndexMap = BuildColumnIndexMap(entities);
+
             foreach (var e in entities)
             {
                 if (e.Columns.Count == 0) continue;
-                GenerateMapperMethod(sb, e, symbols, compilation);
+                GenerateMapperMethod(sb, e, symbols, compilation, resolver, fullColumnIndexMap);
             }
 
             sb.AppendLine("    }");
@@ -792,28 +820,120 @@ namespace LiteOrm.Generators
             return sb.ToString();
         }
 
-        private static void GenerateMapperMethod(StringBuilder sb, EntityInfo e, ResolvedSymbols symbols, Compilation compilation)
+        /// <summary>
+        /// 构建 类型→EntityInfo 的查找表（符号相等比较），用于解析继承列的转换器归属与基类初始化链。
+        /// </summary>
+        private static Dictionary<INamedTypeSymbol, EntityInfo> BuildTypeResolver(List<EntityInfo> entities)
+        {
+            var map = new Dictionary<INamedTypeSymbol, EntityInfo>(SymbolEqualityComparer.Default);
+            foreach (var e in entities) map[e.Type] = e;
+            return map;
+        }
+
+        /// <summary>
+        /// 构建 声明类型→(属性符号→该属性在声明类型 Columns 中的下标) 的查找表。
+        /// 子类引用基类列转换器时，用该下标拼出基类已有的 {SafeName}_conv_{i} 字段名。
+        /// </summary>
+        private static Dictionary<INamedTypeSymbol, Dictionary<IPropertySymbol, int>> BuildColumnIndexMap(List<EntityInfo> entities)
+        {
+            var map = new Dictionary<INamedTypeSymbol, Dictionary<IPropertySymbol, int>>(SymbolEqualityComparer.Default);
+            foreach (var e in entities)
+            {
+                var indexes = new Dictionary<IPropertySymbol, int>(SymbolEqualityComparer.Default);
+                for (int i = 0; i < e.Columns.Count; i++)
+                    indexes[e.Columns[i].Symbol] = i;
+                map[e.Type] = indexes;
+            }
+            return map;
+        }
+
+        /// <summary>
+        /// 判断列 <paramref name="c"/> 是否继承自已生成映射器的基类（该列转换器应由基类负责，而非本实体）。
+        /// </summary>
+        private static bool InheritedFromMapperBase(EntityInfo e, ColumnInfo c, Dictionary<INamedTypeSymbol, EntityInfo> resolver)
+        {
+            var declaring = c.Symbol?.ContainingType;
+            return declaring != null
+                && !SymbolEqualityComparer.Default.Equals(declaring, e.Type)
+                && resolver.TryGetValue(declaring, out var declaredInfo)
+                && declaredInfo.Columns.Count > 0;
+        }
+
+        /// <summary>
+        /// 解析列 <paramref name="c"/> 的转换器字段名。
+        /// <para>
+        /// 1. 继承自已生成映射器的基类：直接复用基类既有字段 {BaseSafeName}_conv_{baseIndex}，
+        ///    不再为子类重复生成转换器；
+        /// 2. 自身声明、或声明类型无映射器（如抽象基类/非实体）：使用本实体字段 {SafeName}_conv_{columnIndex}。
+        /// </para>
+        /// </summary>
+        private static string ResolveConverterField(EntityInfo e, ColumnInfo c, int columnIndex,
+            Dictionary<INamedTypeSymbol, EntityInfo> resolver,
+            Dictionary<INamedTypeSymbol, Dictionary<IPropertySymbol, int>> fullColumnIndexMap)
+        {
+            if (InheritedFromMapperBase(e, c, resolver))
+            {
+                var declaring = c.Symbol!.ContainingType;
+                var baseInfo = resolver[declaring];
+                string baseIndex = fullColumnIndexMap[declaring][c.Symbol].ToString();
+                return $"{baseInfo.SafeName}_conv_{baseIndex}";
+            }
+            return $"{e.SafeName}_conv_{columnIndex}";
+        }
+
+        /// <summary>
+        /// 判断列 <paramref name="c"/> 的转换器是否需要由实体 <paramref name="e"/> 负责初始化。
+        /// 仅自身声明、或声明类型在本次生成中没有映射器的继承列才需要；继承自有映射器基类的列由基类初始化。
+        /// </summary>
+        private static bool IsResponsibleForConverter(EntityInfo e, ColumnInfo c, Dictionary<INamedTypeSymbol, EntityInfo> resolver)
+        {
+            return !InheritedFromMapperBase(e, c, resolver);
+        }
+
+        /// <summary>
+        /// 查找实体 <paramref name="e"/> 沿继承链向上的最近一个已生成映射器的实体
+        /// （其 SafeName 用于生成 Initialize{BaseSafeName}Converter(converter) 调用，保证“先初始化基类”）。
+        /// </summary>
+        private static string? FindNearestMapperBaseInit(EntityInfo e, Dictionary<INamedTypeSymbol, EntityInfo> resolver)
+        {
+            for (var current = e.Type.BaseType; current != null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
+            {
+                if (resolver.TryGetValue(current, out var baseInfo) && baseInfo.Columns.Count > 0)
+                    return baseInfo.SafeName;
+            }
+            return null;
+        }
+
+        private static void GenerateMapperMethod(StringBuilder sb, EntityInfo e, ResolvedSymbols symbols, Compilation compilation,
+            Dictionary<INamedTypeSymbol, EntityInfo> resolver,
+            Dictionary<INamedTypeSymbol, Dictionary<IPropertySymbol, int>> fullColumnIndexMap)
         {
             sb.AppendLine();
-            // 每列一个非泛型转换器字段 IDbValueConverter（AOT 走 GetValue 方式，非泛型解析）
+            // 每列一个非泛型转换器字段 IDbValueConverter（AOT 走 GetValue 方式，非泛型解析）。
+            // 仅为本实体自身负责的列生成字段；继承自有映射器基类的列直接复用基类字段，避免重复生成。
             for (int i = 0; i < e.Columns.Count; i++)
             {
                 var c = e.Columns[i];
                 if (!c.CanWrite) continue;
                 if (IsComplexColumn(c) && string.IsNullOrEmpty(c.ConverterType)) continue;
+                if (!IsResponsibleForConverter(e, c, resolver)) continue;
                 sb.AppendLine($"        private static global::LiteOrm.Common.IDbValueConverter? {e.SafeName}_conv_{i};");
             }
-            // 一次性初始化本类型下所有转换器的静态方法，用标记位保证只初始化一次（惰性，遇首个 mapper 调用触发）
+            // 一次性初始化本类型负责的转换器：先初始化基类映射器（使继承列转换器就绪），再初始化自身的。
             sb.AppendLine($"        private static bool {e.SafeName}ConvInitialized;");
             sb.AppendLine($"        private static void Initialize{e.SafeName}Converter(global::LiteOrm.Common.IDbConverter converter)");
             sb.AppendLine("        {");
             sb.AppendLine($"            if ({e.SafeName}ConvInitialized) return;");
             sb.AppendLine($"            {e.SafeName}ConvInitialized = true;");
+            string? baseInit = FindNearestMapperBaseInit(e, resolver);
+            if (baseInit != null)
+                sb.AppendLine($"            Initialize{baseInit}Converter(converter);");
             for (int i = 0; i < e.Columns.Count; i++)
             {
                 var c = e.Columns[i];
                 if (!c.CanWrite) continue;
                 if (IsComplexColumn(c) && string.IsNullOrEmpty(c.ConverterType)) continue;
+                if (!IsResponsibleForConverter(e, c, resolver)) continue;
                 string tw = StripNullable(c.PropertyType.Replace("global::", ""));
                 string field = $"{e.SafeName}_conv_{i}";
                 if (!string.IsNullOrEmpty(c.ConverterType))
@@ -847,7 +967,9 @@ namespace LiteOrm.Generators
                 string readLocal = $"d_{i}";
                 string dbType = c.DbType ?? InferDbType(c.Symbol.Type);
                 // 非泛型读取委托（object→object），以 GetValue 为输入；分支内各自强转/类型化读取，无外层包裹
-                sb.AppendLine($"            var {readLocal} = {e.SafeName}_conv_{i}?.DbReadConverter;");
+                // 继承自有映射器基类的列复用其 {BaseSafeName}_conv_{baseIndex} 字段，不再为子类重复生成。
+                string convField = ResolveConverterField(e, c, i, resolver, fullColumnIndexMap);
+                sb.AppendLine($"            var {readLocal} = {convField}?.DbReadConverter;");
                 // 选择类型化读取方法：列显式声明 DbType 时优先按 DbType 推断（与运行时 _dbTypeReaderMethods 一致），否则按属性 CLR 类型推断
                 string? typedRead = GetTypedReadMethodNameFromDbType(dbType) ?? GetTypedReadMethodName(tw);
                 string fallback;
@@ -1066,7 +1188,7 @@ namespace LiteOrm.Generators
         // ──────────────────────────────────────────────────────────────
         // 4. 生成模块初始化器
         // ──────────────────────────────────────────────────────────────
-        private static string GenerateModuleInitializer(List<EntityInfo> entities, ResolvedSymbols symbols)
+        private static string GenerateModuleInitializer(List<EntityInfo> entities, ResolvedSymbols symbols, int enabledKinds)
         {
             var sb = new StringBuilder();
             sb.AppendLine("// <auto-generated/>");
@@ -1082,56 +1204,68 @@ namespace LiteOrm.Generators
             sb.AppendLine("        internal static void Initialize()");
             sb.AppendLine("        {");
             sb.AppendLine("            global::LiteOrm.Common.CommonTableInfoProvider.Install();");
-            sb.AppendLine("            LiteOrmGeneratedTableInfo.RegisterAll();");
-            sb.AppendLine("            SourceGeneratedDataReaderMappers.RegisterAll();");
-            sb.AppendLine("            SourceGeneratedPropertyAccessors.RegisterAll();");
-            sb.AppendLine("            RegisterTypeResolverNames();");
-            sb.AppendLine("            RegisterEnums();");
-            sb.AppendLine("        }");
-            sb.AppendLine();
-            sb.AppendLine("        /// <summary>");
-            sb.AppendLine("        /// 注册所有实体/视图类型到 TypeResolverHelper，使 Expr JSON 反序列化在 NativeAOT 下");
-            sb.AppendLine("        /// 无需 Type.GetType / 程序集扫描即可按名称解析类型。");
-            sb.AppendLine("        /// </summary>");
-            sb.AppendLine("        private static void RegisterTypeResolverNames()");
-            sb.AppendLine("        {");
-
-            foreach (var e in entities)
+            if ((enabledKinds & Kind_TableInfo) != 0)
+                sb.AppendLine("            LiteOrmGeneratedTableInfo.RegisterAll();");
+            if ((enabledKinds & Kind_DataReaderMappers) != 0)
+                sb.AppendLine("            SourceGeneratedDataReaderMappers.RegisterAll();");
+            if ((enabledKinds & Kind_PropertyAccessors) != 0)
+                sb.AppendLine("            SourceGeneratedPropertyAccessors.RegisterAll();");
+            // 类型名/枚举映射属于表元数据，随 TableInfo 一起开关。
+            if ((enabledKinds & Kind_TableInfo) != 0)
             {
-                if (symbols.TypeResolverHelper == null) break;
-                // 先注册全名（Expr JSON 使用 DefaultTypeNameResolver.GetName = FullName），
-                // 再注册短名（保持 TypeResolverHelper.GetName 返回短名的原有行为）。
-                sb.AppendLine($"            TypeResolverHelper.Register(typeof({e.FullName}).FullName!, typeof({e.FullName}));");
-                sb.AppendLine($"            TypeResolverHelper.Register(typeof({e.FullName}).Name, typeof({e.FullName}));");
+                sb.AppendLine("            RegisterTypeResolverNames();");
+                sb.AppendLine("            RegisterEnums();");
             }
-
             sb.AppendLine("        }");
             sb.AppendLine();
 
-            var enumInfos = CollectEnumInfos(entities, symbols);
-            sb.AppendLine("        /// <summary>");
-            sb.AppendLine("        /// 预注册实体/视图列所用枚举类型的显示名称映射，替代 NativeAOT 下运行时反射扫描。");
-            sb.AppendLine("        /// </summary>");
-            sb.AppendLine("        private static void RegisterEnums()");
-            sb.AppendLine("        {");
-
-            if (symbols.EnumUtil != null)
+            // 类型名/枚举映射方法随 TableInfo 一起开关：关闭时既不调用也不生成方法体，避免死代码。
+            if ((enabledKinds & Kind_TableInfo) != 0)
             {
-                foreach (var enumInfo in enumInfos)
+                sb.AppendLine("        /// <summary>");
+                sb.AppendLine("        /// 注册所有实体/视图类型到 TypeResolverHelper，使 Expr JSON 反序列化在 NativeAOT 下");
+                sb.AppendLine("        /// 无需 Type.GetType / 程序集扫描即可按名称解析类型。");
+                sb.AppendLine("        /// </summary>");
+                sb.AppendLine("        private static void RegisterTypeResolverNames()");
+                sb.AppendLine("        {");
+
+                foreach (var e in entities)
                 {
-                    sb.AppendLine($"            global::LiteOrm.EnumUtil.Register(typeof({enumInfo.FullName}), new global::System.Collections.Generic.KeyValuePair<global::System.Enum, string>[]");
-                    sb.AppendLine("            {");
-                    for (int i = 0; i < enumInfo.Fields.Count; i++)
-                    {
-                        var f = enumInfo.Fields[i];
-                        var trailing = i < enumInfo.Fields.Count - 1 ? "," : "";
-                        sb.AppendLine($"                new global::System.Collections.Generic.KeyValuePair<global::System.Enum, string>({enumInfo.FullName}.{f.Name}, \"{EscapeString(f.DisplayName)}\"){trailing}");
-                    }
-                    sb.AppendLine("            });");
+                    if (symbols.TypeResolverHelper == null) break;
+                    // 先注册全名（Expr JSON 使用 DefaultTypeNameResolver.GetName = FullName），
+                    // 再注册短名（保持 TypeResolverHelper.GetName 返回短名的原有行为）。
+                    sb.AppendLine($"            TypeResolverHelper.Register(typeof({e.FullName}).FullName!, typeof({e.FullName}));");
+                    sb.AppendLine($"            TypeResolverHelper.Register(typeof({e.FullName}).Name, typeof({e.FullName}));");
                 }
-            }
 
-            sb.AppendLine("        }");
+                sb.AppendLine("        }");
+                sb.AppendLine();
+
+                var enumInfos = CollectEnumInfos(entities, symbols);
+                sb.AppendLine("        /// <summary>");
+                sb.AppendLine("        /// 预注册实体/视图列所用枚举类型的显示名称映射，替代 NativeAOT 下运行时反射扫描。");
+                sb.AppendLine("        /// </summary>");
+                sb.AppendLine("        private static void RegisterEnums()");
+                sb.AppendLine("        {");
+
+                if (symbols.EnumUtil != null)
+                {
+                    foreach (var enumInfo in enumInfos)
+                    {
+                        sb.AppendLine($"            global::LiteOrm.EnumUtil.Register(typeof({enumInfo.FullName}), new global::System.Collections.Generic.KeyValuePair<global::System.Enum, string>[]");
+                        sb.AppendLine("            {");
+                        for (int i = 0; i < enumInfo.Fields.Count; i++)
+                        {
+                            var f = enumInfo.Fields[i];
+                            var trailing = i < enumInfo.Fields.Count - 1 ? "," : "";
+                            sb.AppendLine($"                new global::System.Collections.Generic.KeyValuePair<global::System.Enum, string>({enumInfo.FullName}.{f.Name}, \"{EscapeString(f.DisplayName)}\"){trailing}");
+                        }
+                        sb.AppendLine("            });");
+                    }
+                }
+
+                sb.AppendLine("        }");
+            }
             sb.AppendLine("    }");
             sb.AppendLine("}");
             return sb.ToString();
@@ -1229,20 +1363,35 @@ namespace LiteOrm.Generators
         // ──────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// 判断当前编译单元是否声明了 <c>[assembly: DisableLiteOrmCodeGen]</c>，
-        /// 允许用户手动关闭本程序集的 AOT 代码生成（回退到运行时反射路径）。
+        /// 读取当前编译单元声明的 <c>[assembly: DisableLiteOrmCodeGen]</c> 要关闭的内容掩码。
+        /// 无此特性返回 0；存在但未传构造参数时默认关闭全部（向后兼容旧行为）。
         /// </summary>
-        private static bool IsCodeGenDisabled(Compilation compilation)
+        private static int GetDisabledKinds(Compilation compilation)
         {
             foreach (var attr in compilation.Assembly.GetAttributes())
             {
                 if (attr.AttributeClass != null &&
                     attr.AttributeClass.ToDisplayString() == DisableCodeGenAttributeFullTypeName)
                 {
-                    return true;
+                    if (attr.ConstructorArguments.Length > 0 &&
+                        attr.ConstructorArguments[0].Value is not null)
+                    {
+                        return Convert.ToInt32(attr.ConstructorArguments[0].Value);
+                    }
+                    // All（31）：与 LiteOrm.Common.LiteOrmCodeGenKind.All 一致。
+                    return (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4);
                 }
             }
-            return false;
+            return 0;
+        }
+
+        /// <summary>
+        /// 判断当前编译单元是否通过 <c>[assembly: DisableLiteOrmCodeGen]</c> 关闭了
+        /// <paramref name="kindBit"/> 所对应的某类代码生成。
+        /// </summary>
+        private static bool IsCodeGenDisabled(Compilation compilation, int kindBit)
+        {
+            return (GetDisabledKinds(compilation) & kindBit) != 0;
         }
 
         private static void GenerateAotTypeRegistration(SourceProductionContext spc, Compilation compilation)

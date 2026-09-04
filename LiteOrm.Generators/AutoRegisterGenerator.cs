@@ -29,6 +29,8 @@ namespace LiteOrm.Generators
         private const string RegisterPolicyFullTypeName = "LiteOrm.Common.RegisterPolicy";
         private const string ServiceLifetimeFullTypeName = "LiteOrm.Common.Lifetime";
         private const string DisableCodeGenAttributeFullTypeName = "LiteOrm.Common.DisableLiteOrmCodeGenAttribute";
+        // 与 LiteOrm.Common.LiteOrmCodeGenKind.AutoRegister = 1 << 4 对应。
+        private const int Kind_AutoRegister = 1 << 4;
 
         /// <summary>
         /// 与运行时 <see cref="LiteOrm.Common.RegisterPolicy"/> 数值一致。
@@ -140,8 +142,8 @@ namespace LiteOrm.Generators
         // ──────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// 判断当前编译单元是否声明了 <c>[assembly: DisableLiteOrmCodeGen]</c>，
-        /// 允许用户手动关闭本程序集的 AOT 代码生成。
+        /// 判断当前编译单元是否通过 <c>[assembly: DisableLiteOrmCodeGen]</c> 关闭了 AutoRegister 代码生成。
+        /// 特性未传构造参数时默认关闭全部（含 AutoRegister 位）。
         /// </summary>
         private static bool IsCodeGenDisabled(Compilation compilation)
         {
@@ -150,6 +152,12 @@ namespace LiteOrm.Generators
                 if (attr.AttributeClass != null &&
                     attr.AttributeClass.ToDisplayString() == DisableCodeGenAttributeFullTypeName)
                 {
+                    if (attr.ConstructorArguments.Length > 0 &&
+                        attr.ConstructorArguments[0].Value is not null)
+                    {
+                        return (Convert.ToInt32(attr.ConstructorArguments[0].Value) & Kind_AutoRegister) != 0;
+                    }
+                    // 无参数构造：默认关闭全部，含 AutoRegister。
                     return true;
                 }
             }
