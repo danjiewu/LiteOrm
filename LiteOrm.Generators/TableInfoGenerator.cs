@@ -24,6 +24,7 @@ namespace LiteOrm.Generators
     public class TableInfoGenerator : IIncrementalGenerator
     {
         private const string TableAttributeFullTypeName = "LiteOrm.Common.TableAttribute";
+        private const string DisableCodeGenAttributeFullTypeName = "LiteOrm.Common.DisableLiteOrmCodeGenAttribute";
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
@@ -66,23 +67,47 @@ namespace LiteOrm.Generators
                     || IsTrue("build_property.istrimmable");
             });
 
-            // 3) 收集所有实体类型符号，与当前 Compilation 组合
+            // 3) AOT 类型注册与是否有 [Table] 实体无关，独立成一条管道，保证每编译单元
+            //    恰好生成一份 LiteOrmAotTypeRegistration，避免因多条生成路径重复产出同名类型
+            //    而触发 CS0101/CS0111 编译错误。
+            context.RegisterSourceOutput(
+                context.CompilationProvider.Combine(aotMode),
+                static (spc, source) =>
+                {
+                    var (compilation, isAot) = source;
+                    // 非 AOT 模式：运行时使用反射与 Expression.Compile()，无需生成额外代码
+                    if (!isAot)
+                    {
+                        return;
+                    }
+                    // 用户可通过 [assembly: DisableLiteOrmCodeGen] 手动关闭代码生成
+                    if (IsCodeGenDisabled(compilation))
+                    {
+                        return;
+                    }
+                    GenerateAotTypeRegistration(spc, compilation);
+                });
+
+            // 4) 收集所有实体类型符号，与当前 Compilation 组合
             var compilationAndEntities = entityTypes.Collect().Combine(context.CompilationProvider);
 
             var pipeline = compilationAndEntities.Combine(aotMode);
 
-            // 4) 生成代码（仅 AOT 模式）
+            // 5) 生成实体相关代码（仅 AOT 模式）
             context.RegisterSourceOutput(pipeline, static (spc, source) =>
             {
                 var ((entities, compilation), isAot) = source;
-                // 非 AOT 模式：运行时使用反射与 Expression.Compile()，无需生成额外代码
+                // 非 AOT 模式：不生成实体代码；AOT 类型注册已由第 3 步独立管道统一生成
                 if (!isAot)
+                {
+                    return;
+                }
+                if (IsCodeGenDisabled(compilation))
                 {
                     return;
                 }
                 if (entities.IsEmpty)
                 {
-                    GenerateAotTypeRegistration(spc, compilation);
                     return;
                 }
 
@@ -112,9 +137,8 @@ namespace LiteOrm.Generators
         // ──────────────────────────────────────────────────────────────
         private static void GenerateAll(SourceProductionContext spc, Compilation compilation, IReadOnlyList<INamedTypeSymbol> entities)
         {
-            // 为包含 [Table] 实体的工程生成 AOT 类型注册代码；无实体工程由调用方在入口处直接生成
-            GenerateAotTypeRegistration(spc, compilation);
-
+            // AOT 类型注册已由独立管道（CompilationProvider.Combine(aotMode)）统一生成，
+            // 此处仅生成与实体相关的元数据与映射代码。
             var distinctEntities = entities.Distinct(SymbolEqualityComparer.Default).Cast<INamedTypeSymbol>().ToList();
             distinctEntities.Sort((a, b) => string.Compare(a.ToDisplayString(), b.ToDisplayString(), StringComparison.Ordinal));
 
@@ -1203,6 +1227,24 @@ namespace LiteOrm.Generators
         //    RegisterDbConnectionType<T>() 调用，以支持 NativeAOT。
         //    通过基类继承关系自动发现派生类型，无需维护硬编码列表。
         // ──────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 判断当前编译单元是否声明了 <c>[assembly: DisableLiteOrmCodeGen]</c>，
+        /// 允许用户手动关闭本程序集的 AOT 代码生成（回退到运行时反射路径）。
+        /// </summary>
+        private static bool IsCodeGenDisabled(Compilation compilation)
+        {
+            foreach (var attr in compilation.Assembly.GetAttributes())
+            {
+                if (attr.AttributeClass != null &&
+                    attr.AttributeClass.ToDisplayString() == DisableCodeGenAttributeFullTypeName)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private static void GenerateAotTypeRegistration(SourceProductionContext spc, Compilation compilation)
         {
             var registrationLines = new List<string>();

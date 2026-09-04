@@ -28,6 +28,7 @@ namespace LiteOrm.Generators
         private const string AutoRegisterAttributeFullTypeName = "LiteOrm.Common.AutoRegisterAttribute";
         private const string RegisterPolicyFullTypeName = "LiteOrm.Common.RegisterPolicy";
         private const string ServiceLifetimeFullTypeName = "LiteOrm.Common.Lifetime";
+        private const string DisableCodeGenAttributeFullTypeName = "LiteOrm.Common.DisableLiteOrmCodeGenAttribute";
 
         /// <summary>
         /// 与运行时 <see cref="LiteOrm.Common.RegisterPolicy"/> 数值一致。
@@ -109,6 +110,7 @@ namespace LiteOrm.Generators
             {
                 var (items, compilation) = source.Left;
                 if (!source.Right) return; // 非 AOT：不生成注册代码，交由运行时扫描程序集。
+                if (IsCodeGenDisabled(compilation)) return; // 用户通过 [assembly: DisableLiteOrmCodeGen] 手动关闭
 
                 // 运行时注册中心（LiteOrm 核心程序集）必须可用，且编译需引用 DI 抽象
                 if (compilation.GetTypeByMetadataName(RegistryFullTypeName) == null) return;
@@ -136,6 +138,23 @@ namespace LiteOrm.Generators
         // ──────────────────────────────────────────────────────────────
         // 特性解析
         // ──────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 判断当前编译单元是否声明了 <c>[assembly: DisableLiteOrmCodeGen]</c>，
+        /// 允许用户手动关闭本程序集的 AOT 代码生成。
+        /// </summary>
+        private static bool IsCodeGenDisabled(Compilation compilation)
+        {
+            foreach (var attr in compilation.Assembly.GetAttributes())
+            {
+                if (attr.AttributeClass != null &&
+                    attr.AttributeClass.ToDisplayString() == DisableCodeGenAttributeFullTypeName)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         /// <summary>
         /// 获取类型上的 <c>[AutoRegister]</c> 特性，若类型自身未声明则沿基类链向上查找
