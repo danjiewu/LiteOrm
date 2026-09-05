@@ -11,8 +11,9 @@
     <VersionPrefix>8.1.5</VersionPrefix>
     <PackageReleaseNotes>
 8.1.5:
-- 注册方式重构为「配置回调 + 注入工厂」：新增 AddRemoteServerOptions() 工厂，选项可经 IServiceProvider（如 IConfiguration）构造，运行时工厂优先于 configure 回调。
-- RemoteServerOptions 与 ITypeNameResolver 改为延迟解析，支持工厂在运行时提供解析器配置。
+- 注册方式重构为「配置回调 + 自行注册选项」：除 AddRemoteServer(configure) 外，可先调用 services.AddSingleton(sp =&gt; new RemoteServerOptions { ... }) 注册选项，AddRemoteServer 内部以 TryAddSingleton 注册，已注册的实例优先（可在工厂中从 IConfiguration 读取配置）。
+- 破坏性变更：移除 AddRemoteServer(string configSection, ...) 配置节重载，配置改为在 configure 回调或自行注册的选项中从 IConfiguration 读取。
+- RemoteServerOptions 与 ITypeNameResolver 改为延迟解析，支持在运行时提供解析器配置。
 - 同步 LiteOrm.Common 8.1.5。
 
 8.1.4:

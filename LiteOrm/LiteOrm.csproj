@@ -17,7 +17,7 @@
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
 8.1.5:
-- 新增 AddLiteOrmOptions() 注入工厂：AddLiteOrm() 的选项可经 IServiceProvider（如 IConfiguration）构造，工厂优先于 configure 回调。
+- 新增 AddLiteOrm(Func&lt;IServiceProvider, LiteOrmOptions&gt;) 工厂重载：AddLiteOrm(configure) 的选项可经 IServiceProvider（如 IConfiguration）构造，运行时工厂优先于 configure 回调。
 
 8.1.4:
 - 破坏性变更：复杂类型属性不再自动映射为列（须显式 [Column]）；EntityService&lt;T&gt; 构造函数改为接收 IServiceProvider。

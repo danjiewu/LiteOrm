@@ -18,6 +18,10 @@
 
 - **Remote client registration supports the injected-factory pattern**: `AddLiteOrmRemote` gained a factory overload `AddLiteOrmRemote(Func<IServiceProvider, LiteOrmRemoteOptions>)`, where the factory receives `IServiceProvider` (can resolve parameters such as from `IConfiguration`).
 
+- **Remote server options can be registered manually**: `AddRemoteServer` has no factory overload, but `RemoteServerOptions` is registered with `TryAddSingleton`, so calling `services.AddSingleton(sp => new RemoteServerOptions { ... })` first makes `AddRemoteServer` skip the already-registered instance (the registered instance wins over the configure callback).
+
+> **Note**: factory-based configuration is provided as **overloads** — `AddLiteOrm(Func<IServiceProvider, LiteOrmOptions>)`, `RegisterLiteOrm(Func<IServiceProvider, LiteOrmOptions>)`, and `AddLiteOrmRemote(Func<IServiceProvider, LiteOrmRemoteOptions>)`. There is **no** standalone `AddLiteOrmOptions()` method. At runtime the factory-built options win, overriding defaults set by the configure callback.
+
 ***
 
 ## v8.1.4 (2026-08-24)

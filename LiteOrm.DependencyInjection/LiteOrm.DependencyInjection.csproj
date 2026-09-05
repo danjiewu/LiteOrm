@@ -19,7 +19,7 @@
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
 8.1.5:
-- 新增 RegisterLiteOrmOptions() 注入工厂：RegisterLiteOrm() 的选项可经 IServiceProvider（如 IConfiguration）构造，工厂优先于 configure 回调。
+- 新增 RegisterLiteOrm(Func&lt;IServiceProvider, LiteOrmOptions&gt;) 工厂重载：RegisterLiteOrm(configure) 的选项可经 IServiceProvider（如 IConfiguration）构造，运行时工厂优先于 configure 回调。
 - 同步 LiteOrm.Common 8.1.5 / LiteOrm 8.1.5。
 
 8.1.4:

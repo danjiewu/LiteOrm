@@ -18,6 +18,10 @@
 
 - **Remote 客户端注册支持注入工厂模式**：`AddLiteOrmRemote` 新增工厂重载 `AddLiteOrmRemote(Func<IServiceProvider, LiteOrmRemoteOptions>)`，工厂接收 `IServiceProvider`（可从 `IConfiguration` 等解析参数）。
 
+- **Remote 服务端选项支持自行注册**：`AddRemoteServer` 未提供工厂重载，但 `RemoteServerOptions` 以 `TryAddSingleton` 注册，可先调用 `services.AddSingleton(sp => new RemoteServerOptions { ... })` 注册选项实例，`AddRemoteServer` 会跳过已注册的实例（工厂优先于 configure 回调）。
+
+> **注**：工厂配置均以 **重载** 形式提供，即 `AddLiteOrm(Func<IServiceProvider, LiteOrmOptions>)` / `RegisterLiteOrm(Func<IServiceProvider, LiteOrmOptions>)` / `AddLiteOrmRemote(Func<IServiceProvider, LiteOrmRemoteOptions>)`，**不存在** `AddLiteOrmOptions()` 等独立方法。运行时以工厂构造的选项为准，覆盖 configure 回调设置的默认值。
+
 ***
 
 ## v8.1.4 (2026-08-24)

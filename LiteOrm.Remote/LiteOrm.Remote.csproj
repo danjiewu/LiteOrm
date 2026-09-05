@@ -11,8 +11,10 @@
     <VersionPrefix>8.1.5</VersionPrefix>
     <PackageReleaseNotes>
 8.1.5:
-- 注册方式重构为「配置回调 + 注入工厂」：新增 AddRemoteOptions() 工厂，选项可经 IServiceProvider（如 IConfiguration）构造，运行时工厂优先于 configure 回调。
-- 移除 LiteOrmRemoteOptions.TransportFactory，自定义传输层统一通过 Transport 实例或 AddRemoteOptions() 工厂注册；IRemoteServiceTransport 改为延迟解析，未配置时在校验阶段抛出。
+- 注册方式重构为「配置回调 + 注入工厂」：新增 AddLiteOrmRemote(Func&lt;IServiceProvider, LiteOrmRemoteOptions&gt;) 工厂重载，选项可经 IServiceProvider（如 IConfiguration）构造，运行时工厂优先于 configure 回调。
+- 破坏性变更：AddLiteOrmRemote 由 IHostBuilder 扩展改为 IServiceCollection 扩展，返回服务集合以支持链式注册；用法由 Host.CreateDefaultBuilder(args).AddLiteOrmRemote(...) 调整为 Host.CreateApplicationBuilder(args).Services.AddLiteOrmRemote(...)。
+- 破坏性变更：移除 AddLiteOrmRemote(string configSection, ...) 配置节重载，配置改为在工厂或 configure 回调中从 IConfiguration 读取。
+- 移除 LiteOrmRemoteOptions.TransportFactory，自定义传输层统一通过 Transport 实例或 AddLiteOrmRemote 工厂重载注册；IRemoteServiceTransport 改为延迟解析，未配置时在校验阶段抛出。
 - 同步 LiteOrm.Common 8.1.5。
 
 8.1.4:
