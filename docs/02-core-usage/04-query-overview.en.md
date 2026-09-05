@@ -102,7 +102,7 @@ using static LiteOrm.Common.Expr;
 List<User> users = await viewService.SearchAsync(Prop("Age") >= 18);
 
 // SearchAs: project to an anonymous type
-var summaries = await viewService.SearchAsAsync<dynamic>(
+var anonSummaries = await viewService.SearchAsAsync<dynamic>(
     From<UserView>()
         .Where(Prop("Age") >= 18)
         .Select(Prop("UserName"), Prop("Age"))
@@ -196,7 +196,7 @@ If `TResult` is an entity type registered in `TableInfoProvider` (e.g. using `Se
 | `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>>)` | ✅ returns `List<TResult>` (Lambda projection extension) | ✅ Lambda projection |
 | `SearchAs<TResult>(ref ExprString sqlBody)` | ❌ | ✅ raw SQL projection |
 
-Switch to the DAO only for raw SQL projection (`ExprString`); Lambda projection is now supported directly on the Service (see [Lambda Guide](./05-lambda-guide.en.md#6-projection-queriessearchas--searchoneas)).
+Switch to the DAO only for raw SQL projection (`ExprString`); Lambda projection is now supported directly on the Service (see [Lambda Guide](./05-lambda-guide.en.md#6-projection-queries-searchas--searchoneas)).
 
 ## 4. Related links
 

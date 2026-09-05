@@ -102,7 +102,7 @@ using static LiteOrm.Common.Expr;
 List<User> users = await viewService.SearchAsync(Prop("Age") >= 18);
 
 // SearchAs：投影到匿名类型
-var summaries = await viewService.SearchAsAsync<dynamic>(
+var anonSummaries = await viewService.SearchAsAsync<dynamic>(
     From<UserView>()
         .Where(Prop("Age") >= 18)
         .Select(Prop("UserName"), Prop("Age"))

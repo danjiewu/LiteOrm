@@ -85,7 +85,7 @@ This pattern is suitable for encapsulating compatibility logic in the infrastruc
 
 ```csharp
 using static LiteOrm.Common.Expr;
-MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<Param> outputParams) =>
 {
     outSql.Append("DATE_FORMAT(");
     expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);

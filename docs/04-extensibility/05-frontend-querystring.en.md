@@ -60,6 +60,24 @@ params.set("pageSize", "5");
 const result = await demoApp.apiFetch(`/api/orders/query?${params.toString()}`);
 ```
 
+### 3.3 Full example
+
+```javascript
+async function queryOrders() {
+    const params = new URLSearchParams();
+    params.set("keyword", "Contoso");
+    params.set("status", "Pending");
+    params.set("sortBy", "CreatedTime");
+    params.set("desc", "true");
+    params.set("page", "1");
+    params.set("pageSize", "5");
+
+    const result = await demoApp.apiFetch(`/api/orders/query?${params.toString()}`);
+    demoApp.renderOrders("resultTable", result.items);
+    demoApp.renderJson("jsonOutput", result);
+}
+```
+
 To load summary data, you can reuse the same filter set with:
 
 ```javascript
@@ -119,7 +137,14 @@ The query API returns:
 | `items` | Current page items |
 | `sql` | Latest executed SQL |
 
-The stats API returns aggregate values plus SQL.
+The stats API returns:
+
+| Field | Meaning |
+|------|------|
+| `total` | Total matching record count |
+| `totalAmount` | Amount aggregate |
+| `pendingCount` ~ `cancelledCount` | Per-status counts |
+| `sql` | Latest executed SQL |
 
 ## 6. Interaction with permission filtering
 
@@ -131,11 +156,19 @@ QueryString is only a transport format. Authorization is still enforced on the b
 
 ## 7. Common mistakes
 
-1. Manually concatenating strings instead of using `URLSearchParams`.
-2. Ignoring `total` and therefore breaking paging UX.
-3. Forcing complex grouped conditions into QueryString instead of switching to native Expr.
+### 7.1 Hand-rolled string concatenation instead of URL encoding
 
-## Related Links
+Prefer `URLSearchParams` so that keywords containing spaces, CJK characters, or special symbols are encoded correctly.
+
+### 7.2 Requesting the list but ignoring `total`
+
+If the page ignores `total`, it cannot show the total page count, the total record count, or correct paging bounds.
+
+### 7.3 Stuffing complex conditions into QueryString
+
+When you need multiple AND/OR groups, dynamic sorting, or compound filters, switch to the native `Expr` API rather than contorting QueryString.
+
+## 8. Related Links
 
 - [Back to index](../README.md)
 - [Permission filtering](../06-di/02-permission-filtering.en.md)

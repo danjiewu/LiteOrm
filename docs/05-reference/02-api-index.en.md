@@ -212,6 +212,25 @@ Related guides:
 
 
 
+### Dependency injection and remote services
+
+- `RegisterLiteOrm()` (`LiteOrm.DependencyInjection`, Autofac + AOP)
+- `AddLiteOrm()` / `AddLiteOrm(Action<AddLiteOrmOptions>)` (base library, plain MS DI, no AOP)
+- `AddLiteOrm(IServiceProvider, Action<AddLiteOrmOptions>)` factory overload
+- `AddLiteOrmRemote(...)` / `AddRemoteServer(...)`
+- `[Service]` / `[ServiceMethod]`
+- `ITypeNameResolver` / `TypeNameResolverFactory`
+
+Related guides:
+
+- [First complete example (base library only)](../01-getting-started/03-first-example.en.md)
+- [Transactions](../06-di/01-transactions.en.md)
+- [Permission filtering](../06-di/02-permission-filtering.en.md)
+- [Logging and diagnostics](../06-di/03-logging.en.md)
+- [Remote service invocation](../03-advanced-topics/09-remote-service.en.md)
+
+
+
 ## Related links
 
 

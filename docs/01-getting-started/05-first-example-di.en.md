@@ -64,7 +64,9 @@ public interface IUserService
 { }
 
 public class UserService : EntityService<User>, IUserService
-{ }
+{
+    public UserService(IServiceProvider serviceProvider) : base(serviceProvider) { }
+}
 ```
 
 > **Line-by-line explanation**:

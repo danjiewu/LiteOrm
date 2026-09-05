@@ -618,7 +618,7 @@ var result = await dataViewDAO.Search(
 | 不支持 JSON 往返 | `RawSql` 不能通过 `ExprJsonConverter` 序列化/反序列化，前端 Expr JSON 不能携带 |
 | 优先用 Expr | 简单列名用 `Expr.Prop`（自带名称校验和引用符包裹）；凡是能用 `Expr.Func`/`Expr.Sql`（预注册 `GenericSqlExpr`）表达的，不要用 `RawSql` |
 
-> 需要在自定义 SQL 中传递运行时字符串/复杂值时，请用 `GenericSqlExpr.Register` 注册回调，在回调内部使用 `outputParams` 参数化。详见 [ExprString 指南 - 第 8 节](../02-core-usage/07-exprstring-guide.md#8-插入原始-sql-rawsql) 与 [安全性](../03-advanced-topics/08-security.md)。
+> 需要在自定义 SQL 中传递运行时字符串/复杂值时，请用 `GenericSqlExpr.Register` 注册回调，在回调内部使用 `outputParams` 参数化。详见 [ExprString 指南 - 第 8 节](../02-core-usage/07-exprstring-guide.md#8-插入原始-sqlrawsql) 与 [安全性](../03-advanced-topics/08-security.md)。
 
 ### 常用模式
 

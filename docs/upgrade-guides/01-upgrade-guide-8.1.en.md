@@ -76,7 +76,7 @@ var userService = serviceProvider.GetRequiredService<EntityService<User>>();
 
 #### Service `SearchAs` Projection Extensions
 
-The Service layer now offers IQueryable Lambda projections `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync`, projecting results into custom classes or anonymous types (see [Lambda Guide](../02-core-usage/05-lambda-guide.en.md#6-projection-queriessearchas--searchoneas)).
+The Service layer now offers IQueryable Lambda projections `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync`, projecting results into custom classes or anonymous types (see [Lambda Guide](../02-core-usage/05-lambda-guide.en.md#6-projection-queries-searchas--searchoneas)).
 
 #### Computed Columns (Non-Actual Columns)
 

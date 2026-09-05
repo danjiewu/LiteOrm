@@ -29,7 +29,9 @@ public interface IUserService
 { }
 
 public class UserService : EntityService<User>, IUserService
-{ }
+{
+    public UserService(IServiceProvider serviceProvider) : base(serviceProvider) { }
+}
 ```
 
 ### Different Entity and View Types
@@ -41,7 +43,9 @@ public interface IUserService
 { }
 
 public class UserService : EntityService<User, UserView>, IUserService
-{ }
+{
+    public UserService(IServiceProvider serviceProvider) : base(serviceProvider) { }
+}
 ```
 
 ## DAO vs Service Responsibility
@@ -58,6 +62,8 @@ public class UserService : EntityService<User, UserView>, IUserService
 ```csharp
 public class UserWriteDao : ObjectDAO<User>
 {
+    public UserWriteDao(SessionManager sessionManager) : base(sessionManager) { }
+
     public Task<bool> CreateAsync(User user, CancellationToken cancellationToken = default)
     {
         return InsertAsync(user, cancellationToken);
@@ -69,6 +75,8 @@ public class UserWriteDao : ObjectDAO<User>
 using static LiteOrm.Common.Expr;
 public class UserViewDao : ObjectViewDAO<UserView>
 {
+    public UserViewDao(SessionManager sessionManager) : base(sessionManager) { }
+
     public Task<List<UserView>> GetActiveUsersAsync(CancellationToken cancellationToken = default)
     {
         return Search(Prop("Age") >= 18).ToListAsync(cancellationToken);
@@ -79,6 +87,8 @@ public class UserViewDao : ObjectViewDAO<UserView>
 ```csharp
 public class UserService : EntityService<User>
 {
+    public UserService(IServiceProvider serviceProvider) : base(serviceProvider) { }
+
     [Transaction]
     public async Task CreateUserWithDefaultRole(User user)
     {

@@ -94,14 +94,14 @@ public delegate void FunctionSqlHandler(
     FunctionExpr expr,
     SqlBuildContext context,
     SqlBuilder sqlBuilder,
-    ICollection<KeyValuePair<string, object>> outputParams);
+    ICollection<Param> outputParams);
 ```
 
 ```csharp
 using static LiteOrm.Common.Expr;
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
-     SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+     SqlBuilder sqlBuilder, ICollection<Param> outputParams) =>
 {
     outSql.Append("DATE_FORMAT(");
     expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
@@ -137,8 +137,8 @@ public static class DateTimeExtensions
 
 ```csharp
 LambdaExprConverter.RegisterMethodHandler("Format", (node, converter) => {
-    var dateExpr = converter.ConvertInternal(node.Object) as ValueTypeExpr;
-    var formatExpr = converter.ConvertInternal(node.Arguments[0]) as ValueTypeExpr;
+    var dateExpr = converter.Convert(node.Object) as ValueTypeExpr;
+    var formatExpr = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
     return new FunctionExpr("DATE_FORMAT", dateExpr, formatExpr);
 });
 ```
@@ -149,7 +149,7 @@ LambdaExprConverter.RegisterMethodHandler("Format", (node, converter) => {
 using static LiteOrm.Common.Expr;
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
-     SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+     SqlBuilder sqlBuilder, ICollection<Param> outputParams) =>
 {
     if (expr.Args.Count != 2)
         throw new ArgumentException("DATE_FORMAT requires 2 arguments");
@@ -207,7 +207,7 @@ public class User
 
 ```csharp
 LambdaExprConverter.RegisterMemberHandler(typeof(User), "Age", (node, converter) => {
-    var userExpr = converter.ConvertInternal(node.Expression) as ValueTypeExpr;
+    var userExpr = converter.Convert(node.Expression) as ValueTypeExpr;
     return new FunctionExpr("YEAR", new FunctionExpr("CURRENT_DATE")) -
            new FunctionExpr("YEAR", new PropertyExpr("BirthDate"));
 });
@@ -219,7 +219,7 @@ LambdaExprConverter.RegisterMemberHandler(typeof(User), "Age", (node, converter)
 using static LiteOrm.Common.Expr;
 SqlBuilder.Instance.RegisterFunctionSqlHandler("YEAR",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
-     SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+     SqlBuilder sqlBuilder, ICollection<Param> outputParams) =>
 {
     outSql.Append("YEAR(");
     expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
@@ -239,7 +239,7 @@ var adults = await userService.SearchAsync(u => u.Age >= 18);
 
 ```csharp
 LambdaExprConverter.RegisterMethodHandler("CustomProcess", (node, converter) => {
-    var strExpr = converter.ConvertInternal(node.Arguments[0]) as ValueTypeExpr;
+    var strExpr = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
     return new FunctionExpr("CUSTOM_PROCESS", strExpr);
 });
 ```
@@ -250,7 +250,7 @@ LambdaExprConverter.RegisterMethodHandler("CustomProcess", (node, converter) => 
 using static LiteOrm.Common.Expr;
 SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_PROCESS",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
-     SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+     SqlBuilder sqlBuilder, ICollection<Param> outputParams) =>
 {
     if (expr.Args.Count != 1)
         throw new ArgumentException("CUSTOM_PROCESS requires 1 argument");
@@ -288,21 +288,21 @@ var users = await userService.SearchAsync(
 ```csharp
 using static LiteOrm.Common.Expr;
 // MySQL
-MySqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) => {
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<Param> outputParams) => {
     outSql.Append("MYSQL_CUSTOM(");
     expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 
 // SQL Server
-SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) => {
+SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<Param> outputParams) => {
     outSql.Append("dbo.CustomFunc(");
     expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
 });
 
 // Oracle
-OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) => {
+OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<Param> outputParams) => {
     outSql.Append("CUSTOM_FUNC(");
     expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
@@ -314,7 +314,7 @@ OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStrin
 ```csharp
 using static LiteOrm.Common.Expr;
 // Global registration (SqlBuilder.Instance corresponds to default database)
-SqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) => {
+SqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<Param> outputParams) => {
     outSql.Append("CUSTOM_FUNC(");
     expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);
     outSql.Append(')');
@@ -327,9 +327,9 @@ SqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBu
 
 ```csharp
 LambdaExprConverter.RegisterMethodHandler("InRange", (node, converter) => {
-    var valueExpr = converter.ConvertInternal(node.Arguments[0]) as ValueTypeExpr;
-    var minExpr = converter.ConvertInternal(node.Arguments[1]) as ValueTypeExpr;
-    var maxExpr = converter.ConvertInternal(node.Arguments[2]) as ValueTypeExpr;
+    var valueExpr = converter.Convert(node.Arguments[0]) as ValueTypeExpr;
+    var minExpr = converter.Convert(node.Arguments[1]) as ValueTypeExpr;
+    var maxExpr = converter.Convert(node.Arguments[2]) as ValueTypeExpr;
 
     var greaterOrEqual = new LogicBinaryExpr(valueExpr, LogicOperator.GreaterThanOrEqual, minExpr);
     var lessOrEqual = new LogicBinaryExpr(valueExpr, LogicOperator.LessThanOrEqual, maxExpr);
@@ -342,7 +342,7 @@ LambdaExprConverter.RegisterMethodHandler("InRange", (node, converter) => {
 ```csharp
 using static LiteOrm.Common.Expr;
 LambdaExprConverter.RegisterMethodHandler("IsValid", (node, converter) => {
-    var propExpr = converter.ConvertInternal(node.Object) as ValueTypeExpr;
+    var propExpr = converter.Convert(node.Object) as ValueTypeExpr;
     return propExpr.IsNotNull() & (propExpr != "");
 });
 ```
@@ -351,7 +351,7 @@ LambdaExprConverter.RegisterMethodHandler("IsValid", (node, converter) => {
 
 LiteOrm includes a set of generic JSON functions (`JsonExprExtensions`, namespace `LiteOrm.Common`) that can be used directly via `Expr` or Lambda, with each dialect's SqlBuilder mapping them to the corresponding database's native JSON functions.
 
-> For using `JsonNode` indexers and `GetValue<T>()` in Lambda, see the [Lambda Guide](../02-core-usage/05-lambda-guide.en.md#7-jsonnode-queries). For auto-mapping and serialization of JsonNode properties, see [Data Mapping & Value Conversion](../03-advanced-topics/11-data-mapping.en.md#8-jsonnode-mapping-navigation).
+> For using `JsonNode` indexers and `GetValue<T>()` in Lambda, see the [Lambda Guide](../02-core-usage/05-lambda-guide.en.md#7-jsonnode-queries). For auto-mapping and serialization of JsonNode properties, see [Data Mapping & Value Conversion](../03-advanced-topics/11-data-mapping.en.md#33-jsonnode-mapping-navigation).
 
 ### 9.1 Generic JSON Function Overview
 
@@ -385,13 +385,13 @@ var adults = await userDAO.SearchAsync(
 var firstTag = Prop("Settings").JsonExtract("$.tags[0]");
 
 // Construct JSON object
-var objExpr = Expr.JsonObject(
-    "name", Prop("UserName"),
-    "age", Prop("Age")
+var objExpr = JsonObject(
+    Const("name"), Prop("UserName"),
+    Const("age"), Prop("Age")
 );
 
 // Construct JSON array
-var arrExpr = Expr.JsonArray(Prop("Id"), Prop("UserName"));
+var arrExpr = JsonArray(Prop("Id"), Prop("UserName"));
 
 // Check if valid JSON
 var valid = await userDAO.SearchAsync(Prop("Settings").IsJson());
@@ -450,14 +450,14 @@ To extend with custom JSON functions, register them the same way as regular func
 // Register Lambda method handler
 LambdaExprConverter.RegisterMethodHandler(typeof(JsonNode), "GetArrayLength", (node, converter) =>
 {
-    var baseExpr = converter.ConvertInternal(node.Object!) as ValueTypeExpr;
+    var baseExpr = converter.Convert(node.Object!) as ValueTypeExpr;
     return new FunctionExpr("JSON_LENGTH", baseExpr);
 });
 
 // Register SQL handler for MySQL dialect
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("JSON_LENGTH",
     (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context,
-     SqlBuilder sqlBuilder, ICollection<KeyValuePair<string, object>> outputParams) =>
+     SqlBuilder sqlBuilder, ICollection<Param> outputParams) =>
 {
     outSql.Append("JSON_LENGTH(");
     expr.Args[0].ToSql(ref outSql, context, sqlBuilder, outputParams);

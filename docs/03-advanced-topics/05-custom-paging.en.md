@@ -213,7 +213,7 @@ var query = From<User>()
 var result = await userService.SearchAsync(query);
 ```
 
-### 3.3 Complete Flow from Integration to Query
+### 3.3 Registering a Custom Builder
 
 ```csharp
 // 1. Define custom Builder
@@ -227,17 +227,9 @@ builder.Host.RegisterLiteOrm(options =>
 {
     options.RegisterSqlBuilder("OracleDataSource", Oracle11gBuilder.Instance);
 });
-
-// 3. Use paging API normally, no need to rewrite queries in business code
-var page = await userService.SearchAsync(
-    q => q.Where(u => u.Age >= 18)
-          .OrderBy(u => u.Id)
-          .Skip(20)
-          .Take(20)
-);
 ```
 
-The key point of this pattern is: paging differences are only handled in `SqlBuilder`, while the business layer maintains a unified `Skip/Take` syntax.
+After registration, business-layer queries are written exactly as in §3.2 — paging differences are absorbed inside the `SqlBuilder`.
 
 ## 4. Generated SQL Examples
 

@@ -264,8 +264,8 @@ services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<MetricEve
 `ServiceInvokeInterceptor` exposes two useful static knobs:
 
 ```csharp
-ServiceInvokeInterceptor.SlowQueryThreshold = TimeSpan.FromSeconds(1);
-ServiceInvokeInterceptor.MaxExpandedLogLength = 20;
+ServiceInvokeInterceptor.SlowQueryThreshold = TimeSpan.FromSeconds(3);
+ServiceInvokeInterceptor.MaxExpandedLogLength = 10;
 ```
 
 - `SlowQueryThreshold`: emits extra `<Slow>` and `<SlowSQL>` entries when exceeded

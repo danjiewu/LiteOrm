@@ -57,7 +57,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - `SearchAs<T>()`
 - `LiteOrm.Pgsql` 数组 / JSONB 扩展（`ArrayToString`、`ArrayAppend`、`Any`、`JsonbExtractPath` 等）
 - `JsonExprExtensions`（`JsonExtract`、`JsonValue`、`JsonContains`、`JsonObject` 等）
-- `RawSql`（`ExprString` 的辅助标记类型，专用于插入不适合参数化的动态值（如 `LIMIT`/`OFFSET` 行数、`ASC`/`DESC`、动态列名）；纯静态文本直接写字面量即可，详见 [ExprString 指南 - 第 8 节](../02-core-usage/07-exprstring-guide.md#8-插入原始-sql-rawsql)）
+- `RawSql`（`ExprString` 的辅助标记类型，专用于插入不适合参数化的动态值（如 `LIMIT`/`OFFSET` 行数、`ASC`/`DESC`、动态列名）；纯静态文本直接写字面量即可，详见 [ExprString 指南 - 第 8 节](../02-core-usage/07-exprstring-guide.md#8-插入原始-sqlrawsql)）
 
 对应文档：
 
@@ -120,6 +120,23 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - [函数验证器](../04-extensibility/02-function-validator.md)
 - [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)
 - [数据库差异与兼容性说明](./07-database-compatibility.md)
+
+### 依赖注入与远程服务
+
+- `RegisterLiteOrm()`（`LiteOrm.DependencyInjection`，Autofac + AOP）
+- `AddLiteOrm()` / `AddLiteOrm(Action<AddLiteOrmOptions>)`（基础库，纯 MS DI，无 AOP）
+- `AddLiteOrm(IServiceProvider, Action<AddLiteOrmOptions>)` 工厂重载
+- `AddLiteOrmRemote(...)` / `AddRemoteServer(...)`
+- `[Service]` / `[ServiceMethod]`
+- `ITypeNameResolver` / `TypeNameResolverFactory`
+
+对应文档：
+
+- [第一个完整示例（仅基础库）](../01-getting-started/03-first-example.md)
+- [事务管理](../06-di/01-transactions.md)
+- [权限过滤](../06-di/02-permission-filtering.md)
+- [日志与诊断](../06-di/03-logging.md)
+- [远程服务调用](../03-advanced-topics/09-remote-service.md)
 
 ## 相关链接
 

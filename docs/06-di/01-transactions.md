@@ -108,6 +108,15 @@ public async Task SubmitOrderAsync(CreateOrderInput input)
 下面是一个实用的失败回滚场景：先创建用户，再插入一条故意不合法的销售记录，让事务自动回滚。
 
 ```csharp
+[Transaction]
+public async Task RegisterUserWithInitialSaleAsync(User user, SalesRecord initialSale)
+{
+    await _userService.InsertAsync(user);
+    await _salesRecordService.InsertAsync(initialSale);
+}
+```
+
+```csharp
 var newUser = new User { UserName = "ThreeTierUser", Age = 25 };
 var initialSale = new SalesRecord
 {
@@ -115,8 +124,8 @@ var initialSale = new SalesRecord
     Amount = 1
 };
 
-bool success = await factory.BusinessService
-    .RegisterUserWithInitialSaleAsync(newUser, initialSale);
+bool success = await businessService.RegisterUserWithInitialSaleAsync(newUser, initialSale);
+// success = false，事务已回滚，user 不会被持久化
 ```
 
 ## 2. 手动事务

@@ -264,8 +264,8 @@ services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<MetricEve
 `ServiceInvokeInterceptor` 还提供了两个常用静态参数：
 
 ```csharp
-ServiceInvokeInterceptor.SlowQueryThreshold = TimeSpan.FromSeconds(1);
-ServiceInvokeInterceptor.MaxExpandedLogLength = 20;
+ServiceInvokeInterceptor.SlowQueryThreshold = TimeSpan.FromSeconds(3);
+ServiceInvokeInterceptor.MaxExpandedLogLength = 10;
 ```
 
 - `SlowQueryThreshold`：超过阈值会额外输出 `<Slow>` 和 `<SlowSQL>` 日志。

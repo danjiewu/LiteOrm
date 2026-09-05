@@ -136,7 +136,7 @@ LiteOrm 内置 11 个数据库方言的 `SqlBuilder` 实现（含 6 个国产/�
 
 `ISqlBuilder.TryAppendSqlLiteral` 方法用于将字符串常量（`Expr.Const(string)`）直接内联为 SQL 字面量。仅含常规字符（不含反斜杠、控制字符）的字符串可安全内联——单引号以标准 `''` 转义；含反斜杠或控制字符的字符串返回 `false`，由调用方改用参数化查询，规避 MySQL 反斜杠注入风险。此行为跨所有数据库一致，无需各方言覆盖。
 
-### 2.5 内置 SQL 函数注册
+### 2.6 内置 SQL 函数注册
 
 `LiteOrmSqlFunctionInitializer` 在启动时为各数据库注册 SQL 函数处理器，将 C# 方法名（经 `LambdaExprConverter` 转为 `FunctionExpr`）映射到正确的数据库函数。未注册的函数名走默认渲染（直接输出 `函数名(参数)`），标准同名函数（如 `ABS`、`ROUND`、`FLOOR`、`SQRT`、`SIN`、`COALESCE` 等）无需注册。
 
@@ -173,7 +173,7 @@ LiteOrm 内置 11 个数据库方言的 `SqlBuilder` 实现（含 6 个国产/�
 
 > `REGEXP_INSTR` 在 Oracle/MySQL 为 1 基，映射时自动减 1 转为 C# 的 0 基 `Match.Index`。`Regex.IsMatch`/`Replace` 支持静态形式、`new Regex(pattern)` 实例形式与闭包变量形式（实例形式通过求值 Regex 对象反射读取 Pattern）。
 
-### 2.6 标识符引用与参数前缀
+### 2.7 标识符引用与参数前缀
 
 | 数据库 | 标识符引用 | 参数前缀 | 名称大小写处理 |
 |--------|-----------|---------|---------------|
@@ -183,14 +183,14 @@ LiteOrm 内置 11 个数据库方言的 `SqlBuilder` 实现（含 6 个国产/�
 | PostgreSQL / 金仓 / GaussDB | `"name"`（双引号） | `@` | 转小写 |
 | SQLite | `"name"`（双引号） | `@` | 不转换 |
 
-### 2.7 集合操作
+### 2.8 集合操作
 
 | 数据库 | EXCEPT 对应语法 |
 |--------|----------------|
 | Oracle / 达梦 | `MINUS` |
 | 其他 | `EXCEPT`（基类默认） |
 
-### 2.8 批量更新
+### 2.9 批量更新
 
 | 数据库 | 批量更新方式 |
 |--------|-------------|
@@ -200,7 +200,7 @@ LiteOrm 内置 11 个数据库方言的 `SqlBuilder` 实现（含 6 个国产/�
 | PostgreSQL / 金仓 / GaussDB | `UPDATE table u SET ... FROM (VALUES ...) AS v(...) WHERE u.key = v.k0` |
 | SQLite | `WITH batch_data(...) AS (VALUES (...)) UPDATE table SET col = (SELECT ... FROM batch_data WHERE ...) WHERE EXISTS (...)` |
 
-### 2.9 批量插入
+### 2.10 批量插入
 
 | 数据库 | 批量插入方式 |
 |--------|-------------|
@@ -214,7 +214,7 @@ LiteOrm 通过 `IBulkProvider` 接口支持高性能批量写入，但**基础�
 | 数据库 | 常见方案 | 内置实现 |
 |--------|---------|---------|
 | SQL Server | `SqlBulkCopy` | 无（需自行实现 `IBulkProvider`） |
-| MySQL | `MySqlBulkCopy` | 无（Demo 中有 [MySqlBulkCopyProvider](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo/Demos/MySqlBulkInsertProvider.cs) 示例） |
+| MySQL | `MySqlBulkCopy` | 无（Demo 中有 [MySqlBulkInsertProvider](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo/Demos/MySqlBulkInsertProvider.cs) 示例） |
 | Oracle | 普通 `INSERT` 批量 | 无 |
 | PostgreSQL | `COPY` 命令 | 无 |
 | SQLite | 普通 `INSERT` 批量 | 无 |

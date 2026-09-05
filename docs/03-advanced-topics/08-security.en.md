@@ -244,7 +244,7 @@ var validator = new ExprValidatorGroup(
 if (!ExprVisitor.Validate(validator, expr))
 {
     // validator.FailedExpr     — node that failed
-    // validator.FailedVisitor  — validator that failed
+    // validator.FailedValidator  — validator that failed
 }
 ```
 

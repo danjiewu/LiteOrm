@@ -14,6 +14,59 @@ var users = await userService.SearchAsync(u => new[] { 1, 2, 3 }.Contains(u.Id))
 
 Property access inside a Lambda is parsed into `PropertyExpr`; comparison/string/set operations are parsed into `LogicExpr`; everything then goes through the unified `Expr` → SQL pipeline.
 
+### 1.1 Logical combinations (`&&`, `||`, `!`)
+
+Use C# logical operators directly inside a Lambda:
+
+```csharp
+// AND + OR
+var result = await userService.SearchAsync(
+    u => u.Age > 18 && u.Status == 1 || u.IsVip
+);
+
+// NOT
+var active = await userService.SearchAsync(
+    u => !u.IsDeleted && u.IsActive
+);
+
+// Parentheses change precedence
+var complex = await userService.SearchAsync(
+    u => u.Age > 18 && (u.Status == 1 || u.IsVip)
+);
+```
+
+`&&` → `AND`, `||` → `OR`, `!` → `NOT`. Operator precedence follows C# semantics: `!` > `&&` > `||`. Add parentheses to override.
+
+### 1.2 Supported string and method handlers
+
+At startup, `LiteOrmLambdaHandlerInitializer` registers a batch of Lambda method handlers. The strings it currently supports (see `LiteOrm.Common/Converter/LiteOrmLambdaHandlerInitializer.cs`):
+
+| Method | SQL semantic | Example |
+|--------|--------------|---------|
+| `string.Contains(text)` | `LIKE '%text%'` | `u => u.Name.Contains("admin")` |
+| `string.StartsWith(text)` | `LIKE 'text%'` | `u => u.Name.StartsWith("admin")` |
+| `string.EndsWith(text)` | `LIKE '%text'` | `u => u.Name.EndsWith("admin")` |
+| `string.Concat(...)` | `CONCAT(...)` | `u => string.Concat(u.FirstName, " ", u.LastName)` |
+| `string.ToUpper()` | `UPPER` | `u => u.Name.ToUpper() == "ADMIN"` |
+| `string.ToLower()` | `LOWER` | `u => u.Name.ToLower() == "admin"` |
+| `string.Trim()` / `TrimStart()` / `TrimEnd()` | `TRIM` / `LTRIM` / `RTRIM` | `u => u.Name.Trim() == "admin"` |
+| `string.Remove(startIndex)` | `LEFT` | `u => u.Code.Remove(3) == "ABC"` |
+| `string.Length` (property) | `CHAR_LENGTH` / `LEN` | `u => u.Name.Length > 5` |
+| `Equals(obj)` | `=` | `u => u.Name.Equals("admin")` |
+| `ToString()` / `ToString(format)` | raw / `Format` | `u => u.CreateTime.ToString("yyyy-MM-dd")` |
+
+Collection methods:
+
+| Method | SQL semantic | Example |
+|--------|--------------|---------|
+| `IList.Contains(item)` / `Enumerable.Contains(collection, item)` | `IN` | `u => new[] { 1, 2, 3 }.Contains(u.Id)` |
+
+In addition, the following members/methods are supported:
+
+- **DateTime**: `DateTime.Now` (`CURRENT_TIMESTAMP`), `DateTime.Today` (`CURRENT_DATE`), `AddYears/AddMonths/AddDays/AddHours/AddMinutes/AddSeconds` (`DATE_ADD` / `DATEADD`)
+- **Math**: `Abs`, `Max`, `Min`, `Floor`, `Ceiling`, `Round`, `Pow`, `Sqrt`, `Truncate`, etc. (mapped to SQL math functions)
+- **TimeSpan**: `TotalSeconds` / `TotalDays` / `TotalHours` / `TotalMinutes` / `TotalMilliseconds`. Subtracting two dates (e.g. `(DateTime.Now - u.CreateTime).TotalDays`) auto-translates to `DateDiffDays` and similar functions.
+
 ## 2. Sorting
 
 Lambda queries support sorting through `OrderBy` / `OrderByDescending` / `ThenBy` / `ThenByDescending` chain calls.
@@ -70,6 +123,25 @@ var users = await userService.SearchAsync(
 ```
 
 > String `+` inside a Lambda is converted to concat during parsing, and ultimately rendered via `SqlBuilder.BuildConcatSql` as `CONCAT(a,b,...)` or `a || b` per dialect. When handwriting `Expr`, you must use `.Concat(...)` explicitly — see the [Expr Guide](./06-expr-guide.en.md#string-concatenation-do-not-use--use-concat).
+
+### 2.5 Skip/Take paging semantics
+
+Paging is expressed via the query builder's `.Skip(skip)` and `.Take(take)` chain calls:
+
+```csharp
+// First page (10 per page)
+var paged = await userService.SearchAsync(
+    q => q.Where(u => u.Age > 18)
+          .OrderBy(u => u.UserName)
+          .Skip(0)
+          .Take(10)
+);
+```
+
+- `Skip(n)` skips the first `n` records, rendered as SQL `OFFSET n` (or `LIMIT n, ...` / `ROWNUM` per dialect).
+- `Take(n)` takes `n` records, rendered as `LIMIT n` (or `FETCH FIRST n ROWS ONLY`).
+- `Skip` and `Take` can be used independently or together; usually combine with `OrderBy` first.
+- Large-offset paging (e.g. `Skip(10000)`) suffers poor performance; prefer ID-based cursor paging — see [Performance Optimization](../03-advanced-topics/03-performance.en.md#33-pagination-optimization).
 
 ## 3. Variable capture and parameterization
 
@@ -160,7 +232,7 @@ var list = await userService.SearchAsAsync(
 
 LiteOrm natively supports `System.Text.Json.Nodes.JsonNode` (including `JsonObject`, `JsonArray`, `JsonValue`) properties — they are automatically mapped to JSON columns (stored as strings), and you can query JSON fields directly via indexers and `GetValue<T>()` in Lambda expressions.
 
-> For auto-mapping and serialization of JsonNode properties, see [Data Mapping & Value Conversion](../03-advanced-topics/11-data-mapping.en.md#8-jsonnode-mapping-navigation).
+> For auto-mapping and serialization of JsonNode properties, see [Data Mapping & Value Conversion](../03-advanced-topics/11-data-mapping.en.md#33-jsonnode-mapping-navigation).
 
 ### 7.1 Basic usage: indexer access
 
@@ -232,7 +304,28 @@ var price = await configDAO.SearchAsync(
 
 Different databases have varying levels of JSON function support — please verify against your target database. To build JSON queries manually in `Expr`, see [Expression Extension](../04-extensibility/01-expression-extension.en.md#9-json-function-extensions).
 
-## 8. Related links
+## 8. FAQ
+
+### 8.1 What if a method is not supported in a Lambda?
+
+If the Lambda calls a method without a registered handler (i.e. one not covered by `LiteOrmLambdaHandlerInitializer`), LiteOrm throws an exception during parsing to flag the unsupported method. This is by design — unsupported methods are not silently ignored; you'll see the problem early.
+
+To support custom methods, follow the registration pattern in `LiteOrmLambdaHandlerInitializer` and call `LambdaExprConverter.RegisterMethodHandler`.
+
+### 8.2 How do Lambda and Expr interoperate?
+
+- **Lambda → Expr**: A Lambda expression is automatically converted to an `Expr` tree during parsing. You can also call `Expr.Lambda<T>(u => ...)` manually to produce a `LogicExpr`, useful for combining with handwritten `Expr`.
+- **Expr → Lambda**: Embed an existing `Expr` into a Lambda via the `ExprExtensions.To()` extension, e.g. `u => u.IsActive && extra.To<bool>()`, where `extra` is an externally built `LogicExpr`.
+
+For details, see [Combining Lambda and Expr](./09-lambda-expr-mixing.en.md).
+
+### 8.3 Does Lambda add extra runtime overhead?
+
+At **parse time** Lambda queries are converted to `Expr` objects; this happens once per query call. Once converted to `Expr`, the subsequent SQL generation is identical to handwritten `Expr`, with **no extra runtime overhead**.
+
+In other words, the cost is confined to parse time; the generated SQL and execution path match an equivalent handwritten `Expr`. For the vast majority of business scenarios, parse-time cost is negligible.
+
+## 9. Related links
 
 - [Query Overview](./04-query-overview.en.md)
 - [Expr Guide](./06-expr-guide.en.md)

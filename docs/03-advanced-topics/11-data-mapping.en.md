@@ -386,12 +386,12 @@ DbConvertHandler<string, IPAddress>? IDbValueConverter<string, IPAddress>.DbRead
 | Mapping implementation | expression-tree compilation | reflection assignment |
 | Read method | typed read, no boxing | unified `GetValue()` + bridging |
 | Converter invocation | compile-time inlined strong delegate | runtime non-generic delegate |
-| Performance | highest | moderate; `[Table]` entities hit source generator ≈ JIT |
+| Performance | highest | moderate; `[Table]` entities via source generator are still faster than reflection-only paths, but slower than JIT |
 | Trimming safety | needs `[RequiresDynamicCode]` | fully safe |
 
 AOT performance tips:
 1. Mark entities `[Table]` to hit the source-generator mapping.
-2. Implement both generic and non-generic interfaces; the source-generator path prefers the generic version.
+2. Implement both generic and non-generic interfaces; the source-generator path uses the **non-generic** converter delegate (taking `GetValue()` results as input); the generic variant is only consumed by the JIT path.
 3. Prefer known strongly-typed entities over anonymous-type projections.
 
 ## 8. FAQ
@@ -423,7 +423,7 @@ Yes — if the key (.NET value type, DbValueType) matches a built-in default, it
 
 ## Related Links
 
-- [Back to docs hub](../README.en.md)
+- [Back to docs hub](../README.md)
 - [Entity Mapping](../02-core-usage/01-entity-mapping.en.md)
 - [Lambda Query Guide](../02-core-usage/05-lambda-guide.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)

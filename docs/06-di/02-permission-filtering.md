@@ -20,7 +20,7 @@
 | 管理员查看全部订单 | 不附加用户范围条件 | 保留完整运维/审计视角 |
 | 普通用户查询列表、统计 | 运行时追加 `Expr` | 当前用户属于请求时上下文 |
 | 当前用户详情、修改、删除 | 详情接口再做显式访问校验 | 避免只靠列表过滤被绕过 |
-| 模型天然固定状态 / 固定分区 | `Column.Constant` / `TableDefinition.ConstFilter` | 规则在模型层面恒定不变 |
+| 模型天然固定状态 / 固定分区 | `[Column(Constant = ...)]` / `TableDefinition.ConstFilter` | 规则在模型层面恒定不变 |
 | 共享表多租户 | 运行时追加 `TenantId == currentTenantId` | 同一张表内按行隔离 |
 | 按租户物理分表 | `TableArgs` 或重写 `CreateSqlBuildContext` | 租户决定真实表名或路由 |
 
@@ -108,7 +108,7 @@ var myItems = items.Where(x => x.CreatedByUserId == currentUser.Id).ToList();
 
 ### 2.2 `Column.Constant` 与 `TableDefinition.ConstFilter`
 
-`Column.Constant` 是**针对整张表生效的全局固定筛选**，包括关联查询里的 `JOIN ... ON`。在实现上，它会在元数据阶段收敛为 `TableDefinition.ConstFilter`：
+`[Column]` 的 `Constant` 参数是**针对整张表生效的全局固定筛选**，包括关联查询里的 `JOIN ... ON`。在实现上，它会在元数据阶段收敛为 `TableDefinition.ConstFilter`：
 
 ```csharp
 public enum RecordState

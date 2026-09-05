@@ -425,7 +425,7 @@ public class UserOrderDAO : ObjectDAO<UserOrder>
 {
     private readonly IUserContext _userContext;
 
-    public UserOrderDAO(IUserContext userContext)
+    public UserOrderDAO(SessionManager sessionManager, IUserContext userContext) : base(sessionManager)
     {
         _userContext = userContext;
     }

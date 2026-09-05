@@ -213,7 +213,7 @@ var query = From<User>()
 var result = await userService.SearchAsync(query);
 ```
 
-### 3.3 从接入到查询的完整流程
+### 3.3 自定义 Builder 的注册
 
 ```csharp
 // 1. 定义自定义 Builder
@@ -227,17 +227,9 @@ builder.Host.RegisterLiteOrm(options =>
 {
     options.RegisterSqlBuilder("OracleDataSource", Oracle11gBuilder.Instance);
 });
-
-// 3. 正常使用分页 API，无需在业务代码里改写查询
-var page = await userService.SearchAsync(
-    q => q.Where(u => u.Age >= 18)
-          .OrderBy(u => u.Id)
-          .Skip(20)
-          .Take(20)
-);
 ```
 
-这个模式的关键点在于：分页差异只在 `SqlBuilder` 中处理，业务层仍然保持统一的 `Skip/Take` 写法。
+注册完成后，业务层的查询写法与 §3.2 完全一致——分页差异只在 `SqlBuilder` 中吸收。
 
 ## 4. 生成的 SQL 示例
 

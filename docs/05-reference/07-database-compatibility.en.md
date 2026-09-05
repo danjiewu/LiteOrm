@@ -136,7 +136,7 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 
 `ISqlBuilder.TryAppendSqlLiteral` is used to inline string constants (`Expr.Const(string)`) directly as SQL literals. Strings containing only regular characters (no backslash or control characters) are safely inlined — single quotes are escaped via standard `''`. Strings with backslash or control characters return `false`, causing the caller to fall back to parameterization, preventing MySQL backslash injection. This behavior is consistent across all databases with no per-dialect override needed.
 
-### 2.5 Built-in SQL Function Registration
+### 2.6 Built-in SQL Function Registration
 
 `LiteOrmSqlFunctionInitializer` registers SQL function handlers at startup, mapping C# method names (converted to `FunctionExpr` via `LambdaExprConverter`) to the correct database functions. Unregistered function names fall through to default rendering (`FunctionName(args)`); standard same-name functions (e.g. `ABS`, `ROUND`, `FLOOR`, `SQRT`, `SIN`, `COALESCE`) need no registration.
 
@@ -173,7 +173,7 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 
 > `REGEXP_INSTR` is 1-based on Oracle/MySQL; the mapping subtracts 1 to match C#'s 0-based `Match.Index`. `Regex.IsMatch`/`Replace` support static form, `new Regex(pattern)` instance form, and closure-variable form (instance forms evaluate the Regex object and read `Pattern` via reflection).
 
-### 2.6 Identifier Quoting and Parameter Prefix
+### 2.7 Identifier Quoting and Parameter Prefix
 
 | Database | Identifier Quoting | Param Prefix | Case Handling |
 |----------|-------------------|-------------|---------------|
@@ -183,14 +183,14 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 | PostgreSQL / KingbaseES / GaussDB | `"name"` (double quotes) | `@` | Lowercase |
 | SQLite | `"name"` (double quotes) | `@` | No conversion |
 
-### 2.7 Set Operations
+### 2.8 Set Operations
 
 | Database | EXCEPT Syntax |
 |----------|--------------|
 | Oracle / Dameng | `MINUS` |
 | Others | `EXCEPT` (base default) |
 
-### 2.8 Batch Update
+### 2.9 Batch Update
 
 | Database | Batch Update Method |
 |----------|---------------------|
@@ -200,7 +200,7 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 | PostgreSQL / KingbaseES / GaussDB | `UPDATE table u SET ... FROM (VALUES ...) AS v(...) WHERE u.key = v.k0` |
 | SQLite | `WITH batch_data(...) AS (VALUES (...)) UPDATE table SET col = (SELECT ... FROM batch_data WHERE ...) WHERE EXISTS (...)` |
 
-### 2.9 Batch Insert
+### 2.10 Batch Insert
 
 | Database | Batch Insert Method |
 |----------|---------------------|
@@ -214,7 +214,7 @@ LiteOrm supports high-performance bulk writes via the `IBulkProvider` interface,
 | Database | Common Approach | Built-in Implementation |
 |----------|----------------|------------------------|
 | SQL Server | `SqlBulkCopy` | None (implement `IBulkProvider` yourself) |
-| MySQL | `MySqlBulkCopy` | None (Demo includes a [MySqlBulkCopyProvider](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo/Demos/MySqlBulkInsertProvider.cs) example) |
+| MySQL | `MySqlBulkCopy` | None (Demo includes a [MySqlBulkInsertProvider](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo/Demos/MySqlBulkInsertProvider.cs) example) |
 | Oracle | Batch `INSERT` | None |
 | PostgreSQL | `COPY` command | None |
 | SQLite | Batch `INSERT` | None |

@@ -211,7 +211,7 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | `SignInPath`                 | `string`                                     | `"api/remote/signin"`                | 登录（签发身份票据）的 HTTP 端点路径                                                                                    |
 | `EnableAuthentication`       | `bool`                                       | `false`                              | 是否启用 Cookie 身份认证。需在 `AddRemoteServer` 的 `configure` 回调中开启，框架在注册阶段据此注册 Cookie 认证方案 |
 | `JsonSerializerOptions`      | `JsonSerializerOptions`                      | `UnsafeRelaxedJsonEscaping` + 大小写不敏感 | JSON 序列化选项                                                                                               |
-| `ServiceTypeResolver`        | `IRemoteServiceTypeResolver`                 | `DefaultServiceTypeResolver`         | 服务类型解析器实例                                                                                                |
+| `ServiceTypeResolver`        | `ITypeNameResolver`                          | `DefaultServiceTypeResolver.Instance`| 服务类型解析器实例                                                                                                |
 | `TypeNameResolverFactory`    | `Func<IServiceProvider, ITypeNameResolver>?` | `null`                               | 类型名称解析器工厂，优先级高于 `ServiceTypeResolver`，便于在解析器中注入其他 DI 服务                                                  |
 | `LogJsonPayloads`            | `bool`                                       | `false`                              | 是否在日志中记录服务端接收的请求 JSON 与返回的响应 JSON 报文（Debug 级别，需开启对应日志提供程序的低级别过滤）                                         |
 | `AutoRegisterEntityServices` | `bool`                                       | `true`                               | 自动扫描带 `[Service]` 特性的接口                                                                                  |
@@ -796,19 +796,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 
 > **泛型类型名**：泛型类型应使用 CLR 名称格式 `Foo`1\`（含反引号 arity 后缀），避免与同名的非泛型类型冲突。
 
-### 6.2 `IRemoteServiceTypeResolver` —— 服务端类型解析器
+### 6.2 `ITypeNameResolver` —— 服务端类型解析器
 
-服务端通过 `IRemoteServiceTypeResolver` 将请求中的 `ServiceName` 解析为实际服务接口类型。
+服务端通过 `ITypeNameResolver` 将请求中的 `ServiceName` 解析为实际服务接口类型。
 
 | 实现                                  | 行为                                                                                                 |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------- |
 | `DefaultServiceTypeResolver`        | 默认实现。未指定命名空间时全程序集按类型短名扫描；指定 `ServiceNamespace`/`ModelNamespace` 后优先按 `命名空间.类型名` 精确匹配，失败再回退全程序集短名扫描 |
-| `DelegateRemoteServiceTypeResolver` | 通过委托自定义解析逻辑                                                                                        |
-| 自定义实现 `IRemoteServiceTypeResolver`  | 完全控制解析过程                                                                                           |
+| `DelegateTypeNameResolver` | 通过委托自定义解析逻辑                                                                                        |
+| 自定义实现 `ITypeNameResolver`  | 完全控制解析过程                                                                                           |
 
 ```csharp
 // 默认：全程序集按类型短名扫描
-options.ServiceTypeResolver = new DefaultServiceTypeResolver();
+options.ServiceTypeResolver = DefaultServiceTypeResolver.Instance;
 
 // 指定命名空间，优先精确匹配、提升解析速度并避免同名类型冲突
 options.ServiceTypeResolver = new DefaultServiceTypeResolver(
@@ -818,7 +818,7 @@ options.ServiceTypeResolver = new DefaultServiceTypeResolver(
 // 或使用工厂（可注入其他 DI 服务）
 builder.Services.AddRemoteServer(options =>
 {
-    options.ServiceTypeResolverFactory = sp =>
+    options.TypeNameResolverFactory = sp =>
         new DefaultServiceTypeResolver("MyApp.Services", "MyApp.Models");
 });
 ```
@@ -852,7 +852,7 @@ foreach (var o in orders)
     Console.WriteLine($"OrderNo={o.OrderNo}, Id={o.Id}");  // 每个 Id 都已回写
 ```
 
-> **依赖**：`IdentityOutAttribute` 通过 `TableInfoProvider.Default` 解析 Identity 列，客户端与服务端均需注册（`LiteOrm` 主库的 `LiteOrmCoreInitializer` 会自动初始化）。
+> **依赖**：`IdentityOutAttribute` 通过 `TableInfoProvider.Instance` 解析 Identity 列，客户端与服务端均需注册（`LiteOrm` 主库的 `LiteOrmCoreInitializer` 会自动初始化）。
 
 ### 7.2 `[CopyableOut]` —— 整体回写
 
@@ -1053,7 +1053,7 @@ opts.Transport = new MyTransport();
 
 1. **`ForEachAsync`** **不支持远程调用**：流式遍历需要持续返回数据，远程协议不支持，会抛出 `NotSupportedException`
 2. **`CancellationToken`** **透传**：取消令牌不参与序列化，通过传输层端到端传递
-3. **客户端与服务端必须注册相同的** **`TableInfoProvider.Default`**：`IdentityOutAttribute` 通过 `TableInfoProvider.Default` 解析 Identity 列，无反射回退
+3. **客户端与服务端必须注册相同的** **`TableInfoProvider.Instance`**：`IdentityOutAttribute` 通过 `TableInfoProvider.Instance` 解析 Identity 列，无反射回退
 4. **`ServiceName`** **一致性**：两端均启用 `AutoRegisterEntityServices` 时框架自动保证一致；手动注册自定义名称时，两端必须同时调用 `TypeResolverHelper.Register`
 5. **泛型服务接口**：`DefaultServiceTypeResolver` 使用 CLR 名格式 `Foo`1\` 查找开放泛型，避免与非泛型同名类型冲突
 6. **基接口方法继承**：服务类型及其所有基接口声明的方法均可被调用；遇到重复方法键时抛出 `AmbiguousMatchException`

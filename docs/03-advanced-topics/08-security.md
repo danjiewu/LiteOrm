@@ -8,7 +8,7 @@ LiteOrm 的 SQL 注入防护采用**多层纵深防御**策略：
 
 | 层次 | 机制 | 说明 |
 |------|------|------|
-| 参数化 SQL | `outputParams` + 占位符 | 所有用户值以参数形式传递，零例外 |
+| 参数化 SQL | `outputParams` + 占位符 | 所有用户值默认以参数形式传递；走 `ExprString`/动态拼接时需自行消毒 |
 | LIKE 转义 + 参数化 | 通配符转义 + 按需生成 `ESCAPE` 子句 | 双重保护防止 LIKE 注入 |
 | ExprString 自动参数化 | 非 Expr 值自动转为命名参数 | 插值字符串中的用户值自动参数化 |
 | 表达式类型白名单 | `ExprTypeValidator` | 控制允许的表达式类型 |
@@ -127,7 +127,7 @@ dao.Search($"WHERE {Prop("Age")} > {minAge}");
     └─ 字面量字符串        → 直接追加（开发者硬编码的 SQL 关键词/结构）
 ```
 
-> `RawSql` 是 `ExprString` 的辅助标记类型（独立 `readonly struct`，不继承 `Expr`），专用于插入**不适合参数化的动态值**（如 `LIMIT`/`OFFSET` 的整数值、分页行数等）。它**绕过参数化机制**，内联动态值时调用方必须先对值进行严格校验（如限制为非负整数），绝不可拼入未经验证的用户输入。纯静态的 SQL 文本直接写在 `ExprString` 字面量中即可，无需使用 `RawSql`。详见 [ExprString 指南 - 第 8 节 插入原始 SQL](../02-core-usage/07-exprstring-guide.md#8-插入原始-sql-rawsql)。
+> `RawSql` 是 `ExprString` 的辅助标记类型（独立 `readonly struct`，不继承 `Expr`），专用于插入**不适合参数化的动态值**（如 `LIMIT`/`OFFSET` 的整数值、分页行数等）。它**绕过参数化机制**，内联动态值时调用方必须先对值进行严格校验（如限制为非负整数），绝不可拼入未经验证的用户输入。纯静态的 SQL 文本直接写在 `ExprString` 字面量中即可，无需使用 `RawSql`。详见 [ExprString 指南 - 第 8 节 插入原始 SQL](../02-core-usage/07-exprstring-guide.md#8-插入原始-sqlrawsql)。
 
 **代码示例**：
 
@@ -244,7 +244,7 @@ var validator = new ExprValidatorGroup(
 if (!ExprVisitor.Validate(validator, expr))
 {
     // validator.FailedExpr     — 失败节点
-    // validator.FailedVisitor  — 失败的验证器
+    // validator.FailedValidator  — 失败的验证器
 }
 ```
 

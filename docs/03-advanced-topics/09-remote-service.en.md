@@ -209,7 +209,7 @@ int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 | `SignInPath` | `string` | `"api/remote/signin"` | HTTP endpoint path for signing in (issuing identity tickets) |
 | `EnableAuthentication` | `bool` | `false` | Enables Cookie authentication. Must be turned on in the `AddRemoteServer` `configure` callback; the framework registers the Cookie authentication scheme at registration time based on it |
 | `JsonSerializerOptions` | `JsonSerializerOptions` | `UnsafeRelaxedJsonEscaping` + case-insensitive | JSON serialization options |
-| `ServiceTypeResolver` | `IRemoteServiceTypeResolver` | `DefaultServiceTypeResolver` | Service type resolver instance |
+| `ServiceTypeResolver` | `ITypeNameResolver` | `DefaultServiceTypeResolver.Instance` | Service type resolver instance |
 | `TypeNameResolverFactory` | `Func<IServiceProvider, ITypeNameResolver>?` | `null` | Type name resolver factory, takes precedence over `ServiceTypeResolver`; allows injecting DI services into the resolver |
 | `LogJsonPayloads` | `bool` | `false` | Whether to log request/response JSON payloads received by the server (Debug level; requires enabling low-level filtering on the corresponding logging provider) |
 | `AutoRegisterEntityServices` | `bool` | `true` | Auto-scan interfaces with `[Service]` attribute |
@@ -786,19 +786,19 @@ The server finds the corresponding `Type` based on `ServiceName` in the request,
 
 > **Generic type names**: Generic types should use the CLR name format `Foo`1` (with backtick arity suffix), to avoid conflicts with non-generic types of the same name.
 
-### 6.2 `IRemoteServiceTypeResolver` — Server Type Resolver
+### 6.2 `ITypeNameResolver` — Server Type Resolver
 
-The server uses `IRemoteServiceTypeResolver` to resolve the `ServiceName` (short type name) in the request to the actual service interface type.
+The server uses `ITypeNameResolver` to resolve the `ServiceName` (short type name) in the request to the actual service interface type.
 
 | Implementation | Behavior |
 |---------------|----------|
 | `DefaultServiceTypeResolver` | Default implementation. Scans all assemblies by short type name when no namespace is specified; when `ServiceNamespace`/`ModelNamespace` is specified, prefers exact match by `Namespace.TypeName`, falling back to full assembly short-name scan on failure |
-| `DelegateRemoteServiceTypeResolver` | Custom resolution logic via delegate |
-| Custom `IRemoteServiceTypeResolver` | Full control over the resolution process |
+| `DelegateTypeNameResolver` | Custom resolution logic via delegate |
+| Custom `ITypeNameResolver` | Full control over the resolution process |
 
 ```csharp
 // Default: scan all assemblies by short type name
-options.ServiceTypeResolver = new DefaultServiceTypeResolver();
+options.ServiceTypeResolver = DefaultServiceTypeResolver.Instance;
 
 // Specify namespaces for faster exact matching and to avoid name conflicts
 options.ServiceTypeResolver = new DefaultServiceTypeResolver(
@@ -808,7 +808,7 @@ options.ServiceTypeResolver = new DefaultServiceTypeResolver(
 // Or use a factory (can inject other DI services)
 builder.Services.AddRemoteServer(options =>
 {
-    options.ServiceTypeResolverFactory = sp =>
+    options.TypeNameResolverFactory = sp =>
         new DefaultServiceTypeResolver("MyApp.Services", "MyApp.Models");
 });
 ```
@@ -840,7 +840,7 @@ foreach (var o in orders)
     Console.WriteLine($"OrderNo={o.OrderNo}, Id={o.Id}");  // Each Id has been written back
 ```
 
-> **Dependency**: `IdentityOutAttribute` resolves the Identity column through `TableInfoProvider.Default`. Both client and server must register it (`LiteOrm` main library's `LiteOrmCoreInitializer` initializes it automatically).
+> **Dependency**: `IdentityOutAttribute` resolves the Identity column through `TableInfoProvider.Instance`. Both client and server must register it (`LiteOrm` main library's `LiteOrmCoreInitializer` initializes it automatically).
 
 ### 7.2 `[CopyableOut]` — Full Object Write-back
 
@@ -875,7 +875,7 @@ public interface ICopyableUserService
 | `Single` (default) | Single parameter write-back | The type of the write-back value |
 | `Collection` | Iterates `IEnumerable`/`IList`, calling handler per item | Write-back value type for **each element** (framework automatically wraps as `List<ReturnType>` for serialization) |
 
-### 6.4 Custom Write-back Handler
+### 7.4 Custom Write-back Handler
 
 Implement the `IArgumentOutHandler` interface (in the `LiteOrm.Common` namespace), and mark the parameter with `[ArgumentOut(typeof(YourHandler), typeof(ReturnType))]`:
 
@@ -1041,7 +1041,7 @@ For the JSON structure of requests and responses, see [Expression Serialization]
 
 1. **`ForEachAsync` is not supported for remote calls**: Streaming iteration requires continuous data return, which the remote protocol does not support; throws `NotSupportedException`
 2. **`CancellationToken` transparent passing**: The cancellation token is not serialized; it is passed end-to-end by the transport layer
-3. **Client and server must register the same `TableInfoProvider.Default`**: `IdentityOutAttribute` resolves the Identity column through `TableInfoProvider.Default`, with no reflection fallback
+3. **Client and server must register the same `TableInfoProvider.Instance`**: `IdentityOutAttribute` resolves the Identity column through `TableInfoProvider.Instance`, with no reflection fallback
 4. **`ServiceName` consistency**: When both ends enable `AutoRegisterEntityServices`, the framework ensures consistency automatically; when manually registering custom names, both ends must call `TypeResolverHelper.Register`
 5. **Generic service interfaces**: `DefaultServiceTypeResolver` uses the CLR name format `Foo`1` to look up open generics, avoiding conflicts with non-generic types of the same name
 6. **Base interface method inheritance**: Methods declared in the service type and all its base interfaces can be invoked; throws `AmbiguousMatchException` on duplicate method keys

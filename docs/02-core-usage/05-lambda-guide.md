@@ -7,9 +7,9 @@ Lambda 是 LiteOrm 最直观的查询方式，强类型、可读性最好，适�
 ## 1. 基础过滤
 
 ```csharp
-var users = await userService.SearchAsync(u => u.Age >= 18);
-var users = await userService.SearchAsync(u => u.UserName.Contains("admin"));
-var users = await userService.SearchAsync(u => new[] { 1, 2, 3 }.Contains(u.Id));
+var adults = await userService.SearchAsync(u => u.Age >= 18);
+var admins = await userService.SearchAsync(u => u.UserName.Contains("admin"));
+var targets = await userService.SearchAsync(u => new[] { 1, 2, 3 }.Contains(u.Id));
 ```
 
 Lambda 中的属性访问会被解析成 `PropertyExpr`，比较/字符串/集合操作会被解析成 `LogicExpr`，最终统一走 `Expr` → SQL 的生成管道。
@@ -67,8 +67,6 @@ LiteOrm 在启动时通过 `LiteOrmLambdaHandlerInitializer` 注册了一批 Lam
 - **Math**：`Abs`、`Max`、`Min`、`Floor`、`Ceiling`、`Round`、`Pow`、`Sqrt`、`Truncate` 等（直接映射为 SQL 数学函数）
 - **TimeSpan**：`TotalSeconds` / `TotalDays` / `TotalHours` / `TotalMinutes` / `TotalMilliseconds`。当两个日期相减时（如 `(DateTime.Now - u.CreateTime).TotalDays`），自动转换为 `DateDiffDays` 等日期差函数
 
-> Lambda 中的字符串 `+` 会在解析阶段被转换为 `concat`，最终通过 `SqlBuilder.BuildConcatSql` 按方言输出 `CONCAT(a,b,...)` 或 `a || b`。
-
 ## 2. 排序
 
 Lambda 查询中，排序通过 `OrderBy` / `OrderByDescending` / `ThenBy` / `ThenByDescending` 链式调用实现。
@@ -124,7 +122,7 @@ var users = await userService.SearchAsync(
 );
 ```
 
-> Lambda 中的字符串 `+` 会在解析阶段被转换为 concat，最终通过 `SqlBuilder.BuildConcatSql` 按方言输出 `CONCAT(a,b,...)` 或 `a || b`。手写 `Expr` 时则需要显式使用 `.Concat(...)`，见 [Expr 使用指南](./06-expr-guide.md#字符串拼接不要用--用-concat)。
+> Lambda 中的字符串 `+` 会在解析阶段被转换为 concat，最终通过 `SqlBuilder.BuildConcatSql` 按方言输出 `CONCAT(a,b,...)` 或 `a || b`。手写 `Expr` 时则需要显式使用 `.Concat(...)`，见 [Expr 使用指南](./06-expr-guide.md#字符串拼接不要用-用-concat)。
 
 ### 2.5 Skip/Take 分页语义
 
@@ -134,7 +132,7 @@ Lambda 查询中，分页通过查询构建器的 `.Skip(skip)` 和 `.Take(take)
 // 取第 1 页（每页 10 条）
 var paged = await userService.SearchAsync(
     q => q.Where(u => u.Age > 18)
-          .OrderBy(u => u.Name)
+          .OrderBy(u => u.UserName)
           .Skip(0)
           .Take(10)
 );
@@ -234,7 +232,7 @@ var list = await userService.SearchAsAsync(
 
 LiteOrm 原生支持 `System.Text.Json.Nodes.JsonNode`（含 `JsonObject`、`JsonArray`、`JsonValue`）类型的属性——自动映射为 JSON 列（字符串存储），并支持在 Lambda 中直接通过索引器和 `GetValue<T>()` 查询 JSON 字段。
 
-> JsonNode 属性的自动映射与序列化机制详见 [数据映射与值转换](../03-advanced-topics/11-data-mapping.md#8-jsonnode-映射导航)。
+> JsonNode 属性的自动映射与序列化机制详见 [数据映射与值转换](../03-advanced-topics/11-data-mapping.md#33-jsonnode-映射导航)。
 
 ### 7.1 基础用法：索引器访问
 
@@ -242,19 +240,19 @@ LiteOrm 原生支持 `System.Text.Json.Nodes.JsonNode`（含 `JsonObject`、`Jso
 
 ```csharp
 // 查询 Settings 中 name 为 "admin" 的配置
-var result = await configDAO.SearchAsync(
+var result = await configDAO.Search(
     c => c.Settings!["name"].GetValue<string>() == "admin"
-);
+).ToListAsync();
 
 // 嵌套访问：Settings.profile.age > 18
-var adults = await configDAO.SearchAsync(
+var adults = await configDAO.Search(
     c => c.Settings!["profile"]["age"].GetValue<int>() > 18
-);
+).ToListAsync();
 
 // 数组访问：Settings.tags[0] == "vip"
-var vips = await configDAO.SearchAsync(
+var vips = await configDAO.Search(
     c => c.Settings!["tags"][0].GetValue<string>() == "vip"
-);
+).ToListAsync();
 ```
 
 ### 7.2 标量值提取：`GetValue<T>()`
@@ -270,14 +268,14 @@ var vips = await configDAO.SearchAsync(
 
 ```csharp
 // 提取数值并比较
-var result = await configDAO.SearchAsync(
+var result = await configDAO.Search(
     c => c.Settings!["score"].GetValue<int>() >= 90
-);
+).ToListAsync();
 
 // 提取布尔值
-var enabled = await configDAO.SearchAsync(
+var enabled = await configDAO.Search(
     c => c.Settings!["enabled"].GetValue<bool>() == true
-);
+).ToListAsync();
 ```
 
 ### 7.3 索引链与路径规则
@@ -290,9 +288,9 @@ LiteOrm 会自动解析连续的索引器调用，拼接为正确的 JSON 路径
 
 ```csharp
 // 等价于 JSON 路径 $.items[2].price
-var price = await configDAO.SearchAsync(
+var price = await configDAO.Search(
     c => c.Settings!["items"][2]["price"].GetValue<decimal>() > 100
-);
+).ToListAsync();
 ```
 
 > 如果索引键是**常量**（字符串或整数），路径会在编译期拼接完成；如果是动态变量，则在运行时拼接。两种方式都支持。
@@ -327,7 +325,7 @@ Lambda 查询在**解析阶段**会将表达式树转换为 `Expr` 对象，这�
 
 也就是说，Lambda 的开销仅体现在表达式解析阶段，生成的 SQL 和执行路径与等价的手写 `Expr` 相同。在绝大多数业务场景中，解析开销可以忽略不计。
 
-## 8. 相关链接
+## 9. 相关链接
 
 - [查询总览](./04-query-overview.md)
 - [Expr 使用指南](./06-expr-guide.md)

@@ -20,7 +20,7 @@ In real projects, a query usually combines more than just a "permission conditio
 | Admin views all orders | No user-scope filter attached | Preserves full operational/audit perspective |
 | Regular user queries lists and counts | Append runtime `Expr` | The current user is request-scoped |
 | Regular user reads detail, updates, or deletes | Explicit access check at the endpoint layer | Prevents bypassing list filtering |
-| Model always represents one fixed state / slice | `Column.Constant` / `TableDefinition.ConstFilter` | The rule is invariant at the model level |
+| Model always represents one fixed state / slice | `[Column(Constant = ...)]` / `TableDefinition.ConstFilter` | The rule is invariant at the model level |
 | Shared-table multi-tenancy | Append `TenantId == currentTenantId` at runtime | Isolation happens by rows in one table |
 | Physical tenant sharding | `TableArgs` or override `CreateSqlBuildContext` | The tenant decides the real table name or route |
 
@@ -108,7 +108,7 @@ The second approach creates three problems:
 
 ### 2.2 `Column.Constant` and `TableDefinition.ConstFilter`
 
-`Column.Constant` is a **global fixed filter for the table itself**, including association queries where it becomes part of `JOIN ... ON`. At the metadata layer, it is consolidated into `TableDefinition.ConstFilter`:
+The `Constant` argument on `[Column]` is a **global fixed filter for the table itself**, including association queries where it becomes part of `JOIN ... ON`. At the metadata layer, it is consolidated into `TableDefinition.ConstFilter`:
 
 ```csharp
 public enum RecordState

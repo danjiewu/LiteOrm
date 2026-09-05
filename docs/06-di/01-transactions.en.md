@@ -108,6 +108,15 @@ public async Task SubmitOrderAsync(CreateOrderInput input)
 Below is a practical failure rollback scenario: create a user first, then insert an intentionally invalid sales record to trigger automatic transaction rollback.
 
 ```csharp
+[Transaction]
+public async Task RegisterUserWithInitialSaleAsync(User user, SalesRecord initialSale)
+{
+    await _userService.InsertAsync(user);
+    await _salesRecordService.InsertAsync(initialSale);
+}
+```
+
+```csharp
 var newUser = new User { UserName = "ThreeTierUser", Age = 25 };
 var initialSale = new SalesRecord
 {
@@ -115,8 +124,8 @@ var initialSale = new SalesRecord
     Amount = 1
 };
 
-bool success = await factory.BusinessService
-    .RegisterUserWithInitialSaleAsync(newUser, initialSale);
+bool success = await businessService.RegisterUserWithInitialSaleAsync(newUser, initialSale);
+// success = false, transaction has been rolled back, user was not persisted
 ```
 
 ## 2. Manual Transactions
