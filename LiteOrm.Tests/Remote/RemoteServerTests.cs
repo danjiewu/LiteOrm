@@ -374,5 +374,89 @@ namespace LiteOrm.Tests
             public Task<bool> InsertAsync(int entity) => Task.FromResult(true);
             public Task<bool> InsertAsync(object entity) => Task.FromResult(false);
         }
+
+        /// <summary>
+        /// 测试用的泛型服务接口（验证服务端泛型服务类型解析）。
+        /// </summary>
+        public interface IGenericStore<T>
+        {
+            T Add(T value);
+        }
+
+        private sealed class GenericStore<T> : IGenericStore<T>
+        {
+            public T Add(T value) => value;
+        }
+
+        /// <summary>
+        /// 泛型服务测试用的实体类型。
+        /// </summary>
+        public class TestItem
+        {
+            public int Value { get; set; }
+        }
+
+        private static RemoteServiceDispatcher CreateGenericDispatcher()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging(b => b.SetMinimumLevel(LogLevel.None));
+            services.AddScoped(typeof(IGenericStore<>), typeof(GenericStore<>));
+            var provider = services.BuildServiceProvider();
+
+            // 模拟服务端注册：基名/CLR 名 → 开放泛型定义；类型参数名 → 实体类型
+            var resolver = new DelegateTypeNameResolver(
+                TypeResolverHelper.GetName,
+                name => name switch
+                {
+                    "IGenericStore" => typeof(IGenericStore<>),
+                    "IGenericStore`1" => typeof(IGenericStore<>),
+                    "TestItem" => typeof(TestItem),
+                    _ => null,
+                });
+
+            return new RemoteServiceDispatcher(
+                provider,
+                resolver,
+                provider.GetRequiredService<ILoggerFactory>().CreateLogger<RemoteServiceDispatcher>());
+        }
+
+        [Fact]
+        public async Task Generic_Service_Type_Is_Resolved_And_Invoked()
+        {
+            var dispatcher = CreateGenericDispatcher();
+
+            var json = JsonSerializer.Serialize(new
+            {
+                ServiceName = "IGenericStore<TestItem>",
+                Method = "Add",
+                Arguments = new object[] { new TestItem { Value = 42 } },
+            }, _jsonOptions);
+
+            var request = dispatcher.ParseRequest(json, _jsonOptions);
+            Assert.NotNull(request.Method);
+            Assert.Equal(nameof(IGenericStore<TestItem>.Add), request.Method!.Name);
+
+            var response = await dispatcher.InvokeAsync(request, TestContext.Current.CancellationToken);
+
+            Assert.True(response.Success, response.Error?.Message ?? "(no error)");
+            Assert.Equal(42, ReadResult<TestItem>(response).Value);
+        }
+
+        [Fact]
+        public void Generic_Service_Type_Unknown_Argument_Throws_Not_Registered()
+        {
+            var dispatcher = CreateGenericDispatcher();
+
+            var json = JsonSerializer.Serialize(new
+            {
+                ServiceName = "IGenericStore<UnknownType>",
+                Method = "Add",
+                Arguments = new object[] { new TestItem { Value = 1 } },
+            }, _jsonOptions);
+
+            // 类型参数无法解析 → 服务类型解析失败，ParseRequest 抛 ServiceException
+            var ex = Assert.Throws<ServiceException>(() => dispatcher.ParseRequest(json, _jsonOptions));
+            Assert.Contains("not registered", ex.Message);
+        }
     }
 }

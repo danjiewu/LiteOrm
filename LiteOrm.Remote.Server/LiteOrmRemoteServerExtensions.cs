@@ -1,3 +1,5 @@
+using LiteOrm.Common;
+using LiteOrm.Service;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -7,9 +9,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
-using System.Text.Json;
-using LiteOrm.Common;
 using System.Text;
+using System.Text.Json;
+using System.Xml.Linq;
 
 namespace LiteOrm.Remote.Server
 {
@@ -423,6 +425,10 @@ namespace LiteOrm.Remote.Server
                     TypeResolverHelper.Register(name, type);
                 }
             }
+            TypeResolverHelper.Register(typeof(IEntityService<>).Name, typeof(IEntityService<>));
+            TypeResolverHelper.Register(typeof(IEntityServiceAsync<>).Name, typeof(IEntityServiceAsync<>));
+            TypeResolverHelper.Register(typeof(IEntityViewService<>).Name, typeof(IEntityViewService<>));
+            TypeResolverHelper.Register(typeof(IEntityViewServiceAsync<>).Name, typeof(IEntityViewServiceAsync<>));
         }
     }
 }

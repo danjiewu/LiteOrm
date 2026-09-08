@@ -1,5 +1,13 @@
 # 变更日志 (Changelog)
 
+## v8.1.6 (2026-09-08)
+
+### 改进
+
+- **优化 Remote 服务端泛型服务类型解析**（`LiteOrm.Remote.Server`）：默认注册`IEntityService<T>`、`IEntityViewService<T>`、`IEntityServiceAsync<T>`、`IEntityViewServiceAsync<T>`泛型服务，自动检测名称后缀（如 `IEntityService` 泛型检测 `IEntityService``1`）。
+
+***
+
 ## v8.1.5 (2026-09-02)
 
 ### 破坏性变更

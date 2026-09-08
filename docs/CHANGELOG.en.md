@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.1.6 (2026-09-08)
+
+### Enhancements
+
+- **Optimized generic service-type resolution on the remote server** (`LiteOrm.Remote.Server`): the generic services `IEntityService<T>`, `IEntityViewService<T>`, `IEntityServiceAsync<T>`, and `IEntityViewServiceAsync<T>` are registered by default, and the name suffix is auto-detected (e.g. `IEntityService` matches the generic form `` `IEntityService`1` ``).
+
+***
+
 ## v8.1.5 (2026-09-02)
 
 ### Breaking Changes

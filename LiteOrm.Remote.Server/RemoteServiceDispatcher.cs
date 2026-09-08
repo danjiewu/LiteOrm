@@ -62,8 +62,8 @@ namespace LiteOrm.Remote.Server
             MethodInfo? method = null;
             try
             {
-                // 1. 解析服务类型
-                var serviceType = _resolver.GetType(request.ServiceName!);
+                // 1. 解析服务类型（支持泛型服务名，如 IEntityService<User>）
+                var serviceType = ResolveServiceType(request.ServiceName);
                 if (serviceType is null)
                 {
                     response.Success = false;
@@ -172,7 +172,7 @@ namespace LiteOrm.Remote.Server
 
             // 1. 提取 ServiceName 与 RequestID
             var serviceName = root.GetProperty("ServiceName").GetString();
-            var serviceType = _resolver.GetType(serviceName!);
+            var serviceType = ResolveServiceType(serviceName);
             if (serviceType is null)
                 throw new ServiceException($"Remote service '{serviceName}' is not registered.");
 
@@ -301,6 +301,59 @@ namespace LiteOrm.Remote.Server
                         $"Cannot resolve generic type argument '{genericArgNames[i]}' for method '{method.Name}'.");
             }
             return method.MakeGenericMethod(args);
+        }
+
+        /// <summary>
+        /// 解析服务类型。
+        /// <para>
+        /// 优先使用 <see cref="ITypeNameResolver"/> 直接按 <paramref name="serviceName"/> 解析；
+        /// 失败且名称为泛型形式（如 <c>IEntityService&lt;User&gt;</c>）时，拆出基名与类型参数名，
+        /// 解析开放泛型定义后调用 <see cref="Type.MakeGenericType"/> 构造封闭泛型类型。
+        /// </para>
+        /// <para>
+        /// 开放泛型定义依次尝试 CLR 名称（<c>IEntityService`1</c>）与基名（<c>IEntityService</c>），
+        /// 以兼容两类注册方式：程序集全名匹配与 <see cref="TypeResolverHelper.Register"/> 的自定义注册键。
+        /// </para>
+        /// </summary>
+        /// <param name="serviceName">服务名称（可为短名、全名或泛型形式）。</param>
+        /// <returns>匹配到的服务类型；未找到时返回 null。</returns>
+        private Type? ResolveServiceType(string? serviceName)
+        {
+            if (string.IsNullOrEmpty(serviceName)) return null;
+
+            var serviceType = _resolver.GetType(serviceName);
+            if (serviceType is not null) return serviceType;
+
+            // 泛型服务名（如 IEntityService<User>）→ 基名 IEntityService + 类型参数名 [User]
+            var ltIndex = serviceName.IndexOf('<');
+            if (ltIndex <= 0 || serviceName[serviceName.Length - 1] != '>')
+                return null;
+
+            var baseName = serviceName.Substring(0, ltIndex);
+            var argNames = SplitTopLevelCommas(serviceName.Substring(ltIndex + 1, serviceName.Length - ltIndex - 2));
+
+            // 开放泛型定义：优先 CLR 名（IEntityService`1），再回退基名（如服务端注册映射的键）
+            var openGeneric = _resolver.GetType(baseName + "`" + argNames.Length)
+                ?? _resolver.GetType(baseName);
+            if (openGeneric is null || !openGeneric.IsGenericTypeDefinition)
+                return null;
+
+            var typeArgs = new Type[argNames.Length];
+            for (int i = 0; i < argNames.Length; i++)
+            {
+                var argType = ResolveTypeArgument(_resolver, argNames[i]);
+                if (argType is null) return null;
+                typeArgs[i] = argType;
+            }
+
+            try
+            {
+                return openGeneric.MakeGenericType(typeArgs);
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
         }
 
         /// <summary>
