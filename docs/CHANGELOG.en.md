@@ -2,8 +2,13 @@
 
 ## v8.1.6 (2026-09-08)
 
+### Breaking Changes
+
+- **`DisableLiteOrmCodeGenAttribute` renamed to `LiteOrmCodeGenAttribute`** (`LiteOrm.Common`): adds the `[Flags]` enum `LiteOrmCodeGenKind` (`TableInfo` / `DataReaderMappers` / `PropertyAccessors` / `AotTypeRegistration` / `AutoRegister`) and changes the semantics to **definition-driven** — when the attribute is declared, only the configured kind flags are generated, independent of AOT build properties; when not declared, generators fall back to auto-detecting from AOT build settings (full generation when AOT is on). Assemblies that used the old attribute name must switch to `[assembly: LiteOrmCodeGen(...)]`.
+
 ### Enhancements
 
+- **Granular code-generation control**: `LiteOrmCodeGenAttribute` can selectively enable `TableInfo` / `DataReaderMappers` / `PropertyAccessors` / `AotTypeRegistration` / `AutoRegister`; declaring it generates exactly what is specified, otherwise AOT auto-detection applies.
 - **Optimized generic service-type resolution on the remote server** (`LiteOrm.Remote.Server`): the generic services `IEntityService<T>`, `IEntityViewService<T>`, `IEntityServiceAsync<T>`, and `IEntityViewServiceAsync<T>` are registered by default, and the name suffix is auto-detected (e.g. `IEntityService` matches the generic form `` `IEntityService`1` ``).
 
 ***

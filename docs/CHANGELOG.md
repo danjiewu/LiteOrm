@@ -2,9 +2,14 @@
 
 ## v8.1.6 (2026-09-08)
 
+### 破坏性变更
+
+- **`DisableLiteOrmCodeGenAttribute` 重命名为 `LiteOrmCodeGenAttribute`**（`LiteOrm.Common`）：新增 `[Flags]` `LiteOrmCodeGenKind`（`TableInfo` / `DataReaderMappers` / `PropertyAccessors` / `AotTypeRegistration` / `AutoRegister`），语义改为「**定义优先**」——声明本特性时以定义的类别位为唯一依据，仅生成指定的内容，不再依赖 AOT 构建属性自动判定；未声明时仍由源生成器按 AOT 开启状态自动全量生成。使用旧特性名的程序集需改用 `[assembly: LiteOrmCodeGen(...)]`。
+
 ### 改进
 
-- **优化 Remote 服务端泛型服务类型解析**（`LiteOrm.Remote.Server`）：默认注册`IEntityService<T>`、`IEntityViewService<T>`、`IEntityServiceAsync<T>`、`IEntityViewServiceAsync<T>`泛型服务，自动检测名称后缀（如 `IEntityService` 泛型检测 `IEntityService``1`）。
+- **源生成器细粒度代码生成控制**：`LiteOrmCodeGenAttribute` 支持分别控制 `TableInfo` / `DataReaderMappers` / `PropertyAccessors` / `AotTypeRegistration` / `AutoRegister` 的生成，声明即按定义生成，未声明按 AOT 自动判定。
+- **优化 Remote 服务端泛型服务类型解析**（`LiteOrm.Remote.Server`）：默认注册`IEntityService<T>`、`IEntityViewService<T>`、`IEntityServiceAsync<T>`、`IEntityViewServiceAsync<T>`泛型服务，自动检测名称后缀（如 `IEntityService` 泛型检测 `` `IEntityService`1 ``）。
 
 ***
 
