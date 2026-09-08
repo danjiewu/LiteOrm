@@ -28,7 +28,7 @@ namespace LiteOrm.Generators
         private const string AutoRegisterAttributeFullTypeName = "LiteOrm.Common.AutoRegisterAttribute";
         private const string RegisterPolicyFullTypeName = "LiteOrm.Common.RegisterPolicy";
         private const string ServiceLifetimeFullTypeName = "LiteOrm.Common.Lifetime";
-        private const string DisableCodeGenAttributeFullTypeName = "LiteOrm.Common.DisableLiteOrmCodeGenAttribute";
+        private const string CodeGenAttributeFullTypeName = "LiteOrm.Common.LiteOrmCodeGenAttribute";
         // 与 LiteOrm.Common.LiteOrmCodeGenKind.AutoRegister = 1 << 4 对应。
         private const int Kind_AutoRegister = 1 << 4;
 
@@ -111,8 +111,9 @@ namespace LiteOrm.Generators
             context.RegisterSourceOutput(candidates.Combine(aotMode), static (spc, source) =>
             {
                 var (items, compilation) = source.Left;
-                if (!source.Right) return; // 非 AOT：不生成注册代码，交由运行时扫描程序集。
-                if (IsCodeGenDisabled(compilation)) return; // 用户通过 [assembly: DisableLiteOrmCodeGen] 手动关闭
+                // 定义优先：声明了 LiteOrmCodeGen 时以定义为唯一依据（不依赖 AOT，含 AutoRegister 位则生成）；
+                // 未声明时 AOT 开启自动生成，非 AOT 交由运行时程序集扫描注册。
+                if (!ShouldGenerateKind(compilation, Kind_AutoRegister, source.Right)) return;
 
                 // 运行时注册中心（LiteOrm 核心程序集）必须可用，且编译需引用 DI 抽象
                 if (compilation.GetTypeByMetadataName(RegistryFullTypeName) == null) return;
@@ -142,26 +143,36 @@ namespace LiteOrm.Generators
         // ──────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// 判断当前编译单元是否通过 <c>[assembly: DisableLiteOrmCodeGen]</c> 关闭了 AutoRegister 代码生成。
-        /// 特性未传构造参数时默认关闭全部（含 AutoRegister 位）。
+        /// 读取当前编译单元声明的 <c>[assembly: LiteOrmCodeGen]</c> 要生成的内容掩码。
+        /// 无此特性返回 0；存在但未传构造参数时默认生成全部（含 AutoRegister 位）。
         /// </summary>
-        private static bool IsCodeGenDisabled(Compilation compilation)
+        private static int GetConfiguredKinds(Compilation compilation)
         {
             foreach (var attr in compilation.Assembly.GetAttributes())
             {
                 if (attr.AttributeClass != null &&
-                    attr.AttributeClass.ToDisplayString() == DisableCodeGenAttributeFullTypeName)
+                    attr.AttributeClass.ToDisplayString() == CodeGenAttributeFullTypeName)
                 {
                     if (attr.ConstructorArguments.Length > 0 &&
                         attr.ConstructorArguments[0].Value is not null)
                     {
-                        return (Convert.ToInt32(attr.ConstructorArguments[0].Value) & Kind_AutoRegister) != 0;
+                        return Convert.ToInt32(attr.ConstructorArguments[0].Value);
                     }
-                    // 无参数构造：默认关闭全部，含 AutoRegister。
-                    return true;
+                    // All（31）：与 LiteOrm.Common.LiteOrmCodeGenKind.All 一致。
+                    return (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4);
                 }
             }
-            return false;
+            return 0;
+        }
+
+        /// <summary>
+        /// 判断 AutoRegister 内容是否应生成：声明了 <c>[assembly: LiteOrmCodeGen]</c> 时以定义为唯一依据
+        /// （不依赖 AOT）；未声明时按 <paramref name="isAot"/> 自动判定。
+        /// </summary>
+        private static bool ShouldGenerateKind(Compilation compilation, int kindBit, bool isAot)
+        {
+            int configured = GetConfiguredKinds(compilation);
+            return configured != 0 ? (configured & kindBit) != 0 : isAot;
         }
 
         /// <summary>

@@ -24,7 +24,7 @@ namespace LiteOrm.Generators
     public class TableInfoGenerator : IIncrementalGenerator
     {
         private const string TableAttributeFullTypeName = "LiteOrm.Common.TableAttribute";
-        private const string DisableCodeGenAttributeFullTypeName = "LiteOrm.Common.DisableLiteOrmCodeGenAttribute";
+        private const string CodeGenAttributeFullTypeName = "LiteOrm.Common.LiteOrmCodeGenAttribute";
 
         // 与 LiteOrm.Common.LiteOrmCodeGenKind 的位值一一对应（按位比较，避免反射依赖）。
         private const int Kind_TableInfo = 1 << 0;            // TableInfo = 1
@@ -86,13 +86,8 @@ namespace LiteOrm.Generators
                 static (spc, source) =>
                 {
                     var (compilation, isAot) = source;
-                    // 非 AOT 模式：运行时使用反射与 Expression.Compile()，无需生成额外代码
-                    if (!isAot)
-                    {
-                        return;
-                    }
-                    // 用户可通过 [assembly: DisableLiteOrmCodeGen(AotTypeRegistration)] 手动关闭 AOT 类型注册
-                    if (IsCodeGenDisabled(compilation, Kind_AotTypeRegistration))
+                    // 定义优先：声明了 LiteOrmCodeGen 时以定义为准（不依赖 AOT）；否则 AOT 开启时自动生成。
+                    if (!ShouldGenerateKind(compilation, Kind_AotTypeRegistration, isAot))
                     {
                         return;
                     }
@@ -108,14 +103,9 @@ namespace LiteOrm.Generators
             context.RegisterSourceOutput(pipeline, static (spc, source) =>
             {
                 var ((entities, compilation), isAot) = source;
-                // 非 AOT 模式：不生成实体代码；AOT 类型注册已由第 3 步独立管道统一生成
-                if (!isAot)
-                {
-                    return;
-                }
-                // 按 DisableLiteOrmCodeGen 细粒度关闭：仅当实体相关位（TableInfo/DataReaderMappers/
-                // PropertyAccessors）全被关闭时才跳过，否则把仍启用的位传给 GenerateAll 逐项控制。
-                int enabledKinds = EntityGeneratorRelevantKinds & ~GetDisabledKinds(compilation);
+                // 定义优先：声明了 LiteOrmCodeGen 时以定义为唯一依据（不依赖 AOT），按定义位逐项生成；
+                // 未声明时 AOT 开启则自动全量生成实体代码，非 AOT 不生成（回退运行时反射路径）。
+                int enabledKinds = GetEnabledKinds(compilation, EntityGeneratorRelevantKinds, isAot);
                 if (enabledKinds == 0)
                 {
                     return;
@@ -1363,15 +1353,15 @@ namespace LiteOrm.Generators
         // ──────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// 读取当前编译单元声明的 <c>[assembly: DisableLiteOrmCodeGen]</c> 要关闭的内容掩码。
-        /// 无此特性返回 0；存在但未传构造参数时默认关闭全部（向后兼容旧行为）。
+        /// 读取当前编译单元声明的 <c>[assembly: LiteOrmCodeGen]</c> 要生成的内容掩码。
+        /// 无此特性返回 0；存在但未传构造参数时默认生成全部（与 <see cref="LiteOrmCodeGenKind.All"/> 一致）。
         /// </summary>
-        private static int GetDisabledKinds(Compilation compilation)
+        private static int GetConfiguredKinds(Compilation compilation)
         {
             foreach (var attr in compilation.Assembly.GetAttributes())
             {
                 if (attr.AttributeClass != null &&
-                    attr.AttributeClass.ToDisplayString() == DisableCodeGenAttributeFullTypeName)
+                    attr.AttributeClass.ToDisplayString() == CodeGenAttributeFullTypeName)
                 {
                     if (attr.ConstructorArguments.Length > 0 &&
                         attr.ConstructorArguments[0].Value is not null)
@@ -1386,12 +1376,24 @@ namespace LiteOrm.Generators
         }
 
         /// <summary>
-        /// 判断当前编译单元是否通过 <c>[assembly: DisableLiteOrmCodeGen]</c> 关闭了
-        /// <paramref name="kindBit"/> 所对应的某类代码生成。
+        /// 计算某类内容是否应生成：声明了 <c>[assembly: LiteOrmCodeGen]</c> 时以定义为唯一依据
+        /// （<paramref name="relevantMask"/> 与定义位求交集，不依赖 AOT）；未声明时按
+        /// <paramref name="isAot"/> 自动判定（AOT 开启即启用 <paramref name="relevantMask"/> 全位）。
         /// </summary>
-        private static bool IsCodeGenDisabled(Compilation compilation, int kindBit)
+        private static int GetEnabledKinds(Compilation compilation, int relevantMask, bool isAot)
         {
-            return (GetDisabledKinds(compilation) & kindBit) != 0;
+            int configured = GetConfiguredKinds(compilation);
+            return configured != 0 ? configured & relevantMask : (isAot ? relevantMask : 0);
+        }
+
+        /// <summary>
+        /// 判断某一位置 <paramref name="kindBit"/> 对应的内容是否应生成：声明了
+        /// <c>[assembly: LiteOrmCodeGen]</c> 时以定义为唯一依据；未声明时按 AOT 自动判定。
+        /// </summary>
+        private static bool ShouldGenerateKind(Compilation compilation, int kindBit, bool isAot)
+        {
+            int configured = GetConfiguredKinds(compilation);
+            return configured != 0 ? (configured & kindBit) != 0 : isAot;
         }
 
         private static void GenerateAotTypeRegistration(SourceProductionContext spc, Compilation compilation)
