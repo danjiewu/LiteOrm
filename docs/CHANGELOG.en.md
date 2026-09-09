@@ -4,7 +4,7 @@
 
 ### Breaking Changes
 
-- **`DisableLiteOrmCodeGenAttribute` renamed to `LiteOrmCodeGenAttribute`** (`LiteOrm.Common`): adds the `[Flags]` enum `LiteOrmCodeGenKind` (`TableInfo` / `DataReaderMappers` / `PropertyAccessors` / `AotTypeRegistration` / `AutoRegister`) and changes the semantics to **definition-driven** — when the attribute is declared, only the configured kind flags are generated, independent of AOT build properties; when not declared, generators fall back to auto-detecting from AOT build settings (full generation when AOT is on). Assemblies that used the old attribute name must switch to `[assembly: LiteOrmCodeGen(...)]`.
+- **`DisableLiteOrmCodeGenAttribute` renamed to `LiteOrmCodeGenAttribute`** (`LiteOrm.Common`):  only the configured kind flags are generated, independent of AOT build properties; when not declared, generators fall back to auto-detecting from AOT build settings (full generation when AOT is on). Assemblies that used the old attribute name must switch to `[assembly: LiteOrmCodeGen(...)]`.
 
 ### Enhancements
 

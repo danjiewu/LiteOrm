@@ -4,7 +4,7 @@
 
 ### 破坏性变更
 
-- **`DisableLiteOrmCodeGenAttribute` 重命名为 `LiteOrmCodeGenAttribute`**（`LiteOrm.Common`）：新增 `[Flags]` `LiteOrmCodeGenKind`（`TableInfo` / `DataReaderMappers` / `PropertyAccessors` / `AotTypeRegistration` / `AutoRegister`），语义改为「**定义优先**」——声明本特性时以定义的类别位为唯一依据，仅生成指定的内容，不再依赖 AOT 构建属性自动判定；未声明时仍由源生成器按 AOT 开启状态自动全量生成。使用旧特性名的程序集需改用 `[assembly: LiteOrmCodeGen(...)]`。
+- **`DisableLiteOrmCodeGenAttribute` 重命名为 `LiteOrmCodeGenAttribute`**（`LiteOrm.Common`）：仅生成指定的内容，不再依赖 AOT 构建属性自动判定；未声明时仍由源生成器按 AOT 开启状态自动全量生成。使用旧特性名的程序集需改用 `[assembly: LiteOrmCodeGen(...)]`。
 
 ### 改进
 
