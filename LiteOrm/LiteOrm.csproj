@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.1.6.0</AssemblyVersion>
-		<FileVersion>8.1.6.0</FileVersion>
+		<AssemblyVersion>8.1.7.0</AssemblyVersion>
+		<FileVersion>8.1.7.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.1.6</VersionPrefix>
+		<VersionPrefix>8.1.7</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -16,6 +16,9 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
+8.1.7:
+- 修复AOT下内置泛型服务未注册问题。
+
 8.1.6:
 - 修复 AddLiteOrm 工厂模式注册时未注册核心服务的 bug。
 - 修正 GetObject / GetObjects 等场景下列类型与实际值不一致时的读取错误。

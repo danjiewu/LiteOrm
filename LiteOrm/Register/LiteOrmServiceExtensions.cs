@@ -77,24 +77,23 @@ namespace LiteOrm
             });
            
 
-            // 自动注册自定义服务与 DAO（源生成器生成的注册代码 + 可选程序集扫描）
+            // 框架内置的泛型 DAO 与服务（Scoped）
+            services.TryAddScoped(typeof(ObjectDAO<>));
+            services.TryAddScoped(typeof(ObjectViewDAO<>));
+            services.TryAddScoped(typeof(IObjectDAO<>), typeof(ObjectDAO<>));
+            services.TryAddScoped(typeof(IObjectViewDAO<>), typeof(ObjectViewDAO<>));
+            services.TryAddScoped(typeof(EntityService<>));
+            services.TryAddScoped(typeof(EntityViewService<>));
+            services.TryAddScoped(typeof(IEntityService<>), typeof(EntityService<>));
+            services.TryAddScoped(typeof(IEntityViewService<>), typeof(EntityViewService<>));
+            services.TryAddScoped(typeof(IEntityServiceAsync<>), typeof(EntityService<>));
+            services.TryAddScoped(typeof(IEntityViewServiceAsync<>), typeof(EntityViewService<>));
+
+            // 用户自定义的服务与 DAO（带 [AutoRegister] 的派生类型）：
+            // AOT 模式应用源生成器登记的注册代码，JIT 模式扫描程序集运行时注册。
             if (options.AutoRegisterServices)
             {
                 LiteOrmAutoRegistration.Apply(services);
-            }
-            else
-            {
-                // 泛型 DAO 与服务（Scoped）。
-                services.TryAddScoped(typeof(ObjectDAO<>));
-                services.TryAddScoped(typeof(ObjectViewDAO<>));
-                services.TryAddScoped(typeof(IObjectDAO<>), typeof(ObjectDAO<>));
-                services.TryAddScoped(typeof(IObjectViewDAO<>), typeof(ObjectViewDAO<>));
-                services.TryAddScoped(typeof(EntityService<>));
-                services.TryAddScoped(typeof(EntityViewService<>));
-                services.TryAddScoped(typeof(IEntityService<>), typeof(EntityService<>));
-                services.TryAddScoped(typeof(IEntityViewService<>), typeof(EntityViewService<>));
-                services.TryAddScoped(typeof(IEntityServiceAsync<>), typeof(EntityService<>));
-                services.TryAddScoped(typeof(IEntityViewServiceAsync<>), typeof(EntityViewService<>));
             }
 
             // 追加自定义服务注册
