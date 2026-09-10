@@ -1,6 +1,6 @@
 # 变更日志 (Changelog)
 
-## v8.1.6 (2026-09-08)
+## v8.1.6 (2026-09-10)
 
 ### 破坏性变更
 
@@ -12,6 +12,15 @@
 
 - **源生成器细粒度代码生成控制**：`LiteOrmCodeGenAttribute` 支持分别控制 `TableInfo` / `DataReaderMappers` / `PropertyAccessors` / `AotTypeRegistration` / `AutoRegister` 的生成，声明即按定义生成，未声明按 AOT 自动判定。
 - **优化 Remote 服务端泛型服务类型解析**（`LiteOrm.Remote.Server`）：默认注册`IEntityService<T>`、`IEntityViewService<T>`、`IEntityServiceAsync<T>`、`IEntityViewServiceAsync<T>`泛型服务，自动检测名称后缀（如 `IEntityService` 泛型检测 `` `IEntityService`1 ``）。
+- **`LiteOrm` 包不再内置源生成器**：分析器统一由 `LiteOrm.Common` 提供，避免工程同时引用两个包时同源分析器被加载两次、生成代码重复定义（`CS0101` / `CS0111`）。
+- **AOT 类型注册改为独立生成管道**：`LiteOrmAotTypeRegistration` 的生成与实体元数据生成拆分，由独立的编译管道输出，每个编译单元恰好一份，不再因多条生成路径重复产出同名类型。
+- **远程代理注册改为单例**（`LiteOrm.Remote`）：`IEntityService<T>` / `IEntityServiceAsync<T>` / `IEntityViewService<T>` / `IEntityViewServiceAsync<T>` 的代理实现由 `Scoped` 改为 `Singleton`。
+
+### 修复
+
+- **修复工厂重载未注册核心服务**：`AddLiteOrm(Func<IServiceProvider, LiteOrmOptions>)` / `RegisterLiteOrm(Func<IServiceProvider, LiteOrmOptions>)` / `AddLiteOrmRemote(Func<IServiceProvider, LiteOrmRemoteOptions>)` 此前只注册选项工厂便直接返回，遗漏核心服务注册，导致容器中缺少核心服务；现于注册工厂后继续完成核心注册。
+
+- **修正 `GetObject` / `GetObjects` 等场景下列类型与实际值不一致的错误**：`ColumnDefinition.ToDbValue` 新增 `IDbConverter` 参数，键值、时间戳等裸值传入时，若与列级转换器的值类型不一致，改为按「(值类型, 列 `DbValueType`)」从转换器注册表解析写转换器再绑定，不再直接把原值传给驱动。
 
 ***
 
