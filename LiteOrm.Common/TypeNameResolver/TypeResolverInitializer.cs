@@ -12,7 +12,7 @@ namespace LiteOrm.Common
     /// 提供一个「扫描类型 → 筛选 → 自定义名称生成 → 注册」的链式流程，
     /// 将符合条件的类型批量注册到 <see cref="TypeResolverHelper"/> 的全局名称映射
     /// （所有基于 <see cref="TypeResolverHelper"/> 的解析器，如 <see cref="DefaultTypeNameResolver"/> 与
-    /// <see cref="DefaultServiceTypeResolver"/>，都会优先命中这些自定义注册）。
+    /// <see cref="DefaultTypeResolver"/>，都会优先命中这些自定义注册）。
     /// </para>
     /// <para>
     /// 典型用途：

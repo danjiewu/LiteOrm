@@ -6,6 +6,8 @@
 
 - **`DisableLiteOrmCodeGenAttribute` renamed to `LiteOrmCodeGenAttribute`** (`LiteOrm.Common`):  only the configured kind flags are generated, independent of AOT build properties; when not declared, generators fall back to auto-detecting from AOT build settings (full generation when AOT is on). Assemblies that used the old attribute name must switch to `[assembly: LiteOrmCodeGen(...)]`.
 
+- **`DefaultServiceTypeResolver` renamed to `DefaultTypeResolver`** (`LiteOrm.Common`): `ServiceNamespace`/`ModelNamespace` were merged into a single `Namespaces` list, and type names are resolved by trying each namespace in order (`Namespace.TypeName`); generic service names and their type arguments share the same list. When no namespace is given the resolver falls back to a full-assembly short-name scan. Code that used the old class name or old properties must be migrated.
+
 ### Enhancements
 
 - **Granular code-generation control**: `LiteOrmCodeGenAttribute` can selectively enable `TableInfo` / `DataReaderMappers` / `PropertyAccessors` / `AotTypeRegistration` / `AutoRegister`; declaring it generates exactly what is specified, otherwise AOT auto-detection applies.

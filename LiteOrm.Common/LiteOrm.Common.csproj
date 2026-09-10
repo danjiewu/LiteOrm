@@ -18,6 +18,7 @@
       8.1.6:
       - 源生成器机制重构：
       - DisableLiteOrmCodeGenAttribute 重命名为 LiteOrmCodeGenAttribute，新增 [Flags] LiteOrmCodeGenKind（TableInfo/DataReaderMappers/PropertyAccessors/AotTypeRegistration/AutoRegister），改为「定义优先」：声明时仅按定义位生成，未声明时由 AOT 构建属性自动全量生成。
+      - 破坏性变更：DefaultServiceTypeResolver 重命名为 DefaultTypeResolver，ServiceNamespace/ModelNamespace 合并为 Namespaces 命名空间列表，类型名解析按列表顺序依次匹配（泛型服务名与类型参数共用该列表），未指定时回退全程序集短名扫描。
 
       8.1.5:
       - 同步 8.1.5（远程服务与 DI 注册支持注入工厂模式）。

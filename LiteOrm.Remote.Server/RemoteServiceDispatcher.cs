@@ -14,14 +14,6 @@ namespace LiteOrm.Remote.Server
     /// </summary>
     public class RemoteServiceDispatcher
     {
-        private static readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions
-        {
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            PropertyNameCaseInsensitive = true,
-        };
-
-        private static readonly Type ExprType = typeof(Expr);
-
         /// <summary>
         /// 服务类型 → 方法查找表的缓存。
         /// </summary>

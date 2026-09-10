@@ -11,7 +11,7 @@
     <VersionPrefix>8.1.6</VersionPrefix>
     <PackageReleaseNotes>
 8.1.6:
-- 同步 LiteOrm.Common 8.1.6。
+- 同步 LiteOrm.Common 8.1.6（源生成器重构、DefaultTypeResolver 重命名与命名空间列表解析）。
 
 8.1.5:
 - 注册方式重构为「配置回调 + 注入工厂」：新增 AddLiteOrmRemote(Func&lt;IServiceProvider, LiteOrmRemoteOptions&gt;) 工厂重载，选项可经 IServiceProvider（如 IConfiguration）构造，运行时工厂优先于 configure 回调。

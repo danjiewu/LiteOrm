@@ -41,11 +41,11 @@ namespace LiteOrm.Remote.Server
         };
 
         /// <summary>
-        /// 获取或设置类型名称解析器实例。默认为 <see cref="DefaultServiceTypeResolver"/>（全程序集短名扫描）。
-        /// 可替换为指定命名空间的 <see cref="DefaultServiceTypeResolver"/> 或自定义 <see cref="ITypeNameResolver"/> 实现。
+        /// 获取或设置类型名称解析器实例。默认为 <see cref="DefaultTypeResolver"/>（全程序集短名扫描）。
+        /// 可替换为指定命名空间列表的 <see cref="DefaultTypeResolver"/> 或自定义 <see cref="ITypeNameResolver"/> 实现。
         /// 若需要依赖其他 DI 服务构造解析器，可使用 <see cref="TypeNameResolverFactory"/>。
         /// </summary>
-        public ITypeNameResolver ServiceTypeResolver { get; set; } = DefaultServiceTypeResolver.Instance;
+        public ITypeNameResolver ServiceTypeResolver { get; set; } = DefaultTypeResolver.Instance;
 
         /// <summary>
         /// 获取或设置自定义类型名称解析器的工厂函数。
@@ -61,7 +61,7 @@ namespace LiteOrm.Remote.Server
         /// <para>
         /// 设置为 true 时，框架会扫描 <see cref="Assemblies"/>（未设置则扫描所有引用程序集）中标记了
         /// <see cref="ServiceAttribute"/>（且 <c>IsService == true</c>）的接口，调用 <see cref="TypeResolverHelper.Register"/>
-        /// 注册名称映射。注册后 <see cref="DefaultServiceTypeResolver"/> 可通过自定义注册名优先匹配服务类型。
+        /// 注册名称映射。注册后 <see cref="DefaultTypeResolver"/> 可通过自定义注册名优先匹配服务类型。
         /// </para>
         /// <para>
         /// 若 <see cref="ServiceAttribute.Name"/> 非空，使用该名称注册；否则使用 <see cref="TypeResolverHelper.GetName"/> 生成的短名。
@@ -109,7 +109,7 @@ namespace LiteOrm.Remote.Server
         /// （端点路径、解析器、<see cref="RemoteServerOptions.EnableAuthentication"/> 等），
         /// 注册后以解析出的单例实例为准。
         /// </para>
-        /// 默认使用 <see cref="DefaultServiceTypeResolver"/>（全程序集短名扫描）解析服务类型，
+        /// 默认使用 <see cref="DefaultTypeResolver"/>（全程序集短名扫描）解析服务类型，
         /// 可通过 <see cref="RemoteServerOptions.ServiceTypeResolver"/> 或 <see cref="RemoteServerOptions.TypeNameResolverFactory"/> 替换。
         /// 服务类型解析优先级：<see cref="RemoteServerOptions.TypeNameResolverFactory"/> &gt; <see cref="RemoteServerOptions.ServiceTypeResolver"/>。
         /// <para>
@@ -137,7 +137,7 @@ namespace LiteOrm.Remote.Server
             // 注册 RemoteServerOptions 单例，所有选项以该实例为准。
             services.TryAddSingleton(options);
 
-            // 注册 ITypeNameResolver：TypeNameResolverFactory 优先，否则使用实例（默认 DefaultServiceTypeResolver）。
+            // 注册 ITypeNameResolver：TypeNameResolverFactory 优先，否则使用实例（默认 DefaultTypeResolver）。
             services.TryAddSingleton<ITypeNameResolver>(sp =>
             {
                 var serverOptions = sp.GetRequiredService<RemoteServerOptions>();
@@ -390,7 +390,7 @@ namespace LiteOrm.Remote.Server
         /// 通过 <see cref="TypeResolverHelper.Register"/> 注册到全局名称映射。
         /// <para>
         /// 若 <see cref="ServiceAttribute.Name"/> 非空，使用该名称注册；否则使用 <see cref="TypeResolverHelper.GetName"/> 生成的短名。
-        /// 注册后 <see cref="DefaultServiceTypeResolver"/> 的 FindType 优先返回自定义注册的类型，确保客户端与服务端 ServiceName 一致。
+        /// 注册后 <see cref="DefaultTypeResolver"/> 的 FindType 优先返回自定义注册的类型，确保客户端与服务端 ServiceName 一致。
         /// </para>
         /// </summary>
         /// <param name="assemblies">要扫描的程序集列表。为 null 时扫描所有引用的程序集。</param>

@@ -36,9 +36,9 @@ namespace LiteOrm.Remote
 
         /// <summary>
         /// 类型名称解析器，用于序列化/反序列化时 Type ↔ 名称 的双向转换。
-        /// 默认使用 <see cref="DefaultServiceTypeResolver.Instance"/>，可通过此属性替换为自定义实现。
+        /// 默认使用 <see cref="DefaultTypeResolver.Instance"/>，可通过此属性替换为自定义实现。
         /// </summary>
-        public static ITypeNameResolver TypeNameResolver { get; set; } = DefaultServiceTypeResolver.Instance;
+        public static ITypeNameResolver TypeNameResolver { get; set; } = DefaultTypeResolver.Instance;
 
         /// <summary>
         /// 解析类型名称：委托优先，否则用 <see cref="TypeNameResolver"/>.

@@ -12,6 +12,7 @@
     <PackageReleaseNotes>
 8.1.6:
 - 优化 Remote 服务端泛型服务类型解析：默认注册 IEntityService&lt;T&gt;、IEntityViewService&lt;T&gt;、IEntityServiceAsync&lt;T&gt;、IEntityViewServiceAsync&lt;T&gt; 泛型服务，自动检测名称后缀（如 IEntityService 泛型检测 IEntityService`1）。
+- 同步 LiteOrm.Common 8.1.6：DefaultServiceTypeResolver 重命名为 DefaultTypeResolver，ServiceNamespace/ModelNamespace 合并为 Namespaces 命名空间列表，服务端 ServiceTypeResolver 默认实例与文档同步更新。
 
 8.1.5:
 - 注册方式重构为「配置回调 + 自行注册选项」：除 AddRemoteServer(configure) 外，可先调用 services.AddSingleton(sp =&gt; new RemoteServerOptions { ... }) 注册选项，AddRemoteServer 内部以 TryAddSingleton 注册，已注册的实例优先（可在工厂中从 IConfiguration 读取配置）。

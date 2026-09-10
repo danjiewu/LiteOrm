@@ -6,6 +6,8 @@
 
 - **`DisableLiteOrmCodeGenAttribute` 重命名为 `LiteOrmCodeGenAttribute`**（`LiteOrm.Common`）：仅生成指定的内容，不再依赖 AOT 构建属性自动判定；未声明时仍由源生成器按 AOT 开启状态自动全量生成。使用旧特性名的程序集需改用 `[assembly: LiteOrmCodeGen(...)]`。
 
+- **`DefaultServiceTypeResolver` 重命名为 `DefaultTypeResolver`**（`LiteOrm.Common`）：`ServiceNamespace`/`ModelNamespace` 合并为 `Namespaces` 命名空间列表，类型名解析时按列表顺序依次以 `命名空间.类型名` 匹配（泛型服务名与类型参数共用该列表）；未指定命名空间时回退全程序集短名扫描。使用旧类名或旧属性的代码需迁移。
+
 ### 改进
 
 - **源生成器细粒度代码生成控制**：`LiteOrmCodeGenAttribute` 支持分别控制 `TableInfo` / `DataReaderMappers` / `PropertyAccessors` / `AotTypeRegistration` / `AutoRegister` 的生成，声明即按定义生成，未声明按 AOT 自动判定。

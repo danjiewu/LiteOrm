@@ -1,62 +1,58 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace LiteOrm.Common
 {
     /// <summary>
-    /// 默认的服务类型解析器，实现 <see cref="ITypeNameResolver"/>。
+    /// 默认的类型解析器，实现 <see cref="ITypeNameResolver"/>。
     /// <para>
     /// 正向（<see cref="GetName"/>）返回 <see cref="TypeResolverHelper.GetName(Type)"/> 生成的短名
     /// （泛型使用 <c>Base&lt;T1,T2&gt;</c> 格式）。
     /// </para>
     /// <para>
     /// 反向（<see cref="GetType"/>）支持：
-    /// 1. 非泛型类型名 → 直接查找，未找到时拼接 <see cref="ServiceNamespace"/> 再试；
+    /// 1. 非泛型类型名 → 直接查找，未找到时按 <see cref="Namespaces"/> 顺序依次拼接命名空间再试；
     /// 2. 泛型服务名（如 <c>IEntityService&lt;User&gt;</c>）→ 解析开放泛型定义，
-    ///    泛型参数通过 <see cref="ModelNamespace"/> 查找，最终构造闭合泛型类型。
+    ///    类型参数同样按 <see cref="Namespaces"/> 顺序查找，最终构造闭合泛型类型。
     /// </para>
     /// <para>
     /// 所有解析结果按名称缓存。
     /// </para>
     /// </summary>
-    public class DefaultServiceTypeResolver : ITypeNameResolver
+    public class DefaultTypeResolver : ITypeNameResolver
     {
         private readonly ConcurrentDictionary<string, Type?> _cache = new();
 
         /// <summary>
-        /// 默认单例实例（<see cref="ServiceNamespace"/> 和 <see cref="ModelNamespace"/> 均为 null）。
+        /// 默认单例实例（命名空间列表为空，即全程序集按类型短名扫描）。
         /// </summary>
-        public static readonly DefaultServiceTypeResolver Instance = new();
+        public static readonly DefaultTypeResolver Instance = new();
 
         /// <summary>
-        /// 服务接口类型所在的命名空间。为 null 时不拼接命名空间。
+        /// 类型名解析时依次拼接尝试的命名空间列表（按顺序匹配）。
         /// </summary>
-        public string? ServiceNamespace { get; }
+        public IReadOnlyList<string> Namespaces { get; }
 
         /// <summary>
-        /// 实体/模型类型所在的命名空间。为 null 时不拼接命名空间。
+        /// 初始化 <see cref="DefaultTypeResolver"/> 类的新实例，使用全程序集短名扫描。
         /// </summary>
-        public string? ModelNamespace { get; }
-
-        /// <summary>
-        /// 初始化 <see cref="DefaultServiceTypeResolver"/> 类的新实例，使用全程序集短名扫描。
-        /// </summary>
-        public DefaultServiceTypeResolver()
-            : this(null, null)
+        public DefaultTypeResolver()
+            : this(Array.Empty<string>())
         {
         }
 
         /// <summary>
-        /// 初始化 <see cref="DefaultServiceTypeResolver"/> 类的新实例，指定 Service 和 Model 命名空间。
+        /// 初始化 <see cref="DefaultTypeResolver"/> 类的新实例，指定按顺序匹配的命名空间列表。
         /// </summary>
-        /// <param name="serviceNamespace">服务接口类型所在的命名空间（可选，为 null 时不拼接）。</param>
-        /// <param name="modelNamespace">实体/模型类型所在的命名空间（可选，为 null 时不拼接）。</param>
-        public DefaultServiceTypeResolver(string? serviceNamespace, string? modelNamespace)
+        /// <param name="namespaces">解析类型名时依次尝试拼接的命名空间（可为空，空项会被忽略）。
+        /// 未指定任何命名空间时，回退为全程序集按类型短名扫描。</param>
+        public DefaultTypeResolver(params string[] namespaces)
         {
-            ServiceNamespace = serviceNamespace;
-            ModelNamespace = modelNamespace;
+            if (namespaces is null) throw new ArgumentNullException(nameof(namespaces));
+            Namespaces = namespaces.Where(ns => !string.IsNullOrEmpty(ns)).ToArray();
         }
 
         /// <inheritdoc />
@@ -88,9 +84,9 @@ namespace LiteOrm.Common
         {
             var ltIndex = name.IndexOf('<');
 
-            // 非泛型：直接查找，未找到时拼接 ServiceNamespace 再试
+            // 非泛型：直接查找，未找到时按 Namespaces 顺序拼接命名空间再试
             if (ltIndex <= 0)
-                return FindTypeWithNamespace(name, ServiceNamespace);
+                return FindTypeWithNamespace(name);
 
             // 开放泛型：解析 "IEntityService<User>" → baseName="IEntityService", args=["User"]
             var parsed = TypeResolverHelper.TryParseGenericServiceName(name);
@@ -100,7 +96,7 @@ namespace LiteOrm.Common
             // 使用 CLR 泛型类型名格式 "Foo`1" 查找开放泛型定义，
             // 避免与同名的非泛型类型冲突（如同时存在 Foo 和 Foo<T> 时，Foo 会错误匹配非泛型类型）
             var genericTypeName = baseName + "`" + argNames.Length;
-            var openGeneric = FindTypeWithNamespace(genericTypeName, ServiceNamespace);
+            var openGeneric = FindTypeWithNamespace(genericTypeName);
             if (openGeneric is null || !openGeneric.IsGenericTypeDefinition)
                 return null;
 
@@ -110,7 +106,7 @@ namespace LiteOrm.Common
             var typeArgs = new Type[argNames.Length];
             for (int i = 0; i < argNames.Length; i++)
             {
-                var argType = FindTypeWithNamespace(argNames[i], ModelNamespace);
+                var argType = FindTypeWithNamespace(argNames[i]);
                 if (argType is null) return null;
                 typeArgs[i] = argType;
             }
@@ -119,17 +115,21 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 先按 <paramref name="typeName"/> 直接查找；未找到且 <paramref name="ns"/> 非空时，
-        /// 按 <c>ns + "." + typeName</c> 再次查找。
+        /// 先按 <paramref name="typeName"/> 直接查找；未找到且类型名不含点时，
+        /// 按 <see cref="Namespaces"/> 顺序依次以 <c>ns + "." + typeName</c> 再次查找。
         /// </summary>
-        private static Type? FindTypeWithNamespace(string typeName, string? ns)
+        private Type? FindTypeWithNamespace(string typeName)
         {
             var type = TypeResolverHelper.FindType(typeName);
             if (type is not null) return type;
 
-            if (!string.IsNullOrEmpty(ns) && !typeName.Contains('.'))
+            if (typeName.Contains('.')) return null;
+
+            foreach (var ns in Namespaces)
             {
-                return TypeResolverHelper.FindType(ns + "." + typeName);
+                if (string.IsNullOrEmpty(ns)) continue;
+                type = TypeResolverHelper.FindType(ns + "." + typeName);
+                if (type is not null) return type;
             }
 
             return null;
