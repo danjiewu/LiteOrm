@@ -87,12 +87,12 @@ LiteOrm 内置 11 个数据库方言的 `SqlBuilder` 实现（含 6 个国产/�
 
 ### 2.2 类型映射差异
 
-不同数据库对 .NET 类型的处理方式不同，`SqlBuilder` 子类在 `GetDbTypeInternal` / `ToDbValue`（经 `LiteOrm.Common.DbConverterHelper` 统一分发）中做了针对性处理：
+不同数据库对 .NET 类型的处理方式不同，`SqlBuilder` 子类通过覆盖 `GetDbValueTypeInternal(Type)`（.NET 类型 → `DbValueType`）与 `ToDbType(DbValueType)`（`DbValueType` → ADO.NET `DbType`）做方言适配，取值转换经 `LiteOrm.Common.DbConverterHelper` 统一分发：
 
 | 数据库 | 特殊处理 |
 |--------|---------|
-| Oracle / 达梦 | `bool` → `DbType.Byte`（Oracle 无原生布尔类型）；`DateTime` → `DbType.Date` |
-| SQLite | `DateTime`/`TimeSpan`/`DateTimeOffset` → `DbType.String`；写入时 DateTime 格式化为 `yyyy-MM-dd HH:mm:ss.fff`，DateTimeOffset 格式化为 `yyyy-MM-dd HH:mm:ss.fff zzz`，TimeSpan 使用 `c` 格式 |
+| Oracle / 达梦 | `bool` → `DbType.Int32`（Oracle 无原生布尔类型，列类型为 `NUMBER(1)`）；`DateTime` → `DbType.Date`；`Guid` → `DbType.Binary`；`TimeSpan` → `DbType.Object`（交由驱动按 INTERVAL 处理） |
+| SQLite | `Date`/`DateTime`/`Time`/`DateTimeOffset` → `DbType.String`；写入时 DateTime 格式化为 `yyyy-MM-dd HH:mm:ss.fff`，DateTimeOffset 格式化为 `yyyy-MM-dd HH:mm:ss.fff zzz`，TimeSpan 使用 `c` 格式 |
 | SQL Server / MySQL / PostgreSQL / 其他 | 标准类型映射，无特殊转换 |
 
 ### 2.3 自增主键（Identity）

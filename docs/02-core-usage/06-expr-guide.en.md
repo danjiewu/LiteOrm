@@ -59,7 +59,7 @@ var ageText = Prop("Age").Cast(DbType.String);
 var levelExpr = If(Prop("Age") >= 18, Const("Adult"), Const("Minor"));
 ```
 
-- `.Cast(DbType)`: converts a value expression to a target database type, rendered as SQL `CAST(...)`
+- `.Cast(DbValueType)`: converts a value expression to a target database type, rendered as SQL `CAST(...)`
 - `Expr.If(condition, then, else = null)`: builds a simple conditional expression, equivalent to `CASE WHEN condition THEN then ELSE else END`. The `elseExpr` parameter is optional and defaults to `null`; when omitted, no `ELSE` branch is generated
 - `Expr.Case(...)`: builds a multi-condition CASE expression with the following overloads:
   - `Case((LogicExpr, ValueTypeExpr)[] cases, ValueTypeExpr elseExpr)` - condition-result tuple array + ELSE
@@ -494,7 +494,7 @@ LiteOrm parses this into `Expr.If(...)`, which is then rendered as a SQL `CASE` 
 | `.RegexpLike(pattern)` | regex predicate |
 | `.IsNull()` `.IsNotNull()` | NULL checks |
 | `.IfNull(defaultValue)` | null replacement |
-| `.Cast(DbType)` | convert to a target database type |
+| `.Cast(DbValueType)` | convert to a target database type |
 
 Additional note: `Contains` / `StartsWith` / `EndsWith` / `Like` still use parameterization and wildcard escaping, but the `ESCAPE` fragment is emitted only when the pattern actually contains characters that need escaping.
 

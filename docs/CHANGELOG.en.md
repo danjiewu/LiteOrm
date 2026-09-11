@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.1.7 (2026-09-10)
+
+### Fixes
+
+- **Fixed built-in generic services not being registered under AOT** (`LiteOrm`): `AddLiteOrm()` previously registered the generic DAOs and services (`ObjectDAO<>` / `ObjectViewDAO<>` / `EntityService<>` / `EntityViewService<>` and their interfaces) only when `AutoRegisterServices` was `false`. That branch never applies in AOT builds, so `GetRequiredService<IEntityService<T>>()` threw "No service for type ... has been registered". They are now registered unconditionally, and `AutoRegisterServices` only governs auto-registration of user-defined services and DAOs.
+
+***
+
 ## v8.1.6 (2026-09-10)
 
 ### Breaking Changes

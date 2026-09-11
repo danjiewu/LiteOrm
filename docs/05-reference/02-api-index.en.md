@@ -1,58 +1,30 @@
 # API Index
 
-
-
 LiteOrm no longer uses standalone `API_REFERENCE` files as the primary entry point.
 
 Use this page as a scenario-based index inside the docs set.
 
-
-
 ## Quick links
 
-
-
 - [Example Index](./05-example-index.en.md)
-
 - [Generated SQL Examples](./06-sql-examples.en.md)
-
 - [Database Compatibility Notes](./07-database-compatibility.en.md)
-
-
 
 ## Browse by scenario
 
-
-
 ### Startup and configuration
 
-
-
 - `RegisterLiteOrm()`
-
 - `RegisterSqlBuilder(...)`
-
 - `SqlBuilder.BulkProvider` (bulk insert provider)
-
 - data source settings, connection pool settings, read-only replicas
-
-
 
 Related guides:
 
-
-
-- [Configuration Reference](../05-reference/01-configuration-reference.en.md)
-
-- [Configuration reference](./01-configuration-reference.en.md)
-
+- [Configuration Reference](./01-configuration-reference.en.md)
 - [Database Compatibility Notes](./07-database-compatibility.en.md)
 
-
-
 ### Entity mapping and view models
-
-
 
 - `[Table]`
 - `[Column]` (including `ColumnMode.Computed` computed columns and the `Expression` property)
@@ -62,21 +34,12 @@ Related guides:
 - `[TableJoin]`
 - `AutoExpand`
 
-
-
 Related guides:
 
-
-
 - [Entity mapping and data sources](../02-core-usage/01-entity-mapping.en.md)
-
 - [Associations](../02-core-usage/08-associations.en.md)
 
-
-
 ### Query APIs
-
-
 
 - `Search` / `SearchAsync`
 - `SearchAs` / `SearchAsAsync` (including the `Expression<Func<IQueryable<T>, IQueryable<TResult>>>` Lambda projection extension)
@@ -85,7 +48,7 @@ Related guides:
 - `Exists` / `ExistsAsync`
 - `Count` / `CountAsync`
 - `Expr`, `LogicExpr`, `SelectExpr`
-- `SelectAll()` / `Cast(DbType)`
+- `SelectAll()` / `Cast(DbValueType)`
 - Lambda conditional operator `?:` (rendered as `CASE`)
 - case-insensitive expression names and aliases
 - `DbValueType` (`Default` / `Json` / `Jsonb` / `Array`) and `DbValueTypeMap`
@@ -95,131 +58,77 @@ Related guides:
 - `JsonExprExtensions` (`JsonExtract`, `JsonValue`, `JsonContains`, `JsonObject`, etc.)
 - `RawSql` (an `ExprString` helper marker type exclusively for inserting dynamic values unsuitable for parameterization (e.g. `LIMIT`/`OFFSET` row counts, `ASC`/`DESC`, dynamic column names); purely static text can just be written in the literal; see [ExprString Guide - Section 8](../02-core-usage/07-exprstring-guide.en.md#8-inserting-raw-sql-rawsql))
 
-
-
 Related guides:
-
-
 
 - [Expr Guide](../02-core-usage/06-expr-guide.en.md)
 - [Query Overview](../02-core-usage/04-query-overview.en.md)
-
 - [Example Index](./05-example-index.en.md)
-
 - [Generated SQL Examples](./06-sql-examples.en.md)
-
-
 
 ### Write APIs
 
-
-
 - `Insert` / `InsertAsync`
-
 - `Update` / `UpdateAsync`
-
 - `UpdateAll` / `UpdateAllAsync` (conditional update by `UpdateExpr`)
-
 - `ObjectDAO<T>.Update(entity, timestamp)` / `UpdateAsync(entity, timestamp)`
-
 - `Delete` / `DeleteAsync`
-
+- `DeleteID` / `DeleteIDAsync` (delete by primary key)
 - `DeleteAll` / `DeleteAllAsync` (conditional delete by `LogicExpr`)
-
 - `BatchInsert` / `BatchUpdate`
-
 - `UpdateOrInsert`
-
 - `ObjectDAO<T>`
-
 - `IBulkProvider`
-
-
 
 Related guides:
 
-
-
 - [CRUD guide](../02-core-usage/03-crud-guide.en.md)
-
 - [Transactions](../06-di/01-transactions.en.md)
-
 - [Example Index](./05-example-index.en.md)
-
 - [Generated SQL Examples](./06-sql-examples.en.md)
-
-
 
 ### Advanced features
 
-
-
 - `[Transaction]`
-
 - `IServiceInvokingEvent` / `IServiceInvokedEvent` / `IServiceExceptionEvent`
 - `SessionManager`
 - `IArged` / `TableArgs`
 - window function extensions
 - `Expr.ExistsRelated(...)`
 
-
 Related guides:
 
-
-
 - [Transactions](../06-di/01-transactions.en.md)
-
 - [Logging and Diagnostics](../06-di/03-logging.en.md)
 - [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
 - [Window functions](../03-advanced-topics/04-window-functions.en.md)
 - [Example Index](./05-example-index.en.md)
 - [Generated SQL Examples](./06-sql-examples.en.md)
-
 - [Database Compatibility Notes](./07-database-compatibility.en.md)
-
-
 
 ### Extensibility
 
-
-
 - `LambdaExprConverter.RegisterMethodHandler`
-
 - `LambdaExprConverter.RegisterMemberHandler`
-
 - `SqlBuilder.RegisterFunctionSqlHandler`
-
 - `FunctionSqlHandler`
-
 - `FunctionExprValidator`
-- `CycleDetector` — Detects circular references in Expr trees
-
-
-
-
+- `CycleDetector` — detects circular references in Expr trees
 
 Related guides:
 
-
-
 - [Expression extension](../04-extensibility/01-expression-extension.en.md)
-
 - [Function expression validator](../04-extensibility/02-function-validator.en.md)
-
 - [Custom SqlBuilder and dialect extension](../04-extensibility/03-custom-sqlbuilder.en.md)
-
 - [Database Compatibility Notes](./07-database-compatibility.en.md)
-
-
 
 ### Dependency injection and remote services
 
-- `RegisterLiteOrm()` (`LiteOrm.DependencyInjection`, Autofac + AOP)
-- `AddLiteOrm()` / `AddLiteOrm(Action<AddLiteOrmOptions>)` (base library, plain MS DI, no AOP)
-- `AddLiteOrm(IServiceProvider, Action<AddLiteOrmOptions>)` factory overload
-- `AddLiteOrmRemote(...)` / `AddRemoteServer(...)`
+- `RegisterLiteOrm()` / `RegisterLiteOrm(Action<LiteOrmOptions>)` (`LiteOrm.DependencyInjection`, Autofac + AOP)
+- `AddLiteOrm()` / `AddLiteOrm(Action<LiteOrmOptions>)` (base library, plain MS DI, no AOP)
+- factory overloads `AddLiteOrm(Func<IServiceProvider, LiteOrmOptions>)` / `RegisterLiteOrm(Func<IServiceProvider, LiteOrmOptions>)`
+- `AddLiteOrmRemote(...)` / `AddRemoteServer(...)` / `AddRemoteService<TService>()` / `AddRemoteServiceFactory<TFactory>()`
 - `[Service]` / `[ServiceMethod]`
-- `ITypeNameResolver` / `TypeNameResolverFactory`
+- `ITypeNameResolver` / `TypeNameResolverFactory` / `DefaultTypeResolver`
 
 Related guides:
 
@@ -229,17 +138,9 @@ Related guides:
 - [Logging and diagnostics](../06-di/03-logging.en.md)
 - [Remote service invocation](../03-advanced-topics/09-remote-service.en.md)
 
-
-
 ## Related links
 
-
-
-- [Back to English docs hub](../README.md)
+- [Back to docs hub](../README.md)
 - [Example Index](./05-example-index.en.md)
-
 - [Generated SQL Examples](./06-sql-examples.en.md)
-
 - [Database Compatibility Notes](./07-database-compatibility.en.md)
-
-

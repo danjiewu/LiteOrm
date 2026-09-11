@@ -151,7 +151,9 @@ public class Legacy { ... }
 `SyncTable` 判定的优先级从高到低依次为：`OnTableSyncing` 事件订阅者 > `[Table(SyncTable = ...)]` 实体级配置（`Never` / `Always`）> 连接池级 `SyncTable`。若仍需更动态的控制（例如基于运行时条件），可订阅 `DAOContextPool.DatabaseSync` 的 `OnTableSyncing` 事件：
 
 ```csharp
-var pool = poolFactory.GetPool("SQLite");
+// poolFactory 从容器解析：var poolFactory = provider.GetRequiredService<DAOContextPoolFactory>();
+// GetPool 按数据源名称取连接池，不传名称时取 Default 指向的数据源；名称不存在时返回 null。
+var pool = poolFactory.GetPool("main")!;
 
 // 场景一：连接池开启同步，但仅对 User 表生效，其余跳过
 pool.SyncTable = true;
@@ -313,11 +315,23 @@ app.Run();
 
 ### 如何验证配置是否正确？
 
-启动应用后，观察控制台输出。如果看到类似 `LiteOrm initialized successfully` 的日志，说明配置正确。如果出现异常，请检查：
+LiteOrm 不会在启动时打印「初始化成功」之类的日志，配置问题通常在**首次访问数据源、创建连接池**时以异常形式暴露。请检查：
 
 1. 连接字符串是否能正常连接数据库（可以用数据库管理工具先测试）。
 2. `Provider` 类型名是否与安装的 NuGet 包一致。
 3. 数据库服务是否已启动。
+
+常见异常与含义：
+
+| 异常 | 典型原因 |
+| --- | --- |
+| `TypeLoadException: Unable to load database provider type: ...` | `Provider` 的类型名或程序集名写错，或未安装对应驱动包 |
+| `TypeLoadException: Unable to load SQL builder type: ...` | `SqlBuilder` 类型名写错 |
+| `InvalidOperationException: Database provider not specified` | 未填写 `Provider` |
+| `InvalidOperationException: Failed to create connection pool instance for data source 'xxx'` | 连接字符串或驱动配置有问题，内部异常含真实原因 |
+| `ArgumentException: Connection pool name cannot be empty` | 未配置 `Default`，且取连接池时未指定名称 |
+
+需要观察注册过程时，把日志级别调到 `Debug`，可看到程序集扫描记录（`Scanning {Count} assemblies to register LiteOrm services (Autofac)`）。
 
 ## 相关链接
 

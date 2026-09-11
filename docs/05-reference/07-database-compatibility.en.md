@@ -87,12 +87,12 @@ Recommended references:
 
 ### 2.2 Type Mapping Differences
 
-Different databases handle .NET types differently. `SqlBuilder` subclasses handle these in `GetDbTypeInternal` / `ToDbValue` (dispatched through `LiteOrm.Common.DbConverterHelper`):
+Different databases handle .NET types differently. `SqlBuilder` subclasses adapt dialects by overriding `GetDbValueTypeInternal(Type)` (.NET type → `DbValueType`) and `ToDbType(DbValueType)` (`DbValueType` → ADO.NET `DbType`); value conversion is dispatched uniformly through `LiteOrm.Common.DbConverterHelper`:
 
 | Database | Special Handling |
 |----------|-----------------|
-| Oracle / Dameng | `bool` → `DbType.Byte` (Oracle has no native boolean); `DateTime` → `DbType.Date` |
-| SQLite | `DateTime`/`TimeSpan`/`DateTimeOffset` → `DbType.String`; DateTime formatted as `yyyy-MM-dd HH:mm:ss.fff`, DateTimeOffset as `yyyy-MM-dd HH:mm:ss.fff zzz`, TimeSpan using `c` format |
+| Oracle / Dameng | `bool` → `DbType.Int32` (Oracle has no native boolean; the column type is `NUMBER(1)`); `DateTime` → `DbType.Date`; `Guid` → `DbType.Binary`; `TimeSpan` → `DbType.Object` (left to the driver to handle as INTERVAL) |
+| SQLite | `Date`/`DateTime`/`Time`/`DateTimeOffset` → `DbType.String`; DateTime formatted as `yyyy-MM-dd HH:mm:ss.fff`, DateTimeOffset as `yyyy-MM-dd HH:mm:ss.fff zzz`, TimeSpan using `c` format |
 | SQL Server / MySQL / PostgreSQL / others | Standard type mapping, no special conversion |
 
 ### 2.3 Auto-increment Primary Key (Identity)

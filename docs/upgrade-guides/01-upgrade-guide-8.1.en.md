@@ -6,9 +6,9 @@ This guide describes the changes required when upgrading to v8.1.x from **8.0.20
 
 | Package | New Version |
 |---|---|
-| `LiteOrm` | 8.1.1 |
-| `LiteOrm.Common` | 8.1.1 |
-| `LiteOrm.DependencyInjection` | 8.1.1 (new in v8.1.0) |
+| `LiteOrm` | 8.1.0 |
+| `LiteOrm.Common` | 8.1.0 |
+| `LiteOrm.DependencyInjection` | 8.1.0 |
 
 ---
 

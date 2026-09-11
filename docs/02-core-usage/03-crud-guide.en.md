@@ -269,7 +269,7 @@ await userService.DeleteAsync(user);
 ### Delete by Primary Key
 
 ```csharp
-await userService.DeleteAsync(1);
+await userService.DeleteIDAsync(1);
 ```
 
 ### Batch Delete

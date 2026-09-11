@@ -23,7 +23,7 @@
 - `AppendLiteral(string)`：处理字面量片段，原样追加到缓冲区。
 - `AppendFormatted<T>(T value)`：处理每个插值项。
   - 当 `value` 是 `Expr` 时，调用 `expr.ToSql(...)` 把表达式翻译成 SQL 片段并拼入，附带其内部产生的参数；
-  - 当 `value` 是 `RawSql` 时（见 [第 8 节 插入原始 SQL](#8-插入原始-sql-rawsql)），其内容直接原样拼入缓冲区，不进行参数化或语法处理；
+  - 当 `value` 是 `RawSql` 时（见 [第 8 节 插入原始 SQL](#8-插入原始-sqlrawsql)），其内容直接原样拼入缓冲区，不进行参数化或语法处理；
   - 否则把该值包装成一个命名参数（`@0`、`@1`……，按出现顺序命名，并通过 `ISqlBuilder.ToSqlParam` 转成当前方言的参数前缀），值进入参数列表。
 
 最终通过 `GetSql()` / `GetParams()` / `GetResult()` 取出 SQL 文本与参数，组装成 `PreparedSql` 交给 DAO 执行。

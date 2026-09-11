@@ -21,8 +21,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 对应文档：
 
-- [配置参考](../05-reference/01-configuration-reference.md)
-- [配置项速查](./01-configuration-reference.md)
+- [配置参考](./01-configuration-reference.md)
 - [数据库差异与兼容性说明](./07-database-compatibility.md)
 
 ### 实体映射与视图模型
@@ -49,7 +48,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - `Exists` / `ExistsAsync`
 - `Count` / `CountAsync`
 - `Expr`、`LogicExpr`、`SelectExpr`
-- `SelectAll()` / `Cast(DbType)`
+- `SelectAll()` / `Cast(DbValueType)`
 - Lambda 三目运算符 `?:`（转为 `CASE`）
 - 表达式名称与别名忽略大小写
 - `DbValueType`（`Default` / `Json` / `Jsonb` / `Array`）与 `DbValueTypeMap`
@@ -73,6 +72,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - `UpdateAll` / `UpdateAllAsync`（按 `UpdateExpr` 条件更新）
 - `ObjectDAO<T>.Update(entity, timestamp)` / `UpdateAsync(entity, timestamp)`
 - `Delete` / `DeleteAsync`
+- `DeleteID` / `DeleteIDAsync`（按主键删除）
 - `DeleteAll` / `DeleteAllAsync`（按 `LogicExpr` 条件删除）
 - `BatchInsert` / `BatchUpdate`
 - `UpdateOrInsert`
@@ -123,12 +123,12 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 ### 依赖注入与远程服务
 
-- `RegisterLiteOrm()`（`LiteOrm.DependencyInjection`，Autofac + AOP）
-- `AddLiteOrm()` / `AddLiteOrm(Action<AddLiteOrmOptions>)`（基础库，纯 MS DI，无 AOP）
-- `AddLiteOrm(IServiceProvider, Action<AddLiteOrmOptions>)` 工厂重载
-- `AddLiteOrmRemote(...)` / `AddRemoteServer(...)`
+- `RegisterLiteOrm()` / `RegisterLiteOrm(Action<LiteOrmOptions>)`（`LiteOrm.DependencyInjection`，Autofac + AOP）
+- `AddLiteOrm()` / `AddLiteOrm(Action<LiteOrmOptions>)`（基础库，纯 MS DI，无 AOP）
+- 工厂重载 `AddLiteOrm(Func<IServiceProvider, LiteOrmOptions>)` / `RegisterLiteOrm(Func<IServiceProvider, LiteOrmOptions>)`
+- `AddLiteOrmRemote(...)` / `AddRemoteServer(...)` / `AddRemoteService<TService>()` / `AddRemoteServiceFactory<TFactory>()`
 - `[Service]` / `[ServiceMethod]`
-- `ITypeNameResolver` / `TypeNameResolverFactory`
+- `ITypeNameResolver` / `TypeNameResolverFactory` / `DefaultTypeResolver`
 
 对应文档：
 

@@ -126,7 +126,7 @@ graph TD
     Server[LiteOrm.Remote.Server] -->|引用| Common
 ```
 
-> - `LiteOrm.Generators` 源生成器在编译期被 `LiteOrm.Common` 与 `LiteOrm` 引用（Analyzer），仅参与编译，不产生运行时依赖。
+> - `LiteOrm.Generators` 源生成器仅由 `LiteOrm.Common` 引用（Analyzer），仅参与编译，不产生运行时依赖；`LiteOrm` 基础库不再内置源生成器，分析器统一由 `LiteOrm.Common` 提供。
 > - `LiteOrm.Remote.Server` 额外依赖 ASP.NET Core 共享框架（`Microsoft.AspNetCore.App`）。
 
 **AOT 支持说明：**

@@ -60,7 +60,7 @@ var ageText = Prop("Age").Cast(DbType.String);
 var levelExpr = If(Prop("Age") >= 18, Const("Adult"), Const("Minor"));
 ```
 
-- `.Cast(DbType)`：把值表达式转换为目标数据库类型，对应 SQL `CAST(...)`
+- `.Cast(DbValueType)`：把值表达式转换为目标数据库类型，对应 SQL `CAST(...)`
 - `Expr.If(condition, then, else = null)`：构造简单条件表达式，等价于 `CASE WHEN condition THEN then ELSE else END`。`elseExpr` 为可选参数，默认 `null`，省略时不生成 `ELSE` 分支
 - `Expr.Case(...)`：构造多条件 CASE 表达式，支持以下重载：
   - `Case((LogicExpr, ValueTypeExpr)[] cases, ValueTypeExpr elseExpr)` - 条件-结果元组数组 + ELSE
@@ -495,7 +495,7 @@ LiteOrm 会把它解析成 `Expr.If(...)`，并进一步生成 SQL `CASE` 表达
 | `.RegexpLike(pattern)` | 正则匹配 |
 | `.IsNull()` `.IsNotNull()` | NULL 检查 |
 | `.IfNull(defaultValue)` | 空值替换 |
-| `.Cast(DbType)` | 转换为目标数据库类型 |
+| `.Cast(DbValueType)` | 转换为目标数据库类型 |
 
 补充说明：`Contains` / `StartsWith` / `EndsWith` / `Like` 仍会做参数化与通配符转义，但只有在模式字符串确实包含需要转义的特殊字符时，才会生成 `ESCAPE` 片段。
 

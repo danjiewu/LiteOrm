@@ -378,7 +378,7 @@ options.RegisterSqlBuilder("YourDataSourceName", DamengBuilder.Instance);
 
 ### Q4：国产数据库的布尔类型怎么处理？
 
-**A：** 默认 `OracleBuilder` / `DamengBuilder` 会把 `bool` 映射为 `NUMBER(1)`（0/1）。`PostgreSqlBuilder` 系（KingbaseES、GaussDB）原生支持 `BOOLEAN` 类型。`MySqlBuilder` 系（OceanBase、TiDB、GreatDB）原生支持 `TINYINT(1)`。如果你需要其他映射（例如达梦的 `BIT`），覆盖 `GetDbTypeInternal` 和 `GetSqlTypeDefinition` 即可。
+**A：** 默认 `OracleBuilder` / `DamengBuilder` 会把 `bool` 映射为 `NUMBER(1)`（0/1）。`PostgreSqlBuilder` 系（KingbaseES、GaussDB）原生支持 `BOOLEAN` 类型。`MySqlBuilder` 系（OceanBase、TiDB、GreatDB）原生支持 `TINYINT(1)`。如果你需要其他映射（例如达梦的 `BIT`），覆盖 `ToDbType`（`DbValueType` → `DbType`）和 `GetSqlTypeDefinition`（`DbType` → 列类型文本）即可。
 
 ### Q5：为什么内置的 KingbaseESBuilder / GaussDBBuilder / OceanBaseBuilder / TiDBBuilder / GreatDBBuilder 内部是空的？
 

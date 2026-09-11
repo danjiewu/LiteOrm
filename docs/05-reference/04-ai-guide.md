@@ -97,7 +97,8 @@ builder.Host.RegisterLiteOrm(options =>
 | AOT / 裁剪（`PublishAot` / `IsAotCompatible` / `PublishTrimmed` 等为 `true`） | 编译期源生成器（`LiteOrm.Generators.AutoRegisterGenerator`） | 生成 `LiteOrmAutoRegister.g.cs`，由模块初始化器登记注册回调，无反射、AOT 友好 |
 | 非 AOT（默认） | 运行时程序集扫描 | `LiteOrmAutoRegistration.Apply()` 反射扫描引用程序集中带 `[AutoRegister]` 的类型 |
 
-- 两条路径均由 `AutoRegisterServices` 选项（默认 `true`）控制，设为 `false` 时完全跳过自动注册，需手动注册服务。
+- `AutoRegisterServices` 选项（默认 `true`）只控制**用户自定义**服务与 DAO 的自动注册：AOT 模式应用源生成器登记的注册代码，非 AOT 模式扫描程序集运行时注册；设为 `false` 时跳过这部分注册，需手动注册自定义服务。
+- 框架内置的泛型 DAO 与服务（`ObjectDAO<>` / `ObjectViewDAO<>` / `EntityService<>` / `EntityViewService<>` 及其接口）不受该选项影响，由 `AddLiteOrm()` 固定注册，`AutoRegisterServices` 为 `false` 时同样可用。
 - 注册范围由 `[AutoRegister]` 的 `Policy` 枚举 `RegisterPolicy` 控制：`All`（默认，实现类型自身 + 接口）、`Self`（仅自身）、`Interface`（仅接口）。
 - `AddLiteOrm()`：AOT 模式应用生成代码，非 AOT 模式走运行时扫描（由 `RuntimeFeature.IsDynamicCodeSupported` 自动分流）。
 - `RegisterLiteOrm()`：Autofac 程序集扫描注册，并自动应用 `[InterceptAttribute]`、`IEntityService` 系列接口，以及带 `[Service]`（`IsService=true`）特性的类型的 Castle 拦截器（`ServiceInvokeInterceptor`）。
@@ -498,7 +499,7 @@ services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<Exception
 | 范围   | `.Between(low, high)`                                                                                      |
 | 字符串  | `.Like(pattern)` `.Contains(text)` `.StartsWith(text)` `.EndsWith(text)`                                   |
 | Null | `.IsNull()` `.IsNotNull()`                                                                                 |
-| 类型转换 | `.Cast(DbType)`                                                                                             |
+| 类型转换 | `.Cast(DbValueType)`                                                                                             |
 | 别名   | `.As("alias")` → `SelectItemExpr`                                                                          |
 | 聚合   | `.Count(isDistinct)` `.Sum()` `.Avg()` `.Max()` `.Min()`                                                   |
 | 排序   | `.Asc()` `.Desc()` → `OrderByItemExpr`                                                                     |

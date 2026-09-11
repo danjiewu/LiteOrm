@@ -57,7 +57,7 @@ For learning, this order works well:
 | `Delete` | Delete segment, represents DELETE | `$delete` | `"delete"` |
 | `Foreign` | Foreign-key EXISTS expression | `$foreign` | `"foreign"` |
 | `From` | From segment, represents a data source | `$from` | `"from"` |
-| `Function` | Function call expression | `{"$":"func","ActualFunctionName":[...]}` | `"func"` |
+| `Function` | Function call expression | `{"$":"func","DateDiffDays":[...]}` | `"func"` |
 | `GenericSql` | SQL fragment generated via delegate or registration | - | `"sql"` |
 | `GroupBy` | Group-by segment, represents GROUP BY | `$group` | `"group"` |
 | `Having` | Having segment, represents HAVING | `$having` | `"having"` |

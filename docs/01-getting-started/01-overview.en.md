@@ -128,7 +128,7 @@ graph TD
     Server[LiteOrm.Remote.Server] -->|references| Common
 ```
 
-> - `LiteOrm.Generators` is referenced at compile time by `LiteOrm.Common` and `LiteOrm` (as an Analyzer); it participates only in compilation and adds no runtime dependency.
+> - `LiteOrm.Generators` is referenced only by `LiteOrm.Common` (as an Analyzer); it participates only in compilation and adds no runtime dependency. The `LiteOrm` base package no longer bundles a source generator—analyzers are unified under `LiteOrm.Common`.
 > - `LiteOrm.Remote.Server` additionally depends on the ASP.NET Core shared framework (`Microsoft.AspNetCore.App`).
 
 **AOT support notes:**

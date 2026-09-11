@@ -52,17 +52,6 @@ public class User
 
 > `DbType` 的类型为 `DbValueType` 枚举，默认 `DbValueType.Default`（表示未显式指定、按属性类型自动推断）。
 
-| 参数 | 说明 |
-| --- | --- |
-| `ColumnName` | 数据库列名（构造函数位置参数）。 |
-| `IsPrimaryKey` | 是否主键。 |
-| `IsIdentity` | 是否自增列。 |
-| `IdentityStart` | 自增列起始值，默认 `1`。仅在支持起始值的数据库（SQL Server、达梦、Oracle）生效；MySQL 通过表级 `AUTO_INCREMENT = n` 选项设置；SQLite 不支持自定义。 |
-| `IdentityIncreasement` | 自增列增量值，默认 `1`。仅在支持增量的数据库（SQL Server、达梦、Oracle）生效；MySQL 需通过会话变量 `auto_increment_increment` 设置；SQLite 不支持自定义。 |
-| `DbType` | 数据库列类型（`DbValueType` 枚举），默认 `DbValueType.Default`（按属性类型自动推断）。`Json`/`Jsonb` 表示 JSON/JSONB 列，`Array` 表示数组列。 |
-| `Expression` | 计算列表达式（非实际列），用 `{属性名}` 引用同一实体的其他属性，或直接书写数据库方言 SQL 片段。 |
-| `ColumnMode` | 列操作模式（`ColumnMode` 枚举），默认 `Full`。计算列设为 `ColumnMode.Computed`。 |
-
 > **复杂类型需显式 `[Column]`**：数组/集合、以及自定义类（映射为 `Object`）等复杂类型的属性，若未标注 `[Column]` **不再被自动识别为表列**，必须显式 `[Column]`（并按其场景指定 `DbType = Array` 等）才会持久化。已知标量（数值、`string`/`char`、`byte[]`→`Binary`、`Guid`、日期、枚举→`Int32`）以及 `Json`/`Jsonb` 映射类型仍会自动映射为列。该规则在运行时（`AttributeTableInfoProvider`）与 AOT 源生成器（`TableInfoGenerator`）中保持行为一致。
 
 ### 数组列（PostgreSQL）

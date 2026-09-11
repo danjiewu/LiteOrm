@@ -292,11 +292,11 @@ namespace LiteOrm.Remote
         /// 创建无目标对象的接口代理，所有方法调用由 <see cref="RemoteServiceInvokeInterceptor"/>
         /// 拦截并通过 <see cref="IRemoteServiceTransport"/> 转发到远程服务端。
         /// <para>
-        /// 与 <see cref="AddRemoteServiceGenerator{TService}"/> 不同，本方法注册的是单个业务服务接口本身
+        /// 与 <see cref="AddRemoteServiceFactory{TService}"/> 不同，本方法注册的是单个业务服务接口本身
         /// （如 <c>IUserService</c>），解析时直接返回可调用远程服务的代理实例；
-        /// 而 <see cref="AddRemoteServiceGenerator{TService}"/> 注册的是返回服务的工厂接口
+        /// 而 <see cref="AddRemoteServiceFactory{TService}"/> 注册的是返回服务的工厂接口
         /// （如 <c>RemoteServiceFactory</c>），访问其属性时由
-        /// <see cref="RemoteServiceGenerateInterceptor"/> 从 DI 容器解析对应服务。
+        /// <see cref="ServiceGenerateInterceptor"/> 从 DI 容器解析对应服务。
         /// </para>
         /// <para>
         /// 使用示例：
@@ -344,7 +344,7 @@ namespace LiteOrm.Remote
         /// <para>
         /// 使用后无需再手动调用 <see cref="AddRemoteService{TService}"/> 注册各业务接口：
         /// <code>
-        /// services.AddRemoteServiceGenerator&lt;RemoteServiceFactory&gt;();
+        /// services.AddRemoteServiceFactory&lt;RemoteServiceFactory&gt;();
         /// // IUserService、ISalesService 等已自动注册为远程代理
         /// </code>
         /// </para>

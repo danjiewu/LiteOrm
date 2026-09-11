@@ -245,7 +245,7 @@ services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<MetricEve
 
 - `context.ServiceName` / `context.MethodName` / `context.ServiceType`: current service and method
 - `context.Arguments`: raw arguments (no masking)
-- `context.SessionID`: current session ID
+- `context.SessionId`: current session ID
 - `context.Duration`: elapsed time (valid only in `OnInvoked`)
 - `context.Result`: return value (valid only in `OnInvoked`)
 
@@ -254,7 +254,7 @@ services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<MetricEve
 - `context.Exception`: the original exception
 - `context.ServiceName` / `context.MethodName`: current service and method
 - `context.Arguments` / `context.LogArguments`: raw and log-safe arguments
-- `context.SessionID`: current session ID
+- `context.SessionId`: current session ID
 - `context.SqlStack`: current SQL stack
 
 > `RemoteServiceInvokeInterceptor` still exposes `RemoteServiceInvokeInterceptor.ExceptionHandling` so a remote call can convert an exception into a result. The local `ServiceInvokeInterceptor` now uses the injected exception event above and no longer supports suppressing exceptions via `.Handle()`.

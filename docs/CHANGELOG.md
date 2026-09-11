@@ -1,5 +1,13 @@
 # 变更日志 (Changelog)
 
+## v8.1.7 (2026-09-10)
+
+### 修复
+
+- **修复 AOT 下框架内置泛型服务未注册的问题**（`LiteOrm`）：`AddLiteOrm()` 此前只在 `AutoRegisterServices` 为 `false` 时才注册泛型 DAO 与服务（`ObjectDAO<>` / `ObjectViewDAO<>` / `EntityService<>` / `EntityViewService<>` 及其接口），AOT 构建下该分支不成立，`GetRequiredService<IEntityService<T>>()` 会抛 "No service for type ... has been registered"。现改为固定注册，`AutoRegisterServices` 只控制用户自定义服务与 DAO 的自动注册。
+
+***
+
 ## v8.1.6 (2026-09-10)
 
 ### 破坏性变更

@@ -52,17 +52,6 @@ public class User
 
 > `DbType` is of the `DbValueType` enum type, defaulting to `DbValueType.Default` (meaning "not specified — inferred from the property type").
 
-| Parameter | Description |
-|-----------|-------------|
-| `ColumnName` | Database column name (positional constructor parameter). |
-| `IsPrimaryKey` | Whether it is a primary key. |
-| `IsIdentity` | Whether it is an identity column. |
-| `IdentityStart` | Identity column start value, default `1`. Only takes effect on databases that support start value (SQL Server, Dameng, Oracle); MySQL via table-level `AUTO_INCREMENT = n` option; SQLite does not support customization. |
-| `IdentityIncreasement` | Identity column increment value, default `1`. Only takes effect on databases that support increment (SQL Server, Dameng, Oracle); MySQL requires session variable `auto_increment_increment`; SQLite does not support customization. |
-| `DbType` | Database column type (`DbValueType` enum), defaults to `DbValueType.Default` (inferred from the property type). `Json`/`Jsonb` denote JSON/JSONB columns, and `Array` denotes an array column. |
-| `Expression` | Computed column expression (non-actual column); reference other properties of the same entity via `{PropertyName}`, or write a dialect-specific raw SQL fragment. |
-| `ColumnMode` | Column operation mode (`ColumnMode` enum), defaults to `Full`. Set to `ColumnMode.Computed` for computed columns. |
-
 > **Complex types require an explicit `[Column]`**: properties of complex types — arrays/collections and custom classes (mapped as `Object`) — are **no longer auto-recognized as table columns** when they lack a `[Column]`. You must mark them explicitly with `[Column]` (specifying `DbType = Array` as appropriate) to persist them. Known scalars (numerics, `string`/`char`, `byte[]` → `Binary`, `Guid`, dates, enums → `Int32`) and `Json`/`Jsonb` mapped types are still auto-mapped as columns. The runtime (`AttributeTableInfoProvider`) and the AOT source generator (`TableInfoGenerator`) behave consistently.
 
 ### Array Columns (PostgreSQL)

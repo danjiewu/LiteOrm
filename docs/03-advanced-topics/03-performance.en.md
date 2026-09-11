@@ -452,16 +452,16 @@ LiteOrm's performance advantage vs other ORMs, based on BenchmarkDotNet measurem
 | Operation | Rows | LiteOrm | Dapper | FreeSql | SqlSugar | EFCore |
 |-----------|-----:|--------:|-------:|--------:|---------:|-------:|
 | Insert | 10 | 0 / 0 / 0 | 0 / 0 / 0 | 7.8 / 0 / 0 | 7.8 / 0 / 0 | 31 / 16 / 0 |
-| Insert | 100 | 7.8 / 0 / 0 | 31 / 0 / 0 | 94 / 16 / 0 | 62 / 16 / 0 | 250 / 167 / 0 |
-| Insert | 1000 | 125 / 31 / 0 | 656 / 625 / 375 | 857 / 429 / 0 | 778 / 444 / 111 | 2,000 / 1,000 / 0 |
+| Insert | 100 | **7.8 / 0 / 0** | 31 / 0 / 0 | 94 / 16 / 0 | 62 / 16 / 0 | 250 / 167 / 0 |
+| Insert | 1000 | **125 / 31 / 0** | 656 / 625 / 375 | 857 / 429 / 0 | 778 / 444 / 111 | 2,000 / 1,000 / 0 |
 | Insert | 10000 | **1,333 / 0 / 0** | 3,667 / 3,333 / 1,000 | 9,000 / 4,000 / 0 | 7,000 / 4,000 / 1,000 | 26,000 / 8,000 / 1,000 |
 | Update | 10 | 7.8 / 0 / 0 | **0 / 0 / 0** | 7.8 / 0 / 0 | 16 / 0 / 0 | 31 / 16 / 0 |
-| Update | 100 | 16 / 0 / 0 | **47 / 0 / 0** | 125 / 47 / 0 | 125 / 47 / 0 | 154 / 77 / 0 |
-| Update | 1000 | 188 / 94 / 0 | 625 / 500 / 250 | 1,167 / 1,000 / 167 | 1,167 / 500 / 167 | 1,000 / 0 / 0 |
+| Update | 100 | **16 / 0 / 0** | 47 / 0 / 0 | 125 / 47 / 0 | 125 / 47 / 0 | 154 / 77 / 0 |
+| Update | 1000 | **188 / 94 / 0** | 625 / 500 / 250 | 1,167 / 1,000 / 167 | 1,167 / 500 / 167 | 1,000 / 0 / 0 |
 | Update | 10000 | **1,500 / 500 / 0** | 4,000 / 3,000 / 1,000 | 12,000 / 4,000 / 1,000 | 11,000 / 6,000 / 1,000 | 19,000 / 7,000 / 1,000 |
 | Upsert | 10 | **0 / 0 / 0** | **0 / 0 / 0** | **0 / 0 / 0** | 23 / 0 / 0 | 31 / 16 / 0 |
 | Upsert | 100 | 47 / 0 / 0 | 47 / 16 / 0 | **31 / 0 / 0** | 156 / 62 / 0 | 167 / 83 / 0 |
-| Upsert | 1000 | 167 / 83 / 0 | 556 / 444 / 222 | 500 / 344 / 188 | 3,000 / 1,000 / 0 | 2,000 / 1,000 / 0 |
+| Upsert | 1000 | **167 / 83 / 0** | 556 / 444 / 222 | 500 / 344 / 188 | 3,000 / 1,000 / 0 | 2,000 / 1,000 / 0 |
 | Upsert | 10000 | **1,500 / 500 / 0** | 4,000 / 3,000 / 1,000 | 3,500 / 1,000 / 500 | 277,000 / 5,000 / 1,000 | 21,000 / 7,000 / 1,000 |
 | JoinQuery | 10 | 1.95 / 0.98 / 0 | **0.98 / 0 / 0** | 2.93 / 0.98 / 0 | 14 / 0 / 0 | 20 / 8 / 0 |
 | JoinQuery | 100 | **0 / 0 / 0** | 3.9 / 0 / 0 | 12 / 4 / 0 | 78 / 0 / 0 | 78 / 16 / 0 |
@@ -521,7 +521,7 @@ Each ORM's six dimensions — **batch time / batch memory / batch GC** (4 operat
 - `Upsert @10000`: SqlSugar `6,708,137µs` time / `3,413,708KB` memory / GC `277,000 / 5,000 / 1,000` — all three dimensions collapse. Time is **27.0×** LiteOrm, memory **148×**, Gen0 GC **185×**.
 - `JoinQuery @10000`: EFCore `158,733µs` is actually **slower** than SqlSugar's `174,890µs`… but only by 10%. Memory is also close (`94,250KB` vs `91,661KB`). On large result sets EF Core has no structural edge.
 - Single-row `Get`: LiteOrm `240.3ms` (cumulative) essentially ties Dapper's `234.9ms`. LiteOrm memory `3.67MB` beats Dapper's `6.08MB`; GC `0 / 0` beats Dapper's `500 / 0`. This is the only single-row cell where LiteOrm leads Dapper on two dimensions at once.
-- Single-row Insert / Update / Upsert: LiteOrm cumulative time is in the `3,640–3,830ms` band; Dapper is 0.3–3.9% faster — much narrower than the batch gap. The reason: per-call "fixed round-trip cost" dominates every ORM in single-row mode. At batch `Insert@10000` the same comparison flips: LiteOrm `22,698ms` vs Dapper `30,853ms` — LiteOrm 26% faster.
+- Single-row Insert / Update / Upsert: LiteOrm cumulative time is in the `3,640–3,830ms` band; Dapper is 0.5–3.8% faster — much narrower than the batch gap. The reason: per-call "fixed round-trip cost" dominates every ORM in single-row mode. Writing the same 1000 rows one at a time costs `3,640.6ms` cumulatively, while a single batch insert of 1000 rows takes only `22,698µs` (about 22.7ms), roughly 160× less: the number of round trips drops from 1000 to 1.
 
 ## Related Links
 

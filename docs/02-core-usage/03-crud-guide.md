@@ -271,7 +271,7 @@ await userService.DeleteAsync(user);
 ### 根据主键删除
 
 ```csharp
-await userService.DeleteAsync(1);
+await userService.DeleteIDAsync(1);
 ```
 
 ### 批量删除

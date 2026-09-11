@@ -97,7 +97,8 @@ Types marked with `[AutoRegister]` are automatically registered into the DI cont
 | AOT / trim (`PublishAot` / `IsAotCompatible` / `PublishTrimmed` etc. set to `true`) | Compile-time source generator (`LiteOrm.Generators.AutoRegisterGenerator`) | Emits `LiteOrmAutoRegister.g.cs`; a module initializer registers the callback. No reflection, AOT-friendly |
 | Non-AOT (default) | Runtime assembly scan | `LiteOrmAutoRegistration.Apply()` reflects over referenced assemblies for `[AutoRegister]` types |
 
-- Both paths are controlled by the `AutoRegisterServices` option (default `true`); set to `false` to skip auto-registration entirely and register services manually.
+- The `AutoRegisterServices` option (default `true`) only governs auto-registration of **user-defined** services and DAOs: AOT mode applies the source-generated registration code, non-AOT mode scans assemblies at runtime; set to `false` to skip that and register custom services manually.
+- The framework's built-in generic DAOs and services (`ObjectDAO<>` / `ObjectViewDAO<>` / `EntityService<>` / `EntityViewService<>` and their interfaces) are unaffected by this option — they are always registered by `AddLiteOrm()` and remain available even when `AutoRegisterServices` is `false`.
 - The registration scope is controlled by the `Policy` enum `RegisterPolicy` on `[AutoRegister]`: `All` (default — the implementation type itself + interfaces), `Self` (itself only), `Interface` (interfaces only).
 - `AddLiteOrm()`: applies generated code in AOT mode, runtime scan in non-AOT mode (auto-dispatched via `RuntimeFeature.IsDynamicCodeSupported`).
 - `RegisterLiteOrm()`: Autofac assembly-scan registration; automatically applies Castle interceptors from `[InterceptAttribute]`, the `IEntityService` interface family, and types carrying `[Service]` (`IsService=true`) via `ServiceInvokeInterceptor`.
@@ -498,7 +499,7 @@ Additional notes:
 | Range | `.Between(low, high)` |
 | String | `.Like(pattern)` `.Contains(text)` `.StartsWith(text)` `.EndsWith(text)` |
 | Null | `.IsNull()` `.IsNotNull()` |
-| Type conversion | `.Cast(DbType)` |
+| Type conversion | `.Cast(DbValueType)` |
 | Alias | `.As("alias")` → `SelectItemExpr` |
 | Aggregate | `.Count(isDistinct)` `.Sum()` `.Avg()` `.Max()` `.Min()` |
 | Sort | `.Asc()` `.Desc()` → `OrderByItemExpr` |

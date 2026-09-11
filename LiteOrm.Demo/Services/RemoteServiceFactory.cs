@@ -3,8 +3,8 @@ namespace LiteOrm.Demo.Services
     /// <summary>
     /// 远程服务工厂接口。
     /// <para>
-    /// 通过 <see cref="LiteOrm.LiteOrmRemoteExtensions.AddRemoteServiceGenerator{TService}"/>
-    /// 注册为动态代理。访问属性时，<c>RemoteServiceGenerateInterceptor</c> 自动从 DI 容器
+    /// 通过 <see cref="LiteOrm.Remote.LiteOrmRemoteExtensions.AddRemoteServiceFactory{TService}"/>
+    /// 注册为动态代理。访问属性时，<c>ServiceGenerateInterceptor</c> 自动从 DI 容器
     /// 解析对应的远程服务代理（由 <c>RemoteServiceInvokeInterceptor</c> 转发调用到远程服务端）。
     /// </para>
     /// <para>

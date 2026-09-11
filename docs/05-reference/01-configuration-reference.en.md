@@ -151,7 +151,9 @@ public class Legacy { ... }
 The `SyncTable` decision priority, from highest to lowest, is: `OnTableSyncing` event subscribers > `[Table(SyncTable = ...)]` entity-level config (`Never` / `Always`) > pool-level `SyncTable`. If you need more dynamic control (e.g. based on runtime conditions), subscribe to the `OnTableSyncing` event on `DAOContextPool.DatabaseSync`:
 
 ```csharp
-var pool = poolFactory.GetPool("SQLite");
+// Resolve poolFactory from the container: var poolFactory = provider.GetRequiredService<DAOContextPoolFactory>();
+// GetPool takes a data-source name; omit it to use the data source referenced by Default. Returns null when the name does not exist.
+var pool = poolFactory.GetPool("main")!;
 
 // Scenario 1: pool-wide sync enabled, but only the User table is synced
 pool.SyncTable = true;
@@ -313,11 +315,23 @@ The `Default` value must exactly match one of the `DataSources[].Name` values, o
 
 ### How to verify your configuration is correct?
 
-After starting the application, check the console output. If you see a log message like `LiteOrm initialized successfully`, the configuration is correct. If an exception occurs, check:
+LiteOrm does not print an "initialized successfully" log at startup. Configuration problems surface as exceptions when the data source is **first accessed and the connection pool is created**. Check:
 
 1. Whether the connection string can actually connect to the database (test with a database management tool first).
 2. Whether the `Provider` type name matches the installed NuGet package.
 3. Whether the database service is running.
+
+Common exceptions and their meaning:
+
+| Exception | Typical cause |
+| --- | --- |
+| `TypeLoadException: Unable to load database provider type: ...` | The `Provider` type or assembly name is wrong, or the driver package is not installed |
+| `TypeLoadException: Unable to load SQL builder type: ...` | The `SqlBuilder` type name is wrong |
+| `InvalidOperationException: Database provider not specified` | `Provider` is missing |
+| `InvalidOperationException: Failed to create connection pool instance for data source 'xxx'` | The connection string or driver configuration is broken; the inner exception holds the real cause |
+| `ArgumentException: Connection pool name cannot be empty` | `Default` is not configured and no name was passed when fetching the pool |
+
+To watch the registration process, set the log level to `Debug` to see assembly-scan records (`Scanning {Count} assemblies to register LiteOrm services (Autofac)`).
 
 ## Related Links
 

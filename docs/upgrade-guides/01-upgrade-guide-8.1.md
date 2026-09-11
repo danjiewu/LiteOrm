@@ -6,9 +6,9 @@
 
 | 包 | 新版本 |
 |---|---|
-| `LiteOrm` | 8.1.1 |
-| `LiteOrm.Common` | 8.1.1 |
-| `LiteOrm.DependencyInjection` | 8.1.1（v8.1.0 新增） |
+| `LiteOrm` | 8.1.0 |
+| `LiteOrm.Common` | 8.1.0 |
+| `LiteOrm.DependencyInjection` | 8.1.0 |
 
 ---
 

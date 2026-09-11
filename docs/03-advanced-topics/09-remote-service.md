@@ -326,11 +326,11 @@ services.AddRemoteService<ISpecialService>();
 | --------------------------------------- | ----------------------- | -------------- |
 | `AutoRegisterEntityServices`            | 自动扫描带 `[Service]` 特性的接口 | `[Service]` 特性 |
 | `AddRemoteService<TService>()`          | 手动注册任意服务接口              | 显式指定类型         |
-| `AddRemoteServiceGenerator<TFactory>()` | 通过工厂聚合多个服务              | 自动扫描工厂返回类型     |
+| `AddRemoteServiceFactory<TFactory>()` | 通过工厂聚合多个服务              | 自动扫描工厂返回类型     |
 
 #### 工厂模式
 
-定义工厂接口聚合多个业务服务，通过 `AddRemoteServiceGenerator` 一次性注册：
+定义工厂接口聚合多个业务服务，通过 `AddRemoteServiceFactory` 一次性注册：
 
 ```csharp
 public interface RemoteServiceFactory
@@ -340,7 +340,7 @@ public interface RemoteServiceFactory
     IDemoDepartmentService DemoDepartmentService { get; }
 }
 
-services.AddRemoteServiceGenerator<RemoteServiceFactory>();
+services.AddRemoteServiceFactory<RemoteServiceFactory>();
 
 var factory = scope.ServiceProvider.GetRequiredService<RemoteServiceFactory>();
 var user = await factory.DemoUserService.GetByUserNameAsync("alice");
@@ -995,7 +995,7 @@ opts.Transport = new NamedPipeTransport("liteorm-remote");
 
 ### 8.3 默认 HTTP 传输（`HttpRemoteServiceTransport`）
 
-`JsonRemoteServiceTransport` 的内置子类，基于 `HttpClient`。通过 `RemoteServiceUri` + `ConfigureHttpClient` 即可配置（详见 [4.2 节](#42-客户端配置liteormoptions)）。
+`JsonRemoteServiceTransport` 的内置子类，基于 `HttpClient`。通过 `RemoteServiceUri` + `ConfigureHttpClient` 即可配置（详见 [4.2 节](#42-客户端配置liteormremoteoptions)）。
 
 构造函数接收 `ICredentialsResolver?`，在 `GetResponseJsonAsync` 中通过 `GetTicketAsync` 获取票据，按 `TicketHeaderName`（默认 `Cookie`）和 `TicketFormat`（默认 `{0}`）写入 HTTP 请求头：
 

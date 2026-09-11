@@ -245,7 +245,7 @@ services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<MetricEve
 
 - `context.ServiceName` / `context.MethodName` / `context.ServiceType`：当前服务与方法
 - `context.Arguments`：原始参数（不进行掩码处理）
-- `context.SessionID`：当前会话 ID
+- `context.SessionId`：当前会话 ID
 - `context.Duration`：方法耗时（仅 `OnInvoked` 后有效）
 - `context.Result`：方法返回值（仅 `OnInvoked` 后有效）
 
@@ -254,7 +254,7 @@ services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<MetricEve
 - `context.Exception`：原始异常
 - `context.ServiceName` / `context.MethodName`：当前服务与方法
 - `context.Arguments` / `context.LogArguments`：原始参数与日志参数
-- `context.SessionID`：当前会话 ID
+- `context.SessionId`：当前会话 ID
 - `context.SqlStack`：当前 SQL 栈
 
 > `RemoteServiceInvokeInterceptor` 为远程服务保留了 `RemoteServiceInvokeInterceptor.ExceptionHandling` 事件，可直接把异常转成返回结果；本地 `ServiceInvokeInterceptor` 已改用上述注入式异常事件，异常不再支持通过 `.Handle()` 抑制。

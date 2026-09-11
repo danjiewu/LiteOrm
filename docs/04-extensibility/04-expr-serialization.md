@@ -55,7 +55,7 @@ LiteOrm 的 `ExprJsonConverter` 主要围绕两种 JSON 形状展开：
 | `Delete` | 删除片段，表示 DELETE 语句 | `$delete` | `"delete"` |
 | `Foreign` | 外键 EXISTS 表达式 | `$foreign` | `"foreign"` |
 | `From` | From 片段，表示数据源（表或视图） | `$from` | `"from"` |
-| `Function` | 函数调用表达式 | `{"$":"func","函数名":[...]}` | `"func"` |
+| `Function` | 函数调用表达式 | `{"$":"func","DateDiffDays":[...]}` | `"func"` |
 | `GenericSql` | 通过委托或注册生成的 SQL 片段 | - | `"sql"` |
 | `GroupBy` | 分组片段，表示 GROUP BY 子句 | `$group` | `"group"` |
 | `Having` | Having 片段，表示 HAVING 条件 | `$having` | `"having"` |

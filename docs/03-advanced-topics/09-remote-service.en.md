@@ -319,11 +319,11 @@ services.AddRemoteService<ISpecialService>();
 |---------------------|---------------------|------------------|
 | `AutoRegisterEntityServices` | Auto-scan interfaces with `[Service]` attribute | `[Service]` attribute |
 | `AddRemoteService<TService>()` | Manually register any service interface | Explicit type specification |
-| `AddRemoteServiceGenerator<TFactory>()` | Aggregate multiple services through a factory | Auto-scan factory return types |
+| `AddRemoteServiceFactory<TFactory>()` | Aggregate multiple services through a factory | Auto-scan factory return types |
 
 #### Factory Pattern
 
-Define a factory interface aggregating multiple business services, register once via `AddRemoteServiceGenerator`:
+Define a factory interface aggregating multiple business services, register once via `AddRemoteServiceFactory`:
 
 ```csharp
 public interface RemoteServiceFactory
@@ -333,7 +333,7 @@ public interface RemoteServiceFactory
     IDemoDepartmentService DemoDepartmentService { get; }
 }
 
-services.AddRemoteServiceGenerator<RemoteServiceFactory>();
+services.AddRemoteServiceFactory<RemoteServiceFactory>();
 
 var factory = scope.ServiceProvider.GetRequiredService<RemoteServiceFactory>();
 var user = await factory.DemoUserService.GetByUserNameAsync("alice");
@@ -983,7 +983,7 @@ opts.Transport = new NamedPipeTransport("liteorm-remote");
 
 ### 8.3 Default HTTP Transport (`HttpRemoteServiceTransport`)
 
-Built-in subclass of `JsonRemoteServiceTransport`, based on `HttpClient`. Configure via `RemoteServiceUri` + `ConfigureHttpClient` (see [Section 4.2](#42-client-configuration-liteormoptions)).
+Built-in subclass of `JsonRemoteServiceTransport`, based on `HttpClient`. Configure via `RemoteServiceUri` + `ConfigureHttpClient` (see [Section 4.2](#42-client-configuration-liteormremoteoptions)).
 
 The constructor accepts an `ICredentialsResolver?`; in `GetResponseJsonAsync` it obtains the ticket via `GetTicketAsync` and writes it to the HTTP request header using `TicketHeaderName` (default `Cookie`) and `TicketFormat` (default `{0}`):
 

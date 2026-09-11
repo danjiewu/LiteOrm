@@ -380,7 +380,7 @@ options.RegisterSqlBuilder("YourDataSourceName", DamengBuilder.Instance);
 
 ### Q4: How are boolean types handled in domestic databases?
 
-**A:** By default, `OracleBuilder` / `DamengBuilder` maps `bool` to `NUMBER(1)` (0/1). The `PostgreSqlBuilder` family (KingbaseES, GaussDB) natively supports the `BOOLEAN` type. The `MySqlBuilder` family (OceanBase, TiDB, GreatDB) natively supports `TINYINT(1)`. If you need a different mapping (such as Dameng's `BIT`), override `GetDbTypeInternal` and `GetSqlTypeDefinition`.
+**A:** By default, `OracleBuilder` / `DamengBuilder` maps `bool` to `NUMBER(1)` (0/1). The `PostgreSqlBuilder` family (KingbaseES, GaussDB) natively supports the `BOOLEAN` type. The `MySqlBuilder` family (OceanBase, TiDB, GreatDB) natively supports `TINYINT(1)`. If you need a different mapping (such as Dameng's `BIT`), override `ToDbType` (`DbValueType` → `DbType`) and `GetSqlTypeDefinition` (`DbType` → column type text).
 
 ### Q5: Why are the built-in KingbaseESBuilder / GaussDBBuilder / OceanBaseBuilder / TiDBBuilder / GreatDBBuilder internally empty?
 
