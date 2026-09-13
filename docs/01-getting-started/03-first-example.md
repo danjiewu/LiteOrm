@@ -162,17 +162,17 @@ builder.Services.AddLiteOrm(options =>
 
 > 两种方式可混用。`ConfigureServices` 中的注册在 `[AutoRegister]` 自动注册之后执行，同一类型的注册以后者为准。
 
-### 2.3 手动构造 LiteOrmClient（不使用 DI 宿主）
+### 2.3 手动构造 LiteOrmContext（不使用 DI 宿主）
 
-如果项目里没有 DI 容器，也不需要 `IConfiguration`，可以用 `LiteOrmClient` 直接创建客户端。它与 `AddLiteOrm()` / `RegisterLiteOrm()` 是**两条完全独立的线路**：不注册任何服务、不读写 `IConfiguration`、不设置 `SessionManager.Current`。
+如果项目里没有 DI 容器，也不需要 `IConfiguration`，可以用 `LiteOrmContext` 直接创建上下文。它与 `AddLiteOrm()` / `RegisterLiteOrm()` 是**两条完全独立的线路**：不注册任何服务、不读取 `IConfiguration`；`CreateSession()` 会把新建会话绑定为 `SessionManager.Current`。
 
 ```csharp
 using LiteOrm;
 using Microsoft.Data.Sqlite;
 
-// 一个客户端 = 一组数据源 + 一个连接池工厂；所有参数在 AddDataSource 时一次配齐
-using var liteOrm = new LiteOrmClient()
-    .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmDemo.db", @default: true, syncTable: true, poolSize: 8, maxPoolSize: 32);
+// 一个上下文 = 一组数据源 + 一个连接池工厂；所有参数在 AddDataSource 时一次配齐
+using var liteOrm = new LiteOrmContext()
+    .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmDemo.db");
 
 // 会话就是 DAO 的构造参数，不需要任何容器
 using var session = liteOrm.CreateSession();
@@ -188,7 +188,7 @@ var users = await userViewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsy
 
 > - **添加数据源必须在建池之前**：连接池在首次 `CreateSession()` 时按当时的数据源配置一次性建好，此后 `AddDataSource` 会抛出 `InvalidOperationException`。
 > - **数据源由实体决定，而不是会话**。DAO 走哪个库取决于实体上的 `[Table(DataSource = "...")]`；未标注的实体一律落在默认数据源。`CreateSession()` 本身不绑定数据源。
-> - `LiteOrmClient` 实现 `IDisposable`，释放时销毁连接池工厂。它不接管 `SessionManager.Current`，因此适合在单元测试、控制台工具、插件等宿主环境里使用。
+> - `LiteOrmContext` 实现 `IDisposable`，释放时销毁连接池工厂。`CreateSession()` 会绑定 `SessionManager.Current`，但不注册任何服务，适合在单元测试、控制台工具、插件等宿主环境里使用。
 > - 需要 AOP 事务、权限、日志等能力时，仍应改用 `AddLiteOrm()` 或 `LiteOrm.DependencyInjection`。
 
 完整的参数表、多数据源配置、事务用法与逐段讲解见 [第一个完整示例（手动构造，无 DI）](./04-first-example-manual.md)。
@@ -275,9 +275,9 @@ Console.WriteLine($"Count={count}, Exists={exists}");
 
 ### 问题二：`Object reference not set to instance` 或 `SessionManager.Current` 为 null
 
-**原因**：依赖静态 `SessionManager.Current` 的写法（DAO 不接收会话、由全局静态入口取连接）在两种情况下会取到 null——使用 `LiteOrmClient` 手动构造（本就不设置 `Current`），或使用旧版 API 但漏调 `SessionManager.SetCurrent(...)`。使用 `AddLiteOrm()` / `RegisterLiteOrm()` 时会自动绑定，不会出现此问题。
+**原因**：依赖静态 `SessionManager.Current` 的写法（DAO 不接收会话、由全局静态入口取连接）在尚未创建任何会话时访问会取到 null；旧版 API 漏调 `SessionManager.SetCurrent(...)` 也会如此。
 
-**解决方法**：手动构造时把会话显式传给 DAO——`new ObjectDAO<User>(liteOrm.CreateSession())`，不要依赖 `SessionManager.Current`。如果确实需要静态入口，再补调 `SessionManager.SetCurrent(() => sessionManager)`；使用 `AddLiteOrm()` 时无需手动调用，框架会自动绑定。否则 DAO 在执行 SQL 时无法获取数据库连接。
+**解决方法**：手动构造时把会话显式传给 DAO——`new ObjectDAO<User>(liteOrm.CreateSession())`。`LiteOrmContext.CreateSession()` 已把新会话绑定到 `Current`，`AddLiteOrm()` / `RegisterLiteOrm()` 则按作用域自动绑定，两者都无需手动调用 `SetCurrent`。但多会话并存时不要依赖静态入口，它只指向最近创建的那一个。
 
 ### 问题三：`Function 'XXX' is not supported` 异常
 
@@ -289,7 +289,7 @@ Console.WriteLine($"Count={count}, Exists={exists}");
 
 - [ ] `dotnet build` 编译通过，无错误。
 
-- [ ] 手动构造时已把 `CreateSession()` 的返回值传给 DAO 构造函数（或已调用 `SessionManager.SetCurrent(...)`）；使用 `AddLiteOrm()` 时自动绑定，无需手动调用。
+- [ ] 手动构造时已把 `CreateSession()` 的返回值传给 DAO 构造函数（`CreateSession()` 会自动绑定 `SessionManager.Current`，但多会话并存时不要依赖静态入口）；使用 `AddLiteOrm()` 时按作用域自动绑定。
 
 - [ ] 实体类使用了 `[Table]` 和 `[Column]` 特性标注。
 

@@ -1,10 +1,10 @@
 # 第一个完整示例（手动构造，无 DI）
 
-本文用一个最小可运行示例演示**完全不使用依赖注入容器**的 LiteOrm 用法：用 `LiteOrmClient` 链式登记数据源、创建会话，再由会话直接构造 `ObjectDAO<User>` / `ObjectViewDAO<User>` 完成增删改查。
+本文用一个最小可运行示例演示**完全不使用依赖注入容器**的 LiteOrm 用法：用 `LiteOrmContext` 链式登记数据源、创建会话，再由会话直接构造 `ObjectDAO<User>` / `ObjectViewDAO<User>` 完成增删改查。
 
 > **适用场景**：控制台工具、批处理脚本、单元测试、插件，以及任何不方便引入 DI 容器的宿主。
 >
-> `LiteOrmClient` 与 `AddLiteOrm()`、`RegisterLiteOrm()` 是**三条相互独立的线路**：它不注册任何服务、不读取 `IConfiguration`、也不接管 `SessionManager.Current`。需要 AOP 事务/权限/日志时请改用 [第一个完整示例（DI 版）](./05-first-example-di.md)。
+> `LiteOrmContext` 与 `AddLiteOrm()`、`RegisterLiteOrm()` 是**三条相互独立的线路**：它不注册任何服务、不读取 `IConfiguration`；`CreateSession()` 会把新建会话绑定为 `SessionManager.Current`（进程内静态入口，与 DI 线路按作用域解析的实例互不干扰）。需要 AOP 事务/权限/日志时请改用 [第一个完整示例（DI 版）](./05-first-example-di.md)。
 
 ## 0. 项目准备
 
@@ -43,15 +43,15 @@ public class User
 > - `[Column("Id", IsPrimaryKey = true, IsIdentity = true)]`：主键且自增。
 > - 实体类不要求继承 `ObjectBase`，普通 POCO 即可。
 
-## 2. 创建客户端
+## 2. 创建上下文
 
-`LiteOrmClient` 的每一个数据源都在 `AddDataSource` 调用时**一次性配齐**：连接字符串、连接池大小、参数上限、是否自动建表，都在这一步定好，客户端不再提供后续的补充设置方法。
+`LiteOrmContext` 的每一个数据源都在 `AddDataSource` 调用时**一次性配齐**：连接字符串、连接池大小、参数上限、是否自动建表，都在这一步定好，上下文不再提供后续的补充设置方法。
 
 ```csharp
 using LiteOrm;
 using Microsoft.Data.Sqlite;
 
-var liteOrm = new LiteOrmClient()
+var liteOrm = new LiteOrmContext()
     .AddDataSource<SqliteConnection>(
         name: "main",
         connectionString: "Data Source=LiteOrmManualDemo.db",
@@ -64,25 +64,28 @@ var liteOrm = new LiteOrmClient()
 
 `AddDataSource<TConnection>` 的命名参数与 `DataSourceConfig` 一一对应，未填写的走默认值：
 
-| 参数 | 配置项 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `name` | `Name` | `"DefaultConnection"` | 数据源名称 |
-| `connectionString` | `ConnectionString` | `null` | 连接字符串 |
-| `@default` | — | `false` | 是否设为默认数据源 |
-| `sqlBuilder` | `SqlBuilder` | `null` | 自定义 SqlBuilder 类型名，一般不必填 |
-| `syncTable` | `SyncTable` | `false` | 是否自动建表 |
-| `provider` | `Provider` | `TConnection` 的限定程序集名 | 连接类型字符串 |
-| `poolSize` | `PoolSize` | `16` | 连接池缓存数量 |
-| `maxPoolSize` | `MaxPoolSize` | `100` | 最大并发连接数 |
-| `paramCountLimit` | `ParamCountLimit` | `1000` | 单条 SQL 参数上限 |
-| `keepAliveDuration` | `KeepAliveDuration` | 10 分钟 | 空闲连接保活时长 |
+| 参数 | 配置项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- | --- |
+| `name` | `Name` | `string` | `"DefaultConnection"` | 数据源名称 |
+| `connectionString` | `ConnectionString` | `string` | `null` | 连接字符串 |
+| `@default` | — | `bool` | `false` | 是否设为默认数据源 |
+| `syncTable` | `SyncTable` | `bool` | `false` | 是否自动建表 |
+| `sqlBuilder` | `SqlBuilderType` | `Type` | `null` | 自定义 SqlBuilder 类型，一般不必填 |
+| `poolSize` | `PoolSize` | `int` | `16` | 连接池缓存数量 |
+| `maxPoolSize` | `MaxPoolSize` | `int` | `100` | 最大并发连接数 |
+| `paramCountLimit` | `ParamCountLimit` | `int` | `1000` | 单条 SQL 参数上限 |
+| `keepAliveDuration` | `KeepAliveDuration` | `TimeSpan` | 10 分钟 | 空闲连接保活时长 |
+
+> `SqlBuilderType` 是 `Type` 类型。`ProviderType` 一律取泛型参数 `TConnection`，无需也无法单独指定；直接构造 `DataSourceConfig` 时只能赋 `Type` 实例。类型名字符串只在 `appsettings.json` 的 `Provider` / `SqlBuilder` 键里使用，由框架加载配置时解析。
+>
+> 非泛型重载 `AddDataSource(DataSourceConfig config, bool @default = false)` 同样带 `@default`，用于在代码里直接构造 `DataSourceConfig`（例如从别处读到的连接信息）后登记。
 
 连接池在首次 `CreateSession()` 时才真正建好，因此**所有 `AddDataSource` 都必须在首次取会话之前调用**；建池之后再添加数据源会抛出 `InvalidOperationException`。
 
 ### 多数据源
 
 ```csharp
-var liteOrm = new LiteOrmClient()
+var liteOrm = new LiteOrmContext()
     .AddDataSource<SqliteConnection>("main", "Data Source=main.db", @default: true, syncTable: true, maxPoolSize: 32)
     .AddDataSource<MySqlConnection>("log", "Server=localhost;Database=log;", poolSize: 4);
 ```
@@ -100,7 +103,7 @@ var userDao = new ObjectDAO<User>(session);        // 写入
 var userViewDao = new ObjectViewDAO<User>(session); // 读取
 ```
 
-`CreateSession()` 每次返回一个新的 `SessionManager`，由调用方负责释放；会话通过构造参数显式传给 DAO，与 DI 线路互不干扰。
+`CreateSession()` 每次返回一个新的 `SessionManager`，由调用方负责释放；同时把该会话绑定为 `SessionManager.Current`。会话通过构造参数显式传给 DAO，因此即使 `Current` 被后续创建的会话覆盖，已构造的 DAO 仍指向各自那份会话。
 
 ## 4. 完整调用闭环
 
@@ -109,7 +112,7 @@ using LiteOrm;
 using LiteOrm.Common;
 using Microsoft.Data.Sqlite;
 
-using var liteOrm = new LiteOrmClient()
+using var liteOrm = new LiteOrmContext()
     .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmManualDemo.db", @default: true, syncTable: true, poolSize: 8, maxPoolSize: 32);
 
 using var session = liteOrm.CreateSession();
@@ -142,7 +145,7 @@ await userDao.DeleteAsync(Expr.Prop(nameof(User.Id)) == user.Id, CancellationTok
 
 Console.WriteLine($"Count={count}, Exists={exists}");
 
-// 释放：会话先于客户端释放
+// 释放：会话先于上下文释放
 liteOrm.Dispose();
 ```
 
@@ -175,7 +178,7 @@ catch
 
 ## 6. 手动线路与 DI 线路的边界
 
-| 能力 | `LiteOrmClient`（本文） | `AddLiteOrm()` / `RegisterLiteOrm()` |
+| 能力 | `LiteOrmContext`（本文） | `AddLiteOrm()` / `RegisterLiteOrm()` |
 | --- | --- | --- |
 | 实体映射 / CRUD / 查询 | ✅ | ✅ |
 | 手动事务 | ✅ `session.BeginTransaction()` | ✅ |
@@ -184,9 +187,9 @@ catch
 | 自动日志 `[ServiceLog]` | ❌ | ✅ AOP 拦截 |
 | 需要 DI 容器 | ❌ 不需要 | ✅ 需要 |
 | 读取 `IConfiguration` | ❌ 数据源全部代码里显式登记 | ✅ `appsettings.json` 自动绑定 |
-| 修改 `SessionManager.Current` | ❌ | ✅ 自动绑定 |
+| 修改 `SessionManager.Current` | ✅ 绑定为最近一次 `CreateSession()` 的会话 | ✅ 按作用域自动绑定 |
 
-> 需要 AOP 能力时，把 `new LiteOrmClient()` 换成宿主里的 `AddLiteOrm()` 即可，实体定义与 DAO 用法完全一致。
+> 需要 AOP 能力时，把 `new LiteOrmContext()` 换成宿主里的 `AddLiteOrm()` 即可，实体定义与 DAO 用法完全一致。
 
 ## 7. 新手常见问题
 
@@ -204,9 +207,9 @@ catch
 
 ### 问题三：`ArgumentNullException` 或 `SessionManager.Current` 为 null
 
-**原因**：`LiteOrmClient` 线路不设置 `SessionManager.Current`，依赖静态入口的旧写法会取到 null。
+**原因**：在还没有创建任何会话时就访问 `SessionManager.Current`，或沿用旧版 API 却漏调 `SessionManager.SetCurrent(...)`。
 
-**解决方法**：把 `CreateSession()` 的返回值显式传给 DAO 构造函数：`new ObjectDAO<User>(session)`。不要依赖 `SessionManager.Current`。
+**解决方法**：先调 `CreateSession()` 再访问静态入口。更稳妥的做法始终是把 `CreateSession()` 的返回值显式传给 DAO 构造函数（`new ObjectDAO<User>(session)`）——`SessionManager.Current` 只指向最近一次创建的会话，多会话并存时不要依赖它。
 
 ## 运行验证清单
 
@@ -215,7 +218,7 @@ catch
 - [ ] 实体类使用了 `[Table]` 和 `[Column]` 特性标注。
 - [ ] 读操作走 `ObjectViewDAO<T>`（`ObjectDAO<T>` 没有 `GetObject`）。
 - [ ] 插入、查询、更新、删除返回了预期结果。
-- [ ] 退出前释放了会话与客户端（`using` 或显式 `Dispose`）。
+- [ ] 退出前释放了会话与上下文（`using` 或显式 `Dispose`）。
 
 ## 相关链接
 

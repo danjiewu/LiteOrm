@@ -27,14 +27,15 @@ Related guides:
 
 ### Manual construction (no DI host)
 
-- `LiteOrmClient`: start the chain with `new LiteOrmClient(ILoggerFactory? loggerFactory = null)`
-  - `AddDataSource<TConnection>(name, connectionString, @default, sqlBuilder, syncTable, provider, poolSize, maxPoolSize, paramCountLimit, keepAliveDuration)` — pool options and table sync are set here in one call
-  - `AddDataSource(DataSourceConfig)`
-  - `CreateSession()` → `SessionManager`
+- `LiteOrmContext`: start the chain with `new LiteOrmContext(ILoggerFactory? loggerFactory = null)`
+  - `AddDataSource<TConnection>(name, connectionString, @default, syncTable, sqlBuilder, poolSize, maxPoolSize, paramCountLimit, keepAliveDuration)` — pool options and table sync are set here in one call; the provider type comes from `TConnection`
+  - `AddDataSource(DataSourceConfig config, bool @default = false)` — for cases where the `DataSourceConfig` is built directly in code
+  - `CreateSession()` → `SessionManager` (also binds `SessionManager.Current`)
   - `GetDataSource(name)` / `DataSources` / `DefaultDataSourceName`
   - `Dispose()`
 - DAO construction: `new ObjectDAO<T>(session)` / `new ObjectViewDAO<T>(session)`
-- `DataSourceConfig` (`Name` / `ConnectionString` / `Provider` / `SqlBuilder` / `PoolSize` / `MaxPoolSize` / `ParamCountLimit` / `KeepAliveDuration` / `SyncTable` / `ReadOnlyConfigs`)
+- `DataSourceConfig` (`Name` / `ConnectionString` / `ProviderType` / `SqlBuilderType` / `PoolSize` / `MaxPoolSize` / `ParamCountLimit` / `KeepAliveDuration` / `SyncTable` / `ReadOnlyConfigs`)
+  - `ProviderType` / `SqlBuilderType` are assignable `Type?` values. A type-name string is only used in the `Provider` / `SqlBuilder` keys of `appsettings.json`, resolved to a `Type` immediately when configuration is loaded (throwing `TypeLoadException` on failure)
 
 Related guides:
 

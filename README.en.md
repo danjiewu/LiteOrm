@@ -120,10 +120,10 @@ builder.Host.RegisterLiteOrm();  // Integration via IHostBuilder extension metho
 
 
 
-> **Prefer no DI container at all?** The base library ships `LiteOrmClient`, which registers data sources fluently and creates sessions, fully separate from `RegisterLiteOrm()` / `AddLiteOrm()`:
+> **Prefer no DI container at all?** The base library ships `LiteOrmContext`, which registers data sources fluently and creates sessions, fully separate from `RegisterLiteOrm()` / `AddLiteOrm()`:
 >
 > ```csharp
-> using var liteOrm = new LiteOrmClient()
+> using var liteOrm = new LiteOrmContext()
 >     .AddDataSource<SqliteConnection>("main", "Data Source=app.db", @default: true, poolSize: 8, maxPoolSize: 32);
 > using var session = liteOrm.CreateSession();
 > var userDao = new ObjectDAO<User>(session);

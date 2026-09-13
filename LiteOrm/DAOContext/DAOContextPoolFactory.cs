@@ -129,7 +129,9 @@ namespace LiteOrm
             DAOContextPool pool;
             try
             {
-                pool = new DAOContextPool(config.ProviderType, config.ConnectionString)
+                var providerType = config.ProviderType
+                    ?? throw new InvalidOperationException($"Provider type not specified for data source '{configName}'");
+                pool = new DAOContextPool(providerType, config.ConnectionString)
                 {
                     Name = configName!,
                     PoolSize = config.PoolSize,
@@ -167,12 +169,7 @@ namespace LiteOrm
                     Type sqlBuilderType = config.SqlBuilderType;
                     if (!sqlBuilderType.IsSubclassOf(typeof(SqlBuilder))) throw new InvalidOperationException($"SqlBuilderType {sqlBuilderType.FullName} must be a subclass of SqlBuilder");
 
-                    SqlBuilder sqlBuilder;
-                    PropertyInfo? instanceProp = sqlBuilderType.Find(nameof(SqlBuilder.Instance), BindingFlags.Static | BindingFlags.Public);
-                    if (instanceProp != null && instanceProp.GetValue(null) is SqlBuilder instance)
-                        sqlBuilder = instance;
-                    else
-                        sqlBuilder = (SqlBuilder)Activator.CreateInstance(sqlBuilderType)!;
+                    SqlBuilder sqlBuilder = SqlBuilderFactory.CreateSqlBuilderInstance(sqlBuilderType);
                     SqlBuilderFactory.Instance.RegisterSqlBuilder(configName!, sqlBuilder);
                     if (_dataSourceProvider.DefaultDataSourceName == configName)
                     {

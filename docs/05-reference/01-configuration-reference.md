@@ -117,8 +117,8 @@
 | --- | --- | --- | --- |
 | `Name` | `string` | 必填 | 数据源名称，用于 `[Table(DataSource = "...")]` 绑定。 |
 | `ConnectionString` | `string` | 必填 | 数据库连接字符串。 |
-| `Provider` | `string` | 必填 | 连接类型全名，格式为 `TypeName, AssemblyName`。 |
-| `SqlBuilder` | `string` | `null` | 自定义 SQL 构建器类型全名，不填则使用默认构建器。 |
+| `Provider` | `string` | 必填 | 连接类型全名，格式为 `TypeName, AssemblyName`。加载配置时立即解析为 `DataSourceConfig.ProviderType`（`Type`），解析失败直接抛 `TypeLoadException`。 |
+| `SqlBuilder` | `string` | `null` | 自定义 SQL 构建器类型全名，加载时解析为 `DataSourceConfig.SqlBuilderType`（`Type`），不填则使用默认构建器。 |
 | `KeepAliveDuration` | `TimeSpan` | `00:10:00` | 连接保活时长，格式为 `HH:mm:ss`。 |
 | `PoolSize` | `int` | `16` | 缓存连接数，控制连接池预热数量。 |
 | `MaxPoolSize` | `int` | `100` | 最大并发连接数上限。 |

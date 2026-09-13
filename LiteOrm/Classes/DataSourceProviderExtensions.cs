@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace LiteOrm
 {
@@ -10,6 +11,8 @@ namespace LiteOrm
     /// </summary>
     /// <remarks>
     /// 提供从宿主应用的 <c>LiteOrm</c> 配置节点读取连接配置并填充到 <see cref="DataSourceProvider"/> 的扩展方法。
+    /// 配置里写的是类型名字符串，加载时立即解析为 <see cref="DataSourceConfig.ProviderType"/> /
+    /// <see cref="DataSourceConfig.SqlBuilderType"/>，解析失败立刻抛出。
     /// </remarks>
     public static class DataSourceProviderExtensions
     {
@@ -41,8 +44,8 @@ namespace LiteOrm
                 {
                     Name = section["Name"],
                     ConnectionString = section["ConnectionString"],
-                    Provider = section["Provider"],
-                    SqlBuilder = section["SqlBuilder"]
+                    ProviderType = ResolveType(section["Provider"]),
+                    SqlBuilderType = ResolveType(section["SqlBuilder"])
                 };
 
                 if (int.TryParse(section["PoolSize"], out var poolSize)) config.PoolSize = poolSize;
@@ -56,8 +59,8 @@ namespace LiteOrm
                     var readOnlyConfig = new ReadOnlyDataSourceConfig
                     {
                         ConnectionString = readOnlySection["ConnectionString"],
-                        Provider = readOnlySection["Provider"],
-                        SqlBuilder = readOnlySection["SqlBuilder"],
+                        ProviderType = ResolveType(readOnlySection["Provider"]),
+                        SqlBuilderType = ResolveType(readOnlySection["SqlBuilder"]),
                         PoolSize = int.TryParse(readOnlySection["PoolSize"], out var roPoolSize) ? roPoolSize : config.PoolSize,
                         MaxPoolSize = int.TryParse(readOnlySection["MaxPoolSize"], out var roMaxPoolSize) ? roMaxPoolSize : config.MaxPoolSize,
                         ParamCountLimit = int.TryParse(readOnlySection["ParamCountLimit"], out var roParamLimit) ? roParamLimit : config.ParamCountLimit,
@@ -78,6 +81,18 @@ namespace LiteOrm
             }
 
             return provider;
+        }
+
+        /// <summary>
+        /// 把配置里的类型名字符串解析为类型；为 null/空白时返回 null。
+        /// </summary>
+        [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        private static Type? ResolveType(string? typeName)
+        {
+            if (string.IsNullOrWhiteSpace(typeName)) return null;
+            var type = TypeResolverHelper.FindType(typeName!);
+            if (type is null) throw new TypeLoadException($"Unable to load type: {typeName}");
+            return type;
         }
     }
 }

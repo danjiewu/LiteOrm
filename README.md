@@ -136,10 +136,10 @@ builder.Host.RegisterLiteOrm();  // 通过 IHostBuilder 扩展方法集成
 
 
 
-> **不想引入 DI 容器？** 基础库提供 `LiteOrmClient`，可以直接链式登记数据源并创建会话，与 `RegisterLiteOrm()` / `AddLiteOrm()` 完全分开：
+> **不想引入 DI 容器？** 基础库提供 `LiteOrmContext`，可以直接链式登记数据源并创建会话，与 `RegisterLiteOrm()` / `AddLiteOrm()` 完全分开：
 >
 > ```csharp
-> using var liteOrm = new LiteOrmClient()
+> using var liteOrm = new LiteOrmContext()
 >     .AddDataSource<SqliteConnection>("main", "Data Source=app.db", @default: true, poolSize: 8, maxPoolSize: 32);
 > using var session = liteOrm.CreateSession();
 > var userDao = new ObjectDAO<User>(session);

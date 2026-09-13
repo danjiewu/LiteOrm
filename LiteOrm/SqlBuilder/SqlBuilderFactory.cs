@@ -83,6 +83,27 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 按类型创建 SqlBuilder 实例：优先取类型的静态 <see cref="SqlBuilder.Instance"/> 属性，
+        /// 没有时退回无参构造。
+        /// </summary>
+        /// <param name="sqlBuilderType"><see cref="SqlBuilder"/> 派生类型。</param>
+        /// <returns>SqlBuilder 实例。</returns>
+        /// <exception cref="ArgumentNullException">当 <paramref name="sqlBuilderType"/> 为 null 时抛出。</exception>
+        /// <exception cref="InvalidOperationException">类型不是 <see cref="SqlBuilder"/> 派生类型、或无法实例化时抛出。</exception>
+        public static SqlBuilder CreateSqlBuilderInstance(
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type sqlBuilderType)
+        {
+            if (sqlBuilderType is null) throw new ArgumentNullException(nameof(sqlBuilderType));
+            if (!typeof(SqlBuilder).IsAssignableFrom(sqlBuilderType))
+                throw new InvalidOperationException($"{sqlBuilderType.FullName} must be a subclass of {nameof(SqlBuilder)}");
+
+            var instanceProperty = sqlBuilderType.GetProperty(nameof(SqlBuilder.Instance), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            if (instanceProperty?.GetValue(null) is SqlBuilder instance) return instance;
+
+            return (SqlBuilder)Activator.CreateInstance(sqlBuilderType)!;
+        }
+
+        /// <summary>
         /// 注册 SQL 构建器（重载方法，使用提供程序类型作为键）。
         /// </summary>
         /// <param name="providerType">提供程序类型。</param>

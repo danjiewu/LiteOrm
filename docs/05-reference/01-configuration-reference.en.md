@@ -117,8 +117,8 @@ This page is a complete reference for LiteOrm configuration fields, defaults, re
 |------|------|---------|-------|
 | `Name` | `string` | Required | data source name, used by `[Table(DataSource = "...")]` |
 | `ConnectionString` | `string` | Required | database connection string |
-| `Provider` | `string` | Required | fully qualified connection type, format: `TypeName, AssemblyName` |
-| `SqlBuilder` | `string` | `null` | custom SQL builder type, uses default if not set |
+| `Provider` | `string` | Required | fully qualified connection type, format: `TypeName, AssemblyName`. Resolved to `DataSourceConfig.ProviderType` (`Type`) immediately when the configuration is loaded; a failure throws `TypeLoadException`. |
+| `SqlBuilder` | `string` | `null` | custom SQL builder type; resolved to `DataSourceConfig.SqlBuilderType` (`Type`) on load; uses default if not set |
 | `KeepAliveDuration` | `TimeSpan` | `00:10:00` | connection keep-alive duration, format: `HH:mm:ss` |
 | `PoolSize` | `int` | `16` | cached connection count, controls pool pre-warming |
 | `MaxPoolSize` | `int` | `100` | maximum concurrent connections |

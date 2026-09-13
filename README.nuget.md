@@ -32,15 +32,15 @@ dotnet add package LiteOrm
 
 ### Quick Start
 
-**Option A — no DI container at all**, using `LiteOrmClient`:
+**Option A — no DI container at all**, using `LiteOrmContext`:
 
 ```csharp
 using LiteOrm;
 using LiteOrm.Common;
 using Microsoft.Data.Sqlite;
 
-// 1. Create the client and register data sources — every option is set here, once
-using var liteOrm = new LiteOrmClient()
+// 1. Create the context and register data sources — every option is set here, once
+using var liteOrm = new LiteOrmContext()
     .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmDemo.db", @default: true, syncTable: true)
     .AddDataSource<MySqlConnection>("log");   // a second source, no connection string needed yet
 
@@ -56,10 +56,10 @@ var loaded = await userViewDao.GetObject(user.Id).FirstOrDefaultAsync();
 var adults = await userViewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsync();
 ```
 
-`AddDataSource<TConnection>` accepts named parameters that map onto `DataSourceConfig` — `name`, `connectionString`, `@default`, `sqlBuilder`, `syncTable`, `provider`, `poolSize`, `maxPoolSize`, `paramCountLimit`, `keepAliveDuration`. Anything omitted uses the config default (pool size 16, max 100, param count limit 1000, keep-alive 10 minutes). Pool options and table sync are fixed at this single call; the client offers no follow-up configuration methods, and adding sources must happen before the first `CreateSession()`:
+`AddDataSource<TConnection>` accepts named parameters that map onto `DataSourceConfig` — `name`, `connectionString`, `@default`, `syncTable`, `sqlBuilder`, `poolSize`, `maxPoolSize`, `paramCountLimit`, `keepAliveDuration` (the provider type always comes from `TConnection`). Anything omitted uses the config default (pool size 16, max 100, param count limit 1000, keep-alive 10 minutes). Pool options and table sync are fixed at this single call; the context offers no follow-up configuration methods, and adding sources must happen before the first `CreateSession()`:
 
 ```csharp
-using var liteOrm = new LiteOrmClient()
+using var liteOrm = new LiteOrmContext()
     .AddDataSource<SqliteConnection>("main", "Data Source=main.db", @default: true, poolSize: 8, maxPoolSize: 32, paramCountLimit: 500, syncTable: true)
     .AddDataSource<MySqlConnection>("log", "Server=localhost;Database=log;", maxPoolSize: 64);
 ```
@@ -156,15 +156,15 @@ dotnet add package LiteOrm
 
 ### 快速入门
 
-**方式一：完全不使用 DI 容器**，直接用 `LiteOrmClient`：
+**方式一：完全不使用 DI 容器**，直接用 `LiteOrmContext`：
 
 ```csharp
 using LiteOrm;
 using LiteOrm.Common;
 using Microsoft.Data.Sqlite;
 
-// 1. 创建客户端并登记数据源 —— 所有参数在这一步一次配齐
-using var liteOrm = new LiteOrmClient()
+// 1. 创建上下文并登记数据源 —— 所有参数在这一步一次配齐
+using var liteOrm = new LiteOrmContext()
     .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmDemo.db", @default: true, syncTable: true)
     .AddDataSource<MySqlConnection>("log");   // 第二个数据源，可暂不填连接串
 
@@ -180,10 +180,10 @@ var loaded = await userViewDao.GetObject(user.Id).FirstOrDefaultAsync();
 var adults = await userViewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsync();
 ```
 
-`AddDataSource<TConnection>` 的命名参数与 `DataSourceConfig` 一一对应——`name`、`connectionString`、`@default`、`sqlBuilder`、`syncTable`、`provider`、`poolSize`、`maxPoolSize`、`paramCountLimit`、`keepAliveDuration`，未填的按配置默认值（池大小 16、上限 100、参数上限 1000、保活 10 分钟）。连接池参数与建表同步都在这一次调用里定好，客户端不提供后续的补充设置方法；添加数据源必须在首次 `CreateSession()` 之前：
+`AddDataSource<TConnection>` 的命名参数与 `DataSourceConfig` 一一对应——`name`、`connectionString`、`@default`、`syncTable`、`sqlBuilder`、`poolSize`、`maxPoolSize`、`paramCountLimit`、`keepAliveDuration`（提供程序类型一律取 `TConnection`），未填的按配置默认值（池大小 16、上限 100、参数上限 1000、保活 10 分钟）。连接池参数与建表同步都在这一次调用里定好，上下文不提供后续的补充设置方法；添加数据源必须在首次 `CreateSession()` 之前：
 
 ```csharp
-using var liteOrm = new LiteOrmClient()
+using var liteOrm = new LiteOrmContext()
     .AddDataSource<SqliteConnection>("main", "Data Source=main.db", @default: true, poolSize: 8, maxPoolSize: 32, paramCountLimit: 500, syncTable: true)
     .AddDataSource<MySqlConnection>("log", "Server=localhost;Database=log;", maxPoolSize: 64);
 ```

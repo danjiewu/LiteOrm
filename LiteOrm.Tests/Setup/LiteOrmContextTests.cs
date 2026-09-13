@@ -11,16 +11,16 @@ using Xunit;
 namespace LiteOrm.Tests.Setup
 {
     /// <summary>
-    /// <see cref="LiteOrmClient"/> 的行为验证：纯手动创建客户端，不使用任何 DI 容器，
+    /// <see cref="LiteOrmContext"/> 的行为验证：纯手动创建上下文，不使用任何 DI 容器，
     /// 直接创建会话与 DAO 完成增删改查。
     /// </summary>
-    public class LiteOrmClientTests : IDisposable
+    public class LiteOrmContextTests : IDisposable
     {
         private readonly List<string> _tempFiles = new List<string>();
 
         private string CreateTempDbPath()
         {
-            var path = Path.Combine(Path.GetTempPath(), $"liteorm-client-{Guid.NewGuid():N}.db");
+            var path = Path.Combine(Path.GetTempPath(), $"liteorm-context-{Guid.NewGuid():N}.db");
             _tempFiles.Add(path);
             return path;
         }
@@ -34,13 +34,13 @@ namespace LiteOrm.Tests.Setup
         }
 
         [Fact]
-        public void NewClient_ShouldBeEmpty()
+        public void NewContext_ShouldBeEmpty()
         {
-            using var client = new LiteOrmClient();
+            using var context = new LiteOrmContext();
 
-            Assert.Empty(client.DataSources);
-            Assert.Null(client.GetDataSource());
-            Assert.Null(client.DefaultDataSourceName);
+            Assert.Empty(context.DataSources);
+            Assert.Null(context.GetDataSource());
+            Assert.Null(context.DefaultDataSourceName);
         }
 
         [Fact]
@@ -48,15 +48,15 @@ namespace LiteOrm.Tests.Setup
         {
             var dbPath = CreateTempDbPath();
 
-            using var client = new LiteOrmClient()
+            using var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>("main", $"Data Source={dbPath}", @default: true);
 
-            Assert.Equal("main", client.DefaultDataSourceName);
+            Assert.Equal("main", context.DefaultDataSourceName);
 
-            var config = client.GetDataSource("main");
+            var config = context.GetDataSource("main");
             Assert.NotNull(config);
             Assert.Equal($"Data Source={dbPath}", config!.ConnectionString);
-            Assert.Equal(typeof(SqliteConnection).AssemblyQualifiedName, config.Provider);
+            Assert.Equal(typeof(SqliteConnection), config.ProviderType);
 
             // 泛型重载会把连接类型预注册到名称解析器，AOT 下按名称反查也能命中
             Assert.NotNull(TypeResolverHelper.FindType(typeof(SqliteConnection).AssemblyQualifiedName!));
@@ -67,7 +67,7 @@ namespace LiteOrm.Tests.Setup
         {
             var dbPath = CreateTempDbPath();
 
-            using var client = new LiteOrmClient()
+            using var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>(
                     "main",
                     $"Data Source={dbPath}",
@@ -76,7 +76,7 @@ namespace LiteOrm.Tests.Setup
                     maxPoolSize: 32,
                     paramCountLimit: 500);
 
-            var config = client.GetDataSource("main")!;
+            var config = context.GetDataSource("main")!;
             Assert.Equal(8, config.PoolSize);
             Assert.Equal(32, config.MaxPoolSize);
             Assert.Equal(500, config.ParamCountLimit);
@@ -86,79 +86,76 @@ namespace LiteOrm.Tests.Setup
         public void AddDataSourceGeneric_WithTypeOnly_ShouldAllowConnectionStringLater()
         {
             // 无参形式：只登记类型，连接字符串稍后补
-            using var client = new LiteOrmClient()
+            using var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>("staged");
 
-            var config = client.GetDataSource("staged");
+            var config = context.GetDataSource("staged");
             Assert.NotNull(config);
             Assert.Null(config!.ConnectionString);
 
             // 同名再次添加即覆盖，补齐连接字符串
-            client.AddDataSource<SqliteConnection>("staged", "Data Source=:memory:");
+            context.AddDataSource<SqliteConnection>("staged", "Data Source=:memory:");
 
-            Assert.Equal("Data Source=:memory:", client.GetDataSource("staged")!.ConnectionString);
-            Assert.Single(client.DataSources);
+            Assert.Equal("Data Source=:memory:", context.GetDataSource("staged")!.ConnectionString);
+            Assert.Single(context.DataSources);
         }
 
         [Fact]
         public void FirstDataSource_ShouldBecomeDefaultImplicitly()
         {
-            using var client = new LiteOrmClient()
+            using var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>("only", "Data Source=:memory:");
 
-            Assert.Equal("only", client.DefaultDataSourceName);
+            Assert.Equal("only", context.DefaultDataSourceName);
         }
 
         [Fact]
         public void MultipleDataSources_ShouldKeepFirstAsDefault()
         {
-            using var client = new LiteOrmClient()
+            using var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>("a", "Data Source=:memory:")
                 .AddDataSource<SqliteConnection>("b", "Data Source=:memory:");
 
             // 第一个数据源自动成为默认，后续数据源不抢占
-            Assert.Equal("a", client.DefaultDataSourceName);
+            Assert.Equal("a", context.DefaultDataSourceName);
         }
 
         [Fact]
-        public void AddDataSource_WithShortProviderName_ShouldNormalizeToAssemblyQualifiedName()
+        public void AddDataSource_ShouldDeriveProviderTypeFromConnectionType()
         {
-            // provider 传短名时，解析成功后统一规范为 AssemblyQualifiedName
-            using var client = new LiteOrmClient()
-                .AddDataSource<SqliteConnection>(
-                    "main",
-                    "Data Source=:memory:",
-                    provider: "Microsoft.Data.Sqlite.SqliteConnection, Microsoft.Data.Sqlite");
+            // 提供程序类型一律由泛型参数推导，配置里存的就是 Type，不再有字符串中转
+            using var context = new LiteOrmContext()
+                .AddDataSource<SqliteConnection>("main", "Data Source=:memory:");
 
-            Assert.Equal(typeof(SqliteConnection).AssemblyQualifiedName, client.GetDataSource("main")!.Provider);
+            Assert.Equal(typeof(SqliteConnection), context.GetDataSource("main")!.ProviderType);
         }
 
         [Fact]
         public void AddDataSource_ShouldSetSyncTablePerSourceAtAddTime()
         {
-            using var client = new LiteOrmClient()
+            using var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>("first", "Data Source=:memory:", syncTable: true)
                 .AddDataSource<SqliteConnection>("second", "Data Source=:memory:");
 
-            Assert.True(client.GetDataSource("first")!.SyncTable);
-            Assert.False(client.GetDataSource("second")!.SyncTable);
+            Assert.True(context.GetDataSource("first")!.SyncTable);
+            Assert.False(context.GetDataSource("second")!.SyncTable);
         }
 
         [Fact]
         public void AddDataSource_WithEmptyName_ShouldThrow()
         {
-            using var client = new LiteOrmClient();
+            using var context = new LiteOrmContext();
 
             Assert.Throws<ArgumentException>(
-                () => client.AddDataSource<SqliteConnection>("   ", "Data Source=:memory:"));
+                () => context.AddDataSource<SqliteConnection>("   ", "Data Source=:memory:"));
         }
 
         [Fact]
         public void AddDataSource_WithNullConfig_ShouldThrow()
         {
-            using var client = new LiteOrmClient();
+            using var context = new LiteOrmContext();
 
-            Assert.Throws<ArgumentNullException>(() => client.AddDataSource((DataSourceConfig)null!));
+            Assert.Throws<ArgumentNullException>(() => context.AddDataSource((DataSourceConfig)null!));
         }
 
         [Fact]
@@ -166,14 +163,14 @@ namespace LiteOrm.Tests.Setup
         {
             var dbPath = CreateTempDbPath();
 
-            using var client = new LiteOrmClient()
+            using var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>("main", $"Data Source={dbPath}", @default: true);
 
             // 取会话即建池，此后不再接受新的数据源
-            using var session = client.CreateSession();
+            using var session = context.CreateSession();
 
             Assert.Throws<InvalidOperationException>(
-                () => client.AddDataSource<SqliteConnection>("late", "Data Source=:memory:"));
+                () => context.AddDataSource<SqliteConnection>("late", "Data Source=:memory:"));
         }
 
         [Fact]
@@ -181,11 +178,11 @@ namespace LiteOrm.Tests.Setup
         {
             var dbPath = CreateTempDbPath();
 
-            using var client = new LiteOrmClient()
+            using var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>("main", $"Data Source={dbPath}", @default: true);
 
             // 与 DI 线路彻底分开：本线路不接管 SessionManager.Current
-            using var session = client.CreateSession();
+            using var session = context.CreateSession();
             Assert.NotNull(session);
         }
 
@@ -194,11 +191,11 @@ namespace LiteOrm.Tests.Setup
         {
             var dbPath = CreateTempDbPath();
 
-            using var client = new LiteOrmClient()
+            using var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>("main", $"Data Source={dbPath}", @default: true);
 
-            using var first = client.CreateSession();
-            using var second = client.CreateSession();
+            using var first = context.CreateSession();
+            using var second = context.CreateSession();
 
             Assert.NotSame(first, second);
         }
@@ -207,15 +204,15 @@ namespace LiteOrm.Tests.Setup
         public void Dispose_ShouldReleasePoolFactory()
         {
             var dbPath = CreateTempDbPath();
-            var client = new LiteOrmClient()
+            var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>("main", $"Data Source={dbPath}", @default: true);
 
-            using var session = client.CreateSession();
-            client.Dispose();
+            using var session = context.CreateSession();
+            context.Dispose();
 
-            // 会话本身是调用方的资源，但底层连接池工厂已随客户端销毁
+            // 会话本身是调用方的资源，但底层连接池工厂已随上下文销毁
             Assert.Throws<ObjectDisposedException>(() => session.GetDAOContextPool());
-            Assert.Throws<ObjectDisposedException>(() => client.CreateSession());
+            Assert.Throws<ObjectDisposedException>(() => context.CreateSession());
         }
 
         [Fact]
@@ -224,23 +221,23 @@ namespace LiteOrm.Tests.Setup
             var dbPath = CreateTempDbPath();
 
             // 整条链纯手动：没有任何 ServiceCollection / ServiceProvider
-            using var client = new LiteOrmClient()
+            using var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>("main", $"Data Source={dbPath}", @default: true, syncTable: true);
 
-            using var session = client.CreateSession();
+            using var session = context.CreateSession();
 
             var ct = TestContext.Current.CancellationToken;
 
             var dao = new ObjectDAO<TestUser>(session);
             var viewDao = new ObjectViewDAO<TestUser>(session);
-            var user = new TestUser { Name = "client-user", Age = 30, CreateTime = DateTime.Now };
+            var user = new TestUser { Name = "context-user", Age = 30, CreateTime = DateTime.Now };
 
             Assert.True(await dao.InsertAsync(user, ct));
             Assert.True(user.Id > 0);
 
             var loaded = await viewDao.GetObject(user.Id).FirstOrDefaultAsync(ct);
             Assert.NotNull(loaded);
-            Assert.Equal("client-user", loaded!.Name);
+            Assert.Equal("context-user", loaded!.Name);
 
             Assert.True(await viewDao.ExistsKey(user.Id).GetResultAsync(ct));
             Assert.Equal(1, await viewDao.Count(Expr.Prop("Id") == user.Id).GetResultAsync(ct));
@@ -259,11 +256,11 @@ namespace LiteOrm.Tests.Setup
             var mainPath = CreateTempDbPath();
             var logPath = CreateTempDbPath();
 
-            using var client = new LiteOrmClient()
+            using var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>("main", $"Data Source={mainPath}", @default: true, syncTable: true)
                 .AddDataSource<SqliteConnection>("log", $"Data Source={logPath}", syncTable: true);
 
-            using var session = client.CreateSession();
+            using var session = context.CreateSession();
 
             // 两个池互不相同
             var mainPool = session.GetDAOContextPool("main");
@@ -291,10 +288,10 @@ namespace LiteOrm.Tests.Setup
         {
             var dbPath = CreateTempDbPath();
 
-            using var client = new LiteOrmClient()
+            using var context = new LiteOrmContext()
                 .AddDataSource<SqliteConnection>("main", $"Data Source={dbPath}", @default: true, syncTable: true);
 
-            using var session = client.CreateSession();
+            using var session = context.CreateSession();
 
             // EntityService<T> 依赖 IServiceProvider 解析 ObjectDAO<T>/ObjectViewDAO<T>；
             // 纯手动线路用只认本会话的最小实现即可，不必引入任何 DI 容器

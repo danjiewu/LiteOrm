@@ -20,13 +20,18 @@ namespace LiteOrm.Common
         public string? ConnectionString { get; set; }
 
         /// <summary>
-        /// 数据库提供程序类型全名
+        /// 数据库提供程序类型（<see cref="System.Data.Common.DbConnection"/> 派生类型），可读写。
+        /// 为 null 时无法创建连接池。
         /// </summary>
-        public string? Provider { get; set; }
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        public Type? ProviderType { get; set; }
+
         /// <summary>
-        /// SQL 构建器类型全名（可选，如果不指定则根据 Provider 自动匹配）
+        /// SQL 构建器类型（<c>SqlBuilder</c> 派生类型，可选），可读写。
+        /// 赋 null 表示不指定，由工厂按 <see cref="ProviderType"/> 自动匹配。
         /// </summary>
-        public string? SqlBuilder { get; set; }
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        public Type? SqlBuilderType { get; set; }
 
         /// <summary>
         /// 连接保活时长
@@ -59,41 +64,21 @@ namespace LiteOrm.Common
         public List<ReadOnlyDataSourceConfig> ReadOnlyConfigs { get; set; } = new List<ReadOnlyDataSourceConfig>();
 
         /// <summary>
-        /// 获取提供程序类型
+        /// 初始化一个空配置。
         /// </summary>
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-        public Type ProviderType
+        public DataSourceConfig()
         {
-            get
-            {
-                if (string.IsNullOrEmpty(Provider))
-                    throw new InvalidOperationException("Database provider not specified");
-
-                var type = TypeResolverHelper.FindType(Provider!);
-                if (type == null)
-                    throw new TypeLoadException($"Unable to load database provider type: {Provider}");
-
-                return type;
-            }
         }
 
         /// <summary>
-        /// 获取 SQL 构建器类型，如果未指定则返回 null，由工厂根据 Provider 自动匹配
+        /// 用连接类型与连接字符串初始化配置。
         /// </summary>
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-        public Type? SqlBuilderType
+        /// <param name="providerType">数据库提供程序类型。</param>
+        /// <param name="connectionString">连接字符串。</param>
+        public DataSourceConfig([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type providerType, string? connectionString = null)
         {
-            get
-            {
-                if (!string.IsNullOrEmpty(SqlBuilder))
-                {
-                    var type = TypeResolverHelper.FindType(SqlBuilder!);
-                    if (type == null)
-                        throw new TypeLoadException($"Unable to load SQL builder type: {SqlBuilder}");
-                    return type;
-                }
-                return null;
-            }
+            ProviderType = providerType;
+            ConnectionString = connectionString;
         }
     }
 
@@ -108,13 +93,19 @@ namespace LiteOrm.Common
         public string? ConnectionString { get; set; }
 
         /// <summary>
-        /// 数据库提供程序类型全名
+        /// 数据库提供程序（<see cref="System.Data.Common.DbConnection"/> 派生类型）。
+        /// 为 null 时沿用主库的 <see cref="DataSourceConfig.ProviderType"/>。
         /// </summary>
-        public string? Provider { get; set; }
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        public Type? ProviderType { get; set; }
+
         /// <summary>
-        /// SQL 构建器类型全名（可选，如果不指定则根据 Provider 自动匹配）
+        /// SQL 构建器类型（<c>SqlBuilder</c> 派生类型，可选）。
+        /// 为 null 时沿用主库的 <see cref="DataSourceConfig.SqlBuilderType"/>。
         /// </summary>
-        public string? SqlBuilder { get; set; }
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        public Type? SqlBuilderType { get; set; }
+
         /// <summary>
         /// 连接保活时长（可选，不设置则使用主库配置）
         /// </summary>
@@ -134,6 +125,22 @@ namespace LiteOrm.Common
         /// 数据库参数最大数量限制（可选，不设置则使用主库配置）
         /// </summary>
         public int? ParamCountLimit { get; set; }
+
+        /// <summary>
+        /// 初始化一个空配置。
+        /// </summary>
+        public ReadOnlyDataSourceConfig()
+        {
+        }
+
+        /// <summary>
+        /// 用连接字符串初始化配置。
+        /// </summary>
+        /// <param name="connectionString">连接字符串。</param>
+        public ReadOnlyDataSourceConfig(string? connectionString)
+        {
+            ConnectionString = connectionString;
+        }
     }
 
     /// <summary>

@@ -62,7 +62,7 @@ dotnet add package Microsoft.Data.Sqlite   # 按数据库选装
 
 - 基础库由 `LiteOrm` 与 `LiteOrm.Common` 两个包构成，`LiteOrm` 会自动携带 `LiteOrm.Common`。
 - 不提供 `RegisterLiteOrm()`，也不含 AOP 拦截（事务/权限/日志）能力。
-- 可以用 `LiteOrmClient` 完全不碰 DI 容器地用起来（见 [第一个完整示例（手动构造，无 DI）](./04-first-example-manual.md)），也可以只用 `AddLiteOrm()` 走纯 MS DI（见 [第一个完整示例（仅基础库）](./03-first-example.md)）。
+- 可以用 `LiteOrmContext` 完全不碰 DI 容器地用起来（见 [第一个完整示例（手动构造，无 DI）](./04-first-example-manual.md)），也可以只用 `AddLiteOrm()` 走纯 MS DI（见 [第一个完整示例（仅基础库）](./03-first-example.md)）。
 - 数据访问通过 `ObjectDAO` / `DataDAO` 等 DAO 类型完成。
 
 ## 方式二：使用框架集成包（`LiteOrm.DependencyInjection`）

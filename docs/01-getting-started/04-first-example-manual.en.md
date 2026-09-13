@@ -1,10 +1,10 @@
 # First Full Example (Manual Construction, No DI)
 
-This article walks through a minimal runnable example of LiteOrm **without any dependency injection container**: use `LiteOrmClient` to register data sources fluently and create a session, then build `ObjectDAO<User>` / `ObjectViewDAO<User>` straight from that session to run CRUD operations.
+This article walks through a minimal runnable example of LiteOrm **without any dependency injection container**: use `LiteOrmContext` to register data sources fluently and create a session, then build `ObjectDAO<User>` / `ObjectViewDAO<User>` straight from that session to run CRUD operations.
 
 > **When to use**: console tools, batch jobs, unit tests, plugins — any host where pulling in a DI container is inconvenient.
 >
-> `LiteOrmClient` is a line **independent** of `AddLiteOrm()` and `RegisterLiteOrm()`: it registers no services, never reads `IConfiguration`, and never touches `SessionManager.Current`. If you need AOP transactions / permissions / logging, switch to [First Full Example (DI)](./05-first-example-di.en.md).
+> `LiteOrmContext` is a line **independent** of `AddLiteOrm()` and `RegisterLiteOrm()`: it registers no services and never reads `IConfiguration`; `CreateSession()` binds the new session to `SessionManager.Current` (a process-wide static entry point, independent of the per-scope instance the DI line resolves). If you need AOP transactions / permissions / logging, switch to [First Full Example (DI)](./05-first-example-di.en.md).
 
 ## 0. Project Setup
 
@@ -43,15 +43,15 @@ public class User
 > - `[Column("Id", IsPrimaryKey = true, IsIdentity = true)]`: primary key and identity.
 > - The entity does not need to inherit `ObjectBase`; a plain POCO is fine.
 
-## 2. Create the Client
+## 2. Create the Context
 
-Every data source is fully configured **in a single `AddDataSource` call**: connection string, pool sizes, parameter limit, and table sync are all settled there. The client deliberately offers no follow-up configuration methods.
+Every data source is fully configured **in a single `AddDataSource` call**: connection string, pool sizes, parameter limit, and table sync are all settled there. The context deliberately offers no follow-up configuration methods.
 
 ```csharp
 using LiteOrm;
 using Microsoft.Data.Sqlite;
 
-var liteOrm = new LiteOrmClient()
+var liteOrm = new LiteOrmContext()
     .AddDataSource<SqliteConnection>(
         name: "main",
         connectionString: "Data Source=LiteOrmManualDemo.db",
@@ -64,25 +64,28 @@ var liteOrm = new LiteOrmClient()
 
 The named parameters of `AddDataSource<TConnection>` map one-to-one onto `DataSourceConfig`; anything omitted falls back to the default:
 
-| Parameter | Config property | Default | Notes |
-| --- | --- | --- | --- |
-| `name` | `Name` | `"DefaultConnection"` | Data source name |
-| `connectionString` | `ConnectionString` | `null` | Connection string |
-| `@default` | — | `false` | Whether to make it the default source |
-| `sqlBuilder` | `SqlBuilder` | `null` | Custom SqlBuilder type name; rarely needed |
-| `syncTable` | `SyncTable` | `false` | Whether to auto-create tables |
-| `provider` | `Provider` | `TConnection`'s assembly-qualified name | Connection type string |
-| `poolSize` | `PoolSize` | `16` | Cached connections |
-| `maxPoolSize` | `MaxPoolSize` | `100` | Maximum concurrent connections |
-| `paramCountLimit` | `ParamCountLimit` | `1000` | Max parameters per SQL statement |
-| `keepAliveDuration` | `KeepAliveDuration` | 10 minutes | Idle-connection keep-alive duration |
+| Parameter | Config property | Type | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `name` | `Name` | `string` | `"DefaultConnection"` | Data source name |
+| `connectionString` | `ConnectionString` | `string` | `null` | Connection string |
+| `@default` | — | `bool` | `false` | Whether to make it the default source |
+| `syncTable` | `SyncTable` | `bool` | `false` | Whether to auto-create tables |
+| `sqlBuilder` | `SqlBuilderType` | `Type` | `null` | Custom SqlBuilder type; rarely needed |
+| `poolSize` | `PoolSize` | `int` | `16` | Cached connections |
+| `maxPoolSize` | `MaxPoolSize` | `int` | `100` | Maximum concurrent connections |
+| `paramCountLimit` | `ParamCountLimit` | `int` | `1000` | Max parameters per SQL statement |
+| `keepAliveDuration` | `KeepAliveDuration` | `TimeSpan` | 10 minutes | Idle-connection keep-alive duration |
+
+> `SqlBuilderType` is a `Type` value. `ProviderType` always comes from the generic parameter `TConnection` and cannot be specified separately; when constructing a `DataSourceConfig` directly you must assign an actual `Type`. A type-name string is only used in `appsettings.json` (the `Provider` / `SqlBuilder` keys), which the framework resolves when loading configuration.
+>
+> The non-generic overload `AddDataSource(DataSourceConfig config, bool @default = false)` also takes `@default`, for cases where you build a `DataSourceConfig` yourself in code (e.g. connection details read from elsewhere) and then register it.
 
 Pools are only built on the first `CreateSession()`, so **all `AddDataSource` calls must happen before the first session is taken**. Adding a source after pools exist throws `InvalidOperationException`.
 
 ### Multiple data sources
 
 ```csharp
-var liteOrm = new LiteOrmClient()
+var liteOrm = new LiteOrmContext()
     .AddDataSource<SqliteConnection>("main", "Data Source=main.db", @default: true, syncTable: true, maxPoolSize: 32)
     .AddDataSource<MySqlConnection>("log", "Server=localhost;Database=log;", poolSize: 4);
 ```
@@ -100,7 +103,7 @@ var userDao = new ObjectDAO<User>(session);        // writes
 var userViewDao = new ObjectViewDAO<User>(session); // reads
 ```
 
-Each `CreateSession()` returns a new `SessionManager` that the caller owns. The session is passed to DAOs explicitly and never interferes with the DI line.
+Each `CreateSession()` returns a new `SessionManager` that the caller owns, and binds that session to `SessionManager.Current`. The session is passed to DAOs explicitly, so a DAO built earlier keeps pointing at its own session even after a later session overwrites `Current`.
 
 ## 4. Full Call Loop
 
@@ -109,7 +112,7 @@ using LiteOrm;
 using LiteOrm.Common;
 using Microsoft.Data.Sqlite;
 
-using var liteOrm = new LiteOrmClient()
+using var liteOrm = new LiteOrmContext()
     .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmManualDemo.db", @default: true, syncTable: true, poolSize: 8, maxPoolSize: 32);
 
 using var session = liteOrm.CreateSession();
@@ -142,7 +145,7 @@ await userDao.DeleteAsync(Expr.Prop(nameof(User.Id)) == user.Id, CancellationTok
 
 Console.WriteLine($"Count={count}, Exists={exists}");
 
-// Disposal: dispose the session before the client
+// Disposal: dispose the session before the context
 liteOrm.Dispose();
 ```
 
@@ -175,7 +178,7 @@ catch
 
 ## 6. Boundary Between the Manual and DI Lines
 
-| Capability | `LiteOrmClient` (this article) | `AddLiteOrm()` / `RegisterLiteOrm()` |
+| Capability | `LiteOrmContext` (this article) | `AddLiteOrm()` / `RegisterLiteOrm()` |
 | --- | --- | --- |
 | Entity mapping / CRUD / queries | ✅ | ✅ |
 | Manual transactions | ✅ `session.BeginTransaction()` | ✅ |
@@ -184,9 +187,9 @@ catch
 | `[ServiceLog]` logging | ❌ | ✅ AOP interception |
 | Requires a DI container | ❌ no | ✅ yes |
 | Reads `IConfiguration` | ❌ data sources are registered explicitly in code | ✅ `appsettings.json` auto-binding |
-| Touches `SessionManager.Current` | ❌ | ✅ bound automatically |
+| Touches `SessionManager.Current` | ✅ bound to the most recent `CreateSession()` | ✅ bound automatically per scope |
 
-> When you need AOP capabilities, swap `new LiteOrmClient()` for `AddLiteOrm()` in the host; the entity definitions and DAO usage stay identical.
+> When you need AOP capabilities, swap `new LiteOrmContext()` for `AddLiteOrm()` in the host; the entity definitions and DAO usage stay identical.
 
 ## 7. Common Beginner Issues
 
@@ -204,9 +207,9 @@ catch
 
 ### Issue 3: `ArgumentNullException`, or `SessionManager.Current` is null
 
-**Cause**: The `LiteOrmClient` line never sets `SessionManager.Current`, so older code that relies on the static entry sees null.
+**Cause**: `SessionManager.Current` is read before any session has been created, or older API usage forgot to call `SessionManager.SetCurrent(...)`.
 
-**Solution**: Pass the value returned by `CreateSession()` to the DAO constructor explicitly: `new ObjectDAO<User>(session)`. Do not rely on `SessionManager.Current`.
+**Solution**: Call `CreateSession()` first, then read the static entry point. The sturdier habit is to always pass the value returned by `CreateSession()` to the DAO constructor: `new ObjectDAO<User>(session)` — `SessionManager.Current` only ever points at the most recently created session, so do not rely on it when several sessions are alive at once.
 
 ## Run Verification Checklist
 
@@ -215,7 +218,7 @@ catch
 - [ ] Entity classes are annotated with `[Table]` and `[Column]`.
 - [ ] Reads go through `ObjectViewDAO<T>` (`ObjectDAO<T>` has no `GetObject`).
 - [ ] Insert, query, update, and delete return the expected results.
-- [ ] The session and client are disposed before exit (`using` or an explicit `Dispose`).
+- [ ] The session and context are disposed before exit (`using` or an explicit `Dispose`).
 
 ## Related Links
 

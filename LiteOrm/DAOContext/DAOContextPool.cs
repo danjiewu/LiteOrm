@@ -198,7 +198,8 @@ namespace LiteOrm
         {
             if (config == null || string.IsNullOrWhiteSpace(config.ConnectionString)) return;
 
-            var pool = new DAOContextPool(ProviderType, config.ConnectionString)
+            var providerType = config.ProviderType ?? ProviderType;
+            var pool = new DAOContextPool(providerType, config.ConnectionString)
             {
                 Name = $"{Name}_ReadOnly_{_readOnlyPools.Count}",
                 PoolSize = config.PoolSize ?? PoolSize,

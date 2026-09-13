@@ -39,8 +39,8 @@
 | `Default` | `string` | — | Default data source name |
 | `DataSources[].Name` | `string` | — | Data source name (referenced by the `DataSource` parameter on `[Table]`) |
 | `DataSources[].ConnectionString` | `string` | — | Database connection string |
-| `DataSources[].Provider` | `string` | — | Fully qualified connection type name in the format `TypeName, AssemblyName` |
-| `DataSources[].SqlBuilder` | `string` | `null` | Fully qualified SQL builder type name (optional; auto-matched from `Provider` when omitted) |
+| `DataSources[].Provider` | `string` | — | Fully qualified connection type name in the format `TypeName, AssemblyName` (resolved to `ProviderType` on load) |
+| `DataSources[].SqlBuilder` | `string` | `null` | Fully qualified SQL builder type name (optional; resolved to `SqlBuilderType` on load, auto-matched from `Provider` when omitted) |
 | `DataSources[].KeepAliveDuration` | `TimeSpan` | `00:10:00` | Connection keep-alive duration (`00:00:00` = unlimited) |
 | `DataSources[].PoolSize` | `int` | `16` | Maximum number of cached connections in the pool |
 | `DataSources[].MaxPoolSize` | `int` | `100` | Maximum concurrent connection limit |

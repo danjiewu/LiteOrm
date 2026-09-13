@@ -27,14 +27,15 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 ### 手动构造（不使用 DI 宿主）
 
-- `LiteOrmClient`：`new LiteOrmClient(ILoggerFactory? loggerFactory = null)` 起链
-  - `AddDataSource<TConnection>(name, connectionString, @default, sqlBuilder, syncTable, provider, poolSize, maxPoolSize, paramCountLimit, keepAliveDuration)` —— 连接池参数与建表同步在此一次设定
-  - `AddDataSource(DataSourceConfig)`
-  - `CreateSession()` → `SessionManager`
+- `LiteOrmContext`：`new LiteOrmContext(ILoggerFactory? loggerFactory = null)` 起链
+  - `AddDataSource<TConnection>(name, connectionString, @default, syncTable, sqlBuilder, poolSize, maxPoolSize, paramCountLimit, keepAliveDuration)` —— 连接池参数与建表同步在此一次设定；提供程序类型取 `TConnection`
+  - `AddDataSource(DataSourceConfig config, bool @default = false)` —— 在代码里直接构造 `DataSourceConfig` 时使用
+  - `CreateSession()` → `SessionManager`（同时绑定为 `SessionManager.Current`）
   - `GetDataSource(name)` / `DataSources` / `DefaultDataSourceName`
   - `Dispose()`
 - DAO 构造：`new ObjectDAO<T>(session)` / `new ObjectViewDAO<T>(session)`
-- `DataSourceConfig`（`Name` / `ConnectionString` / `Provider` / `SqlBuilder` / `PoolSize` / `MaxPoolSize` / `ParamCountLimit` / `KeepAliveDuration` / `SyncTable` / `ReadOnlyConfigs`）
+- `DataSourceConfig`（`Name` / `ConnectionString` / `ProviderType` / `SqlBuilderType` / `PoolSize` / `MaxPoolSize` / `ParamCountLimit` / `KeepAliveDuration` / `SyncTable` / `ReadOnlyConfigs`）
+  - `ProviderType` / `SqlBuilderType` 均为可赋值的 `Type?`。类型名字符串只在 `appsettings.json` 的 `Provider` / `SqlBuilder` 键里使用，加载配置时立即解析为 `Type`（失败抛 `TypeLoadException`）
 
 对应文档：
 

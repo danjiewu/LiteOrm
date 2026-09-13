@@ -156,17 +156,17 @@ builder.Services.AddLiteOrm(options =>
 
 > The two methods can be mixed. Registrations in `ConfigureServices` run after `[AutoRegister]` auto-registration; for the same type, the later registration wins.
 
-### 2.3 Manual Construction with LiteOrmClient (No DI Host)
+### 2.3 Manual Construction with LiteOrmContext (No DI Host)
 
-When there is no DI container and no `IConfiguration`, use `LiteOrmClient` to build the client directly. It is a **completely separate line** from `AddLiteOrm()` / `RegisterLiteOrm()`: it registers no services, never reads `IConfiguration`, and never touches `SessionManager.Current`.
+When there is no DI container and no `IConfiguration`, use `LiteOrmContext` to build the context directly. It is a **completely separate line** from `AddLiteOrm()` / `RegisterLiteOrm()`: it registers no services and never reads `IConfiguration`; `CreateSession()` binds the new session to `SessionManager.Current`.
 
 ```csharp
 using LiteOrm;
 using Microsoft.Data.Sqlite;
 
-// One client = one set of data sources + one pool factory; every option is set in the AddDataSource call
-using var liteOrm = new LiteOrmClient()
-    .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmDemo.db", @default: true, syncTable: true, poolSize: 8, maxPoolSize: 32);
+// One context = one set of data sources + one pool factory; every option is set in the AddDataSource call
+using var liteOrm = new LiteOrmContext()
+    .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmDemo.db");
 
 // The session is just a constructor argument for DAOs — no container involved
 using var session = liteOrm.CreateSession();
@@ -182,7 +182,7 @@ var users = await userViewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsy
 
 > - **Add data sources before pools are created.** Pools are built exactly once, on the first `CreateSession()`, with whatever data-source configuration exists at that moment. Any later `AddDataSource` throws `InvalidOperationException`.
 > - **Routing is decided by the entity, not the session.** Which database a DAO uses depends on `[Table(DataSource = "...")]` on the entity; entities without it always use the default data source. `CreateSession()` itself is not bound to a data source.
-> - `LiteOrmClient` implements `IDisposable` and tears down the pool factory on disposal. It never takes over `SessionManager.Current`, which makes it a good fit for unit tests, console tools, and plugins.
+> - `LiteOrmContext` implements `IDisposable` and tears down the pool factory on disposal. `CreateSession()` binds `SessionManager.Current`, but the line still registers no services, which makes it a good fit for unit tests, console tools, and plugins.
 > - When you need AOP transactions, permissions, or logging, switch to `AddLiteOrm()` or `LiteOrm.DependencyInjection`.
 
 The full parameter table, multi-source setup, transaction usage, and a walkthrough live in [First Full Example (Manual, No DI)](./04-first-example-manual.en.md).
@@ -267,9 +267,9 @@ Console.WriteLine($"Count={count}, Exists={exists}");
 
 ### Issue 2: `Object reference not set to instance` or `SessionManager.Current` is null
 
-**Cause**: Code that relies on the static `SessionManager.Current` (DAO takes no session and pulls connections from a global static entry) sees null in two cases — manual construction with `LiteOrmClient` (which by design never sets `Current`), or older API usage where `SessionManager.SetCurrent(...)` was forgotten. With `AddLiteOrm()` / `RegisterLiteOrm()` the binding is automatic, so this does not occur.
+**Cause**: Code that relies on the static `SessionManager.Current` (DAO takes no session and pulls connections from a global static entry) sees null when read before any session has been created, or when older API usage forgot `SessionManager.SetCurrent(...)`.
 
-**Solution**: In manual construction, pass the session to the DAO explicitly — `new ObjectDAO<User>(liteOrm.CreateSession())` — instead of relying on `SessionManager.Current`. If you genuinely need the static entry, add `SessionManager.SetCurrent(() => sessionManager)`; with `AddLiteOrm()` no manual call is needed. Otherwise the DAO cannot obtain a database connection when executing SQL.
+**Solution**: In manual construction, pass the session to the DAO explicitly — `new ObjectDAO<User>(liteOrm.CreateSession())`. `LiteOrmContext.CreateSession()` already binds the new session to `Current`, and `AddLiteOrm()` / `RegisterLiteOrm()` bind it per scope, so neither line needs a manual `SetCurrent` call. Still, do not rely on the static entry when several sessions are alive at once — it only points at the most recently created one.
 
 ### Issue 3: `Function 'XXX' is not supported` exception
 
@@ -280,7 +280,7 @@ Console.WriteLine($"Count={count}, Exists={exists}");
 ## Run Verification Checklist
 
 - [ ] `dotnet build` compiles without errors.
-- [ ] For manual construction, the value returned by `CreateSession()` is passed to the DAO constructor (or `SessionManager.SetCurrent(...)` is called); with `AddLiteOrm()` the binding is automatic — no manual call needed.
+- [ ] In manual construction, the value returned by `CreateSession()` is passed to the DAO constructor (`CreateSession()` already binds `SessionManager.Current`, but do not rely on the static entry when several sessions are alive at once); with `AddLiteOrm()` the per-scope binding is automatic.
 - [ ] Entity classes are annotated with `[Table]` and `[Column]` attributes.
 - [ ] Insert, query, and pagination operations return the expected results.
 - [ ] `await host.DisposeAsync()` is called before the application exits to release resources (connection pool, etc.).

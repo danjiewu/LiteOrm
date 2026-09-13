@@ -39,8 +39,8 @@
 | `Default`                         | `string`   | —          | 默认数据源名称                                |
 | `DataSources[].Name`              | `string`   | —          | 数据源名称（`[Table]` 的 `DataSource` 参数引用此值） |
 | `DataSources[].ConnectionString`  | `string`   | —          | 数据库连接字符串                               |
-| `DataSources[].Provider`          | `string`   | —          | 连接类型全名，格式：`TypeName, AssemblyName`     |
-| `DataSources[].SqlBuilder`        | `string`   | `null`     | SQL 构建器类型全名（可选，不填则按 Provider 自动匹配）     |
+| `DataSources[].Provider`          | `string`   | —          | 连接类型全名，格式：`TypeName, AssemblyName`（加载时解析为 `ProviderType`） |
+| `DataSources[].SqlBuilder`        | `string`   | `null`     | SQL 构建器类型全名（可选，加载时解析为 `SqlBuilderType`，不填则按 Provider 自动匹配） |
 | `DataSources[].KeepAliveDuration` | `TimeSpan` | `00:10:00` | 连接保活时长（`00:00:00` = 无限制）               |
 | `DataSources[].PoolSize`          | `int`      | `16`       | 连接池缓存的最大连接数                            |
 | `DataSources[].MaxPoolSize`       | `int`      | `100`      | 最大并发连接数限制                              |
