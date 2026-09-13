@@ -15,6 +15,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 ### 配置与启动
 
 - `RegisterLiteOrm()`
+- `AddLiteOrm()`（纯 MS DI，基础库内置）
 - `RegisterSqlBuilder(...)`
 - `SqlBuilder.BulkProvider`（批量插入提供程序）
 - 数据源配置、连接池配置、只读副本配置
@@ -23,6 +24,21 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 - [配置参考](./01-configuration-reference.md)
 - [数据库差异与兼容性说明](./07-database-compatibility.md)
+
+### 手动构造（不使用 DI 宿主）
+
+- `LiteOrmClient`：`new LiteOrmClient(ILoggerFactory? loggerFactory = null)` 起链
+  - `AddDataSource<TConnection>(name, connectionString, @default, sqlBuilder, syncTable, provider, poolSize, maxPoolSize, paramCountLimit, keepAliveDuration)` —— 连接池参数与建表同步在此一次设定
+  - `AddDataSource(DataSourceConfig)`
+  - `CreateSession()` → `SessionManager`
+  - `GetDataSource(name)` / `DataSources` / `DefaultDataSourceName`
+  - `Dispose()`
+- DAO 构造：`new ObjectDAO<T>(session)` / `new ObjectViewDAO<T>(session)`
+- `DataSourceConfig`（`Name` / `ConnectionString` / `Provider` / `SqlBuilder` / `PoolSize` / `MaxPoolSize` / `ParamCountLimit` / `KeepAliveDuration` / `SyncTable` / `ReadOnlyConfigs`）
+
+对应文档：
+
+- [第一个完整示例（手动构造，无 DI）](../01-getting-started/04-first-example-manual.md)
 
 ### 实体映射与视图模型
 

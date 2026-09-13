@@ -17,6 +17,7 @@
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
 8.1.7:
+- 新增 LiteOrmClient：不依赖 DI 的轻量链式客户端，AddDataSource&lt;TConnection&gt;（连接池参数、建表同步一次配齐，无后置设置方法）/ CreateSession / new ObjectDAO&lt;T&gt;(session) 即可读写，与 AddLiteOrm、RegisterLiteOrm 线路完全分开。
 - 修复AOT下内置泛型服务未注册问题。
 
 8.1.6:

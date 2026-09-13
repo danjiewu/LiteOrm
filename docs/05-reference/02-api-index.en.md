@@ -15,6 +15,7 @@ Use this page as a scenario-based index inside the docs set.
 ### Startup and configuration
 
 - `RegisterLiteOrm()`
+- `AddLiteOrm()` (plain MS DI, built into the base library)
 - `RegisterSqlBuilder(...)`
 - `SqlBuilder.BulkProvider` (bulk insert provider)
 - data source settings, connection pool settings, read-only replicas
@@ -23,6 +24,21 @@ Related guides:
 
 - [Configuration Reference](./01-configuration-reference.en.md)
 - [Database Compatibility Notes](./07-database-compatibility.en.md)
+
+### Manual construction (no DI host)
+
+- `LiteOrmClient`: start the chain with `new LiteOrmClient(ILoggerFactory? loggerFactory = null)`
+  - `AddDataSource<TConnection>(name, connectionString, @default, sqlBuilder, syncTable, provider, poolSize, maxPoolSize, paramCountLimit, keepAliveDuration)` — pool options and table sync are set here in one call
+  - `AddDataSource(DataSourceConfig)`
+  - `CreateSession()` → `SessionManager`
+  - `GetDataSource(name)` / `DataSources` / `DefaultDataSourceName`
+  - `Dispose()`
+- DAO construction: `new ObjectDAO<T>(session)` / `new ObjectViewDAO<T>(session)`
+- `DataSourceConfig` (`Name` / `ConnectionString` / `Provider` / `SqlBuilder` / `PoolSize` / `MaxPoolSize` / `ParamCountLimit` / `KeepAliveDuration` / `SyncTable` / `ReadOnlyConfigs`)
+
+Related guides:
+
+- [First Full Example (Manual, No DI)](../01-getting-started/04-first-example-manual.en.md)
 
 ### Entity mapping and view models
 

@@ -2,6 +2,10 @@
 
 ## v8.1.7 (2026-09-10)
 
+### New Features
+
+- **Added `LiteOrmClient`, a fluent client that needs no DI container** (`LiteOrm`). `new LiteOrmClient().AddDataSource<SqliteConnection>("main", "Data Source=main.db", @default: true, poolSize: 8, maxPoolSize: 32, paramCountLimit: 500)` registers a data source by connection type; `CreateSession()` returns a `SessionManager`, and `new ObjectDAO<User>(session)` is then ready for reads and writes. The named parameters of `AddDataSource<TConnection>` map one-to-one onto `DataSourceConfig` (`name` / `connectionString` / `@default` / `sqlBuilder` / `syncTable` / `provider` / `poolSize` / `maxPoolSize` / `paramCountLimit` / `keepAliveDuration`), and pool options plus table sync are fixed in that single call — the client deliberately offers no follow-up configuration methods. The client itself keeps only `AddDataSource` / `CreateSession`, the two query properties (`DataSources` / `DefaultDataSourceName`), `GetDataSource`, and `Dispose`; the logger factory is now injected through the constructor. This line is **fully separate** from `AddLiteOrm()` / `RegisterLiteOrm()`: it registers no services, never reads `IConfiguration`, and never touches `SessionManager.Current`, which makes it a good fit for console tools, batch jobs, and unit tests.
+
 ### Fixes
 
 - **Fixed built-in generic services not being registered under AOT** (`LiteOrm`): `AddLiteOrm()` previously registered the generic DAOs and services (`ObjectDAO<>` / `ObjectViewDAO<>` / `EntityService<>` / `EntityViewService<>` and their interfaces) only when `AutoRegisterServices` was `false`. That branch never applies in AOT builds, so `GetRequiredService<IEntityService<T>>()` threw "No service for type ... has been registered". They are now registered unconditionally, and `AutoRegisterServices` only governs auto-registration of user-defined services and DAOs.

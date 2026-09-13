@@ -62,6 +62,7 @@ dotnet add package Microsoft.Data.Sqlite   # choose based on your database
 
 - The base library consists of `LiteOrm` and `LiteOrm.Common`; `LiteOrm` automatically brings in `LiteOrm.Common`.
 - No `RegisterLiteOrm()` is provided, and no AOP interception (transactions/permissions/logging).
+- You can use it with no DI container at all via `LiteOrmClient` (see [First Full Example (Manual, No DI)](./04-first-example-manual.en.md)), or go through plain MS DI with `AddLiteOrm()` (see [First Full Example (Base Library Only)](./03-first-example.en.md)).
 - Data access is done through DAO types such as `ObjectDAO` / `DataDAO`.
 
 ## Option 2: Host Integration Package (`LiteOrm.DependencyInjection`)

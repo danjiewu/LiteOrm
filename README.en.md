@@ -120,6 +120,19 @@ builder.Host.RegisterLiteOrm();  // Integration via IHostBuilder extension metho
 
 
 
+> **Prefer no DI container at all?** The base library ships `LiteOrmClient`, which registers data sources fluently and creates sessions, fully separate from `RegisterLiteOrm()` / `AddLiteOrm()`:
+>
+> ```csharp
+> using var liteOrm = new LiteOrmClient()
+>     .AddDataSource<SqliteConnection>("main", "Data Source=app.db", @default: true, poolSize: 8, maxPoolSize: 32);
+> using var session = liteOrm.CreateSession();
+> var userDao = new ObjectDAO<User>(session);
+> ```
+>
+> See [First Full Example (Manual, No DI)](docs/01-getting-started/04-first-example-manual.en.md).
+
+
+
 ### 3. Define an entity
 
 
@@ -363,7 +376,7 @@ Duplicate CTE aliases are now validated before SQL generation:
 - equal definitions: deduplicated automatically, only the first is kept
 - different definitions: an exception is thrown
 
-See: [CTE Guide](./docs/02-core-usage/07-cte-guide.en.md)
+See: [CTE Guide](./docs/02-core-usage/10-cte-guide.en.md)
 
 
 
@@ -561,7 +574,7 @@ For guided reading, start with the docs hub. Use the reference pages below when 
 | [Documentation Hub](./docs/README.md) | Bilingual docs hub organized by learning path |
 | [中文文档中心](./docs/README.md) | 按学习路径组织的中英文文档导航 |
 | [API Index](./docs/05-reference/02-api-index.en.md) | Scenario-based API and capability entry points |
-| [AI Guide](./docs/05-reference/05-ai-guide.en.md) | Compact appendix for assistants and quick API orientation |
+| [AI Guide](./docs/05-reference/04-ai-guide.en.md) | Compact appendix for assistants and quick API orientation |
 | [Changelog](./docs/CHANGELOG.en.md) | Functional changes by version |
 | [Demo Project](./LiteOrm.Demo/) | Main feature demonstration project |
 | [Performance Report](./LiteOrm.Benchmark/) | Detailed benchmark reports |

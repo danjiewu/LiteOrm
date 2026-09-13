@@ -9,6 +9,7 @@
 |[概览](./01-getting-started/01-overview.md)|[Overview](./01-getting-started/01-overview.en.md)|框架介绍、项目组成与适用场景|
 |[安装](./01-getting-started/02-installation.md)|[Installation](./01-getting-started/02-installation.en.md)|环境要求与安装（基础库 / DI 扩展双场景）|
 |[第一个完整示例（仅基础库）](./01-getting-started/03-first-example.md)|[First Example (Base Only)](./01-getting-started/03-first-example.en.md)|不依赖 DI 扩展的最小可运行示例|
+|[第一个完整示例（手动构造，无 DI）](./01-getting-started/04-first-example-manual.md)|[First Example (Manual, No DI)](./01-getting-started/04-first-example-manual.en.md)|用 `LiteOrmClient` 手动创建客户端，完全不使用 DI 容器|
 |[第一个完整示例（DI 扩展）](./01-getting-started/05-first-example-di.md)|[First Example (DI Extension)](./01-getting-started/05-first-example-di.en.md)|依赖 `LiteOrm.DependencyInjection`, 支持 AOP 特性|
 
 ### 核心使用篇 / Core Usage
@@ -87,7 +88,7 @@
 ### 推荐阅读路径
 
 1. 第一次接触 LiteOrm：先看"入门篇"的[概览](./01-getting-started/01-overview.md)与[安装](./01-getting-started/02-installation.md)。
-2. 配置与第一个示例：根据项目类型选择[仅基础库](./01-getting-started/03-first-example.md)或 [DI 扩展](./01-getting-started/05-first-example-di.md)。
+2. 配置与第一个示例：根据项目类型选择[仅基础库](./01-getting-started/03-first-example.md)、[手动构造（无 DI）](./01-getting-started/04-first-example-manual.md)或 [DI 扩展](./01-getting-started/05-first-example-di.md)。
 3. 准备接入业务项目：继续阅读"核心使用篇"，建立实体、查询、写入和关联的整体认识。
 4. 使用 `LiteOrm.DependencyInjection` 集成（Autofac、AOP）：先阅读[配置参考](./05-reference/01-configuration-reference.md)，再了解"DI扩展"中的事务、权限过滤等特性。
 5. 涉及分表、性能或数据库方言差异：继续阅读"高级特性篇"。

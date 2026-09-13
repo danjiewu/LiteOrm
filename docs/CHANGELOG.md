@@ -2,6 +2,10 @@
 
 ## v8.1.7 (2026-09-10)
 
+### 新特性
+
+- **新增 `LiteOrmClient`：不依赖 DI 的链式客户端**（`LiteOrm`）。`new LiteOrmClient().AddDataSource<SqliteConnection>("main", "Data Source=main.db", @default: true, poolSize: 8, maxPoolSize: 32, paramCountLimit: 500)` 直接用连接类型登记数据源，`CreateSession()` 返回 `SessionManager`，随后 `new ObjectDAO<User>(session)` 即可读写。`AddDataSource<TConnection>` 的命名参数与 `DataSourceConfig` 一一对应（`name` / `connectionString` / `@default` / `sqlBuilder` / `syncTable` / `provider` / `poolSize` / `maxPoolSize` / `paramCountLimit` / `keepAliveDuration`），连接池参数与建表同步都在这一次调用里定好，客户端不再提供任何后置设置方法。客户端本身只保留 `AddDataSource` / `CreateSession` / 两个查询属性（`DataSources` / `DefaultDataSourceName`）/ `GetDataSource` / `Dispose`，日志工厂改由构造函数注入。该线路与 `AddLiteOrm()` / `RegisterLiteOrm()` **完全分开**：不注册服务、不读取 `IConfiguration`、不改动 `SessionManager.Current`，适合控制台工具、批处理与单元测试。
+
 ### 修复
 
 - **修复 AOT 下框架内置泛型服务未注册的问题**（`LiteOrm`）：`AddLiteOrm()` 此前只在 `AutoRegisterServices` 为 `false` 时才注册泛型 DAO 与服务（`ObjectDAO<>` / `ObjectViewDAO<>` / `EntityService<>` / `EntityViewService<>` 及其接口），AOT 构建下该分支不成立，`GetRequiredService<IEntityService<T>>()` 会抛 "No service for type ... has been registered"。现改为固定注册，`AutoRegisterServices` 只控制用户自定义服务与 DAO 的自动注册。

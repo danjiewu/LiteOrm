@@ -136,6 +136,19 @@ builder.Host.RegisterLiteOrm();  // 通过 IHostBuilder 扩展方法集成
 
 
 
+> **不想引入 DI 容器？** 基础库提供 `LiteOrmClient`，可以直接链式登记数据源并创建会话，与 `RegisterLiteOrm()` / `AddLiteOrm()` 完全分开：
+>
+> ```csharp
+> using var liteOrm = new LiteOrmClient()
+>     .AddDataSource<SqliteConnection>("main", "Data Source=app.db", @default: true, poolSize: 8, maxPoolSize: 32);
+> using var session = liteOrm.CreateSession();
+> var userDao = new ObjectDAO<User>(session);
+> ```
+>
+> 详见 [第一个完整示例（手动构造，无 DI）](docs/01-getting-started/04-first-example-manual.md)。
+
+
+
 ### 3. 定义实体
 
 
@@ -379,7 +392,7 @@ var query = adultUsers
 - 定义相等：自动去重，只保留第一个
 - 定义不相等：抛出异常
 
-详细说明见：[CTE 指南](./docs/02-core-usage/07-cte-guide.md)
+详细说明见：[CTE 指南](./docs/02-core-usage/10-cte-guide.md)
 
 
 
@@ -576,7 +589,7 @@ public class Log : IArged
 | [文档中心](./docs/README.md) | 按学习路径组织的中英文文档导航 |
 | [English Docs Hub](./docs/README.md) | Bilingual docs hub organized by learning path |
 | [API 索引](./docs/05-reference/02-api-index.md) | 按使用场景整理的接口与能力入口 |
-| [AI 使用指南](./docs/05-reference/05-ai-guide.md) | 面向 AI 和快速查阅场景的附录 |
+| [AI 使用指南](./docs/05-reference/04-ai-guide.md) | 面向 AI 和快速查阅场景的附录 |
 | [变更日志](./docs/CHANGELOG.md) | 按版本号记录的功能性变更 |
 | [Demo 项目](./LiteOrm.Demo/) | 主要特性的演示工程 |
 | [性能报告](./LiteOrm.Benchmark/) | 详细的性能基准测试报告 |

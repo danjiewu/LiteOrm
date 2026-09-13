@@ -4,7 +4,7 @@ This article walks through a minimal runnable example demonstrating the typical 
 
 > **Applicable scenarios**: console apps, batch scripts, unit tests, or projects that want MS DI-managed lifetimes without AOP interception.
 >
-> If you use ASP.NET Core and need Autofac integration, AOP transactions/permissions/logging, and similar capabilities, see [First End-to-End Example (DI)](./05-first-example-di.en.md).
+> If you do not want a DI container at all, see [First Full Example (Manual, No DI)](./04-first-example-manual.en.md). If you use ASP.NET Core and need Autofac integration, AOP transactions/permissions/logging, and similar capabilities, see [First End-to-End Example (DI)](./05-first-example-di.en.md).
 
 ## 0. Project Setup
 
@@ -156,6 +156,37 @@ builder.Services.AddLiteOrm(options =>
 
 > The two methods can be mixed. Registrations in `ConfigureServices` run after `[AutoRegister]` auto-registration; for the same type, the later registration wins.
 
+### 2.3 Manual Construction with LiteOrmClient (No DI Host)
+
+When there is no DI container and no `IConfiguration`, use `LiteOrmClient` to build the client directly. It is a **completely separate line** from `AddLiteOrm()` / `RegisterLiteOrm()`: it registers no services, never reads `IConfiguration`, and never touches `SessionManager.Current`.
+
+```csharp
+using LiteOrm;
+using Microsoft.Data.Sqlite;
+
+// One client = one set of data sources + one pool factory; every option is set in the AddDataSource call
+using var liteOrm = new LiteOrmClient()
+    .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmDemo.db", @default: true, syncTable: true, poolSize: 8, maxPoolSize: 32);
+
+// The session is just a constructor argument for DAOs — no container involved
+using var session = liteOrm.CreateSession();
+var userDao = new ObjectDAO<User>(session);
+var userViewDao = new ObjectViewDAO<User>(session);
+
+var user = new User { UserName = "admin", Age = 18, CreateTime = DateTime.Now };
+await userDao.InsertAsync(user);
+
+var loaded = await userViewDao.GetObject(user.Id).FirstOrDefaultAsync();
+var users = await userViewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsync();
+```
+
+> - **Add data sources before pools are created.** Pools are built exactly once, on the first `CreateSession()`, with whatever data-source configuration exists at that moment. Any later `AddDataSource` throws `InvalidOperationException`.
+> - **Routing is decided by the entity, not the session.** Which database a DAO uses depends on `[Table(DataSource = "...")]` on the entity; entities without it always use the default data source. `CreateSession()` itself is not bound to a data source.
+> - `LiteOrmClient` implements `IDisposable` and tears down the pool factory on disposal. It never takes over `SessionManager.Current`, which makes it a good fit for unit tests, console tools, and plugins.
+> - When you need AOP transactions, permissions, or logging, switch to `AddLiteOrm()` or `LiteOrm.DependencyInjection`.
+
+The full parameter table, multi-source setup, transaction usage, and a walkthrough live in [First Full Example (Manual, No DI)](./04-first-example-manual.en.md).
+
 ## 3. Full Call Loop (Insert, Query, Pagination)
 
 The following closed-loop example walks through insert, conditional query, single-record query, pagination, update, count, existence check, and delete in sequence:
@@ -221,7 +252,7 @@ Console.WriteLine($"Count={count}, Exists={exists}");
 | Permission filtering `[ServicePermission]` | ❌ | ✅ AOP interception |
 | Automatic logging `[ServiceLog]` / `[Log]` | ❌ | ✅ AOP interception |
 | DI container registration | ✅ `AddLiteOrm()` (MS DI, see above) | ✅ `RegisterLiteOrm()` (Autofac) |
-| Config file binding | ✅ `LoadConfiguration` or `AddLiteOrm()` reads `IConfiguration` | ✅ `appsettings.json` auto-binding |
+| Config file binding | ✅ `AddLiteOrm()` reads `IConfiguration` | ✅ `appsettings.json` auto-binding |
 | Bulk import `IBulkProvider` | ✅ set `SqlBuilder.BulkProvider` directly | ✅ set `SqlBuilder.BulkProvider` directly |
 
 > If you later need AOP capabilities, you can migrate smoothly from the base library to the host integration (`LiteOrm.DependencyInjection`); entity definitions and DAO/Service usage remain identical.
@@ -236,9 +267,9 @@ Console.WriteLine($"Count={count}, Exists={exists}");
 
 ### Issue 2: `Object reference not set to instance` or `SessionManager.Current` is null
 
-**Cause**: In manual construction, you forgot to call `SessionManager.SetCurrent(() => sessionManager)` (with `AddLiteOrm()` the binding is automatic, so this does not occur).
+**Cause**: Code that relies on the static `SessionManager.Current` (DAO takes no session and pulls connections from a global static entry) sees null in two cases — manual construction with `LiteOrmClient` (which by design never sets `Current`), or older API usage where `SessionManager.SetCurrent(...)` was forgotten. With `AddLiteOrm()` / `RegisterLiteOrm()` the binding is automatic, so this does not occur.
 
-**Solution**: In manual construction scenarios, make sure to call `SessionManager.SetCurrent(() => sessionManager)` before creating service instances; with `AddLiteOrm()` no manual call is needed — the framework binds automatically. Otherwise the DAO cannot obtain a database connection when executing SQL.
+**Solution**: In manual construction, pass the session to the DAO explicitly — `new ObjectDAO<User>(liteOrm.CreateSession())` — instead of relying on `SessionManager.Current`. If you genuinely need the static entry, add `SessionManager.SetCurrent(() => sessionManager)`; with `AddLiteOrm()` no manual call is needed. Otherwise the DAO cannot obtain a database connection when executing SQL.
 
 ### Issue 3: `Function 'XXX' is not supported` exception
 
@@ -249,7 +280,7 @@ Console.WriteLine($"Count={count}, Exists={exists}");
 ## Run Verification Checklist
 
 - [ ] `dotnet build` compiles without errors.
-- [ ] For manual construction, `SessionManager.SetCurrent(...)` is called; with `AddLiteOrm()` the binding is automatic — no manual call needed.
+- [ ] For manual construction, the value returned by `CreateSession()` is passed to the DAO constructor (or `SessionManager.SetCurrent(...)` is called); with `AddLiteOrm()` the binding is automatic — no manual call needed.
 - [ ] Entity classes are annotated with `[Table]` and `[Column]` attributes.
 - [ ] Insert, query, and pagination operations return the expected results.
 - [ ] `await host.DisposeAsync()` is called before the application exits to release resources (connection pool, etc.).
