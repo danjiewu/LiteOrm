@@ -3,11 +3,11 @@
 	<PropertyGroup>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<RootNamespace>LiteOrm.DependencyInjection</RootNamespace>
-		<AssemblyVersion>8.1.6.0</AssemblyVersion>
-		<FileVersion>8.1.6.0</FileVersion>
+		<AssemblyVersion>8.1.7.0</AssemblyVersion>
+		<FileVersion>8.1.7.0</FileVersion>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-		<VersionPrefix>8.1.6</VersionPrefix>
+		<VersionPrefix>8.1.7</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm.DependencyInjection</Title>
 		<Authors>danjiewu</Authors>
@@ -18,6 +18,9 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
+8.1.7:
+- 同步 LiteOrm.Common 8.1.7 / LiteOrm 8.1.7（DataSourceConfig / ReadOnlyDataSourceConfig 的 Provider / SqlBuilder 改为类型化属性 ProviderType / SqlBuilderType；内置泛型服务改为固定注册）。
+
 8.1.6:
 - 同步 LiteOrm.Common 8.1.6 / LiteOrm 8.1.6。
 

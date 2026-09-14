@@ -32,41 +32,32 @@ dotnet add package LiteOrm
 
 ### Quick Start
 
-**Option A — no DI container at all**, using `LiteOrmContext`:
+**No DI container at all**, using `LiteOrmContext`:
 
 ```csharp
 using LiteOrm;
 using LiteOrm.Common;
 using Microsoft.Data.Sqlite;
 
-// 1. Create the context and register data sources — every option is set here, once
+// Register data sources, then create a session and build DAOs from it
 using var liteOrm = new LiteOrmContext()
-    .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmDemo.db", @default: true, syncTable: true)
-    .AddDataSource<MySqlConnection>("log");   // a second source, no connection string needed yet
-
-// 2. Create a session and build DAOs from it
+    .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmDemo.db", @default: true, syncTable: true);
 using var session = liteOrm.CreateSession();
 var userDao = new ObjectDAO<User>(session);
-var userViewDao = new ObjectViewDAO<User>(session);
+var viewDao = new ObjectViewDAO<User>(session);
 
 var user = new User { UserName = "admin", Age = 18, CreateTime = DateTime.Now };
 await userDao.InsertAsync(user);
 
-var loaded = await userViewDao.GetObject(user.Id).FirstOrDefaultAsync();
-var adults = await userViewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsync();
+var loaded = await viewDao.GetObject(user.Id).FirstOrDefaultAsync();
+var adults = await viewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsync();
 ```
 
-`AddDataSource<TConnection>` accepts named parameters that map onto `DataSourceConfig` — `name`, `connectionString`, `@default`, `syncTable`, `sqlBuilder`, `poolSize`, `maxPoolSize`, `paramCountLimit`, `keepAliveDuration` (the provider type always comes from `TConnection`). Anything omitted uses the config default (pool size 16, max 100, param count limit 1000, keep-alive 10 minutes). Pool options and table sync are fixed at this single call; the context offers no follow-up configuration methods, and adding sources must happen before the first `CreateSession()`:
+`AddDataSource<TConnection>` accepts named parameters that map onto `DataSourceConfig` — `connectionString`, `@default`, `syncTable`, `sqlBuilder`, `poolSize`, `maxPoolSize`, etc., anything omitted uses the config default. Chain one call per extra data source; all options are fixed at this step and must be set before the first `CreateSession()`. This path registers no services, never reads `IConfiguration`, and never touches `SessionManager.Current`; data-source routing is decided by the entity's `[Table(DataSource = "...")]`. See [First Full Example (Manual, No DI)](docs/01-getting-started/04-first-example-manual.en.md). For DI, see [Quick Start (DI Integration)](#quick-start-di-integration) below.
 
-```csharp
-using var liteOrm = new LiteOrmContext()
-    .AddDataSource<SqliteConnection>("main", "Data Source=main.db", @default: true, poolSize: 8, maxPoolSize: 32, paramCountLimit: 500, syncTable: true)
-    .AddDataSource<MySqlConnection>("log", "Server=localhost;Database=log;", maxPoolSize: 64);
-```
+### Quick Start (DI Integration)
 
-This path is fully independent of the DI integration: it registers no services, never reads `IConfiguration`, and never touches `SessionManager.Current`. Data-source routing is decided by the entity's `[Table(DataSource = "...")]`, not by the session. See [First Full Example (Manual, No DI)](docs/01-getting-started/04-first-example-manual.en.md).
-
-**Option B — with a DI container**, using `AddLiteOrm()` (plain MS DI, built into the base library):
+With a DI container, use `AddLiteOrm()` (plain MS DI, no Autofac / AOP, built into the base library):
 
 ```csharp
 using LiteOrm;
@@ -81,27 +72,10 @@ var userService = scope.ServiceProvider.GetRequiredService<EntityService<User>>(
 
 var user = new User { UserName = "admin", Age = 18 };
 await userService.InsertAsync(user);
-
 var users = await userService.SearchAsync(u => u.Age > 18);
 ```
 
-Data sources can also be loaded from an `IConfiguration` `LiteOrm` section when using the DI routes above.
-
-### DI Integration
-
-**Option 1 — plain MS DI (no Autofac / AOP), built into the core library:**
-
-```csharp
-using LiteOrm;
-
-builder.Services.AddLiteOrm(options =>
-{
-    options.AutoRegisterServices = true;   // default true: apply [AutoRegister] source-generated registrations
-    options.ConfigureServices = services => { /* add custom registrations */ };
-});
-```
-
-**Option 2 — with Autofac / AOP**, use the [**LiteOrm.DependencyInjection**](https://www.nuget.org/packages/LiteOrm.DependencyInjection) package.
+Data sources are loaded from the `LiteOrm` section of `IConfiguration`; use the `AddLiteOrm(options => ...)` overload to tune registration (`AutoRegisterServices` defaults to true, plus a `ConfigureServices` callback). `AddLiteOrm()` registers the LiteOrm core services (`SessionManager`, `DAOContextPoolFactory`, etc.). For full **automatic session management, declarative transactions, logging**, use the [**LiteOrm.DependencyInjection**](https://www.nuget.org/packages/LiteOrm.DependencyInjection) package.
 
 ### AOT Support
 
@@ -156,48 +130,39 @@ dotnet add package LiteOrm
 
 ### 快速入门
 
-**方式一：完全不使用 DI 容器**，直接用 `LiteOrmContext`：
+完全不使用 DI 容器，直接用 `LiteOrmContext`：
 
 ```csharp
 using LiteOrm;
 using LiteOrm.Common;
 using Microsoft.Data.Sqlite;
 
-// 1. 创建上下文并登记数据源 —— 所有参数在这一步一次配齐
+// 创建上下文并登记数据源，再由会话构造 DAO
 using var liteOrm = new LiteOrmContext()
-    .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmDemo.db", @default: true, syncTable: true)
-    .AddDataSource<MySqlConnection>("log");   // 第二个数据源，可暂不填连接串
-
-// 2. 创建会话，由会话构造 DAO
+    .AddDataSource<SqliteConnection>("main", "Data Source=LiteOrmDemo.db", @default: true, syncTable: true);
 using var session = liteOrm.CreateSession();
 var userDao = new ObjectDAO<User>(session);
-var userViewDao = new ObjectViewDAO<User>(session);
+var viewDao = new ObjectViewDAO<User>(session);
 
 var user = new User { UserName = "admin", Age = 18, CreateTime = DateTime.Now };
 await userDao.InsertAsync(user);
 
-var loaded = await userViewDao.GetObject(user.Id).FirstOrDefaultAsync();
-var adults = await userViewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsync();
+var loaded = await viewDao.GetObject(user.Id).FirstOrDefaultAsync();
+var adults = await viewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsync();
 ```
 
-`AddDataSource<TConnection>` 的命名参数与 `DataSourceConfig` 一一对应——`name`、`connectionString`、`@default`、`syncTable`、`sqlBuilder`、`poolSize`、`maxPoolSize`、`paramCountLimit`、`keepAliveDuration`（提供程序类型一律取 `TConnection`），未填的按配置默认值（池大小 16、上限 100、参数上限 1000、保活 10 分钟）。连接池参数与建表同步都在这一次调用里定好，上下文不提供后续的补充设置方法；添加数据源必须在首次 `CreateSession()` 之前：
+`AddDataSource<TConnection>` 的命名参数与 `DataSourceConfig` 一一对应——`connectionString`、`@default`、`syncTable`、`sqlBuilder`、`poolSize`、`maxPoolSize` 等，未填的按配置默认值；多个数据源就链式多调一次，所有设置都定在这一步，且必须在首次 `CreateSession()` 之前。这条线路不注册任何服务、不读取 `IConfiguration`、不设置 `SessionManager.Current`，数据源由实体的 `[Table(DataSource = "...")]` 决定。完整示例见 [第一个完整示例（手动构造，无 DI）](docs/01-getting-started/04-first-example-manual.md)。需要 DI 时见下方 [快速入门（DI 集成）](#快速入门di-集成)。
 
-```csharp
-using var liteOrm = new LiteOrmContext()
-    .AddDataSource<SqliteConnection>("main", "Data Source=main.db", @default: true, poolSize: 8, maxPoolSize: 32, paramCountLimit: 500, syncTable: true)
-    .AddDataSource<MySqlConnection>("log", "Server=localhost;Database=log;", maxPoolSize: 64);
-```
+### 快速入门（DI 集成）
 
-这条线路与 DI 集成完全分开：不注册任何服务、不读取 `IConfiguration`、不设置 `SessionManager.Current`。数据源由实体的 `[Table(DataSource = "...")]` 决定，而不是由会话决定。完整示例见 [第一个完整示例（手动构造，无 DI）](docs/01-getting-started/04-first-example-manual.md)。
-
-**方式二：使用 DI 容器**，调用基础库内置的 `AddLiteOrm()`（纯 MS DI）：
+使用 DI 容器时，调用基础库内置的 `AddLiteOrm()`（纯 MS DI，无 Autofac / AOP）：
 
 ```csharp
 using LiteOrm;
 using Microsoft.Extensions.Hosting;
 
 var builder = Host.CreateApplicationBuilder(args);   // 自动加载 appsettings.json
-builder.Services.AddLiteOrm();                       // 读取配置的 "LiteOrm" 节点
+builder.Services.AddLiteOrm();                       // 读取 "LiteOrm" 配置节点
 
 var host = builder.Build();
 using var scope = host.Services.CreateScope();
@@ -205,26 +170,10 @@ var userService = scope.ServiceProvider.GetRequiredService<EntityService<User>>(
 
 var user = new User { UserName = "admin", Age = 18 };
 await userService.InsertAsync(user);
-
 var users = await userService.SearchAsync(u => u.Age > 18);
 ```
 
-数据源配置也可通过 `IConfiguration` 的 `LiteOrm` 节点加载（见下方 DI 方式）。
-
-### 快速入门（DI 集成）
-
-```csharp
-using LiteOrm;
-
-builder.Services.AddLiteOrm(options =>
-{
-    options.AutoRegisterServices = true;   // 默认 true：应用 [AutoRegister] 源生成注册
-    options.ConfigureServices = services => { /* 追加自定义注册 */ };
-});
-```
-纯 MS DI 注册（无 Autofac / AOP），通过生成器自动注册 LiteOrm 核心服务（`SessionManager`、`DAOContextPoolFactory` 等），可支持 `[AutoRegister]` 方式生成注册。
-
-如需要更全面的**自动会话管理、声明式事务、日志等**，请使用 [**LiteOrm.DependencyInjection**](https://www.nuget.org/packages/LiteOrm.DependencyInjection) 包。
+数据源从 `IConfiguration` 的 `LiteOrm` 节点加载；需要调整注册行为时改用 `AddLiteOrm(options => ...)` 重载，可设置 `AutoRegisterServices`（默认 true）与 `ConfigureServices`。`AddLiteOrm()` 自动注册 LiteOrm 核心服务（`SessionManager`、`DAOContextPoolFactory` 等）。如需要更全面的**自动会话管理、声明式事务、日志等**，请使用 [**LiteOrm.DependencyInjection**](https://www.nuget.org/packages/LiteOrm.DependencyInjection) 包。
 
 ### AOT 支持
 

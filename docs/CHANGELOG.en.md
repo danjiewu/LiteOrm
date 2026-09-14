@@ -1,18 +1,18 @@
 # Changelog
 
-## v8.1.7 (2026-09-10)
+## v8.1.7 (2026-09-14)
 
 ### Breaking changes
 
-- **`DataSourceConfig` and `ReadOnlyDataSourceConfig` string properties `Provider` / `SqlBuilder` have been replaced with assignable `Type?` properties `ProviderType` / `SqlBuilderType`** (`LiteOrm.Common`). The JSON keys `Provider` / `SqlBuilder` in `appsettings.json` stay unchanged; `LoadConfiguration` resolves them to a `Type` immediately and throws `TypeLoadException` on failure. Code that reads `config.Provider` / `config.SqlBuilder` must move to `config.ProviderType` / `config.SqlBuilderType`; when building a config in code only a `Type` instance can be assigned (the string form is for `appsettings.json` only).
+- **`DataSourceConfig` / `ReadOnlyDataSourceConfig` `Provider` / `SqlBuilder` replaced with assignable `Type` properties `ProviderType` / `SqlBuilderType`** (`LiteOrm.Common`). JSON keys are unchanged; values are resolved to a `Type` on load and throw `TypeLoadException` on failure. Code-built configs can only assign a `Type`; a `DataSourceConfig(Type providerType, string? connectionString)` constructor is provided.
 
 ### New Features
 
-- **Added `LiteOrmContext`, a fluent context that needs no DI container** (`LiteOrm`). `new LiteOrmContext().AddDataSource<SqliteConnection>("main", "Data Source=main.db", @default: true, poolSize: 8, maxPoolSize: 32, paramCountLimit: 500)` registers a data source by connection type; `CreateSession()` returns a `SessionManager`, and `new ObjectDAO<User>(session)` is then ready for reads and writes. The named parameters of `AddDataSource<TConnection>` map one-to-one onto `DataSourceConfig` (`name` / `connectionString` / `@default` / `syncTable` / `sqlBuilder` / `poolSize` / `maxPoolSize` / `paramCountLimit` / `keepAliveDuration`), and pool options plus table sync are fixed in that single call — the context deliberately offers no follow-up configuration methods. The context itself keeps only `AddDataSource` / `CreateSession`, the two query properties (`DataSources` / `DefaultDataSourceName`), `GetDataSource`, and `Dispose`; the logger factory is now injected through the constructor. This line is **fully separate** from `AddLiteOrm()` / `RegisterLiteOrm()`: it registers no services and never reads `IConfiguration`; `CreateSession()` binds the new session to `SessionManager.Current` (a process-wide static entry point), which makes it a good fit for console tools, batch jobs, and unit tests.
+- **Added `LiteOrmContext`** (`LiteOrm`): a fluent context that needs no DI container. `AddDataSource<TConnection>` registers a data source, `CreateSession()` returns a session, and `new ObjectDAO<User>(session)` is ready for reads and writes. Registers no services and never reads `IConfiguration`.
 
 ### Fixes
 
-- **Fixed built-in generic services not being registered under AOT** (`LiteOrm`): `AddLiteOrm()` previously registered the generic DAOs and services (`ObjectDAO<>` / `ObjectViewDAO<>` / `EntityService<>` / `EntityViewService<>` and their interfaces) only when `AutoRegisterServices` was `false`. That branch never applies in AOT builds, so `GetRequiredService<IEntityService<T>>()` threw "No service for type ... has been registered". They are now registered unconditionally, and `AutoRegisterServices` only governs auto-registration of user-defined services and DAOs.
+- **Fixed built-in generic services not being registered under AOT** (`LiteOrm`): generic DAOs and services are now registered unconditionally; `AutoRegisterServices` only governs user-defined services and DAOs.
 
 ***
 

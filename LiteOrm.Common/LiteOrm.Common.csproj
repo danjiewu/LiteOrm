@@ -2,11 +2,11 @@
   <PropertyGroup>
     <TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
     <RootNamespace>LiteOrm.Common</RootNamespace>
-    <AssemblyVersion>8.1.6.0</AssemblyVersion>
-    <FileVersion>8.1.6.0</FileVersion>
+    <AssemblyVersion>8.1.7.0</AssemblyVersion>
+    <FileVersion>8.1.7.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <VersionPrefix>8.1.6</VersionPrefix>
+    <VersionPrefix>8.1.7</VersionPrefix>
     <Nullable>enable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
@@ -15,6 +15,10 @@
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm.Common 公共库：LiteOrm 的共享核心，提供表达式树（Expr）、SQL 片段、表元数据（TableInfoProvider）、特性与公共接口，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
+      8.1.7:
+      - 破坏性变更：DataSourceConfig / ReadOnlyDataSourceConfig 的 Provider / SqlBuilder 字符串属性改为可赋值的类型属性 ProviderType / SqlBuilderType。appsettings.json 中的 JSON 键名 Provider / SqlBuilder 不变，加载配置时立即解析为 Type，解析失败抛 TypeLoadException；在代码中构造配置时只能赋 Type 实例。
+      - 新增 DataSourceConfig(Type providerType, string? connectionString) 构造重载。
+
       8.1.6:
       - 源生成器机制重构：
       - DisableLiteOrmCodeGenAttribute 重命名为 LiteOrmCodeGenAttribute，新增 [Flags] LiteOrmCodeGenKind（TableInfo/DataReaderMappers/PropertyAccessors/AotTypeRegistration/AutoRegister），改为「定义优先」：声明时仅按定义位生成，未声明时由 AOT 构建属性自动全量生成。

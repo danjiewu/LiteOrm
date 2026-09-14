@@ -17,8 +17,10 @@
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
 8.1.7:
-- 新增 LiteOrmClient：不依赖 DI 的轻量链式客户端，AddDataSource&lt;TConnection&gt;（连接池参数、建表同步一次配齐，无后置设置方法）/ CreateSession / new ObjectDAO&lt;T&gt;(session) 即可读写，与 AddLiteOrm、RegisterLiteOrm 线路完全分开。
-- 修复AOT下内置泛型服务未注册问题。
+- 新增 LiteOrmContext：不依赖 DI 的轻量链式上下文，AddDataSource&lt;TConnection&gt;（连接池参数、建表同步一次配齐，无后置设置方法）/ CreateSession / new ObjectDAO&lt;T&gt;(session) 即可读写，与 AddLiteOrm、RegisterLiteOrm 线路完全分开。
+- 破坏性变更：DataSourceConfig / ReadOnlyDataSourceConfig 的 Provider / SqlBuilder 字符串属性改为类型化属性 ProviderType / SqlBuilderType；配置文件中的 JSON 键名 Provider / SqlBuilder 不变，LoadConfiguration 加载时立即解析为 Type，解析失败抛 TypeLoadException。
+- 修复 AOT 下内置泛型服务未注册问题：框架内置泛型 DAO 与服务改为固定注册，AutoRegisterServices 只控制用户自定义服务与 DAO 的自动注册。
+- 同步 LiteOrm.Common 8.1.7。
 
 8.1.6:
 - 修复 AddLiteOrm 工厂模式注册时未注册核心服务的 bug。
