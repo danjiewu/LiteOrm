@@ -183,7 +183,7 @@ var users = await userViewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsy
 > - **Add data sources before pools are created.** Pools are built exactly once, on the first `CreateSession()`, with whatever data-source configuration exists at that moment. Any later `AddDataSource` throws `InvalidOperationException`.
 > - **Routing is decided by the entity, not the session.** Which database a DAO uses depends on `[Table(DataSource = "...")]` on the entity; entities without it always use the default data source. `CreateSession()` itself is not bound to a data source.
 > - `LiteOrmContext` implements `IDisposable` and tears down the pool factory on disposal. `CreateSession()` binds `SessionManager.Current`, but the line still registers no services, which makes it a good fit for unit tests, console tools, and plugins.
-> - When you need AOP transactions, permissions, or logging, switch to `AddLiteOrm()` or `LiteOrm.DependencyInjection`.
+> - When you need AOP transactions, permissions, or logging, use `RegisterLiteOrm()` from the `LiteOrm.DependencyInjection` package; `AddLiteOrm()` in the base library is plain MS DI and has no AOP.
 
 The full parameter table, multi-source setup, transaction usage, and a walkthrough live in [First Full Example (Manual, No DI)](./04-first-example-manual.en.md).
 

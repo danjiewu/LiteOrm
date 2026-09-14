@@ -178,18 +178,18 @@ catch
 
 ## 6. Boundary Between the Manual and DI Lines
 
-| Capability | `LiteOrmContext` (this article) | `AddLiteOrm()` / `RegisterLiteOrm()` |
-| --- | --- | --- |
-| Entity mapping / CRUD / queries | ✅ | ✅ |
-| Manual transactions | ✅ `session.BeginTransaction()` | ✅ |
-| Declarative `[Transaction]` | ❌ | ✅ AOP interception |
-| `[ServicePermission]` filtering | ❌ | ✅ AOP interception |
-| `[ServiceLog]` logging | ❌ | ✅ AOP interception |
-| Requires a DI container | ❌ no | ✅ yes |
-| Reads `IConfiguration` | ❌ data sources are registered explicitly in code | ✅ `appsettings.json` auto-binding |
-| Touches `SessionManager.Current` | ✅ bound to the most recent `CreateSession()` | ✅ bound automatically per scope |
+| Capability | `LiteOrmContext` (this article) | `AddLiteOrm()` (base library, plain MS DI) | `RegisterLiteOrm()` (`LiteOrm.DependencyInjection`) |
+| --- | --- | --- | --- |
+| Entity mapping / CRUD / queries | ✅ | ✅ | ✅ |
+| Manual transactions | ✅ `session.BeginTransaction()` | ✅ | ✅ |
+| Declarative `[Transaction]` | ❌ | ❌ | ✅ AOP interception |
+| `[ServicePermission]` filtering | ❌ | ❌ | ✅ AOP interception |
+| `[ServiceLog]` logging | ❌ | ❌ | ✅ AOP interception |
+| Requires a DI container | ❌ no | ✅ yes | ✅ yes |
+| Reads `IConfiguration` | ❌ data sources are registered explicitly in code | ✅ bound from the `LiteOrm` section | ✅ `appsettings.json` auto-binding |
+| Touches `SessionManager.Current` | ✅ bound to the most recent `CreateSession()` | ✅ bound automatically per scope | ✅ bound automatically per scope |
 
-> When you need AOP capabilities, swap `new LiteOrmContext()` for `AddLiteOrm()` in the host; the entity definitions and DAO usage stay identical.
+> AOP interception (transactions/permissions/logging) is provided only by `RegisterLiteOrm()` from `LiteOrm.DependencyInjection`. `AddLiteOrm()` is plain MS DI and has **no AOP**. When you need AOP, swap `new LiteOrmContext()` for `builder.Host.RegisterLiteOrm()` (see [First Full Example (DI)](./05-first-example-di.en.md)); when you only need a DI container without AOP, `AddLiteOrm()` is enough. Entity definitions and DAO usage are identical across all three lines.
 
 ## 7. Common Beginner Issues
 

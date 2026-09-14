@@ -189,7 +189,7 @@ var users = await userViewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsy
 > - **添加数据源必须在建池之前**：连接池在首次 `CreateSession()` 时按当时的数据源配置一次性建好，此后 `AddDataSource` 会抛出 `InvalidOperationException`。
 > - **数据源由实体决定，而不是会话**。DAO 走哪个库取决于实体上的 `[Table(DataSource = "...")]`；未标注的实体一律落在默认数据源。`CreateSession()` 本身不绑定数据源。
 > - `LiteOrmContext` 实现 `IDisposable`，释放时销毁连接池工厂。`CreateSession()` 会绑定 `SessionManager.Current`，但不注册任何服务，适合在单元测试、控制台工具、插件等宿主环境里使用。
-> - 需要 AOP 事务、权限、日志等能力时，仍应改用 `AddLiteOrm()` 或 `LiteOrm.DependencyInjection`。
+> - 需要 AOP 事务、权限、日志等能力时，应改用 `LiteOrm.DependencyInjection` 包里的 `RegisterLiteOrm()`；基础库的 `AddLiteOrm()` 是纯 MS DI，不含 AOP。
 
 完整的参数表、多数据源配置、事务用法与逐段讲解见 [第一个完整示例（手动构造，无 DI）](./04-first-example-manual.md)。
 

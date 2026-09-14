@@ -19,7 +19,7 @@
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
 8.1.7:
-- 同步 LiteOrm.Common 8.1.7 / LiteOrm 8.1.7（DataSourceConfig / ReadOnlyDataSourceConfig 的 Provider / SqlBuilder 改为类型化属性 ProviderType / SqlBuilderType；内置泛型服务改为固定注册）。
+- 同步 LiteOrm.Common 8.1.7 / LiteOrm 8.1.7。
 
 8.1.6:
 - 同步 LiteOrm.Common 8.1.6 / LiteOrm 8.1.6。

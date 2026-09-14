@@ -178,18 +178,18 @@ catch
 
 ## 6. 手动线路与 DI 线路的边界
 
-| 能力 | `LiteOrmContext`（本文） | `AddLiteOrm()` / `RegisterLiteOrm()` |
-| --- | --- | --- |
-| 实体映射 / CRUD / 查询 | ✅ | ✅ |
-| 手动事务 | ✅ `session.BeginTransaction()` | ✅ |
-| 声明式事务 `[Transaction]` | ❌ | ✅ AOP 拦截 |
-| 权限过滤 `[ServicePermission]` | ❌ | ✅ AOP 拦截 |
-| 自动日志 `[ServiceLog]` | ❌ | ✅ AOP 拦截 |
-| 需要 DI 容器 | ❌ 不需要 | ✅ 需要 |
-| 读取 `IConfiguration` | ❌ 数据源全部代码里显式登记 | ✅ `appsettings.json` 自动绑定 |
-| 修改 `SessionManager.Current` | ✅ 绑定为最近一次 `CreateSession()` 的会话 | ✅ 按作用域自动绑定 |
+| 能力 | `LiteOrmContext`（本文） | `AddLiteOrm()`（基础库，纯 MS DI） | `RegisterLiteOrm()`（`LiteOrm.DependencyInjection`） |
+| --- | --- | --- | --- |
+| 实体映射 / CRUD / 查询 | ✅ | ✅ | ✅ |
+| 手动事务 | ✅ `session.BeginTransaction()` | ✅ | ✅ |
+| 声明式事务 `[Transaction]` | ❌ | ❌ | ✅ AOP 拦截 |
+| 权限过滤 `[ServicePermission]` | ❌ | ❌ | ✅ AOP 拦截 |
+| 自动日志 `[ServiceLog]` | ❌ | ❌ | ✅ AOP 拦截 |
+| 需要 DI 容器 | ❌ 不需要 | ✅ 需要 | ✅ 需要 |
+| 读取 `IConfiguration` | ❌ 数据源全部代码里显式登记 | ✅ `LiteOrm` 节点自动绑定 | ✅ `appsettings.json` 自动绑定 |
+| 修改 `SessionManager.Current` | ✅ 绑定为最近一次 `CreateSession()` 的会话 | ✅ 按作用域自动绑定 | ✅ 按作用域自动绑定 |
 
-> 需要 AOP 能力时，把 `new LiteOrmContext()` 换成宿主里的 `AddLiteOrm()` 即可，实体定义与 DAO 用法完全一致。
+> AOP 拦截（事务/权限/日志）只由 `LiteOrm.DependencyInjection` 的 `RegisterLiteOrm()` 提供，`AddLiteOrm()` 是纯 MS DI，**不含 AOP**。需要 AOP 时把 `new LiteOrmContext()` 换成 `builder.Host.RegisterLiteOrm()`（见 [第一个完整示例（DI 版）](./05-first-example-di.md)）；只需要 DI 容器、不需要 AOP 时用 `AddLiteOrm()` 即可。三条线路的实体定义与 DAO 用法完全一致。
 
 ## 7. 新手常见问题
 
