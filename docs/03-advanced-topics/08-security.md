@@ -25,7 +25,7 @@ LiteOrm 所有 SQL 值传递都通过 `outputParams` 集合完成：
 
 ```csharp
 public static string ToSql(this Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder,
-    ICollection<KeyValuePair<string, object>> outputParams)
+    ICollection<Param> outputParams)
 ```
 
 生成的 SQL 中使用参数占位符（如 `@0`、`@1`），值通过 `outputParams` 独立传递，**从不将用户输入直接拼接到 SQL 字符串中**。
@@ -259,14 +259,14 @@ if (!ExprVisitor.Validate(validator, expr))
 `GenericSqlExpr` 提供了一种安全的机制来嵌入自定义 SQL 片段，通过**预注册 + 回调委托**的方式控制 SQL 生成：
 
 ```csharp
-public delegate string SqlGenerateHandler(
+public delegate string? SqlGenerateHandler(
     SqlBuildContext context, ISqlBuilder sqlBuilder,
-    ICollection<KeyValuePair<string, object>> outputParams, object arg);
+    ICollection<Param> outputParams, object? arg);
 
 public sealed class GenericSqlExpr : LogicExpr
 {
-    public string Key { get; set; }   // 注册表中查找的唯一键
-    public object Arg { get; set; }   // 传递给回调的额外参数
+    public string? Key { get; set; }   // 注册表中查找的唯一键
+    public object? Arg { get; set; }   // 传递给回调的额外参数
 }
 ```
 

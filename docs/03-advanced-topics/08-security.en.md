@@ -25,7 +25,7 @@ All SQL value passing in LiteOrm goes through the `outputParams` collection:
 
 ```csharp
 public static string ToSql(this Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder,
-    ICollection<KeyValuePair<string, object>> outputParams)
+    ICollection<Param> outputParams)
 ```
 
 The generated SQL uses parameter placeholders (e.g., `@0`, `@1`), and values are passed independently through `outputParams` — **user input is never directly concatenated into the SQL string**.
@@ -259,14 +259,14 @@ Validator groups use **short-circuit evaluation**: execution stops at the first 
 `GenericSqlExpr` provides a safe mechanism for embedding custom SQL fragments, controlling SQL generation through **pre-registration + callback delegate**:
 
 ```csharp
-public delegate string SqlGenerateHandler(
+public delegate string? SqlGenerateHandler(
     SqlBuildContext context, ISqlBuilder sqlBuilder,
-    ICollection<KeyValuePair<string, object>> outputParams, object arg);
+    ICollection<Param> outputParams, object? arg);
 
 public sealed class GenericSqlExpr : LogicExpr
 {
-    public string Key { get; set; }   // unique key for registry lookup
-    public object Arg { get; set; }   // extra argument passed to callback
+    public string? Key { get; set; }   // unique key for registry lookup
+    public object? Arg { get; set; }   // extra argument passed to callback
 }
 ```
 
