@@ -443,6 +443,8 @@ services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
 
 可覆盖的回调：`OnInserting` / `OnUpdating` / `OnUpdatingOrInserting` / `OnDeleting` 与对应 `OnInserted` / `OnUpdated` / `OnUpdatedOrInserted` / `OnDeleted`；按 ID 的 `OnDeleteIDing` / `OnBatchDeleteIDing`；按条件的 `OnDeleteAlling` / `OnUpdateAlling` 及对应 `*ed` 回调（携带受影响行数）。批量方法逐条触发单条事件。
 
+事件订阅者是惰性解析的：构造实体服务实例不会触碰订阅者，首次真正触发事件通知时才从容器索取并缓存，此后所有操作复用同一份集合。因此订阅者构造函数中抛出的异常会在首次实体操作时暴露，而不是在解析 `IEntityService<T>` 时暴露。
+
 > `IEntityServiceEvent<T>` 是实体业务事件，与拦截器层的 `IServiceInvokingEvent` / `IServiceInvokedEvent` / `IServiceExceptionEvent` 是两套独立机制。
 
 ## 七、特性速查

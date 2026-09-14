@@ -1425,6 +1425,29 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public void EntityService_EventListeners_ShouldResolveLazily()
+        {
+            // Arrange：包装作用域提供程序，统计 IEnumerable<IEntityServiceEvent<TestUser>> 被索取的次数
+            var provider = new CountingServiceProvider(ServiceProvider, typeof(IEnumerable<IEntityServiceEvent<TestUser>>));
+            var service = new EntityService<TestUser>(provider);
+
+            // 构造阶段不触碰事件订阅者
+            Assert.Equal(0, provider.ResolveCount);
+
+            var user = new TestUser { Name = "LazyEventUser", Age = 20, CreateTime = DateTime.Now };
+
+            // Act & Assert：首次触发事件通知时才解析
+            Assert.True(service.Insert(user));
+            Assert.Equal(1, provider.ResolveCount);
+
+            // 后续通知复用同一份缓存集合
+            user.Name = "LazyEventUser_Updated";
+            Assert.True(service.Update(user));
+            Assert.True(service.Delete(user));
+            Assert.Equal(1, provider.ResolveCount);
+        }
+
+        [Fact]
         public async Task ServiceInvokeEvent_ShouldFireOnInvocation()
         {
             using var host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
@@ -1504,6 +1527,31 @@ namespace LiteOrm.Tests
 
             public override bool OnDeleteAlling(LogicExpr expr, string[] tableArgs) { Calls.Add(nameof(OnDeleteAlling)); return !Block; }
             public override void OnDeleteAlled(int count, LogicExpr expr, string[] tableArgs) => Calls.Add(nameof(OnDeleteAlled));
+        }
+
+        /// <summary>
+        /// 统计指定服务类型被解析次数的服务提供程序包装。
+        /// </summary>
+        private sealed class CountingServiceProvider : IServiceProvider
+        {
+            private readonly IServiceProvider _inner;
+            private readonly Type _trackedType;
+
+            public CountingServiceProvider(IServiceProvider inner, Type trackedType)
+            {
+                _inner = inner;
+                _trackedType = trackedType;
+            }
+
+            /// <summary>目标类型被解析的次数。</summary>
+            public int ResolveCount { get; private set; }
+
+            public object? GetService(Type serviceType)
+            {
+                if (serviceType == _trackedType)
+                    ResolveCount++;
+                return _inner.GetService(serviceType);
+            }
         }
 
         /// <summary>

@@ -26,6 +26,7 @@ namespace LiteOrm.Service
     /// 5. 异步支持 - 提供基于 Task 的异步方法以支持异步编程
     /// 6. 事务支持 - 通过 SessionManager 支持事务处理
     /// 7. 查询操作 - 继承自 EntityViewService，提供各种查询能力
+    /// 8. 事件通知 - 通过 IEntityServiceEvent&lt;T&gt; 订阅增删改操作前后的回调，订阅者在首次触发通知时惰性解析
     /// 
     /// 该类继承自 EntityViewService&lt;TView&gt; 并实现了 IEntityService&lt;T&gt; 和 IEntityServiceAsync&lt;T&gt; 接口，
     /// 提供强类型的业务服务。
@@ -63,28 +64,45 @@ namespace LiteOrm.Service
         /// </summary>
         protected ObjectDAO<T> ObjectDAO { get; }
 
-        private readonly IReadOnlyList<IEntityServiceEvent<T>> _eventListeners;
+        /// <summary>
+        /// 事件订阅者集合的惰性持有者。
+        /// </summary>
+        /// <remarks>
+        /// 构造服务实例时只创建 <see cref="Lazy{T}"/> 本身，不解析订阅者；首次触发事件通知时才向服务容器索取。
+        /// 默认的 <see cref="LazyThreadSafetyMode.ExecutionAndPublication"/> 保证同一作用域内并发首访只解析一次，
+        /// 不会各自解析出不同的订阅者实例。未注册任何订阅者时得到空集合，<c>Notify</c> 的两个重载便退化为空循环。
+        /// 解析失败（例如订阅者构造函数抛异常）时异常会被 <see cref="Lazy{T}"/> 缓存，后续访问重复抛出同一异常。
+        /// </remarks>
+        private readonly Lazy<IReadOnlyList<IEntityServiceEvent<T>>> _eventListeners;
 
         /// <summary>
         /// 初始化 <see cref="EntityService{T, TView}"/> 类的新实例。
         /// </summary>
-        /// <param name="serviceProvider">服务提供程序，用于解析数据访问对象和事件订阅者。</param>
+        /// <param name="serviceProvider">服务提供程序，用于解析数据访问对象，并在首次触发事件通知时解析事件订阅者。</param>
         public EntityService(IServiceProvider serviceProvider)
             : base(serviceProvider)
         {
             ObjectDAO = serviceProvider.GetRequiredService<ObjectDAO<T>>();
-            var listeners = serviceProvider.GetServices<IEntityServiceEvent<T>>();
-            _eventListeners = listeners as IReadOnlyList<IEntityServiceEvent<T>> ?? listeners.ToList();
+            _eventListeners = new Lazy<IReadOnlyList<IEntityServiceEvent<T>>>(() => ResolveEventListeners(serviceProvider));
         }
 
         #region Event Notification
+
+        /// <summary>
+        /// 从服务容器解析事件订阅者集合。
+        /// </summary>
+        private static IReadOnlyList<IEntityServiceEvent<T>> ResolveEventListeners(IServiceProvider serviceProvider)
+        {
+            var listeners = serviceProvider.GetServices<IEntityServiceEvent<T>>();
+            return listeners as IReadOnlyList<IEntityServiceEvent<T>> ?? listeners.ToList();
+        }
 
         /// <summary>
         /// 触发 Before 事件回调；任一订阅者返回 <see langword="false"/> 即取消操作。
         /// </summary>
         private bool Notify(Func<IEntityServiceEvent<T>, bool> notify)
         {
-            foreach (var listener in _eventListeners)
+            foreach (var listener in _eventListeners.Value)
             {
                 if (!notify(listener))
                     return false;
@@ -97,7 +115,7 @@ namespace LiteOrm.Service
         /// </summary>
         private void Notify(Action<IEntityServiceEvent<T>> notify)
         {
-            foreach (var listener in _eventListeners)
+            foreach (var listener in _eventListeners.Value)
             {
                 notify(listener);
             }

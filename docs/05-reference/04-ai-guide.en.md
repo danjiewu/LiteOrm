@@ -443,6 +443,8 @@ services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
 
 Overridable callbacks: `OnInserting` / `OnUpdating` / `OnUpdatingOrInserting` / `OnDeleting` plus the matching `OnInserted` / `OnUpdated` / `OnUpdatedOrInserted` / `OnDeleted`; the ID-based `OnDeleteIDing` / `OnBatchDeleteIDing`; the condition-based `OnDeleteAlling` / `OnUpdateAlling` and their `*ed` counterparts (carrying the affected row count). Batch methods fire one event per row.
 
+Event subscribers are resolved lazily: constructing an entity service instance never touches them, and they are only requested from the container and cached the first time an event notification actually fires, after which every operation reuses the same collection. An exception thrown from a subscriber's constructor therefore surfaces on the first entity operation rather than when `IEntityService<T>` is resolved.
+
 > `IEntityServiceEvent<T>` is an entity business event; it is a separate mechanism from the interceptor-level `IServiceInvokingEvent` / `IServiceInvokedEvent` / `IServiceExceptionEvent`.
 
 ## 7. Attribute quick reference
