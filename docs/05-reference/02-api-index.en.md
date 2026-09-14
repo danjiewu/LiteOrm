@@ -14,15 +14,18 @@ Use this page as a scenario-based index inside the docs set.
 
 ### Startup and configuration
 
-- `RegisterLiteOrm()`
-- `AddLiteOrm()` (plain MS DI, built into the base library)
+- `RegisterLiteOrm()` (`LiteOrm.DependencyInjection`, Autofac + AOP)
+- `AddLiteOrm()` (plain MS DI, built into the base library, no AOP)
 - `RegisterSqlBuilder(...)`
 - `SqlBuilder.BulkProvider` (bulk insert provider)
+- `[AutoRegister]` (`Lifetime` / `Policy` / `Enabled` / `Key` / `AutoActivate`) — marks a class or interface for automatic DI registration
+- `[assembly: LiteOrmCodeGen]` (`LiteOrmCodeGenAttribute`) — explicitly enables source generation; also enabled automatically under an AOT build
 - data source settings, connection pool settings, read-only replicas
 
 Related guides:
 
 - [Configuration Reference](./01-configuration-reference.en.md)
+- [AOT and Source Generation](../03-advanced-topics/06-aot.en.md)
 - [Database Compatibility Notes](./07-database-compatibility.en.md)
 
 ### Manual construction (no DI host)
@@ -33,7 +36,7 @@ Related guides:
   - `CreateSession()` → `SessionManager` (also binds `SessionManager.Current`)
   - `GetDataSource(name)` / `DataSources` / `DefaultDataSourceName`
   - `Dispose()`
-- DAO construction: `new ObjectDAO<T>(session)` / `new ObjectViewDAO<T>(session)`
+- DAO construction: `new ObjectDAO<T>(session)` / `new ObjectViewDAO<T>(session)` / `new DataDAO<T>(session)` / `new DataViewDAO<T>(session)`
 - `DataSourceConfig` (`Name` / `ConnectionString` / `ProviderType` / `SqlBuilderType` / `PoolSize` / `MaxPoolSize` / `ParamCountLimit` / `KeepAliveDuration` / `SyncTable` / `ReadOnlyConfigs`)
   - `ProviderType` / `SqlBuilderType` are assignable `Type?` values. A type-name string is only used in the `Provider` / `SqlBuilder` keys of `appsettings.json`, resolved to a `Type` immediately when configuration is loaded (throwing `TypeLoadException` on failure)
 
@@ -102,6 +105,19 @@ Related guides:
 - [Transactions](../06-di/01-transactions.en.md)
 - [Example Index](./05-example-index.en.md)
 - [Generated SQL Examples](./06-sql-examples.en.md)
+
+### Service layer (entity services)
+
+- `IEntityService<T>` / `IEntityServiceAsync<T>` — the service contract for entity CRUD, batch operations, and `UpdateOrInsert`
+- `IEntityViewService<T>` / `IEntityViewServiceAsync<T>` — the read-only view service contract
+- `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>` — default implementations of the contracts above
+- `IEntityServiceEvent<T>` — callbacks around insert / update / delete / `UpdateOrInsert` / `DeleteID` / `DeleteAll` / `UpdateAll` (returning false from Before cancels the operation; batch methods fire one event per row)
+- `EntityOperation<T>` / `OpDef` — the entity and operation type carried in event arguments
+
+Related guides:
+
+- [View models and services](../02-core-usage/02-view-models-and-services.en.md)
+- [CRUD guide](../02-core-usage/03-crud-guide.en.md)
 
 ### Advanced features
 

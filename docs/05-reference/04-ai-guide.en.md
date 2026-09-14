@@ -50,12 +50,13 @@
 
 ### Service registration
 
-LiteOrm provides two registration paths, chosen by whether AOP interception is needed:
+LiteOrm offers three ways to wire up, chosen by whether you need a DI container and AOP interception:
 
-| Path | Package | Call site | AOP interception |
-| --- | --- | --- | --- |
-| `AddLiteOrm()` | `LiteOrm` (base library) | `builder.Services.AddLiteOrm(...)` | ❌ |
-| `RegisterLiteOrm()` | `LiteOrm.DependencyInjection` | `builder.Host.RegisterLiteOrm(...)` | ✅ Autofac + Castle dynamic proxy |
+| Way | Package | Call site | DI container | AOP interception |
+| --- | --- | --- | --- | --- |
+| `LiteOrmContext` | `LiteOrm` (base library) | `new LiteOrmContext()` directly | ❌ not needed | ❌ |
+| `AddLiteOrm()` | `LiteOrm` (base library) | `builder.Services.AddLiteOrm(...)` | ✅ MS DI | ❌ |
+| `RegisterLiteOrm()` | `LiteOrm.DependencyInjection` | `builder.Host.RegisterLiteOrm(...)` | ✅ MS DI + Autofac bridge | ✅ Autofac + Castle dynamic proxy |
 
 #### AddLiteOrm (plain MS DI, no AOP)
 
@@ -88,6 +89,32 @@ builder.Host.RegisterLiteOrm(options =>
 });
 ```
 
+#### LiteOrmContext (no DI container)
+
+When you don't want any DI container, use `LiteOrmContext` to register data sources and create a session, then pass the session straight to a DAO constructor. This line is **fully separate** from the two above: it registers no services and never reads `IConfiguration`, and `CreateSession()` binds the new session to `SessionManager.Current`.
+
+```csharp
+using LiteOrm;
+using Microsoft.Data.Sqlite;
+
+using var context = new LiteOrmContext()
+    .AddDataSource<SqliteConnection>("DefaultConnection", "Data Source=app.db", syncTable: true);
+
+using var session = context.CreateSession();
+var dao = new ObjectDAO<User>(session);
+var viewDao = new ObjectViewDAO<UserView>(session);
+
+await dao.InsertAsync(new User { UserName = "admin", Age = 18 });
+var adults = await viewDao.Search(Expr.Prop("Age") > 18).ToListAsync();
+```
+
+- `AddDataSource<TConnection>(name, connectionString, @default, syncTable, sqlBuilder, poolSize, maxPoolSize, paramCountLimit, keepAliveDuration)`: the provider type comes from `TConnection`, and pool options plus table sync are configured in that **single call** — the context deliberately offers no follow-up configuration methods.
+- Build the config explicitly with `AddDataSource(DataSourceConfig config, bool @default = false)` when needed; `DataSourceConfig.ProviderType` / `SqlBuilderType` are assignable `Type?` values (code can only assign a `Type`; the `Provider` / `SqlBuilder` JSON keys in `appsettings.json` are resolved to a `Type` on load and throw `TypeLoadException` on failure).
+- Deliberately narrow surface: `AddDataSource` / `CreateSession` / `DataSources` / `DefaultDataSourceName` / `GetDataSource` / `Dispose`, with the logger factory injected through the constructor.
+- **Pool creation timing**: the first `CreateSession()` builds every connection pool once, from the data sources configured at that moment; any later `AddDataSource` throws `InvalidOperationException`, so all `AddDataSource` calls must come before the first `CreateSession()`.
+- `Dispose()` only tears down the pool factory and leaves `SessionManager.Current` untouched, so it does not affect the DI line in the same process.
+- When you need AOP (`[Transaction]` / `[ServicePermission]` / `[ServiceLog]`), you must switch to `RegisterLiteOrm()`; neither `LiteOrmContext` nor `AddLiteOrm()` provides AOP.
+
 #### `[AutoRegister]` auto-registration mechanism
 
 Types marked with `[AutoRegister]` are automatically registered into the DI container. The registration method is chosen automatically by the build mode — no manual switching required:
@@ -102,6 +129,7 @@ Types marked with `[AutoRegister]` are automatically registered into the DI cont
 - The registration scope is controlled by the `Policy` enum `RegisterPolicy` on `[AutoRegister]`: `All` (default — the implementation type itself + interfaces), `Self` (itself only), `Interface` (interfaces only).
 - `AddLiteOrm()`: applies generated code in AOT mode, runtime scan in non-AOT mode (auto-dispatched via `RuntimeFeature.IsDynamicCodeSupported`).
 - `RegisterLiteOrm()`: Autofac assembly-scan registration; automatically applies Castle interceptors from `[InterceptAttribute]`, the `IEntityService` interface family, and types carrying `[Service]` (`IsService=true`) via `ServiceInvokeInterceptor`.
+- Source generation is enabled automatically under an AOT build; to generate it in an ordinary build too (for example, to validate AOT compatibility early), declare `[assembly: LiteOrmCodeGen]` (`LiteOrmCodeGenAttribute`) on the assembly.
 
 ## 2. Entity and view definitions
 
@@ -312,6 +340,17 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `Search(string[] propertyNames, Expr expr)` | `DataTableResult` |
 | `Search(ref ExprString sqlBody, bool isFull = false)` | `DataTableResult` |
 
+### DataDAO<T> (column-value bulk update)
+
+Updates by an "attribute name → value" set without loading the entity — useful when only a few columns change.
+
+| Method | Return type |
+| --- | --- |
+| `UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, LogicExpr expr)` | `NonQueryResult` |
+| `UpdateValues(IEnumerable<KeyValuePair<string, object>> values, params object[] keys)` | `NonQueryResult` |
+
+The keys in `values` are entity **property names** (not column names); a missing property throws. The returned `NonQueryResult` runs via `.Execute()` / `.ExecuteAsync()`.
+
 ## 5. Transactions
 
 ```csharp
@@ -388,6 +427,24 @@ services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<Exception
 - The exception event is notification-only; the exception is always rethrown as-is
 - `RemoteServiceInvokeInterceptor.ExceptionHandling` remains a static event for remote services and can convert an exception into an agreed result
 
+### Entity service events (IEntityServiceEvent<T>)
+
+Implement `IEntityServiceEvent<T>` and register it in the container to hook audit logging, cache invalidation, change notification and similar logic around entity operations. Returning `false` from a Before callback cancels that operation (all Before callbacks must return `true` for it to proceed); After callbacks fire once the operation succeeds. The interface members are abstract methods, so extend `EntityServiceEventBase<T>` when you only care about a few callbacks.
+
+```csharp
+public class UserAuditEvent : EntityServiceEventBase<User>
+{
+    public override bool OnInserting(User entity) => entity.Age >= 0;   // return false to cancel the insert
+    public override void OnInserted(User entity) { /* audit log, invalidate cache */ }
+}
+
+services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
+```
+
+Overridable callbacks: `OnInserting` / `OnUpdating` / `OnUpdatingOrInserting` / `OnDeleting` plus the matching `OnInserted` / `OnUpdated` / `OnUpdatedOrInserted` / `OnDeleted`; the ID-based `OnDeleteIDing` / `OnBatchDeleteIDing`; the condition-based `OnDeleteAlling` / `OnUpdateAlling` and their `*ed` counterparts (carrying the affected row count). Batch methods fire one event per row.
+
+> `IEntityServiceEvent<T>` is an entity business event; it is a separate mechanism from the interceptor-level `IServiceInvokingEvent` / `IServiceInvokedEvent` / `IServiceExceptionEvent`.
+
 ## 7. Attribute quick reference
 
 | Attribute | Purpose |
@@ -399,6 +456,7 @@ services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<Exception
 | `[ForeignColumn(typeof(T), Property)]` | Column projected from a related table (for view models) |
 | `[Transaction]` | Declarative transaction |
 | `[AutoRegister]` | Automatically registers the type into the DI container; AOT mode uses a compile-time source generator, non-AOT mode uses runtime assembly scan |
+| `[assembly: LiteOrmCodeGen]` | Assembly-level switch that explicitly enables source generation (auto-enabled under an AOT build); use it to validate AOT compatibility early in an ordinary build |
 
 ## 8. Expr expression system
 

@@ -50,12 +50,13 @@
 
 ### 服务注册
 
-LiteOrm 提供两条注册路径，按是否需要 AOP 拦截选择：
+LiteOrm 提供三种接入方式，按是否需要 DI 容器与 AOP 拦截选择：
 
-| 路径 | 包 | 调用位置 | AOP 拦截 |
-| --- | --- | --- | --- |
-| `AddLiteOrm()` | `LiteOrm`（基础库） | `builder.Services.AddLiteOrm(...)` | ❌ |
-| `RegisterLiteOrm()` | `LiteOrm.DependencyInjection` | `builder.Host.RegisterLiteOrm(...)` | ✅ Autofac + Castle 动态代理 |
+| 方式 | 包 | 调用位置 | DI 容器 | AOP 拦截 |
+| --- | --- | --- | --- | --- |
+| `LiteOrmContext` | `LiteOrm`（基础库） | 直接 `new LiteOrmContext()` | ❌ 不需要 | ❌ |
+| `AddLiteOrm()` | `LiteOrm`（基础库） | `builder.Services.AddLiteOrm(...)` | ✅ MS DI | ❌ |
+| `RegisterLiteOrm()` | `LiteOrm.DependencyInjection` | `builder.Host.RegisterLiteOrm(...)` | ✅ MS DI + Autofac 桥接 | ✅ Autofac + Castle 动态代理 |
 
 #### AddLiteOrm（纯 MS DI，无 AOP）
 
@@ -88,6 +89,32 @@ builder.Host.RegisterLiteOrm(options =>
 });
 ```
 
+#### LiteOrmContext（不使用 DI 容器）
+
+不引入任何 DI 容器时，用 `LiteOrmContext` 登记数据源并创建会话，再把会话直接传给 DAO 构造函数。这条线路与上面两条**完全分开**：不注册服务、不读取 `IConfiguration`，`CreateSession()` 会把新会话绑定为 `SessionManager.Current`。
+
+```csharp
+using LiteOrm;
+using Microsoft.Data.Sqlite;
+
+using var context = new LiteOrmContext()
+    .AddDataSource<SqliteConnection>("DefaultConnection", "Data Source=app.db", syncTable: true);
+
+using var session = context.CreateSession();
+var dao = new ObjectDAO<User>(session);
+var viewDao = new ObjectViewDAO<UserView>(session);
+
+await dao.InsertAsync(new User { UserName = "admin", Age = 18 });
+var adults = await viewDao.Search(Expr.Prop("Age") > 18).ToListAsync();
+```
+
+- `AddDataSource<TConnection>(name, connectionString, @default, syncTable, sqlBuilder, poolSize, maxPoolSize, paramCountLimit, keepAliveDuration)`：提供程序类型取 `TConnection`，连接池参数与建表同步在**这一次调用里配齐**，上下文不提供任何后置设置方法。
+- 需要显式构造配置时用 `AddDataSource(DataSourceConfig config, bool @default = false)`；`DataSourceConfig.ProviderType` / `SqlBuilderType` 是可赋值的 `Type?`（代码里只能赋 `Type`；`appsettings.json` 的 `Provider` / `SqlBuilder` 字符串键在加载时解析为 `Type`，失败抛 `TypeLoadException`）。
+- API 面很窄：`AddDataSource` / `CreateSession` / `DataSources` / `DefaultDataSourceName` / `GetDataSource` / `Dispose`，日志工厂由构造函数注入。
+- **建池时机**：首次 `CreateSession()` 按当前数据源配置一次建好全部连接池，此后 `AddDataSource` 抛 `InvalidOperationException`——所有 `AddDataSource` 必须排在首次 `CreateSession()` 之前。
+- `Dispose()` 只销毁连接池工厂，不改 `SessionManager.Current`，因此不影响同进程内的 DI 线路。
+- 需要 AOP（`[Transaction]` / `[ServicePermission]` / `[ServiceLog]`）时必须改用 `RegisterLiteOrm()`；`LiteOrmContext` 与 `AddLiteOrm()` 都不提供 AOP。
+
 #### `[AutoRegister]` 自动注册机制
 
 标记 `[AutoRegister]` 的类型会被自动注册到 DI 容器。注册方式按构建模式自动选择，无需手动切换：
@@ -102,6 +129,7 @@ builder.Host.RegisterLiteOrm(options =>
 - 注册范围由 `[AutoRegister]` 的 `Policy` 枚举 `RegisterPolicy` 控制：`All`（默认，实现类型自身 + 接口）、`Self`（仅自身）、`Interface`（仅接口）。
 - `AddLiteOrm()`：AOT 模式应用生成代码，非 AOT 模式走运行时扫描（由 `RuntimeFeature.IsDynamicCodeSupported` 自动分流）。
 - `RegisterLiteOrm()`：Autofac 程序集扫描注册，并自动应用 `[InterceptAttribute]`、`IEntityService` 系列接口，以及带 `[Service]`（`IsService=true`）特性的类型的 Castle 拦截器（`ServiceInvokeInterceptor`）。
+- 源生成默认在 AOT 构建时自动启用；如需在普通构建里也生成（例如提前验证 AOT 兼容性），在程序集上显式声明 `[assembly: LiteOrmCodeGen]`（`LiteOrmCodeGenAttribute`）。
 
 ## 二、实体与视图定义
 
@@ -312,6 +340,17 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `Search(string[] propertyNames, Expr expr)`           | `DataTableResult` |
 | `Search(ref ExprString sqlBody, bool isFull = false)` | `DataTableResult` |
 
+### DataDAO<T>（按列值批量更新）
+
+不加载实体，直接按「属性名 → 值」集合更新，适合只需修改若干列的场景。
+
+| 方法                                                                                   | 返回类型              |
+| ------------------------------------------------------------------------------------ | ----------------- |
+| `UpdateAllValues(IEnumerable<KeyValuePair<string, object>> values, LogicExpr expr)`  | `NonQueryResult`  |
+| `UpdateValues(IEnumerable<KeyValuePair<string, object>> values, params object[] keys)` | `NonQueryResult`  |
+
+`values` 的 key 是实体**属性名**（不是列名），不存在时抛异常；返回的 `NonQueryResult` 通过 `.Execute()` / `.ExecuteAsync()` 执行。
+
 ## 五、事务
 
 ```csharp
@@ -388,6 +427,24 @@ services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<Exception
 - 异常事件为通知性质，异常仍会原样抛出
 - `RemoteServiceInvokeInterceptor.ExceptionHandling` 为远程服务保留的静态事件，可把异常转成约定返回结果
 
+### 实体服务事件（IEntityServiceEvent<T>）
+
+实现 `IEntityServiceEvent<T>` 并注册到容器，即可在实体操作前后插入审计日志、缓存失效、变更通知等逻辑。Before 系列返回 `false` 会取消该次操作（全部返回 `true` 才继续），After 系列在操作成功后触发。接口成员为抽象方法，只关心部分回调时可继承 `EntityServiceEventBase<T>`。
+
+```csharp
+public class UserAuditEvent : EntityServiceEventBase<User>
+{
+    public override bool OnInserting(User entity) => entity.Age >= 0;   // 返回 false 取消插入
+    public override void OnInserted(User entity) { /* 审计日志、缓存失效 */ }
+}
+
+services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
+```
+
+可覆盖的回调：`OnInserting` / `OnUpdating` / `OnUpdatingOrInserting` / `OnDeleting` 与对应 `OnInserted` / `OnUpdated` / `OnUpdatedOrInserted` / `OnDeleted`；按 ID 的 `OnDeleteIDing` / `OnBatchDeleteIDing`；按条件的 `OnDeleteAlling` / `OnUpdateAlling` 及对应 `*ed` 回调（携带受影响行数）。批量方法逐条触发单条事件。
+
+> `IEntityServiceEvent<T>` 是实体业务事件，与拦截器层的 `IServiceInvokingEvent` / `IServiceInvokedEvent` / `IServiceExceptionEvent` 是两套独立机制。
+
 ## 七、特性速查
 
 | 特性                                                           | 用途                           |
@@ -399,6 +456,7 @@ services.AddScoped<IServiceExceptionEvent>(sp => sp.GetRequiredService<Exception
 | `[ForeignColumn(typeof(T), Property)]`                       | 从关联表获取的列（用于视图）               |
 | `[Transaction]`                                              | 声明式事务                        |
 | `[AutoRegister]`                                             | 自动注册到 DI 容器；AOT 模式由源生成器编译期生成注册代码，非 AOT 模式运行时程序集扫描 |
+| `[assembly: LiteOrmCodeGen]`                                 | 程序集级显式启用源生成（AOT 构建下自动启用），用于非 AOT 构建提前验证 AOT 兼容性 |
 
 ## 八、Expr 表达式系统
 

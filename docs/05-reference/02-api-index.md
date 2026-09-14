@@ -14,15 +14,18 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 ### 配置与启动
 
-- `RegisterLiteOrm()`
-- `AddLiteOrm()`（纯 MS DI，基础库内置）
+- `RegisterLiteOrm()`（`LiteOrm.DependencyInjection`，Autofac + AOP）
+- `AddLiteOrm()`（纯 MS DI，基础库内置，无 AOP）
 - `RegisterSqlBuilder(...)`
 - `SqlBuilder.BulkProvider`（批量插入提供程序）
+- `[AutoRegister]`（`Lifetime` / `Policy` / `Enabled` / `Key` / `AutoActivate`）—— 标记需要自动注册到 DI 容器的类或接口
+- `[assembly: LiteOrmCodeGen]`（`LiteOrmCodeGenAttribute`）—— 显式启用源生成；开启 AOT 构建时自动启用
 - 数据源配置、连接池配置、只读副本配置
 
 对应文档：
 
 - [配置参考](./01-configuration-reference.md)
+- [AOT 与源生成](../03-advanced-topics/06-aot.md)
 - [数据库差异与兼容性说明](./07-database-compatibility.md)
 
 ### 手动构造（不使用 DI 宿主）
@@ -33,7 +36,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
   - `CreateSession()` → `SessionManager`（同时绑定为 `SessionManager.Current`）
   - `GetDataSource(name)` / `DataSources` / `DefaultDataSourceName`
   - `Dispose()`
-- DAO 构造：`new ObjectDAO<T>(session)` / `new ObjectViewDAO<T>(session)`
+- DAO 构造：`new ObjectDAO<T>(session)` / `new ObjectViewDAO<T>(session)` / `new DataDAO<T>(session)` / `new DataViewDAO<T>(session)`
 - `DataSourceConfig`（`Name` / `ConnectionString` / `ProviderType` / `SqlBuilderType` / `PoolSize` / `MaxPoolSize` / `ParamCountLimit` / `KeepAliveDuration` / `SyncTable` / `ReadOnlyConfigs`）
   - `ProviderType` / `SqlBuilderType` 均为可赋值的 `Type?`。类型名字符串只在 `appsettings.json` 的 `Provider` / `SqlBuilder` 键里使用，加载配置时立即解析为 `Type`（失败抛 `TypeLoadException`）
 
@@ -102,6 +105,19 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - [事务管理](../06-di/01-transactions.md)
 - [示例索引](./05-example-index.md)
 - [生成 SQL 示例](./06-sql-examples.md)
+
+### 服务层（实体服务）
+
+- `IEntityService<T>` / `IEntityServiceAsync<T>` —— 实体增删改查、批量操作与 `UpdateOrInsert` 的服务契约
+- `IEntityViewService<T>` / `IEntityViewServiceAsync<T>` —— 只读视图服务契约
+- `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>` —— 上述契约的默认实现
+- `IEntityServiceEvent<T>` —— 插入 / 更新 / 删除 / `UpdateOrInsert` / `DeleteID` / `DeleteAll` / `UpdateAll` 前后的回调（Before 返回 false 可取消；批量方法逐条触发单条事件）
+- `EntityOperation<T>` / `OpDef` —— 事件参数中携带的实体与操作类型
+
+对应文档：
+
+- [视图模型与服务](../02-core-usage/02-view-models-and-services.md)
+- [CRUD 指南](../02-core-usage/03-crud-guide.md)
 
 ### 高级特性
 
