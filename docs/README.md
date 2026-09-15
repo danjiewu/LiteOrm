@@ -62,16 +62,16 @@
 |[日志与诊断](./06-di/03-logging.md)|[Logging \& Diagnostics](./06-di/03-logging.en.md)|ServiceLog、Log 特性与慢查询日志|
 |[泛型 Controller 与动态生成](./06-di/04-generic-controller.md)|[Generic Controller](./06-di/04-generic-controller.en.md)|泛型基类 Controller 与动态 Controller 生成|
 
-### 最佳实践 / Best Practices
+### 典型应用 / Typical Applications
 
 |中文|English|说明|
 |-|-|-|
-|[多租户隔离的三种落地层次](./07-best-practices/01-multi-tenancy.md)|[Three Levels of Multi-Tenant Isolation](./07-best-practices/01-multi-tenancy.en.md)|行隔离、固定切片、物理分表与分库的选型与陷阱|
-|[数据权限：查询过滤之外还要做什么](./07-best-practices/02-data-permission.md)|[Data Permissions: What Comes After Query Filtering](./07-best-practices/02-data-permission.en.md)|数据范围、对象级校验与服务层兜底|
-|[审计与变更追踪怎么接](./07-best-practices/03-audit-trail.md)|[Wiring Up Audit and Change Tracking](./07-best-practices/03-audit-trail.en.md)|实体事件、服务调用事件与审计落库的事务边界|
-|[字段加密与脱敏存储](./07-best-practices/04-field-encryption.md)|[Field Encryption and Masking](./07-best-practices/04-field-encryption.en.md)|列级转换器、查询侧陷阱、盲索引与密钥管理|
-|[软删除与历史数据的落地方式](./07-best-practices/05-soft-delete.md)|[Soft Deletes and Historical Data](./07-best-practices/05-soft-delete.en.md)|固定切片与运行时过滤、唯一约束、归档策略|
-|[并发控制、事务与读取路径](./07-best-practices/06-concurrency-and-read-path.md)|[Concurrency, Transactions and Read Paths](./07-best-practices/06-concurrency-and-read-path.en.md)|时间戳乐观并发、事务边界与只读副本|
+|[多租户隔离典型应用](./07-typical-applications/01-tenant-isolation.md)|[Tenant Isolation in Practice](./07-typical-applications/01-tenant-isolation.en.md)|行隔离、固定切片与运行时构件、分表分库等七个场景|
+|[数据权限典型应用](./07-typical-applications/02-data-permission.md)|[Data Permissions in Practice](./07-typical-applications/02-data-permission.en.md)|查询过滤、范围写入、对象级校验与角色兜底|
+|[软删除与历史数据典型应用](./07-typical-applications/03-soft-delete-and-archive.md)|[Soft Deletes and Historical Data in Practice](./07-typical-applications/03-soft-delete-and-archive.en.md)|固定切片读路径、软删除写入、唯一约束与归档|
+|[审计与变更追踪典型应用](./07-typical-applications/04-audit-and-change-tracking.md)|[Audit and Change Tracking in Practice](./07-typical-applications/04-audit-and-change-tracking.en.md)|实体事件、字段 diff、审计落库的事务边界与调用日志|
+|[敏感字段加密与脱敏典型应用](./07-typical-applications/05-sensitive-data-protection.md)|[Sensitive Data Protection in Practice](./07-typical-applications/05-sensitive-data-protection.en.md)|列级转换器、盲索引、掩码列与密钥管理|
+|[并发控制与读写分离典型应用](./07-typical-applications/06-concurrency-and-read-write-splitting.md)|[Concurrency and Read/Write Splitting in Practice](./07-typical-applications/06-concurrency-and-read-write-splitting.en.md)|时间戳乐观并发、事务边界、只读副本与读写一致性|
 
 ### 参考文档 / Reference
 
@@ -104,5 +104,5 @@
 4. 使用 `LiteOrm.DependencyInjection` 集成（Autofac、AOP）：先阅读[配置参考](./05-reference/01-configuration-reference.md)，再了解"DI扩展"中的事务、权限过滤等特性。
 5. 涉及分表、性能或数据库方言差异：继续阅读"高级特性篇"。
 6. 需要扩展框架能力：查阅"扩展开发篇"。
-7. 落地具体业务场景（多租户、数据权限、审计、字段加密、软删除、并发与只读副本）：查阅"最佳实践篇"。
+7. 落地具体业务场景（多租户隔离、数据权限、软删除与归档、审计、敏感字段加密、并发与读写分离）：查阅"典型应用篇"，每个场景都有需求描述与可直接抄的代码。
 8. 需要快速确认配置项、接口名或术语：直接查阅"参考篇"。
