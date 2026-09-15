@@ -32,9 +32,6 @@ public class CustomerView : ObjectBase
 }
 ```
 
-The value is a constant and the property is read-only (`=> false`), so the meaning is "this model only ever sees rows that are not deleted". When SQL is generated the condition lands in `WHERE`, `JOIN ... ON`, `UPDATE` and `DELETE`. See `ExprSqlConverterConstFilterTests` for the verified behaviour.
-
-Writes go through the real entity without `Constant`. Otherwise maintenance operations that need to touch deleted rows are blocked by your own condition, including the update that would set `IsDeleted` to true.
 
 ### 2.2 Runtime conditions
 

@@ -24,6 +24,11 @@ namespace LiteOrm
         public override bool ExplicitRecursive => true;
 
         /// <summary>
+        /// 批量更新语句中目标表的别名（语句形式为 UPDATE 表 u SET ... FROM (VALUES ...) v ...）。
+        /// </summary>
+        public override string? BatchTargetTableAlias => "u";
+
+        /// <summary>
         /// 使用传入的 <see cref="ValueStringBuilder"/> 构建字符串连接 SQL 片段。
         /// </summary>
         /// <param name="sb">用于接收 SQL 片段的字符串构建器。</param>
@@ -165,7 +170,12 @@ namespace LiteOrm
         /// <summary>
         /// 生成 PostgreSql 专用的批量更新 SQL 语句（采用 UPDATE ... FROM (VALUES ...) 方式）。
         /// </summary>
-        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="updatableColumns">可更新列集合。</param>
+        /// <param name="keyColumns">主键列集合。</param>
+        /// <param name="batchSize">批次大小。</param>
+        /// <param name="constFilterSql">附加过滤条件的 SQL 片段，列名须以别名 u 限定；为 null 时表示无附加条件。</param>
+        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize, string? constFilterSql)
         {
             if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be greater than 0");
             if (keyColumns.Length == 0) throw new ArgumentException("At least one key column is required", nameof(keyColumns));
@@ -234,6 +244,13 @@ namespace LiteOrm
                 sb.Append(ToSqlName(keyColumns[k].Name!));
                 sb.Append(" = v.k");
                 sb.Append(k.ToString());
+            }
+
+            // 附加过滤条件
+            if (!String.IsNullOrEmpty(constFilterSql))
+            {
+                sb.Append(" AND ");
+                sb.Append(constFilterSql);
             }
 
             string result = sb.ToString();

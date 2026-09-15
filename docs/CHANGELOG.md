@@ -14,6 +14,8 @@
 
 - **修复 AOT 下框架内置泛型服务未注册**（`LiteOrm`）：泛型 DAO 与服务改为固定注册，`AutoRegisterServices` 只控制用户自定义服务与 DAO。
 
+- **DAO 主键读写路径补齐固定筛选条件**（`LiteOrm`）：`GetObject` / `ExistsKey` / `Update` / `Delete` / `DeleteByKeys` 及批量更新、批量删除、批量存在性查询此前只按主键过滤，未带上 `Column.Constant` 收敛出的 `TableDefinition.ConstFilter`，现改为与查询、条件更新删除等语句一致带上固定筛选——模型看不见的行读不出、改不动、删不掉。批量更新语句的附加条件按各方言目标表别名限定列名（SQL Server / MySQL 为 `T`、PostgreSQL 为 `u`、Oracle 为 `t`）。另外，声明了固定筛选的表不再缓存预定义命令的内容（每次调用重新生成 SQL 与参数，只保留命令实例用于统一释放），以免固定筛选动态生成的参数被缓存固化。
+
 ***
 
 ## v8.1.6 (2026-09-10)

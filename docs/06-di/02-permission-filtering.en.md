@@ -147,7 +147,9 @@ The pipeline is:
 3. When SQL is generated, main-table fixed filters go into `WHERE`.
 4. Joined-table fixed filters go into `JOIN ... ON`.
 5. `ForeignExpr` / `Exists` / `ExistsRelated` `EXISTS` subqueries also apply the target table's own `ConstFilter` before combining the relation condition and your `InnerExpr`.
-6. `UPDATE` / `DELETE` continue to carry the same fixed rule.
+6. `UPDATE` / `DELETE` statements carry the same rule, including the DAO key-based read and write paths (`GetObject`, `ExistsKey`, `Update`, `DeleteByKeys`, and the batch update/delete methods). A row the model cannot see cannot be read back, updated, or deleted.
+
+One implementation detail worth knowing: tables that declare a fixed filter do not cache the content of predefined commands. The filter may produce parameters dynamically (values, and even the parameter count, can change), so SQL and parameters are regenerated on every call and only the command instance is retained. Replacing `TableDefinition.ConstFilter` at runtime therefore takes effect on the next call, at the cost of one extra SQL build per operation for such tables; tables without a fixed filter keep using the command cache.
 
 It fits:
 

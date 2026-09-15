@@ -20,6 +20,11 @@ namespace LiteOrm
         /// </summary>
         public override bool SupportBatchInsertWithIdentity => true;
 
+        /// <summary>
+        /// 批量更新语句中目标表的别名（语句形式为 UPDATE T ... FROM 表 T INNER JOIN ...）。
+        /// </summary>
+        public override string? BatchTargetTableAlias => "T";
+
 
         /// <summary>
         /// 使用传入的 <see cref="ValueStringBuilder"/> 构建字符串连接 SQL 片段。
@@ -51,8 +56,9 @@ namespace LiteOrm
         /// <param name="updatableColumns">可更新列集合。</param>
         /// <param name="keyColumns">主键列集合。</param>
         /// <param name="batchSize">批次大小。</param>
+        /// <param name="constFilterSql">附加过滤条件的 SQL 片段，列名须以别名 T 限定；为 null 时表示无附加条件。</param>
         /// <returns>返回 SQL Server 可执行的批量更新 SQL 字符串。</returns>
-        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
+        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize, string? constFilterSql)
         {
             if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be greater than 0");
             if (keyColumns.Length == 0) throw new ArgumentException("At least one key column is required", nameof(keyColumns));
@@ -115,6 +121,13 @@ namespace LiteOrm
                 sb.Append(ToSqlName(keyColumns[k].Name!));
                 sb.Append(" = S.k");
                 sb.Append(k.ToString());
+            }
+
+            // 附加过滤条件与主键条件同在 ON 上，INNER JOIN 下等价于整体过滤
+            if (!String.IsNullOrEmpty(constFilterSql))
+            {
+                sb.Append(" AND ");
+                sb.Append(constFilterSql);
             }
             sb.Append(")");
 

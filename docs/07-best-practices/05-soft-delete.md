@@ -31,11 +31,6 @@ public class CustomerView : ObjectBase
     public bool IsDeleted => false;
 }
 ```
-
-`Constant` 值是常量，属性写成只读（`=> false`），语义就是“这个模型看到的数据天然都是未删除的”。生成 SQL 时条件会自动进入 `WHERE`、`JOIN ... ON`、`UPDATE`、`DELETE`。测试用例见 `ExprSqlConverterConstFilterTests`。
-
-写操作走真实实体（不带 `Constant`），否则你连“把 IsDeleted 改成 true”这条更新都会被自己的条件拦住；或者更准确地说，任何需要触碰已删除行的维护操作都会被自动注入的条件挡住。
-
 ### 2.2 运行时条件
 
 需要按角色或场景放开时，用运行时条件：

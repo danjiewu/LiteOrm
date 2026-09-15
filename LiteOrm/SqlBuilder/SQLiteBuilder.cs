@@ -160,7 +160,12 @@ namespace LiteOrm
         /// <summary>
         /// 生成 SQLite 专用的批量更新 SQL 语句，使用 CTE + Values 方式批量更新。
         /// </summary>
-        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="updatableColumns">可更新列集合。</param>
+        /// <param name="keyColumns">主键列集合。</param>
+        /// <param name="batchSize">批次大小。</param>
+        /// <param name="constFilterSql">附加过滤条件的 SQL 片段，须置于 EXISTS 子查询之外；为 null 时表示无附加条件。</param>
+        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize, string? constFilterSql)
         {
             if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be greater than 0");
             if (keyColumns.Length == 0) throw new ArgumentException("At least one key column is required", nameof(keyColumns));
@@ -257,7 +262,14 @@ namespace LiteOrm
                 sb.Append(ToSqlName(keyColumns[k].Name!));
             }
 
-            sb.Append("\n);");
+            // 附加过滤条件加在 EXISTS 之外：batch_data 的列名与真实列名相同，写进子查询会产生歧义
+            sb.Append("\n)");
+            if (!String.IsNullOrEmpty(constFilterSql))
+            {
+                sb.Append(" AND ");
+                sb.Append(constFilterSql);
+            }
+            sb.Append(";");
 
             string result = sb.ToString();
             sb.Dispose();

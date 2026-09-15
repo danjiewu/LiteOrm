@@ -309,6 +309,29 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 表是否声明了固定筛选条件（<see cref="TableDefinition.ConstFilter"/>）。
+        /// </summary>
+        /// <remarks>
+        /// 声明了固定筛选条件的表不缓存预定义命令的内容：固定筛选条件可能动态生成参数（取值乃至参数个数都可能变化），
+        /// 缓存会把首次生成的 SQL 与参数固化下来。此时仅保留命令实例本身（作为托管释放的载体，保证结果对象与上下文之间的释放约定不变），
+        /// 每次调用都用新生成的 SQL 与参数重建命令内容。
+        /// </remarks>
+        private bool HasConstFilter => TableDefinition.ConstFilter is not null;
+
+        /// <summary>
+        /// 用新的 SQL 与参数重建命令内容，适用于固定筛选条件导致命令内容不能缓存的场景。
+        /// </summary>
+        /// <param name="command">要重建的命令实例。</param>
+        /// <param name="preparedSql">重新生成的 SQL 与参数。</param>
+        /// <param name="configureCommand">用于配置命令的操作，与首次构建时一样重新应用。</param>
+        private void RebuildCommand(DbCommandProxy command, PreparedSql preparedSql, Action<DbCommandProxy>? configureCommand)
+        {
+            command.Parameters.Clear();
+            SetupCommand(command, preparedSql.Sql, preparedSql.Params);
+            configureCommand?.Invoke(command);
+        }
+
+        /// <summary>
         /// 获取预定义的 DbCommand
         /// </summary>
         /// <param name="methodName">方法名称</param>
@@ -318,7 +341,14 @@ namespace LiteOrm
         protected DbCommandProxy GetPreparedCommand(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand = null)
         {
             if (TableArgs != null && Table.Columns.Count > 0) methodName += String.Join("_", TableArgs);
-            return GetDaoContext().PreparedCommands.GetOrAdd((ObjectType, methodName), _ =>
+            var preparedCommands = GetDaoContext().PreparedCommands;
+            if (HasConstFilter)
+            {
+                var preparedCommand = preparedCommands.GetOrAdd((ObjectType, methodName), _ => NewCommand());
+                RebuildCommand(preparedCommand, sqlFunc(), configureCommand);
+                return preparedCommand;
+            }
+            return preparedCommands.GetOrAdd((ObjectType, methodName), _ =>
             {
                 var command = MakeNamedParamCommand(sqlFunc());
                 configureCommand?.Invoke(command);
@@ -338,6 +368,16 @@ namespace LiteOrm
         {
             if (TableArgs != null && Table.Columns.Count > 0) methodName += String.Join("_", TableArgs);
             var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
+            if (HasConstFilter)
+            {
+                if (!daoContext.PreparedCommands.TryGetValue((ObjectType, methodName), out var preparedCommand))
+                {
+                    var created = await NewCommandAsync(cancellationToken).ConfigureAwait(false);
+                    preparedCommand = daoContext.PreparedCommands.GetOrAdd((ObjectType, methodName), _ => created);
+                }
+                RebuildCommand(preparedCommand, sqlFunc(), configureCommand);
+                return preparedCommand;
+            }
             if (daoContext.PreparedCommands.TryGetValue((ObjectType, methodName), out var command))
             {
                 return command;
@@ -604,6 +644,43 @@ namespace LiteOrm
             string result = strConditions.ToString();
             strConditions.Dispose();
             return result;
+        }
+
+        /// <summary>
+        /// 生成表固定筛选条件（<see cref="TableDefinition.ConstFilter"/>，由 <see cref="ColumnAttribute.Constant"/> 收敛而来）的 SQL 片段。
+        /// </summary>
+        /// <remarks>
+        /// 参数名称取 <paramref name="paramValues"/> 的当前元素个数，因此须在键条件参数追加之后调用，才能与命令中的参数顺序保持一致。
+        /// </remarks>
+        /// <param name="paramValues">参数集合，固定筛选条件产生的参数追加到该集合末尾。</param>
+        /// <param name="tableAlias">
+        /// 条件中列名使用的表别名。为 null 时按单表模式生成不带表名的列名，适用于语句中未给目标表起别名的单表 UPDATE / DELETE。
+        /// 视图 DAO 的 FROM 子句带默认别名，故默认使用 <see cref="Constants.DefaultTableAlias"/> 限定；
+        /// 批量更新语句则传入 <see cref="SqlBuilder.BatchTargetTableAlias"/> 指定的别名。
+        /// </param>
+        /// <returns>固定筛选条件的 SQL 片段；表中未声明固定筛选时返回 null。</returns>
+        protected virtual string? MakeConstFilterCondition(ICollection<Param> paramValues, string? tableAlias = null)
+        {
+            LogicExpr? constFilter = TableDefinition.ConstFilter;
+            if (constFilter is null) return null;
+            if (tableAlias is null && IsView) tableAlias = Constants.DefaultTableAlias;
+            var context = new SqlBuildContext(Table, tableAlias ?? Constants.DefaultTableAlias, TableArgs) { SingleTable = tableAlias is null };
+            return constFilter.ToSql(context, SqlBuilder, paramValues);
+        }
+
+        /// <summary>
+        /// 将固定筛选条件以 AND 追加到已有 WHERE 条件之后。
+        /// </summary>
+        /// <param name="where">已有 WHERE 条件，可为空。</param>
+        /// <param name="paramValues">参数集合，固定筛选条件产生的参数追加到该集合末尾。</param>
+        /// <param name="tableAlias">条件中列名使用的表别名，语义同 <see cref="MakeConstFilterCondition"/>。</param>
+        /// <returns>合并后的 WHERE 条件；表中未声明固定筛选时原样返回 <paramref name="where"/>。</returns>
+        protected string AppendConstFilter(string where, ICollection<Param> paramValues, string? tableAlias = null)
+        {
+            string? constFilter = MakeConstFilterCondition(paramValues, tableAlias);
+            if (constFilter is null || constFilter.Length == 0) return where;
+            if (String.IsNullOrEmpty(where)) return constFilter;
+            return $"{where} AND {constFilter}";
         }
 
         /// <summary>
