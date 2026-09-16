@@ -2,6 +2,7 @@ using LiteOrm.Common;
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace LiteOrm.Tests
 {
@@ -118,8 +119,9 @@ namespace LiteOrm.Tests
 
             string sql = OracleBuilder.Instance.BuildBatchUpdateSql(table.Name!, table.UpdatableColumns, table.Keys.ToArray(), BatchSize, Filter);
 
-            Assert.Contains($"ON (t.\"ID\" = s.\"ID\" AND {Filter})\n", sql);
+            Assert.Contains($"ON (t.\"ID\" = s.\"ID\")\n", sql);
             Assert.Contains("WHEN MATCHED THEN", sql);
+            Assert.Contains($"WHERE {Filter}", sql);
         }
 
         [Fact]

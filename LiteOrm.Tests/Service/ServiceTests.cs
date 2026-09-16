@@ -1331,17 +1331,17 @@ namespace LiteOrm.Tests
                     });
                 })
                 .RegisterLiteOrm()
-                .ConfigureServices(s => s.AddScoped<IEntityServiceEvent<TestUser>, RecordingEvent>())
+                .ConfigureServices(s => s.AddScoped<IEntityServiceEvent<SqliteTestUser>, RecordingEvent>())
                 .Build();
 
             await host.StartAsync(TestContext.Current.CancellationToken);
             try
             {
                 using var scope = host.Services.CreateScope();
-                var service = scope.ServiceProvider.GetRequiredService<IEntityService<TestUser>>();
-                var evt = (RecordingEvent)scope.ServiceProvider.GetRequiredService<IEntityServiceEvent<TestUser>>();
+                var service = scope.ServiceProvider.GetRequiredService<IEntityService<SqliteTestUser>>();
+                var evt = (RecordingEvent)scope.ServiceProvider.GetRequiredService<IEntityServiceEvent<SqliteTestUser>>();
 
-                var user = new TestUser { Name = "EventUser", Age = 20, CreateTime = DateTime.Now };
+                var user = new SqliteTestUser { Name = "EventUser", Age = 20, CreateTime = DateTime.Now };
 
                 Assert.True(service.Insert(user));
                 Assert.Equal(new[] { nameof(RecordingEvent.OnInserting), nameof(RecordingEvent.OnInserted) }, evt.Calls);
@@ -1359,7 +1359,7 @@ namespace LiteOrm.Tests
 
                 // UpdateOrInsert（插入）：同样只触发专用的 upsert 钩子
                 evt.Calls.Clear();
-                var newUpsertUser = new TestUser { Name = "EventUser_Upsert_Insert", Age = 21, CreateTime = DateTime.Now };
+                var newUpsertUser = new SqliteTestUser { Name = "EventUser_Upsert_Insert", Age = 21, CreateTime = DateTime.Now };
                 Assert.True(service.UpdateOrInsert(newUpsertUser));
                 Assert.Equal(new[] { nameof(RecordingEvent.OnUpdatingOrInserting), nameof(RecordingEvent.OnUpdatedOrInserted) }, evt.Calls);
 
@@ -1370,40 +1370,40 @@ namespace LiteOrm.Tests
                 // Before 回调返回 false 时取消 upsert 操作
                 evt.Calls.Clear();
                 evt.Block = true;
-                Assert.False(service.UpdateOrInsert(new TestUser { Name = "BlockedUpsert", Age = 2, CreateTime = DateTime.Now }));
+                Assert.False(service.UpdateOrInsert(new SqliteTestUser { Name = "BlockedUpsert", Age = 2, CreateTime = DateTime.Now }));
                 Assert.Equal(new[] { nameof(RecordingEvent.OnUpdatingOrInserting) }, evt.Calls);
                 evt.Block = false;
 
                 // DeleteID
-                var idUser = new TestUser { Name = "IDUser", Age = 5, CreateTime = DateTime.Now };
+                var idUser = new SqliteTestUser { Name = "IDUser", Age = 5, CreateTime = DateTime.Now };
                 service.Insert(idUser);
                 evt.Calls.Clear();
                 Assert.True(service.DeleteID(idUser.Id));
                 Assert.Equal(new[] { nameof(RecordingEvent.OnDeleteIDing), nameof(RecordingEvent.OnDeleteIDed) }, evt.Calls);
 
                 // UpdateAll / DeleteAll
-                var allUser = new TestUser { Name = "AllUser", Age = 8, CreateTime = DateTime.Now };
+                var allUser = new SqliteTestUser { Name = "AllUser", Age = 8, CreateTime = DateTime.Now };
                 service.Insert(allUser);
                 evt.Calls.Clear();
                 var updateExpr = new UpdateExpr
                 {
-                    Table = new TableExpr(typeof(TestUser)),
+                    Table = new TableExpr(typeof(SqliteTestUser)),
                     Sets = new System.Collections.Generic.List<SetItem>
                     {
                         new(Expr.Prop("Age"), Expr.Prop("Age") + Expr.Const(10))
                     },
-                    Where = Expr.Lambda<TestUser>(u => u.Name == "AllUser")
+                    Where = Expr.Lambda<SqliteTestUser>(u => u.Name == "AllUser")
                 };
                 Assert.Equal(1, service.UpdateAll(updateExpr));
                 Assert.Equal(new[] { nameof(RecordingEvent.OnUpdateAlling), nameof(RecordingEvent.OnUpdateAlled) }, evt.Calls);
 
                 evt.Calls.Clear();
-                Assert.Equal(1, service.DeleteAll(Expr.Lambda<TestUser>(u => u.Name == "AllUser")));
+                Assert.Equal(1, service.DeleteAll(Expr.Lambda<SqliteTestUser>(u => u.Name == "AllUser")));
                 Assert.Equal(new[] { nameof(RecordingEvent.OnDeleteAlling), nameof(RecordingEvent.OnDeleteAlled) }, evt.Calls);
 
                 // BatchInsert / BatchDeleteID：批量循环到单条事件
-                var b1 = new TestUser { Name = "BatchID1", Age = 11, CreateTime = DateTime.Now };
-                var b2 = new TestUser { Name = "BatchID2", Age = 12, CreateTime = DateTime.Now };
+                var b1 = new SqliteTestUser { Name = "BatchID1", Age = 11, CreateTime = DateTime.Now };
+                var b2 = new SqliteTestUser { Name = "BatchID2", Age = 12, CreateTime = DateTime.Now };
                 evt.Calls.Clear();
                 service.BatchInsert(new[] { b1, b2 });
                 Assert.Equal(new[] { nameof(RecordingEvent.OnInserting), nameof(RecordingEvent.OnInserting), nameof(RecordingEvent.OnInserted), nameof(RecordingEvent.OnInserted) }, evt.Calls);
@@ -1414,7 +1414,7 @@ namespace LiteOrm.Tests
                 // Before 回调返回 false 时取消操作
                 evt.Calls.Clear();
                 evt.Block = true;
-                Assert.False(service.Insert(new TestUser { Name = "Blocked", Age = 1, CreateTime = DateTime.Now }));
+                Assert.False(service.Insert(new SqliteTestUser { Name = "Blocked", Age = 1, CreateTime = DateTime.Now }));
                 Assert.Equal(new[] { nameof(RecordingEvent.OnInserting) }, evt.Calls);
             }
             finally
@@ -1476,10 +1476,10 @@ namespace LiteOrm.Tests
             try
             {
                 using var scope = host.Services.CreateScope();
-                var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+                var service = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<SqliteTestUser>>();
                 var evt = scope.ServiceProvider.GetRequiredService<RecordingInvokeEvent>();
 
-                await service.InsertAsync(new TestUser { Name = "InvokeEventUser", Age = 3, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
+                await service.InsertAsync(new SqliteTestUser { Name = "InvokeEventUser", Age = 3, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
                 Assert.Contains(evt.Calls, c => c.StartsWith("OnInvoking:"));
                 Assert.Contains(evt.Calls, c => c.StartsWith("OnInvoked:"));
@@ -1497,7 +1497,7 @@ namespace LiteOrm.Tests
         /// <summary>
         /// 记录事件回调调用的测试订阅者。
         /// </summary>
-        private sealed class RecordingEvent : EntityServiceEventBase<TestUser>
+        private sealed class RecordingEvent : EntityServiceEventBase<SqliteTestUser>
         {
             public List<string> Calls { get; } = new List<string>();
 
@@ -1506,15 +1506,15 @@ namespace LiteOrm.Tests
             /// </summary>
             public bool Block { get; set; }
 
-            public override bool OnInserting(TestUser entity) { Calls.Add(nameof(OnInserting)); return !Block; }
-            public override bool OnUpdating(TestUser entity) { Calls.Add(nameof(OnUpdating)); return !Block; }
-            public override bool OnUpdatingOrInserting(TestUser entity) { Calls.Add(nameof(OnUpdatingOrInserting)); return !Block; }
-            public override bool OnDeleting(TestUser entity) { Calls.Add(nameof(OnDeleting)); return !Block; }
+            public override bool OnInserting(SqliteTestUser entity) { Calls.Add(nameof(OnInserting)); return !Block; }
+            public override bool OnUpdating(SqliteTestUser entity) { Calls.Add(nameof(OnUpdating)); return !Block; }
+            public override bool OnUpdatingOrInserting(SqliteTestUser entity) { Calls.Add(nameof(OnUpdatingOrInserting)); return !Block; }
+            public override bool OnDeleting(SqliteTestUser entity) { Calls.Add(nameof(OnDeleting)); return !Block; }
 
-            public override void OnInserted(TestUser entity) => Calls.Add(nameof(OnInserted));
-            public override void OnUpdated(TestUser entity) => Calls.Add(nameof(OnUpdated));
-            public override void OnUpdatedOrInserted(TestUser entity) => Calls.Add(nameof(OnUpdatedOrInserted));
-            public override void OnDeleted(TestUser entity) => Calls.Add(nameof(OnDeleted));
+            public override void OnInserted(SqliteTestUser entity) => Calls.Add(nameof(OnInserted));
+            public override void OnUpdated(SqliteTestUser entity) => Calls.Add(nameof(OnUpdated));
+            public override void OnUpdatedOrInserted(SqliteTestUser entity) => Calls.Add(nameof(OnUpdatedOrInserted));
+            public override void OnDeleted(SqliteTestUser entity) => Calls.Add(nameof(OnDeleted));
 
             public override bool OnDeleteIDing(object id, string[] tableArgs) { Calls.Add(nameof(OnDeleteIDing)); return !Block; }
             public override void OnDeleteIDed(object id, string[] tableArgs) => Calls.Add(nameof(OnDeleteIDed));

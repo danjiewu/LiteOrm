@@ -228,9 +228,9 @@ namespace LiteOrm.Tests.Setup
 
             var ct = TestContext.Current.CancellationToken;
 
-            var dao = new ObjectDAO<TestUser>(session);
-            var viewDao = new ObjectViewDAO<TestUser>(session);
-            var user = new TestUser { Name = "context-user", Age = 30, CreateTime = DateTime.Now };
+            var dao = new ObjectDAO<SqliteTestUser>(session);
+            var viewDao = new ObjectViewDAO<SqliteTestUser>(session);
+            var user = new SqliteTestUser { Name = "context-user", Age = 30, CreateTime = DateTime.Now };
 
             Assert.True(await dao.InsertAsync(user, ct));
             Assert.True(user.Id > 0);
@@ -271,10 +271,10 @@ namespace LiteOrm.Tests.Setup
 
             var ct = TestContext.Current.CancellationToken;
 
-            await new ObjectDAO<TestUser>(session).InsertAsync(
-                new TestUser { Name = "in-main", Age = 1, CreateTime = DateTime.Now }, ct);
+            await new ObjectDAO<SqliteTestUser>(session).InsertAsync(
+                new SqliteTestUser { Name = "in-main", Age = 1, CreateTime = DateTime.Now }, ct);
 
-            var users = await new ObjectViewDAO<TestUser>(session).Search().ToListAsync(ct);
+            var users = await new ObjectViewDAO<SqliteTestUser>(session).Search().ToListAsync(ct);
             Assert.Single(users);
             Assert.Equal("in-main", users[0].Name);
 
@@ -296,10 +296,10 @@ namespace LiteOrm.Tests.Setup
             // EntityService<T> 依赖 IServiceProvider 解析 ObjectDAO<T>/ObjectViewDAO<T>；
             // 纯手动线路用只认本会话的最小实现即可，不必引入任何 DI 容器
             var services = new SingleSessionServiceProvider(session);
-            var service = new EntityService<TestUser>(services);
+            var service = new EntityService<SqliteTestUser>(services);
 
             var ct = TestContext.Current.CancellationToken;
-            var user = new TestUser { Name = "svc-user", Age = 22, CreateTime = DateTime.Now };
+            var user = new SqliteTestUser { Name = "svc-user", Age = 22, CreateTime = DateTime.Now };
             Assert.True(await service.InsertAsync(user, ct));
 
             var loaded = await service.SearchOneAsync(Expr.Prop("Id") == user.Id, null, ct);

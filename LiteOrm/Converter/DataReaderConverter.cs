@@ -140,9 +140,6 @@ namespace LiteOrm
         /// <returns>编译后的映射委托。</returns>
         public static Func<AutoLockDataReader, TResult> GetConverterByTable<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(IDbConverter dbConverter)
         {
-            // TEMP-DIAG: 记录 mapper 编译者
-            System.IO.File.AppendAllText(@"D:\Repos\LiteOrm\.tmp_mapper.log",
-                $"{DateTime.Now:HH:mm:ss.fff} compile TResult={typeof(TResult).FullName} converter={dbConverter?.GetType().FullName} thread={Environment.CurrentManagedThreadId}\r\n");
             return (Func<AutoLockDataReader, TResult>)_cacheByType.GetOrAdd(typeof(TResult), _ => CompileConverter<TResult>(dbConverter));
         }
 

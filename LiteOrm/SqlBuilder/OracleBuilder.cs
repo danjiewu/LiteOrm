@@ -404,13 +404,7 @@ namespace LiteOrm
                 sb.Append(" = s.");
                 sb.Append(ToSqlName(keyColumns[k].Name!));
             }
-
-            // 附加过滤条件与主键条件同在 ON 上，只有匹配的行才会被更新
-            if (!String.IsNullOrEmpty(constFilterSql))
-            {
-                sb.Append(" AND ");
-                sb.Append(constFilterSql);
-            }
+            
             sb.Append(")\n");
 
             // 构建 WHEN MATCHED THEN UPDATE SET 子句
@@ -423,6 +417,13 @@ namespace LiteOrm
                 sb.Append(ToSqlName(updatableColumns[i].Name!));
                 sb.Append(" = s.");
                 sb.Append(ToSqlName(updatableColumns[i].Name!));
+            }
+
+            // 附加过滤条件与主键条件同在 ON 上，只有匹配的行才会被更新
+            if (!String.IsNullOrEmpty(constFilterSql))
+            {
+                sb.Append("\nWHERE ");
+                sb.Append(constFilterSql);
             }
 
             string result = sb.ToString();
