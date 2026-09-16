@@ -300,7 +300,7 @@ namespace LiteOrm
         /// </summary>
         /// <remarks>
         /// 声明了固定筛选条件的表既不复用上下文缓存的命令，也不把新建的命令写入缓存：
-        /// 固定筛选条件可能动态生成参数（取值乃至参数个数都可能变化），缓存会把首次生成的 SQL 与参数固化下来；
+        /// 固定筛选条件来自元数据、运行时可被替换，缓存会把首次生成的 SQL 固化下来；
         /// 而若把这类命令占用缓存槽位，运行时切换固定筛选条件（例如先无筛选、后设置筛选）时同一槽位会同时承载两种内容，
         /// 反过来污染常规（无固定筛选）命令的缓存。此时每次调用都新建命令，用完即释放，缓存里始终只有常规命令。
         /// </remarks>
@@ -318,6 +318,7 @@ namespace LiteOrm
         {
             if (!daoContext.PreparedCommands.TryGetValue(key, out var target))
             {
+                // 装配用一个不拥有底层命令的代理完成，装配成功后命令交给缓存持有
                 var commandProxy = daoContext.CreateCommand(false);
                 target = commandProxy.Target;
                 try
@@ -326,15 +327,20 @@ namespace LiteOrm
                     SetupCommand(commandProxy, preparedSql.Sql, preparedSql.Params);
                     configureCommand?.Invoke(commandProxy);
                 }
-                finally
+                catch
                 {
+                    // 装配失败时释放尚未交给缓存的命令
                     target.Dispose();
+                    throw;
                 }
                 var existing = daoContext.PreparedCommands.GetOrAdd(key, target);
-                if (!ReferenceEquals(existing, target)) target.Dispose();
-                target = existing;
+                if (!ReferenceEquals(existing, target))
+                {
+                    // 并发下可能已有其他线程先写入，释放落选的新建命令，改用缓存里的那一条
+                    target.Dispose();
+                    return new DbCommandProxy(daoContext, existing, false);
+                }
                 return commandProxy;
-
             }
             return new DbCommandProxy(daoContext, target, false);
         }

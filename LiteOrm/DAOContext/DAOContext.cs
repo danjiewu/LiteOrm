@@ -74,6 +74,9 @@ namespace LiteOrm
             get
             {
                 {
+                    // 上下文已释放：连接已关闭且缓存命令已释放，不可再用
+                    if (_disposed) return false; 
+
                     // 因连续异常被显式失效，永久不可用
                     if (_invalidated)
                         return false;

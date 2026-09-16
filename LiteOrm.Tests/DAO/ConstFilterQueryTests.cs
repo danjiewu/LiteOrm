@@ -269,7 +269,7 @@ namespace LiteOrm.Tests
         /// </summary>
         private async Task<List<ConstFilterOrder>> ReadRawOrdersAsync(System.Threading.CancellationToken ct)
         {
-            var rows = ViewDao.Search($"SELECT \"Id\", \"Name\", \"State\" FROM \"DaoConstFilterOrders\" ORDER BY \"Id\"", isFull: true);
+            var rows = ViewDao.Search($"SELECT [Id], [Name], [State] FROM [DaoConstFilterOrders] ORDER BY [Id]", isFull: true);
             return await rows.ToListAsync(ct);
         }
     }

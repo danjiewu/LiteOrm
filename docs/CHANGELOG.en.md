@@ -14,6 +14,10 @@
 
 - **DAO key-based read/write paths now carry the fixed filter** (`LiteOrm`): `GetObject` / `ExistsKey` / `Update` / `Delete` / `DeleteByKeys` and the batch write paths previously filtered by primary key only; they now apply the `ConstFilter` derived from `Column.Constant`, so rows the model cannot see cannot be read back, updated or deleted. Tables with a fixed filter also no longer reuse the command cache.
 
+- **Fixed cached commands being disposed right after setup** (`LiteOrm`): `GetOrAddPreparedCommand` released the command in a `finally` block right after assembling it for the cache, so the cache always held a disposed command and reusing it threw `ObjectDisposedException`. The command is now released only when setup fails or when a concurrent caller won the race.
+
+- **Fixed `DAOContext.IsValid` ignoring disposal** (`LiteOrm`): the pool disposes a context on return when it is invalid or when the pool is full (releasing its cached commands), but `IsValid` only rejected `Broken` connections, so `SessionManager` kept handing out disposed contexts. `IsValid` now also rejects disposed contexts, which are dropped and replaced.
+
 ***
 
 ## v8.1.7 (2026-09-14)

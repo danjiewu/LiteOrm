@@ -14,6 +14,10 @@
 
 - **DAO 主键读写路径补齐固定筛选条件**（`LiteOrm`）：`GetObject` / `ExistsKey` / `Update` / `Delete` / `DeleteByKeys` 与批量读写此前只按主键过滤，现改为带上 `Column.Constant` 收敛出的 `ConstFilter`，模型看不见的行读不出、改不动、删不掉；声明了固定筛选的表也不再复用命令缓存。
 
+- **修复命令缓存装配后即被释放**（`LiteOrm`）：`GetOrAddPreparedCommand` 在 `finally` 里释放了刚装配好并准备交给缓存的命令，缓存里的一直是已释放的命令，复用时抛 `ObjectDisposedException`。现改为仅在装配异常时释放，未命中才写入缓存。
+
+- **修复 `DAOContext.IsValid` 未判断上下文已释放**（`LiteOrm`）：连接池在归还上下文时若判定无效或池已满会释放它（连带释放缓存命令），而 `IsValid` 只在连接 `Broken` 时判无效，已释放的上下文仍被 `SessionManager` 复用。现增加已释放判断，释放过的上下文会被丢弃并重建。
+
 ***
 
 ## v8.1.7 (2026-09-14)

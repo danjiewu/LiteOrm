@@ -19,6 +19,7 @@
 8.1.8:
 - 破坏性变更：DbCommandProxy 改为按次创建的包装代理，Target 改为私有、IsReusable 改为只读；PreparedCommands 改存 DbCommand，释放代理不再影响缓存。
 - 修复：DAO 主键读写路径与批量读写现带上 Column.Constant 收敛出的固定筛选条件。
+- 修复：命令缓存装配后即被释放（缓存里一直是已释放命令，复用抛 ObjectDisposedException）；DAOContext.IsValid 未判断上下文已释放，池释放后的上下文仍被复用。
 - 同步 LiteOrm.Common 8.1.8。
 
 8.1.7:
