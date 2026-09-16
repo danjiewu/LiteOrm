@@ -163,33 +163,13 @@ namespace LiteOrm
         /// <summary>
         /// 创建一个新的 <see cref="DbCommandProxy"/> 实例，该实例拥有新建的底层 <see cref="DbCommand"/> 对象，并与当前上下文关联。
         /// </summary>
+        /// <param name="ownsTarget">是否拥有底层命令，默认为 true ，释放该代理将释放底层命令。</param>
         /// <returns>新创建的 <see cref="DbCommandProxy"/> 实例，释放它即释放底层命令。</returns>
-        public DbCommandProxy CreateCommand()
+        public DbCommandProxy CreateCommand(bool ownsTarget = true)
         {
             EnsureNotDisposed();
-            return new DbCommandProxy(this, DbConnection.CreateCommand(), ownsTarget: true);
-        }
-
-        /// <summary>
-        /// 为已有命令创建一个不拥有它的 <see cref="DbCommandProxy"/> 实例，并与当前上下文关联。
-        /// </summary>
-        /// <param name="command">要包装的底层命令，通常来自 <see cref="PreparedCommands"/>。</param>
-        /// <returns>新创建的 <see cref="DbCommandProxy"/> 实例，释放它不会释放底层命令。</returns>
-        internal DbCommandProxy CreateCommand(DbCommand command)
-        {
-            EnsureNotDisposed();
-            return new DbCommandProxy(this, command, ownsTarget: false);
-        }
-
-        /// <summary>
-        /// 为缓存创建一个尚未装配 SQL 与参数的底层命令。
-        /// </summary>
-        /// <returns>新建的底层命令，装配完成后交由 <see cref="PreparedCommands"/> 持有。</returns>
-        internal DbCommand CreateTargetCommand()
-        {
-            EnsureNotDisposed();
-            return DbConnection.CreateCommand();
-        }
+            return new DbCommandProxy(this, DbConnection.CreateCommand(), ownsTarget);
+        }       
 
         /// <summary>
         /// 更新上下文的最后活动时间戳，通常在执行数据库操作成功后调用，以便连接池能够正确识别活跃连接和老化连接。

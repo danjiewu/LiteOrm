@@ -331,26 +331,25 @@ namespace LiteOrm
         {
             if (!daoContext.PreparedCommands.TryGetValue(key, out var target))
             {
-                target = daoContext.CreateTargetCommand();
+                var commandProxy = daoContext.CreateCommand(false);
+                target = commandProxy.Target;
                 try
                 {
-                    // 装配由不拥有该命令的代理完成，装配完成后命令交给缓存持有
-                    var builder = daoContext.CreateCommand(target);
                     var preparedSql = sqlFunc();
-                    SetupCommand(builder, preparedSql.Sql, preparedSql.Params);
-                    configureCommand?.Invoke(builder);
+                    SetupCommand(commandProxy, preparedSql.Sql, preparedSql.Params);
+                    configureCommand?.Invoke(commandProxy);
+
+                    var existing = daoContext.PreparedCommands.GetOrAdd(key, target);
+                    if (!ReferenceEquals(existing, target)) target.Dispose();
+                    target = existing;
+                    return commandProxy;
                 }
-                catch
+                finally
                 {
                     target.Dispose();
-                    throw;
                 }
-                var existing = daoContext.PreparedCommands.GetOrAdd(key, target);
-                // 并发下可能已有其他线程先写入，落选的新建命令在此释放
-                if (!ReferenceEquals(existing, target)) target.Dispose();
-                target = existing;
             }
-            return daoContext.CreateCommand(target);
+            return new DbCommandProxy(daoContext, target, false);
         }
 
         /// <summary>
