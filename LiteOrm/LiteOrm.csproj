@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.1.7.0</AssemblyVersion>
-		<FileVersion>8.1.7.0</FileVersion>
+		<AssemblyVersion>8.1.8.0</AssemblyVersion>
+		<FileVersion>8.1.8.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.1.7</VersionPrefix>
+		<VersionPrefix>8.1.8</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -16,6 +16,11 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
+8.1.8:
+- 破坏性变更：DbCommandProxy 改为按次创建的包装代理，Target 改为私有、IsReusable 改为只读；PreparedCommands 改存 DbCommand，释放代理不再影响缓存。
+- 修复：DAO 主键读写路径与批量读写现带上 Column.Constant 收敛出的固定筛选条件。
+- 同步 LiteOrm.Common 8.1.8。
+
 8.1.7:
 - 新增 LiteOrmContext：不依赖 DI 的轻量链式上下文，AddDataSource&lt;TConnection&gt;（连接池参数、建表同步一次配齐，无后置设置方法）/ CreateSession / new ObjectDAO&lt;T&gt;(session) 即可读写，与 AddLiteOrm、RegisterLiteOrm 线路完全分开。
 - 破坏性变更：DataSourceConfig / ReadOnlyDataSourceConfig 的 Provider / SqlBuilder 字符串属性改为类型化属性 ProviderType / SqlBuilderType；配置文件中的 JSON 键名 Provider / SqlBuilder 不变，LoadConfiguration 加载时立即解析为 Type，解析失败抛 TypeLoadException。

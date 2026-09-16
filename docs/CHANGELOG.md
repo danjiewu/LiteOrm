@@ -1,12 +1,26 @@
 # 变更日志 (Changelog)
 
+## v8.1.8 (2026-09-16)
+
+### 破坏性变更
+
+- **`DbCommandProxy` 改为按次创建的包装代理**（`LiteOrm`）：构造函数改为内部重载 `(DAOContext, DbCommand, bool ownsTarget)`，`Target` 改为私有，`IsReusable` 改为只读；`DAOContext.PreparedCommands` 改存 `DbCommand`，取用时新建不拥有缓存的代理，释放代理不再影响缓存。
+
+### 改进
+
+- **枚举常量改为内联字面量**（`LiteOrm.Common`）：`Expr.Const` 的枚举值按底层数值直接内联进 SQL（如 `"State" = 1`），不再走参数，切片不占参数位。
+
+### 修复
+
+- **DAO 主键读写路径补齐固定筛选条件**（`LiteOrm`）：`GetObject` / `ExistsKey` / `Update` / `Delete` / `DeleteByKeys` 与批量读写此前只按主键过滤，现改为带上 `Column.Constant` 收敛出的 `ConstFilter`，模型看不见的行读不出、改不动、删不掉；声明了固定筛选的表也不再复用命令缓存。
+
+***
+
 ## v8.1.7 (2026-09-14)
 
 ### 破坏性变更
 
 - **`DataSourceConfig` / `ReadOnlyDataSourceConfig` 的 `Provider` / `SqlBuilder` 改为可赋值 `Type` 属性 `ProviderType` / `SqlBuilderType`**（`LiteOrm.Common`）。配置文件 JSON 键名不变，加载时立即解析为 `Type`，失败抛 `TypeLoadException`；代码中构造配置只能赋 `Type`，另提供 `DataSourceConfig(Type providerType, string? connectionString)` 构造。
-
-- **`DbCommandProxy` 改为按次创建的包装代理**（`LiteOrm`）：构造函数改为内部重载 `(DAOContext context, DbCommand target, bool ownsTarget)`，`Target` 属性改为私有，`IsReusable` 改为只读（由代理是否拥有底层命令推导）；`DAOContext.PreparedCommands` 缓存的类型由 `DbCommandProxy` 改为 `DbCommand`，取用时新建不拥有该命令的代理，释放代理不再影响命令缓存。
 
 ### 新特性
 
@@ -14,13 +28,11 @@
 
 ### 改进
 
-- **枚举常量改为内联字面量**（`LiteOrm.Common`）：`Expr.Const` 的枚举值取底层数值直接拼进 SQL（如 `"State" = 1`）而不走参数，`[Column(Constant = ...)]` 的切片与布尔、数值常量一样不再占用参数位。
+- **`EntityService` 的事件订阅者改为惰性解析**（`LiteOrm`）：构造时不再解析 `IEntityServiceEvent<T>`，首次触发事件通知时才向容器索取并缓存，此后复用同一份集合；订阅者构造异常随之延后到首次实体操作时暴露。
 
 ### 修复
 
 - **修复 AOT 下框架内置泛型服务未注册**（`LiteOrm`）：泛型 DAO 与服务改为固定注册，`AutoRegisterServices` 只控制用户自定义服务与 DAO。
-
-- **DAO 主键读写路径补齐固定筛选条件**（`LiteOrm`）：`GetObject` / `ExistsKey` / `Update` / `Delete` / `DeleteByKeys` 及批量更新、批量删除、批量存在性查询此前只按主键过滤，未带上 `Column.Constant` 收敛出的 `TableDefinition.ConstFilter`，现改为与查询、条件更新删除等语句一致带上固定筛选——模型看不见的行读不出、改不动、删不掉。批量更新语句的附加条件按各方言目标表别名限定列名（SQL Server / MySQL 为 `T`、PostgreSQL 为 `u`、Oracle 为 `t`）。另外，声明了固定筛选的表不再复用命令缓存：这类表每次调用都新建命令，新建的命令也不写入缓存，以免固定筛选动态生成的参数被缓存固化，也避免占用常规（无固定筛选）命令的缓存槽位。`DbCommandProxy` 新增 `IsReusable` 属性标记命令是否由上下文缓存复用，非复用的一次性命令由调用方（或持有它的结果对象）释放。
 
 ***
 

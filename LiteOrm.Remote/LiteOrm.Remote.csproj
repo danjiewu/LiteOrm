@@ -6,10 +6,13 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程服务调用</Description>
-    <AssemblyVersion>8.1.7.0</AssemblyVersion>
-    <FileVersion>8.1.7.0</FileVersion>
-    <VersionPrefix>8.1.7</VersionPrefix>
+    <AssemblyVersion>8.1.8.0</AssemblyVersion>
+    <FileVersion>8.1.8.0</FileVersion>
+    <VersionPrefix>8.1.8</VersionPrefix>
     <PackageReleaseNotes>
+8.1.8:
+- 同步 LiteOrm.Common 8.1.8 / LiteOrm 8.1.8（固定筛选条件补齐、DbCommandProxy 包装代理、枚举常量内联）。
+
 8.1.7:
 - 同步 LiteOrm.Common 8.1.7 / LiteOrm 8.1.7（DataSourceConfig / ReadOnlyDataSourceConfig 的 Provider / SqlBuilder 改为类型化属性 ProviderType / SqlBuilderType；新增 LiteOrmContext 无 DI 上下文；内置泛型服务改为固定注册）。
 - 修正远程服务扩展方法文档注释中的类型名（AddRemoteServiceFactory、ServiceGenerateInterceptor）。

@@ -1,12 +1,26 @@
 # Changelog
 
+## v8.1.8 (2026-09-16)
+
+### Breaking changes
+
+- **`DbCommandProxy` is now a per-call wrapper** (`LiteOrm`): the constructor is an internal overload `(DAOContext, DbCommand, bool ownsTarget)`, `Target` is private and `IsReusable` is read-only; `DAOContext.PreparedCommands` caches `DbCommand` and each call creates a proxy that does not own the cached command, so releasing the proxy no longer affects the cache.
+
+### Enhancements
+
+- **Enum constants are inlined** (`LiteOrm.Common`): an enum value in `Expr.Const` is emitted as its underlying number directly in the SQL (for example `"State" = 1`) instead of a parameter, so slices take no parameter slot.
+
+### Fixes
+
+- **DAO key-based read/write paths now carry the fixed filter** (`LiteOrm`): `GetObject` / `ExistsKey` / `Update` / `Delete` / `DeleteByKeys` and the batch write paths previously filtered by primary key only; they now apply the `ConstFilter` derived from `Column.Constant`, so rows the model cannot see cannot be read back, updated or deleted. Tables with a fixed filter also no longer reuse the command cache.
+
+***
+
 ## v8.1.7 (2026-09-14)
 
 ### Breaking changes
 
 - **`DataSourceConfig` / `ReadOnlyDataSourceConfig` `Provider` / `SqlBuilder` replaced with assignable `Type` properties `ProviderType` / `SqlBuilderType`** (`LiteOrm.Common`). JSON keys are unchanged; values are resolved to a `Type` on load and throw `TypeLoadException` on failure. Code-built configs can only assign a `Type`; a `DataSourceConfig(Type providerType, string? connectionString)` constructor is provided.
-
-- **`DbCommandProxy` is now a per-call wrapper** (`LiteOrm`): the constructor is an internal overload `(DAOContext context, DbCommand target, bool ownsTarget)`, `Target` became private, and `IsReusable` is read-only, derived from whether the proxy owns the underlying command. `DAOContext.PreparedCommands` caches `DbCommand` instead of `DbCommandProxy`; each call creates a proxy that does not own the cached command, so releasing the proxy no longer affects the command cache.
 
 ### New Features
 
@@ -14,13 +28,11 @@
 
 ### Enhancements
 
-- **Enum constants are inlined** (`LiteOrm.Common`): an enum value in `Expr.Const` is emitted as its underlying number directly in the SQL (for example `"State" = 1`) instead of a parameter, so a `[Column(Constant = ...)]` slice takes no parameter slot, just like boolean and numeric constants.
+- **`EntityService` resolves event subscribers lazily** (`LiteOrm`): `IEntityServiceEvent<T>` is no longer resolved in the constructor; the container is queried on the first event notification and the resolved set is cached and reused afterwards, so subscriber construction failures surface on the first entity operation instead.
 
 ### Fixes
 
 - **Fixed built-in generic services not being registered under AOT** (`LiteOrm`): generic DAOs and services are now registered unconditionally; `AutoRegisterServices` only governs user-defined services and DAOs.
-
-- **DAO key-based read/write paths now carry the fixed filter** (`LiteOrm`): `GetObject` / `ExistsKey` / `Update` / `Delete` / `DeleteByKeys`, together with batch update, batch delete and batch existence checks, previously filtered by primary key only and ignored the `TableDefinition.ConstFilter` derived from `Column.Constant`. They now apply the fixed filter just like queries and conditional update/delete statements: rows the model cannot see cannot be read back, updated or deleted. The batch update statement qualifies the appended condition with the target-table alias of each dialect (SQL Server / MySQL use `T`, PostgreSQL uses `u`, Oracle uses `t`). In addition, tables that declare a fixed filter no longer reuse the command cache: every call builds a fresh command, and that command is not written into the cache, so dynamically generated filter parameters can neither be frozen by the cache nor occupy the cache slot of a regular (no fixed filter) command. `DbCommandProxy` gains an `IsReusable` property that tells whether a command is cached and reused by the context; a non-reusable one-off command is released by its caller (or by the result object holding it).
 
 ***
 
