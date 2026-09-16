@@ -4,7 +4,7 @@ LiteOrm has no built-in soft delete: there is no `[SoftDelete]` attribute and no
 
 | Primitive | Expresses | Injected into |
 | --- | --- | --- |
-| `TableDefinition.ConstFilter` aggregated from `[Column(Constant = ...)]` | A fixed table-level filter | Main table `WHERE`, joined `JOIN ... ON`, `UPDATE` / `DELETE` `WHERE` |
+| `TableDefinition.ConstFilter` aggregated from `[Column(Constant = ...)]` | A fixed table-level filter | Main table `WHERE`, `JOIN ... ON` of association queries, `UPDATE` / `DELETE` `WHERE` |
 | Runtime `Expr` condition | A filter that varies by request, role or screen | Assembled by the caller into the query |
 
 ## Scenario 1: lists hide soft-deleted rows by default
@@ -187,7 +187,7 @@ Notes:
 
 - After the parent is soft deleted, a child that joins directly on the foreign key still sees the deleted row. The child view needs its own slice, or the join condition needs `IsDeleted = false`.
 - A cascading soft delete must complete inside one transaction. `[Transaction]` and `ExecuteInTransaction` bring every data source context inside the same `SessionManager` into one transaction, so parent and child updates either both succeed or both roll back.
-- A joined table's slice is written into `JOIN ... ON` with its alias when the view is built, so no extra condition is needed at query time.
+- A joined table's slice is prepared with its alias when the view is built and is applied to the `JOIN ... ON` of association queries, so no extra condition is needed at query time. The DAO key-based reads (`GetObject`, `ExistsKey`) use the model's own `From` fragment, which does not carry that condition.
 
 ## Scenario 6: archiving historical data
 

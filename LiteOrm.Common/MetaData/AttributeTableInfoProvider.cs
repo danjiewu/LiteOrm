@@ -471,7 +471,7 @@ namespace LiteOrm
             foreach (ColumnDefinition column in columns)
             {
                 if (column.Constant is null) continue;
-                constFilter = constFilter.And(Expr.Prop(column.PropertyName ?? string.Empty) == Expr.Const(column.Constant));
+                constFilter &= Expr.Prop(column.PropertyName) == Expr.Const(column.Constant);
             }
             return constFilter;
         }

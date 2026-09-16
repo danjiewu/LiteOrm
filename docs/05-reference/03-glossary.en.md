@@ -58,7 +58,7 @@ The dialect builder that converts LiteOrm expressions into executable SQL for a 
 
 ## `ConstFilter` / `Column.Constant`
 
-The `Constant` property of `ColumnAttribute`, used to declare fixed filter conditions. Resolved at metadata stage into `TableDefinition.ConstFilter`, and automatically injected during SQL generation into main-table `WHERE`, related-table `JOIN ... ON`, and the DAO key-based statements (`GetObject`, `ExistsKey`, `Update`, `DeleteByKeys`, batch update and delete). Suited for model-level invariant rules such as enabled-state, fixed partitions, or fixed tenant types; not suited for runtime context like the current user or tenant. See [Permission Filtering](../06-di/02-permission-filtering.en.md).
+The `Constant` property of `ColumnAttribute`, used to declare fixed filter conditions. Resolved at metadata stage into `TableDefinition.ConstFilter`, and automatically injected during SQL generation into main-table `WHERE`, the `JOIN ... ON` of association queries, and the DAO key-based statements (`GetObject`, `ExistsKey`, `Update`, `DeleteByKeys`, batch update and delete). A joined table's condition only reaches association statements produced by expression queries; the model's own `From` fragment used by `GetObject` / `ExistsKey` does not carry it. Suited for model-level invariant rules such as enabled-state, fixed partitions, or fixed tenant types; not suited for runtime context like the current user or tenant. See [Permission Filtering](../06-di/02-permission-filtering.en.md).
 
 ## `GenericSqlExpr`
 

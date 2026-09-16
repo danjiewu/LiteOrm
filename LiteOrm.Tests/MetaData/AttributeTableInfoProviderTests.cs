@@ -150,8 +150,8 @@ namespace LiteOrm.Common.UnitTests
 
                 Assert.Contains(joinedTable.Name!, sql.Sql);
                 Assert.Contains("State", sql.Sql);
-                Assert.Single(sql.Params);
-                Assert.Equal(ConstFilterState.Enabled, sql.Params[0].Value);
+                Assert.Contains(((int)ConstFilterState.Enabled).ToString(), sql.Sql);
+                Assert.Empty(sql.Params);
             }
             finally
             {

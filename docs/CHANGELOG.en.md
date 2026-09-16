@@ -12,6 +12,10 @@
 
 - **Added `LiteOrmContext`** (`LiteOrm`): a fluent context that needs no DI container. `AddDataSource<TConnection>` registers a data source, `CreateSession()` returns a session, and `new ObjectDAO<User>(session)` is ready for reads and writes. Registers no services and never reads `IConfiguration`.
 
+### Enhancements
+
+- **Enum constants are inlined** (`LiteOrm.Common`): an enum value in `Expr.Const` is emitted as its underlying number directly in the SQL (for example `"State" = 1`) instead of a parameter, so a `[Column(Constant = ...)]` slice takes no parameter slot, just like boolean and numeric constants.
+
 ### Fixes
 
 - **Fixed built-in generic services not being registered under AOT** (`LiteOrm`): generic DAOs and services are now registered unconditionally; `AutoRegisterServices` only governs user-defined services and DAOs.

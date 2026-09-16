@@ -146,16 +146,26 @@ namespace LiteOrm
         /// </summary>
         public virtual DAOContext GetDaoContext()
         {
-            return Session.GetDaoContext(DataSource, IsView);
+            var daoContext = Session.GetDaoContext(DataSource, IsView);
+            if (!IsView)
+            {
+                daoContext.EnsureTable(ObjectType, TableArgs);
+            }
+            return daoContext;
         }
 
         /// <summary>
         /// 异步获取当前数据访问对象上下文
         /// </summary>
         /// <param name="cancellationToken">取消令牌</param>
-        public virtual Task<DAOContext> GetDaoContextAsync(CancellationToken cancellationToken = default)
+        public virtual async Task<DAOContext> GetDaoContextAsync(CancellationToken cancellationToken = default)
         {
-            return Session.GetDaoContextAsync(DataSource, IsView, cancellationToken);
+            var daoContext = await Session.GetDaoContextAsync(DataSource, IsView, cancellationToken);
+            if (!IsView)
+            {
+                await daoContext.EnsureTableAsync(ObjectType, TableArgs).ConfigureAwait(false);
+            }
+            return daoContext;
         }
 
         /// <summary>
@@ -258,29 +268,6 @@ namespace LiteOrm
         #region 方法
 
         /// <summary>
-        /// 创建 IDbCommand
-        /// </summary>
-        /// <returns>初始化好的数据库命令代理实例。</returns>
-        public virtual DbCommandProxy NewCommand()
-        {
-            var daoContext = GetDaoContext();
-            daoContext.EnsureTable(ObjectType, TableArgs);
-            return daoContext.CreateCommand();
-        }
-
-        /// <summary>
-        /// 异步创建 IDbCommand
-        /// </summary>
-        /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>初始化好的数据库命令代理实例。</returns>
-        public virtual async Task<DbCommandProxy> NewCommandAsync(CancellationToken cancellationToken = default)
-        {
-            var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
-            await daoContext.EnsureTableAsync(ObjectType, TableArgs).ConfigureAwait(false);
-            return daoContext.CreateCommand();
-        }
-
-        /// <summary>
         /// 生成 select 部分的 SQL
         /// </summary>
         /// <param name="selectColumns">需要 select 的列集合</param>
@@ -338,16 +325,16 @@ namespace LiteOrm
                     var preparedSql = sqlFunc();
                     SetupCommand(commandProxy, preparedSql.Sql, preparedSql.Params);
                     configureCommand?.Invoke(commandProxy);
-
-                    var existing = daoContext.PreparedCommands.GetOrAdd(key, target);
-                    if (!ReferenceEquals(existing, target)) target.Dispose();
-                    target = existing;
-                    return commandProxy;
                 }
                 finally
                 {
                     target.Dispose();
                 }
+                var existing = daoContext.PreparedCommands.GetOrAdd(key, target);
+                if (!ReferenceEquals(existing, target)) target.Dispose();
+                target = existing;
+                return commandProxy;
+
             }
             return new DbCommandProxy(daoContext, target, false);
         }
@@ -397,7 +384,6 @@ namespace LiteOrm
                 configureCommand?.Invoke(command);
                 return command;
             }
-            await daoContext.EnsureTableAsync(ObjectType, TableArgs).ConfigureAwait(false);
             return GetOrAddPreparedCommand(daoContext, (ObjectType, methodName), sqlFunc, configureCommand);
         }
 
@@ -436,7 +422,8 @@ namespace LiteOrm
         /// <returns>IDbCommand 实例。</returns>
         internal protected DbCommandProxy MakeNamedParamCommand(string sql, IEnumerable<Param> paramValues)
         {
-            var command = NewCommand();
+            var daoContext = GetDaoContext();
+            var command = daoContext.CreateCommand();
             SetupCommand(command, sql, paramValues);
             return command;
         }
@@ -460,6 +447,7 @@ namespace LiteOrm
         private void SetupCommand(DbCommandProxy command, string sql, IEnumerable<Param> paramValues)
         {
             command.CommandText = MutiReplacerInstance.Replace(sql);
+            command.Parameters.Clear();
             if (paramValues is not null)
                 foreach (var para in paramValues)
                 {
@@ -511,7 +499,8 @@ namespace LiteOrm
         /// <returns>IDbCommand 实例。</returns>
         internal protected async Task<DbCommandProxy> MakeNamedParamCommandAsync(string sql, IEnumerable<Param> paramValues, CancellationToken cancellationToken = default)
         {
-            var command = await NewCommandAsync(cancellationToken).ConfigureAwait(false);
+            var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
+            var command = daoContext.CreateCommand();
             SetupCommand(command, sql, paramValues);
             return command;
         }

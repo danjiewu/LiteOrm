@@ -104,7 +104,7 @@ namespace LiteOrm
         /// <summary>
         /// 已准备好的底层数据库命令缓存。
         /// 键为实体类型和操作名称的组合，用于避免在同一上下文生命周期内重复构建相同的 DbCommand。
-        /// 缓存的是命令本身，取用时由 <see cref="CreateCommand(DbCommand)"/> 新建一个不拥有它的代理，
+        /// 缓存的是命令本身，取用时由 <see cref="CreateCommand"/> 新建一个不拥有它的代理，
         /// 因此代理随调用产生与释放，命令内容在上下文的生命周期内复用。
         /// </summary>
         public ConcurrentDictionary<(Type, string), DbCommand> PreparedCommands { get; } = new ConcurrentDictionary<(Type, string), DbCommand>();

@@ -108,7 +108,7 @@ The second approach creates three problems:
 
 ### 2.2 `Column.Constant` and `TableDefinition.ConstFilter`
 
-The `Constant` argument on `[Column]` is a **global fixed filter for the table itself**, including association queries where it becomes part of `JOIN ... ON`. At the metadata layer, it is consolidated into `TableDefinition.ConstFilter`:
+The `Constant` argument on `[Column]` is a **global fixed filter for the table itself**; in association queries (`From<...>()`, `TableJoinExpr`) it also becomes part of `JOIN ... ON`. At the metadata layer, it is consolidated into `TableDefinition.ConstFilter`:
 
 ```csharp
 public enum RecordState
@@ -145,11 +145,12 @@ The pipeline is:
 1. `Column.Constant` is parsed during metadata construction.
 2. Multiple fixed-column conditions are merged into `TableDefinition.ConstFilter`.
 3. When SQL is generated, main-table fixed filters go into `WHERE`.
-4. Joined-table fixed filters go into `JOIN ... ON`.
+4. In association queries, joined-table fixed filters go into `JOIN ... ON`.
 5. `ForeignExpr` / `Exists` / `ExistsRelated` `EXISTS` subqueries also apply the target table's own `ConstFilter` before combining the relation condition and your `InnerExpr`.
-6. `UPDATE` / `DELETE` statements carry the same rule, including the DAO key-based read and write paths (`GetObject`, `ExistsKey`, `Update`, `DeleteByKeys`, and the batch update/delete methods). A row the model cannot see cannot be read back, updated, or deleted.
+6. `UPDATE` / `DELETE` statements carry the same rule, including the DAO key-based read and write paths (`GetObject`, `ExistsKey`, `Update`, `DeleteByKeys`, and the batch update/delete methods). A row the model cannot see cannot be read back, updated, or deleted. Conditional updates and deletes (`Update(UpdateExpr)`, `Delete(LogicExpr)`) behave the same way.
+7. A joined table's fixed filter only reaches association statements produced by expression queries. The DAO key-based reads (`GetObject`, `ExistsKey`) use the model's own `From` fragment, which only emits the join keys and does not carry joined-table fixed filters, so reading joined columns through that path can still surface a related row outside the filter; use an expression query such as `Search(...)` when the joined table must be constrained as well.
 
-Tables that declare a fixed filter do not reuse the command cache. The filter may produce parameters dynamically (values, and even the parameter count, can change), and a cache would freeze the first generated SQL and parameters; such tables build a fresh command on every call, and the new command is not written into the cache, so it never takes a cache slot away from a regular command. Replacing `TableDefinition.ConstFilter` at runtime therefore takes effect on the next call, at the cost of one extra SQL build per operation for such tables; tables without a fixed filter keep using the command cache (the cache holds the underlying command itself and every call creates a proxy that does not own it, so releasing the proxy never affects the cache).
+Tables that declare a fixed filter do not reuse the command cache. The cache keeps the SQL and parameters generated on the first call, while the slice condition comes from table metadata and can be replaced at runtime (both the value and the shape of the condition may change), so reuse would freeze the old content; such tables build a fresh command on every call, and the new command is not written into the cache, so it never takes a cache slot away from a regular command. Replacing `TableDefinition.ConstFilter` at runtime therefore takes effect on the next call, at the cost of one extra SQL build per operation for such tables; tables without a fixed filter keep using the command cache (the cache holds the underlying command itself and every call creates a proxy that does not own it, so releasing the proxy never affects the cache).
 
 It fits:
 
@@ -304,7 +305,7 @@ In multi-tenant or scoped queries, this means you can unintentionally leave the 
 | Pattern | Best for | Advantage | Limitation |
 |------|----------|------|------|
 | Runtime Expr | current user, current tenant, request-driven filters | simple, flexible, universal | must be applied consistently at query entry points |
-| `ConstFilter` | fixed status, fixed business slice, fixed tenant type | auto-injected into SQL; works for main and joined tables | not suitable for request-scoped context |
+| `ConstFilter` | fixed status, fixed business slice, fixed tenant type | auto-injected into SQL for the main table and association queries; joined-table conditions only reach expression queries (see 2.2) | not suitable for request-scoped context |
 | `CreateSqlBuildContext` + `TableArgs` | physical tenant sharding / routing | hits the real table directly | solves routing, not row-level authorization |
 
 ## 4. Frontend Guidance

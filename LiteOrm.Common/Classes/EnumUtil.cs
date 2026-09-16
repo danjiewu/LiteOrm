@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 
@@ -143,6 +144,30 @@ namespace LiteOrm
             }
             _enumTypeName[enumType] = enumNames;
             _enumNameValue[enumType] = nameValues;
+        }
+
+        /// <summary>
+        /// 将枚举值转换为其底层类型的值。
+        /// </summary>
+        /// <param name="value">要转换的枚举值。</param>
+        /// <returns>转换后的底层类型值。</returns>
+        public static object EnumToUnderlying(Enum value)
+        {
+            return value.GetTypeCode() switch
+            {
+                TypeCode.Byte => Convert.ToByte(value, CultureInfo.InvariantCulture),
+                TypeCode.SByte => Convert.ToSByte(value, CultureInfo.InvariantCulture),
+                TypeCode.Int16 => Convert.ToInt16(value, CultureInfo.InvariantCulture),
+                TypeCode.UInt16 => Convert.ToUInt16(value, CultureInfo.InvariantCulture),
+                TypeCode.Int32 => Convert.ToInt32(value, CultureInfo.InvariantCulture),
+                TypeCode.UInt32 => Convert.ToUInt32(value, CultureInfo.InvariantCulture),
+                TypeCode.Int64 => Convert.ToInt64(value, CultureInfo.InvariantCulture),
+                TypeCode.UInt64 => Convert.ToUInt64(value, CultureInfo.InvariantCulture),
+                _ => Convert.ChangeType(
+                        value,
+                        Enum.GetUnderlyingType(value.GetType()),
+                        CultureInfo.InvariantCulture)!
+            };
         }
     }
 }

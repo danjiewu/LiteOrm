@@ -4,7 +4,7 @@ LiteOrm 没有内置软删除：没有 `[SoftDelete]` 特性，也没有把 `Del
 
 | 原语 | 表达能力 | 自动注入位置 |
 | --- | --- | --- |
-| `[Column(Constant = ...)]` 聚合出的 `TableDefinition.ConstFilter` | 固定的表级筛选条件 | 主表 `WHERE`、关联表 `JOIN ... ON`、`UPDATE` / `DELETE` 的 `WHERE` |
+| `[Column(Constant = ...)]` 聚合出的 `TableDefinition.ConstFilter` | 固定的表级筛选条件 | 主表 `WHERE`、关联查询的 `JOIN ... ON`、`UPDATE` / `DELETE` 的 `WHERE` |
 | 运行时 `Expr` 条件 | 随请求、角色、场景变化的筛选条件 | 由调用方拼装进查询 |
 
 ## 场景 1：列表默认不显示已删除数据
@@ -187,7 +187,7 @@ public async Task<bool> DeleteCustomerAsync(long customerId, string reason, Canc
 
 - 主表软删除后，子表如果按外键直接 `JOIN`，仍会关联到已删除行。子表视图模型要带自己的切片，或在关联条件里补 `IsDeleted = false`。
 - 级联软删除必须在同一个事务里完成。`[Transaction]` 与 `ExecuteInTransaction` 会把同一个 `SessionManager` 内的所有数据源上下文纳入同一事务，主表与子表的更新要么一起成功，要么一起回滚。
-- 被关联表的切片条件在视图构建时就以别名形式写进 `JOIN ... ON`，运行时不需要额外拼条件。
+- 被关联表的切片条件在视图构建时就按别名备好，关联查询的 `JOIN ... ON` 会自动带上，运行时不需要额外拼条件；DAO 按主键读取（`GetObject`、`ExistsKey`）走的是模型自带的 `From` 片段，不含这条条件。
 
 ## 场景 6：历史数据归档
 

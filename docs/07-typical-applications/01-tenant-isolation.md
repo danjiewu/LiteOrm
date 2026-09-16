@@ -118,16 +118,16 @@ public class PlatformOrder : ObjectBase
 }
 ```
 
-`[Column(Constant = ...)]` 在构建表元数据时聚合为 `TableDefinition.ConstFilter`，条件自动进入主表 `WHERE`、关联表 `JOIN ... ON`、`UPDATE` 的 `WHERE` 和 `DELETE` 的 `WHERE`：
+`[Column(Constant = ...)]` 在构建表元数据时聚合为 `TableDefinition.ConstFilter`，条件自动进入主表 `WHERE`、关联查询的 `JOIN ... ON`、`UPDATE` 的 `WHERE` 和 `DELETE` 的 `WHERE`：
 
 ```sql
--- 查询：枚举切片走参数
-SELECT * FROM "Orders" "T0" WHERE "T0"."TenantKind" = @0                        -- @0 = Platform
+-- 查询：枚举切片按底层值内联成字面量
+SELECT * FROM "Orders" "T0" WHERE "T0"."TenantKind" = 1                        -- Platform = 1
 
--- 另一个视图模型上的切片：被关联表的切片进 ON，布尔切片直接内联成字面量
+-- 另一个视图模型上的切片：被关联表的切片进 ON，布尔切片同样内联
 SELECT * FROM "Orders" "T0"
-LEFT JOIN "Departments" "Dept" ON "T0"."DepartmentId" = "Dept"."Id" AND "Dept"."State" = @0
-WHERE "T0"."IsDeleted" = 0                                                     -- @0 = Enabled
+LEFT JOIN "Departments" "Dept" ON "T0"."DepartmentId" = "Dept"."Id" AND "Dept"."State" = 1
+WHERE "T0"."IsDeleted" = 0                                                     -- Enabled = 1
 
 -- 更新与删除
 UPDATE "Customers" SET "Name" = @0 WHERE "Id" = @1 AND "IsDeleted" = 0
@@ -137,9 +137,10 @@ DELETE FROM "Customers" WHERE "Id" = @0 AND "IsDeleted" = 0
 要点：
 
 - `Constant` 只接受编译期常量，能写枚举成员、枚举名、数字、字符串、布尔值，框架会按属性类型做转换。
-- 枚举与布尔值的渲染方式不同：枚举切片生成参数（`= @0`），布尔切片内联成字面量（`= 0`）。两者都不进 SQL 文本拼接路径。
+- 枚举与布尔切片都按底层值内联成字面量：枚举取底层数值（`= 1`），布尔取 `= 0` / `= 1`。切片是编译期常量，不占参数位，切片条件的参数个数也不会随元数据变化。
 - 它表达的是“这张表天然只有这类数据”。把当前请求的租户写进去，结果是所有租户共用同一个固定条件，这是多租户下最严重的一类故障。
-- `INSERT` 不受这个条件约束，语句里不会附带切片条件，切片值来自实体属性本身（上例的只读属性恒为 `Platform`，插入时就把这个值写进去）。
+- `INSERT` 不受这个条件约束，语句里不会附带切片条件，切片值来自实体属性本身（上例的只读属性恒为 `Platform`，插入时就把这个值写进去）。属性可写时要留意另一面：写入切片外的值不会在插入时被纠正，这行插进去马上对模型不可见，写入前先确认取值落在切片内。
+- 关联表的切片进的是关联查询的 `JOIN ... ON`。DAO 按主键读取（`GetObject`、`ExistsKey`）走的是模型自带的 `From` 片段，这段片段只拼关联键、不带关联表的切片条件，需要连关联表一起限定时改用 `Search(...)` 这类表达式查询。完整边界见[权限过滤与用户范围控制](../06-di/02-permission-filtering.md)。
 - 若程序集启用了 `TableInfo` 源生成（NativeAOT 构建，或显式声明 `[assembly: LiteOrmCodeGen(LiteOrmCodeGenKind.TableInfo)]`），表元数据由 `CommonTableInfoProvider` 提供，而生成的 `ColumnInfo` 不携带 `Constant`，此时特性声明的切片不会变成 `ConstFilter`，上面这些条件一个都不会出现。这类项目改走运行时构件，见下一个场景。
 
 ## 场景 4：租户值在启动阶段才确定，还想让它自动生效

@@ -118,16 +118,16 @@ public class PlatformOrder : ObjectBase
 }
 ```
 
-`[Column(Constant = ...)]` is aggregated into `TableDefinition.ConstFilter` while table metadata is built. The condition then appears in the main table `WHERE`, in `JOIN ... ON` for joined tables, and in `UPDATE` / `DELETE` `WHERE` clauses:
+`[Column(Constant = ...)]` is aggregated into `TableDefinition.ConstFilter` while table metadata is built. The condition then appears in the main table `WHERE`, in `JOIN ... ON` for association queries, and in `UPDATE` / `DELETE` `WHERE` clauses:
 
 ```sql
--- Query: an enum slice becomes a parameter
-SELECT * FROM "Orders" "T0" WHERE "T0"."TenantKind" = @0                        -- @0 = Platform
+-- Query: an enum slice is inlined as its underlying value
+SELECT * FROM "Orders" "T0" WHERE "T0"."TenantKind" = 1                        -- Platform = 1
 
--- A slice on another view model: the joined table's slice goes into ON, a boolean slice is inlined
+-- A slice on another view model: the joined table's slice goes into ON, a boolean slice is inlined too
 SELECT * FROM "Orders" "T0"
-LEFT JOIN "Departments" "Dept" ON "T0"."DepartmentId" = "Dept"."Id" AND "Dept"."State" = @0
-WHERE "T0"."IsDeleted" = 0                                                     -- @0 = Enabled
+LEFT JOIN "Departments" "Dept" ON "T0"."DepartmentId" = "Dept"."Id" AND "Dept"."State" = 1
+WHERE "T0"."IsDeleted" = 0                                                     -- Enabled = 1
 
 -- Update and delete
 UPDATE "Customers" SET "Name" = @0 WHERE "Id" = @1 AND "IsDeleted" = 0
@@ -137,9 +137,10 @@ DELETE FROM "Customers" WHERE "Id" = @0 AND "IsDeleted" = 0
 Notes:
 
 - `Constant` only accepts compile-time constants: enum members, enum names, numbers, strings, booleans. The framework converts them to the property type.
-- Enum and boolean slices render differently: an enum slice becomes a parameter (`= @0`), a boolean slice is inlined as a literal (`= 0`). Neither goes through string concatenation.
+- Enum and boolean slices are both inlined as their underlying value: an enum becomes its numeric value (`= 1`), a boolean becomes `= 0` / `= 1`. A slice is a compile-time constant, so it takes no parameter slot and the parameter count of a slice condition never varies with metadata.
 - The condition means "this table only ever contains this class of data". Writing the current request's tenant id here makes every tenant share one fixed condition, which is the worst class of multi-tenant failure.
-- `INSERT` is not affected: the statement carries no slice condition, because the slice value comes from the entity property itself (the read-only property above is always `Platform`, and that is what gets inserted).
+- `INSERT` is not affected: the statement carries no slice condition, because the slice value comes from the entity property itself (the read-only property above is always `Platform`, and that is what gets inserted). With a writable property there is another side to watch: a value outside the slice is not corrected on insert, so the new row becomes invisible to the model immediately. Check the value before writing.
+- A joined table's slice reaches the `JOIN ... ON` of association queries. The DAO key-based reads (`GetObject`, `ExistsKey`) use the model's own `From` fragment, which only emits the join keys and carries no joined-table slice condition, so switch to an expression query such as `Search(...)` when the joined table must be constrained too. For the full boundary see [Permission Filtering and User Scope Control](../06-di/02-permission-filtering.en.md).
 - When the assembly enables `TableInfo` source generation (NativeAOT builds, or an explicit `[assembly: LiteOrmCodeGen(LiteOrmCodeGenKind.TableInfo)]`), table metadata comes from `CommonTableInfoProvider` and the generated `ColumnInfo` carries no `Constant`. None of the conditions above appear in that case. Those projects use the runtime fragment covered in the next scenario.
 
 ## Scenario 4: the tenant value is only known at startup, and should apply automatically

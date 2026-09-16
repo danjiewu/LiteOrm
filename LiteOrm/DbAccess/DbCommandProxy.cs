@@ -25,7 +25,7 @@ namespace LiteOrm
     /// 7. 异步支持 - 支持异步命令执行
     /// 
     /// 该类继承自 DbCommand 类，可以作为标准 DbCommand 的替代品使用。
-    /// 实例由 <see cref="DAOContext.CreateCommand()"/> 按次创建：包装上下文缓存命令的代理不拥有底层命令，释放代理不会影响缓存；
+    /// 实例由 <see cref="DAOContext.CreateCommand"/> 按次创建：包装上下文缓存命令的代理不拥有底层命令，释放代理不会影响缓存；
     /// 包装本次新建命令的代理拥有底层命令，释放代理即释放命令。
     /// </remarks>
     public class DbCommandProxy : DbCommand, IDbCommand

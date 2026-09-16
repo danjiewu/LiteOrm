@@ -320,7 +320,7 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 **功能**：所有DAO的抽象基类，提供通用操作方法
 
 **主要方法**：
-- `NewCommand()`：创建数据库命令
+- `GetPreparedCommand()`：获取预定义命令（常规表复用上下文缓存的命令，声明了固定筛选的表每次新建）
 - `MakeNamedParamCommand()`：创建带参数的命令
 - `MakeExprCommand()`：根据表达式创建命令
 - `GetValue<T>()`：执行查询并返回单个值

@@ -108,7 +108,7 @@ var myItems = items.Where(x => x.CreatedByUserId == currentUser.Id).ToList();
 
 ### 2.2 `Column.Constant` 与 `TableDefinition.ConstFilter`
 
-`[Column]` 的 `Constant` 参数是**针对整张表生效的全局固定筛选**，包括关联查询里的 `JOIN ... ON`。在实现上，它会在元数据阶段收敛为 `TableDefinition.ConstFilter`：
+`[Column]` 的 `Constant` 参数是**针对整张表生效的全局固定筛选**，在关联查询（`From<...>()`、`TableJoinExpr`）里也会进入 `JOIN ... ON`。在实现上，它会在元数据阶段收敛为 `TableDefinition.ConstFilter`：
 
 ```csharp
 public enum RecordState
@@ -145,11 +145,12 @@ public class Department
 1. `Column.Constant` 在元数据阶段被解析。
 2. 多个固定列条件会合并成 `TableDefinition.ConstFilter`。
 3. 生成 SQL 时，主表固定筛选进入 `WHERE`。
-4. 关联表固定筛选进入 `JOIN ... ON`。
+4. 关联查询里，关联表的固定筛选进入 `JOIN ... ON`。
 5. `ForeignExpr` / `Exists` / `ExistsRelated` 这类 `EXISTS` 子查询，也会先并入目标表自己的 `ConstFilter`，再叠加关联条件和你传入的 `InnerExpr`。
-6. `UPDATE` / `DELETE` 语句同样带上这条规则；DAO 走主键的读写路径（`GetObject`、`ExistsKey`、`Update`、`DeleteByKeys`、批量更新与删除）也一并生效，即模型看不见的行读不出、改不动、删不掉。
+6. `UPDATE` / `DELETE` 语句同样带上这条规则；DAO 走主键的读写路径（`GetObject`、`ExistsKey`、`Update`、`DeleteByKeys`、批量更新与删除）也一并生效，即模型看不见的行读不出、改不动、删不掉。条件更新与删除（`Update(UpdateExpr)`、`Delete(LogicExpr)`）同样生效。
+7. 关联表的固定筛选只进表达式查询生成的关联语句。DAO 按主键读取（`GetObject`、`ExistsKey`）走的是模型自带的 `From` 片段，这段片段只拼关联键，不带关联表的固定筛选，用它读关联列时仍可能读到固定筛选之外的关联行内容；要把关联表一起限定住，用 `Search(...)` 这类表达式查询。
 
-声明了固定筛选的表不复用命令缓存：固定筛选条件可能动态生成参数（取值乃至参数个数都可能变化），缓存会把首次生成的 SQL 与参数固化下来；这类表每次调用都新建命令，新建的命令也不写入缓存，因此不会占用常规命令的缓存槽位。运行时替换 `TableDefinition.ConstFilter` 后，下一次调用即按新条件执行；代价是这类表每次操作多一次 SQL 拼接，未声明固定筛选的表照旧使用命令缓存（缓存里存的是底层命令本身，每次取用新建一个不拥有它的代理，释放代理不会影响缓存）。
+声明了固定筛选的表不复用命令缓存：缓存保留的是首次生成的 SQL 与参数，而切片条件来自表元数据、运行时可能被替换（取值乃至条件结构都会变），复用会把旧内容固化下来；这类表每次调用都新建命令，新建的命令也不写入缓存，因此不会占用常规命令的缓存槽位。运行时替换 `TableDefinition.ConstFilter` 后，下一次调用即按新条件执行；代价是这类表每次操作多一次 SQL 拼接，未声明固定筛选的表照旧使用命令缓存（缓存里存的是底层命令本身，每次取用新建一个不拥有它的代理，释放代理不会影响缓存）。
 
 它适合：
 
@@ -304,7 +305,7 @@ public class TenantOrderViewDAO : ObjectViewDAO<TenantOrder>
 | 方案 | 适合场景 | 优点 | 限制 |
 |------|----------|------|------|
 | 运行时 Expr | 当前用户、当前租户、接口参数驱动的过滤 | 直观、灵活、最通用 | 需要在查询入口统一拼装 |
-| `ConstFilter` | 固定状态、固定业务切片、固定租户类型 | 自动注入 SQL，主表 / 关联表都生效 | 不适合当前请求上下文 |
+| `ConstFilter` | 固定状态、固定业务切片、固定租户类型 | 自动注入 SQL，主表与关联查询都生效；关联表条件只进表达式查询，见 2.2 | 不适合当前请求上下文 |
 | `CreateSqlBuildContext` + `TableArgs` | 按租户物理分表或路由 | 直接命中真实表，适合分表设计 | 解决的是表路由，不是行权限 |
 
 ## 4. 前端联动建议

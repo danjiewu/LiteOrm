@@ -25,7 +25,9 @@ namespace LiteOrm.Common.UnitTests
 
                 Assert.Contains("WHERE", sql.Sql);
                 Assert.Contains("State", sql.Sql);
-                Assert.Contains(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                // 枚举常量按底层值内联成字面量，不再生成参数
+                Assert.DoesNotContain(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                Assert.Contains($"\"State\" = {(int)ConstFilterState.Enabled}", sql.Sql);
             });
         }
 
@@ -43,7 +45,9 @@ namespace LiteOrm.Common.UnitTests
                 Assert.Contains("JOIN", sql.Sql);
                 Assert.Contains("Dept", sql.Sql);
                 Assert.Contains("State", sql.Sql);
-                Assert.Contains(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                // 枚举常量按底层值内联成字面量，不再生成参数
+                Assert.DoesNotContain(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                Assert.Contains($"\"State\" = {(int)ConstFilterState.Enabled}", sql.Sql);
             });
         }
 
@@ -65,7 +69,9 @@ namespace LiteOrm.Common.UnitTests
                 Assert.Contains("JOIN", sql.Sql);
                 Assert.Contains("Dept", sql.Sql);
                 Assert.Contains("State", sql.Sql);
-                Assert.Contains(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                // 枚举常量按底层值内联成字面量，不再生成参数
+                Assert.DoesNotContain(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                Assert.Contains($"\"State\" = {(int)ConstFilterState.Enabled}", sql.Sql);
             });
         }
 
@@ -87,7 +93,9 @@ namespace LiteOrm.Common.UnitTests
 
                 Assert.Contains("WHERE", sql.Sql);
                 Assert.Contains("State", sql.Sql);
-                Assert.Contains(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                // 枚举常量按底层值内联成字面量，不再生成参数
+                Assert.DoesNotContain(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                Assert.Contains($"\"State\" = {(int)ConstFilterState.Enabled}", sql.Sql);
             });
         }
 
@@ -104,7 +112,9 @@ namespace LiteOrm.Common.UnitTests
 
                 Assert.Contains("WHERE", sql.Sql);
                 Assert.Contains("State", sql.Sql);
-                Assert.Contains(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                // 枚举常量按底层值内联成字面量，不再生成参数
+                Assert.DoesNotContain(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                Assert.Contains($"\"State\" = {(int)ConstFilterState.Enabled}", sql.Sql);
             });
         }
 
@@ -145,7 +155,9 @@ namespace LiteOrm.Common.UnitTests
 
                 Assert.Contains("EXISTS", sql.Sql);
                 Assert.Contains("State", sql.Sql);
-                Assert.Contains(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                // 枚举常量按底层值内联成字面量，不再生成参数
+                Assert.DoesNotContain(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                Assert.Contains($"\"State\" = {(int)ConstFilterState.Enabled}", sql.Sql);
             });
         }
 
@@ -170,7 +182,9 @@ namespace LiteOrm.Common.UnitTests
                 Assert.Contains("EXISTS", sql.Sql);
                 Assert.Contains("State", sql.Sql);
                 Assert.Contains("DepartmentId", sql.Sql);
-                Assert.Contains(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                // 枚举常量按底层值内联成字面量，不再生成参数
+                Assert.DoesNotContain(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
+                Assert.Contains($"\"State\" = {(int)ConstFilterState.Enabled}", sql.Sql);
             });
         }
 

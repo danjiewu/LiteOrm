@@ -12,6 +12,10 @@
 
 - **新增 `LiteOrmContext`**（`LiteOrm`）：不依赖 DI 的链式上下文。`AddDataSource<TConnection>` 登记数据源，`CreateSession()` 返回会话，`new ObjectDAO<User>(session)` 即可读写。不注册服务、不读 `IConfiguration`。
 
+### 改进
+
+- **枚举常量改为内联字面量**（`LiteOrm.Common`）：`Expr.Const` 的枚举值取底层数值直接拼进 SQL（如 `"State" = 1`）而不走参数，`[Column(Constant = ...)]` 的切片与布尔、数值常量一样不再占用参数位。
+
 ### 修复
 
 - **修复 AOT 下框架内置泛型服务未注册**（`LiteOrm`）：泛型 DAO 与服务改为固定注册，`AutoRegisterServices` 只控制用户自定义服务与 DAO。

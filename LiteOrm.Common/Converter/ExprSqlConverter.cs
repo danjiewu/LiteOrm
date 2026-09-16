@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace LiteOrm.Common
@@ -602,20 +603,25 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, ValueExpr expr, SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams)
         {
-            if (expr.Value == null)
+            object? value = expr.Value;
+            if (expr.IsConst && value is Enum enumValue)
+            {
+                value = EnumUtil.EnumToUnderlying(enumValue);
+            }
+            if (value == null)
             {
                 sb.Append("NULL");
             }
-            else if (expr.IsConst && expr.Value is bool b)
+            else if (expr.IsConst && value is bool b)
             {
                 sb.Append(b ? "1" : "0");
             }
-            else if (expr.IsConst && expr.Value.GetType().IsPrimitive)
+            else if (expr.IsConst && value.GetType().IsPrimitive)
             {
                 // 数值类型常量直接以字面量形式输出，较为高效
-                sb.Append(expr.Value.ToString());
+                sb.Append(value.ToString());
             }
-            else if (expr.IsConst && expr.Value is string s)
+            else if (expr.IsConst && value is string s)
             {
                 // 字符串常量尝试直接输出为字面量，如果不支持则使用参数化
                 if (!sqlBuilder.TryAppendSqlLiteral(ref sb, s))
@@ -625,11 +631,11 @@ namespace LiteOrm.Common
                     sb.Append(sqlBuilder.ToSqlParam(paramName));
                 }
             }
-            else if (expr.Value is Expr innerExpr)
+            else if (value is Expr innerExpr)
             {
                 ToSqlInternal(ref sb, innerExpr, context, sqlBuilder, outputParams);
             }
-            else if (expr.Value is IEnumerable enumerable && !(expr.Value is string))
+            else if (value is IEnumerable enumerable && !(value is string))
             {
                 // 处理 IN (...) 集合
                 bool first = true;
@@ -656,7 +662,7 @@ namespace LiteOrm.Common
             {
                 // 其他类型（如字符串、日期）通过参数化处理以保证安全
                 string paramName = outputParams.Count.ToString();
-                outputParams.Add(new Param(sqlBuilder.ToParamName(paramName), expr.Value));
+                outputParams.Add(new Param(sqlBuilder.ToParamName(paramName), value));
                 sb.Append(sqlBuilder.ToSqlParam(paramName));
             }
         }
