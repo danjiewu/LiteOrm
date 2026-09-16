@@ -14,6 +14,8 @@
 
 - **Fixed built-in generic services not being registered under AOT** (`LiteOrm`): generic DAOs and services are now registered unconditionally; `AutoRegisterServices` only governs user-defined services and DAOs.
 
+- **DAO key-based read/write paths now carry the fixed filter** (`LiteOrm`): `GetObject` / `ExistsKey` / `Update` / `Delete` / `DeleteByKeys`, together with batch update, batch delete and batch existence checks, previously filtered by primary key only and ignored the `TableDefinition.ConstFilter` derived from `Column.Constant`. They now apply the fixed filter just like queries and conditional update/delete statements: rows the model cannot see cannot be read back, updated or deleted. The batch update statement qualifies the appended condition with the target-table alias of each dialect (SQL Server / MySQL use `T`, PostgreSQL uses `u`, Oracle uses `t`). In addition, tables that declare a fixed filter no longer cache the content of their predefined commands — SQL and parameters are regenerated on every call and only the command instance is retained for unified disposal — so that dynamically generated filter parameters can never be frozen by the cache.
+
 ***
 
 ## v8.1.6 (2026-09-10)

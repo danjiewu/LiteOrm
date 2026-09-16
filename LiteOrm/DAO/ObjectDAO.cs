@@ -173,6 +173,9 @@ namespace LiteOrm
                 where += $" AND {ToColumnSql(TimestampColumn)} = {ToSqlParam(paramName)}";
             }
 
+            // 固定筛选条件（Column.Constant）限定更新范围，与实体不可见的行不会被更新
+            where = AppendConstFilter(where, paramValues);
+
             string sql = $"UPDATE {ToSqlName(FactTableName)} SET {strColumns.ToString()} \nWHERE {where}";
             strColumns.Dispose();
             return new PreparedSql(sql, paramValues);
@@ -186,8 +189,8 @@ namespace LiteOrm
         {
             var paramValues = new List<Param>();
 
-            // 构建 WHERE 子句
-            string where = MakeKeyCondition(paramValues);
+            // 构建 WHERE 子句，固定筛选条件参与限定删除范围
+            string where = AppendConstFilter(MakeKeyCondition(paramValues), paramValues);
 
             string sql = $"DELETE FROM {ToSqlName(FactTableName)} \nWHERE {where}";
             return new PreparedSql(sql, paramValues);
@@ -248,8 +251,6 @@ namespace LiteOrm
             var keyColumns = TableDefinition.Keys.ToArray();
             var paramValues = new List<Param>();
 
-            string sql = SqlBuilder.BuildBatchUpdateSql(FactTableName, updatableColumns, keyColumns, batchSize);
-
             int paramCount = 0;
             for (int b = 0; b < batchSize; b++)
             {
@@ -265,6 +266,10 @@ namespace LiteOrm
                 }
             }
 
+            // 固定筛选条件的参数排在批量参数之后，列名按方言批量语句中目标表的别名限定
+            string? constFilter = MakeConstFilterCondition(paramValues, SqlBuilder.BatchTargetTableAlias);
+            string sql = SqlBuilder.BuildBatchUpdateSql(FactTableName, updatableColumns, keyColumns, batchSize, constFilter);
+
             return new PreparedSql(sql, paramValues);
         }
 
@@ -276,7 +281,6 @@ namespace LiteOrm
             var keyColumns = TableDefinition.Keys;
             var paramValues = new List<Param>();
 
-            string sql = SqlBuilder.BuildBatchIDExistsSql(FactTableName, keyColumns, batchSize);
             int paramCount = 0;
             for (int b = 0; b < batchSize; b++)
             {
@@ -286,6 +290,10 @@ namespace LiteOrm
                     paramCount++;
                 }
             }
+
+            // 固定筛选条件限定“存在”的判定范围，模型不可见的行按不存在处理
+            string? constFilter = MakeConstFilterCondition(paramValues);
+            string sql = SqlBuilder.BuildBatchIDExistsSql(FactTableName, keyColumns, batchSize, constFilter);
             return new PreparedSql(sql, paramValues);
         }
 
@@ -297,8 +305,6 @@ namespace LiteOrm
             ColumnDefinition[] keyColumns = TableDefinition.Keys.ToArray();
             var paramValues = new List<Param>();
 
-            string sql = SqlBuilder.BuildBatchDeleteSql(FactTableName, keyColumns, batchSize);
-
             int paramCount = 0;
             for (int b = 0; b < batchSize; b++)
             {
@@ -308,6 +314,10 @@ namespace LiteOrm
                     paramCount++;
                 }
             }
+
+            // 固定筛选条件限定删除范围，模型不可见的行不会被删除
+            string? constFilter = MakeConstFilterCondition(paramValues);
+            string sql = SqlBuilder.BuildBatchDeleteSql(FactTableName, keyColumns, batchSize, constFilter);
             return new PreparedSql(sql, paramValues);
         }
 
@@ -822,11 +832,11 @@ namespace LiteOrm
         {
             ThrowExceptionIfWrongKeys(keys);
             var deleteCommand = GetPreparedCommand("Delete", MakeDeleteSql);
-            int count = deleteCommand.Parameters.Count;
             var parameters = deleteCommand.Parameters;
             var keyColumns = Table.Keys;
 
-            for (int i = 0; i < count; i++)
+            // 参数末尾为固定筛选条件的参数，其值来自元数据，这里只填充主键参数
+            for (int i = 0; i < keyColumns.Count; i++)
             {
                 parameters[i].Value = keyColumns[i].ToDbValue(keys[i], SqlBuilder);
             }
@@ -1265,11 +1275,11 @@ namespace LiteOrm
         {
             ThrowExceptionIfWrongKeys(keys);
             var deleteCommand = await GetPreparedCommandAsync("Delete", MakeDeleteSql, cancellationToken).ConfigureAwait(false);
-            int count = deleteCommand.Parameters.Count;
             var parameters = deleteCommand.Parameters;
             var keyColumns = Table.Keys;
 
-            for (int i = 0; i < count; i++)
+            // 参数末尾为固定筛选条件的参数，其值来自元数据，这里只填充主键参数
+            for (int i = 0; i < keyColumns.Count; i++)
             {
                 parameters[i].Value = keyColumns[i].ToDbValue(keys[i], SqlBuilder);
             }

@@ -85,8 +85,8 @@ namespace LiteOrm
         {
             var paramValues = new List<Param>();
 
-            // 构建 WHERE 子句
-            string where = MakeKeyCondition(paramValues);
+            // 构建 WHERE 子句，固定筛选条件限定可见范围
+            string where = AppendConstFilter(MakeKeyCondition(paramValues), paramValues);
 
             string sql = $"SELECT {AllFields} \nFROM {From} \nWHERE {where}";
             return new PreparedSql(sql, paramValues);
@@ -101,8 +101,8 @@ namespace LiteOrm
             ThrowExceptionIfNoKeys();
             var paramValues = new List<Param>();
 
-            // 构建 WHERE 子句
-            string where = MakeKeyCondition(paramValues);
+            // 构建 WHERE 子句，固定筛选条件限定可见范围
+            string where = AppendConstFilter(MakeKeyCondition(paramValues), paramValues);
 
             string sql = $"SELECT 1 \nFROM {From} \nWHERE {where}";
             return new PreparedSql(sql, paramValues);

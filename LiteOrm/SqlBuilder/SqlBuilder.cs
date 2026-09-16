@@ -817,13 +817,21 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 生成批量检查 ID 是否存在的 SQL 语句。
+        /// 批量语句中目标表使用的别名。生成的语句未给目标表起别名时返回 null，此时附加条件中的列名不加限定；
+        /// 为减少歧义，生成语句用到别名的方言应重写此属性，使附加条件能与批量数据源区分开。
+        /// </summary>
+        public virtual string? BatchTargetTableAlias => null;
+
+
+        /// <summary>
+        /// 生成批量检查 ID 是否存在的 SQL 语句，并附加额外过滤条件（如 <see cref="ColumnAttribute.Constant"/> 收敛出的固定筛选条件）。
         /// </summary>
         /// <param name="tableName">目标表名。</param>
         /// <param name="keyColumns">主键列定义数组。</param>
         /// <param name="batchSize">批量大小。</param>
+        /// <param name="constFilterSql">附加过滤条件的 SQL 片段；默认为 null ，表示无附加条件。</param>
         /// <returns>生成的 SQL 语句。</returns>
-        public virtual string BuildBatchIDExistsSql(string tableName, IList<ColumnDefinition> keyColumns, int batchSize)
+        public virtual string BuildBatchIDExistsSql(string tableName, IList<ColumnDefinition> keyColumns, int batchSize, string? constFilterSql = null)
         {
             var sb = ValueStringBuilder.Create(1024);
             for (int i = 0; i < keyColumns.Count; i++)
@@ -855,6 +863,11 @@ namespace LiteOrm
                 if (keyColumns.Count > 1) sb.Append(")");
             }
             sb.Append(")");
+            if (!String.IsNullOrEmpty(constFilterSql))
+            {
+                sb.Append(" AND ");
+                sb.Append(constFilterSql);
+            }
             string result = sb.ToString();
             sb.Dispose();
             return result;
@@ -868,6 +881,19 @@ namespace LiteOrm
         /// <param name="batchSize">批次大小。</param>
         /// <returns>返回目标数据库可执行的批量删除 SQL 字符串。</returns>
         public virtual string BuildBatchDeleteSql(string tableName, ColumnDefinition[] keyColumns, int batchSize)
+        {
+            return BuildBatchDeleteSql(tableName, keyColumns, batchSize, null);
+        }
+
+        /// <summary>
+        /// 生成批量删除的 SQL 语句，并附加额外过滤条件（如 <see cref="ColumnAttribute.Constant"/> 收敛出的固定筛选条件）。
+        /// </summary>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="keyColumns">主键列集合。</param>
+        /// <param name="batchSize">批次大小。</param>
+        /// <param name="constFilterSql">附加过滤条件的 SQL 片段；为 null 时表示无附加条件。</param>
+        /// <returns>返回目标数据库可执行的批量删除 SQL 字符串。</returns>
+        public virtual string BuildBatchDeleteSql(string tableName, ColumnDefinition[] keyColumns, int batchSize, string? constFilterSql)
         {
             var sb = ValueStringBuilder.Create(1024);
             sb.Append("DELETE FROM ");
@@ -905,6 +931,12 @@ namespace LiteOrm
                 }
             }
 
+            if (!String.IsNullOrEmpty(constFilterSql))
+            {
+                sb.Append(" AND ");
+                sb.Append(constFilterSql);
+            }
+
             string result = sb.ToString();
             sb.Dispose();
             return result;
@@ -920,9 +952,28 @@ namespace LiteOrm
         /// <returns>返回目标数据库可执行的批量更新 SQL 字符串。</returns>
         public virtual string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
         {
+            return BuildBatchUpdateSql(tableName, updatableColumns, keyColumns, batchSize, null);
+        }
+
+        /// <summary>
+        /// 生成批量更新的 SQL 语句，并附加额外过滤条件（如 <see cref="ColumnAttribute.Constant"/> 收敛出的固定筛选条件）。
+        /// 采用单条 UPDATE 语句拼接的方式以保证兼容性。
+        /// </summary>
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="updatableColumns">可更新列集合。</param>
+        /// <param name="keyColumns">主键列集合。</param>
+        /// <param name="batchSize">批次大小。</param>
+        /// <param name="constFilterSql">
+        /// 附加过滤条件的 SQL 片段；为 null 时表示无附加条件。
+        /// 生成语句给目标表起了别名时（见 <see cref="BatchTargetTableAlias"/>），片段中的列名须以该别名限定。
+        /// </param>
+        /// <returns>返回目标数据库可执行的批量更新 SQL 字符串。</returns>
+        public virtual string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize, string? constFilterSql)
+        {
             int paramsPerRecord = updatableColumns.Length + keyColumns.Length;
             var sb = ValueStringBuilder.Create(128 + paramsPerRecord * batchSize * 8);
             string sqlTableName = ToSqlName(tableName);
+            bool hasConstFilter = !String.IsNullOrEmpty(constFilterSql);
 
             // 为每条记录生成一个 UPDATE 语句
             for (int b = 0; b < batchSize; b++)
@@ -951,6 +1002,11 @@ namespace LiteOrm
                     sb.Append(ToSqlName(keyColumns[k].Name!));
                     sb.Append(" = ");
                     sb.Append(ToSqlParam((b * paramsPerRecord + updatableColumns.Length + k).ToString()));
+                }
+                if (hasConstFilter)
+                {
+                    sb.Append(" AND ");
+                    sb.Append(constFilterSql);
                 }
             }
 

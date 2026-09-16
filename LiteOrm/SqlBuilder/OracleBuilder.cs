@@ -66,6 +66,12 @@ namespace LiteOrm
         public override bool ReturnIdentityByParam => true;
 
         /// <summary>
+        /// 批量更新语句中目标表的别名（语句形式为 MERGE INTO 表 t USING (...) s ON ...）。
+        /// USING 子查询中的列直接使用真实列名，附加条件必须以别名 t 限定以消除歧义。
+        /// </summary>
+        public override string? BatchTargetTableAlias => "t";
+
+        /// <summary>
         /// 批量插入时，如果标识列来源是序列或表达式，则自动将标识列添加到插入列和对应的值中。
         /// </summary>
         /// <param name="identityColumn">标识列或含有序列的列定义。</param>
@@ -338,8 +344,9 @@ namespace LiteOrm
         /// <param name="updatableColumns">可更新列集合。</param>
         /// <param name="keyColumns">主键列集合。</param>
         /// <param name="batchSize">批次大小。</param>
+        /// <param name="constFilterSql">附加过滤条件的 SQL 片段，列名须以别名 t 限定；为 null 时表示无附加条件。</param>
         /// <returns>返回 Oracle 可执行的批量更新 SQL 字符串。</returns>
-        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
+        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize, string? constFilterSql)
         {
             if (batchSize <= 0) throw new ArgumentOutOfRangeException(nameof(batchSize), "Batch size must be greater than 0");
             if (keyColumns.Length == 0) throw new ArgumentException("At least one key column is required", nameof(keyColumns));
@@ -396,6 +403,13 @@ namespace LiteOrm
                 sb.Append(ToSqlName(keyColumns[k].Name!));
                 sb.Append(" = s.");
                 sb.Append(ToSqlName(keyColumns[k].Name!));
+            }
+
+            // 附加过滤条件与主键条件同在 ON 上，只有匹配的行才会被更新
+            if (!String.IsNullOrEmpty(constFilterSql))
+            {
+                sb.Append(" AND ");
+                sb.Append(constFilterSql);
             }
             sb.Append(")\n");
 

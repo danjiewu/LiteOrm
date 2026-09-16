@@ -28,6 +28,11 @@ namespace LiteOrm
         public override bool SupportBatchInsertWithIdentity => true;
 
         /// <summary>
+        /// 批量更新语句中目标表的别名（语句形式为 UPDATE 表 T INNER JOIN (...) S ON ... SET ...）。
+        /// </summary>
+        public override string? BatchTargetTableAlias => "T";
+
+        /// <summary>
         /// 将表名或字段名转换为 SQL 标识符格式（使用反引号包裹）。
         /// </summary>
         /// <param name="sb">字符串构建器</param>
@@ -207,7 +212,12 @@ namespace LiteOrm
         /// <summary>
         /// 生成 MySQL 专用的批量更新 SQL 语句（采用 JOIN 方式）。
         /// </summary>
-        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize)
+        /// <param name="tableName">目标表名。</param>
+        /// <param name="updatableColumns">可更新列集合。</param>
+        /// <param name="keyColumns">主键列集合。</param>
+        /// <param name="batchSize">批次大小。</param>
+        /// <param name="constFilterSql">附加过滤条件的 SQL 片段，列名须以别名 T 限定；为 null 时表示无附加条件。</param>
+        public override string BuildBatchUpdateSql(string tableName, ColumnDefinition[] updatableColumns, ColumnDefinition[] keyColumns, int batchSize, string? constFilterSql)
         {
 
             string sqlTableName = ToSqlName(tableName);
@@ -241,6 +251,13 @@ namespace LiteOrm
                 sb.Append(ToSqlName(keyColumns[k].Name!));
                 sb.Append(" = S.");
                 sb.Append(ToSqlName("v" + (updatableColumns.Length + k)));
+            }
+
+            // 附加过滤条件与主键条件同在 ON 上，INNER JOIN 下等价于整体过滤（该语句没有 WHERE 子句）
+            if (!String.IsNullOrEmpty(constFilterSql))
+            {
+                sb.Append(" AND ");
+                sb.Append(constFilterSql);
             }
 
             sb.Append("\nSET ");

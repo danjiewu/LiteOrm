@@ -147,7 +147,9 @@ public class Department
 3. 生成 SQL 时，主表固定筛选进入 `WHERE`。
 4. 关联表固定筛选进入 `JOIN ... ON`。
 5. `ForeignExpr` / `Exists` / `ExistsRelated` 这类 `EXISTS` 子查询，也会先并入目标表自己的 `ConstFilter`，再叠加关联条件和你传入的 `InnerExpr`。
-6. `UPDATE` / `DELETE` 这类语句也会继续带上这条固定规则。
+6. `UPDATE` / `DELETE` 语句同样带上这条规则；DAO 走主键的读写路径（`GetObject`、`ExistsKey`、`Update`、`DeleteByKeys`、批量更新与删除）也一并生效，即模型看不见的行读不出、改不动、删不掉。
+
+声明了固定筛选的表不缓存预定义命令的内容：固定筛选条件可能动态生成参数（取值乃至参数个数都可能变化），因此每次调用都重新生成 SQL 与参数，预定义命令只保留实例本身。运行时替换 `TableDefinition.ConstFilter` 后，下一次调用即按新条件执行；代价是这类表每次操作多一次 SQL 拼接，未声明固定筛选的表照旧使用命令缓存。
 
 它适合：
 

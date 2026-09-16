@@ -61,6 +61,8 @@ namespace LiteOrm
             }
             var context = CreateSqlBuildContext(true);
             string where = expr.ToSql(context, SqlBuilder, paramValues);
+            // 固定筛选条件追加在调用方条件之后，与参数顺序保持一致
+            where = AppendConstFilter(where, paramValues);
             string whereClause = String.IsNullOrEmpty(where) ? "" : "\nWHERE " + where;
             string updateSql = $"UPDATE {ParamTable} SET {String.Join(", ", strSets.ToArray())} {whereClause}";
             var command = MakeNamedParamCommand(updateSql, paramValues);
