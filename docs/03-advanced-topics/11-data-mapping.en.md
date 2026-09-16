@@ -244,6 +244,30 @@ All three behave identically: per column, do an `IsDBNull` check → get that co
 
 > Tip: normal runtime code can rely on the JIT path; for NativeAOT builds, mark entities `[Table]` to hit the source-generator implementation for near-JIT performance.
 
+### 5.1 Entity Read Mapping Under Dynamic Data Source Switching
+
+`DataReaderConverter.GetConverterByTable<T>` **caches** the read-mapping delegate by `typeof(T)` for predefined entity types: the first call decides the typed read method (`GetString` / `GetInt32` …) from the entity's column metadata (column `DbValueType` → `DbType`) under **whichever data source dialect is current**, and reuses that delegate afterwards.
+
+> In other words, **an entity can hold only one cached read delegate, and it is determined by which data source first binds the entity**. So when the same entity is bound to multiple **dynamically swappable** data sources (e.g. switching between SQLite / MySQL / Oracle per tenant / shard), one of the following must hold, otherwise misreading occurs because the mapper compiled under the old dialect is reused:
+
+1. **Keep the column `DbValueType` identical across all data sources.** For example, SQLite stores `DateTime` as text while MySQL stores it as native `DATETIME`; if the entity first compiles a mapper that calls `GetString` and parses it under SQLite, then after switching to MySQL the same mapper receives the native `DATETIME` value and the cast / parse fails. To keep one entity stable across databases, use the same type convention for the column in each database; otherwise prefer a **dedicated entity** per data source (each entity caches independently and does not pollute the others).
+2. **When keeping them consistent is hard, manually pre-register the read delegate** — fix the entity's mapping rule at startup via `DataReaderConverter.RegisterMapper<T>`. Once the cache hits a pre-registered mapper, it no longer "compiles dynamically from a data source dialect", which fundamentally avoids cross-source stale caches:
+
+```csharp
+DataReaderConverter.RegisterMapper<Order>(
+    reader => new Order
+    {
+        Id   = reader.GetInt32(0),   // DB returns INT → GetInt32
+        Name = reader.GetString(1),  // DB returns VARCHAR → GetString
+        // Pick the Get method at runtime from the type the DB actually returns: probe with GetFieldType first
+        CreateTime = reader.GetFieldType(2) == typeof(string)
+            ? DateTime.Parse(reader.GetString(2)) // DB returns text
+            : reader.GetDateTime(2)               // DB returns native DATETIME
+    });
+```
+
+> Note: `AutoLockDataReader` exposes the same typed read methods as `DbDataReader`; column indexes correspond to `GetConverterByTable`'s by-column-position mapping (`SelectColumns` order, starting at 0). In a hand-written mapper, **the read method cannot be hard-coded from the declared .NET field type**; probe the type the database actually returns at runtime with `GetFieldType(i)` and branch to the matching typed `Get` method — exactly how `CreateTime` is handled above (text → `GetString` + parse; native DATETIME → `GetDateTime`). This is the same choice the framework's JIT path makes at compile time from the column's `DbValueType → DbType`. `RegisterMapper<T>` mainly provides a reflection-free pre-registration path for NativeAOT, but it also fits the "entity switched across data sources" scenario as an explicit, deterministic read rule.
+
 ## 6. Complete Example: Custom IP Address Converter
 
 A full example showing how to customize a converter and make it work for all databases.
@@ -420,6 +444,10 @@ The later registration overrides the earlier one. The column-level `ConverterTyp
 ### Q6: Will registering a custom converter against the base class change existing default behavior?
 
 Yes — if the key (.NET value type, DbValueType) matches a built-in default, it will override that default. Before registering, confirm the key isn't already occupied by the framework; to adjust a single database, prefer registering against that dialect type rather than the base.
+
+### Q7: Why does reading fail when the same entity switches dynamically between multiple data sources?
+
+The read-mapping delegate is cached by entity type and compiled by the **first data source dialect that binds the entity**. If the column `DbValueType` differs across data sources (e.g. SQLite stores `DateTime` as text, MySQL as native `DATETIME`), the old mapper is reused after switching and the cast / parse fails. Solutions are covered in [5.1](#51-entity-read-mapping-under-dynamic-data-source-switching): ① keep each column's `DbValueType` identical across sources; ② use a dedicated entity per data source; or ③ manually pre-register the read delegate with `DataReaderConverter.RegisterMapper<T>`.
 
 ## Related Links
 

@@ -246,6 +246,30 @@ Mapper 把数据库返回的行逐列填充到实体对象，它决定"读方向
 
 > 选择建议：常规运行时代码可以放心依赖 JIT 路径；在 NativeAOT 发布时，请确保实体标注 `[Table]` 以命中源生成器实现，但仍需了解 AOT 路径下的装箱开销高于 JIT。
 
+### 5.1 实体跨数据源动态切换时的读取映射
+
+`DataReaderConverter.GetConverterByTable<T>` 对**预定义实体类型**按 `typeof(T)` **缓存**读取映射委托：首次调用时依据"当前数据源方言"下该实体的列元数据（列 `DbValueType` → `DbType`）决定类型化读取方法（`GetString` / `GetInt32` …），并在此后直接复用。
+
+> 也就是说，**一个实体只能缓存一份读取委托，这份委托由它第一次被哪个数据源绑定而决定**。因此，当同一个实体被绑定到多个**可动态切换**的数据源（例如按租户 / 分片在 SQLite / MySQL / Oracle 间切换）时，必须满足其一，否则会因复用旧数据源编译出的 mapper 而读错列：
+
+1. **保证各数据源下该实体列的 `DbValueType` 一致**。例如 SQLite 把 `DateTime` 存成文本、MySQL 存成原生 `DATETIME`，若实体先在 SQLite 编译出调用 `GetString` 再解析的 mapper，切到 MySQL 后同一 mapper 拿到的是 `DATETIME` 原始值，强转 / 解析便会失败。想让同一实体跨库稳定，需让列在各库采用相同类型约定；否则建议为不同数据源使用**专属实体**（不同实体各自独立缓存，互不污染）。
+2. **难以保持一致时，手动预注册读取委托**——通过 `DataReaderConverter.RegisterMapper<T>` 在启动期固定该实体的映射规则。缓存命中预注册后，就不再"由某个数据源方言动态编译"，也就从根本上避免了跨源脏缓存：
+
+```csharp
+DataReaderConverter.RegisterMapper<Order>(
+    reader => new Order
+    {
+        Id   = reader.GetInt32(0),   // 库实际返回 INT → GetInt32
+        Name = reader.GetString(1),  // 库实际返回 VARCHAR → GetString
+        // 读取方法按“库实际返回的类型”运行时判定：先 GetFieldType 探测，再选对应的 Get 方法
+        CreateTime = reader.GetFieldType(2) == typeof(string)
+            ? DateTime.Parse(reader.GetString(2)) // 库实际返回文本
+            : reader.GetDateTime(2)               // 库实际返回原生 DATETIME
+    });
+```
+
+> 说明：`AutoLockDataReader` 提供与 `DbDataReader` 一致的类型化读取方法，列序号对应 `GetConverterByTable` 的按表列位置映射（`SelectColumns` 顺序，从 0 开始）。在手动 mapper 里，**读取方法不能仅凭字段声明的 .NET 类型写死**，应在运行时用 `GetFieldType(i)` 探测数据库实际返回的类型，再分支到对应的类型化 Get 方法——正如示例对 `CreateTime` 的处理（返回文本 → `GetString` + 解析；返回原生 DATETIME → `GetDateTime`）；这其实正是框架 JIT 路径在编译期按列 `DbValueType → DbType` 所做的选择。`RegisterMapper<T>` 主要为 NativeAOT 提供无反射的预注册路径，但同样适用于"实体跨数据源动态切换"场景，作为显式、确定性的读取规则。
+
 ## 6. 完整示例：自定义 IP 地址转换器
 
 用一个完整例子演示如何自定义转换器并对所有数据库生效。
@@ -422,6 +446,10 @@ AOT 性能建议：
 ### Q6：自定义转换器注册到基类，会不会影响已有类型的默认行为？
 
 会——如果注册的 key（.NET 值类型, DbValueType）与内置默认转换相同，就会覆盖它们。注册前请确认该 key 未被框架占用；如需针对个别数据库调整，优先注册到该方言类型而非基类。
+
+### Q7：同一个实体在多个数据源间动态切换，为什么读取会报错？
+
+读取映射委托按实体类型缓存、由**首次绑定的数据源方言**编译。若各数据源下该实体的列 `DbValueType` 不一致（如 SQLite 的 `DateTime` 存文本、MySQL 存原生 `DATETIME`），切库后仍复用旧 mapper 就会强转 / 解析失败。解决方式见 [5.1](#51-实体跨数据源动态切换时的读取映射)：①确保各源列 `DbValueType` 一致；②为不同数据源使用专属实体；③用 `DataReaderConverter.RegisterMapper<T>` 手动预注册读取委托。
 
 ## 相关链接
 

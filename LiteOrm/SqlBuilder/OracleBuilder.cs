@@ -369,26 +369,25 @@ namespace LiteOrm
                 if (b > 0) sb.Append("    UNION ALL\n");
                 sb.Append("    SELECT ");
 
-                // 添加可更新列的参数
-                for (int i = 0; i < updatableColumns.Length; i++)
-                {
-                    if (i > 0) sb.Append(", ");
-                    string valParam = ":" + (b * paramsPerRecord + i);
-                    sb.Append(valParam);
-                    sb.Append(" AS ");
-                    sb.Append(ToSqlName(updatableColumns[i].Name!));
-                }
-
                 // 添加主键列的参数
                 for (int k = 0; k < keyColumns.Length; k++)
                 {
-                    if (updatableColumns.Length > 0 || k > 0) sb.Append(", ");
+                    if (k > 0) sb.Append(", ");                    
                     string keyParam = ":" + (b * paramsPerRecord + updatableColumns.Length + k);
                     sb.Append(keyParam);
                     sb.Append(" AS ");
                     sb.Append(ToSqlName(keyColumns[k].Name!));
                 }
 
+                // 添加可更新列的参数
+                for (int i = 0; i < updatableColumns.Length; i++)
+                {
+                    sb.Append(", ");
+                    string valParam = ":" + (b * paramsPerRecord + i);
+                    sb.Append(valParam);
+                    sb.Append(" AS ");
+                    sb.Append(ToSqlName(updatableColumns[i].Name!));
+                }
                 sb.Append(" FROM DUAL\n");
             }
 
