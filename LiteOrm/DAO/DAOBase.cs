@@ -312,23 +312,45 @@ namespace LiteOrm
         /// 表是否声明了固定筛选条件（<see cref="TableDefinition.ConstFilter"/>）。
         /// </summary>
         /// <remarks>
-        /// 声明了固定筛选条件的表不缓存预定义命令的内容：固定筛选条件可能动态生成参数（取值乃至参数个数都可能变化），
-        /// 缓存会把首次生成的 SQL 与参数固化下来。此时仅保留命令实例本身（作为托管释放的载体，保证结果对象与上下文之间的释放约定不变），
-        /// 每次调用都用新生成的 SQL 与参数重建命令内容。
+        /// 声明了固定筛选条件的表既不复用上下文缓存的命令，也不把新建的命令写入缓存：
+        /// 固定筛选条件可能动态生成参数（取值乃至参数个数都可能变化），缓存会把首次生成的 SQL 与参数固化下来；
+        /// 而若把这类命令占用缓存槽位，运行时切换固定筛选条件（例如先无筛选、后设置筛选）时同一槽位会同时承载两种内容，
+        /// 反过来污染常规（无固定筛选）命令的缓存。此时每次调用都新建命令，用完即释放，缓存里始终只有常规命令。
         /// </remarks>
         private bool HasConstFilter => TableDefinition.ConstFilter is not null;
 
         /// <summary>
-        /// 用新的 SQL 与参数重建命令内容，适用于固定筛选条件导致命令内容不能缓存的场景。
+        /// 获取缓存复用的命令代理：未命中时按当前元数据装配一次底层命令，之后每次调用都新建代理包装同一条命令。
         /// </summary>
-        /// <param name="command">要重建的命令实例。</param>
-        /// <param name="preparedSql">重新生成的 SQL 与参数。</param>
-        /// <param name="configureCommand">用于配置命令的操作，与首次构建时一样重新应用。</param>
-        private void RebuildCommand(DbCommandProxy command, PreparedSql preparedSql, Action<DbCommandProxy>? configureCommand)
+        /// <param name="daoContext">当前上下文。</param>
+        /// <param name="key">缓存键，由对象类型与方法名称组成。</param>
+        /// <param name="sqlFunc">生成 PreparedSql 的方法。</param>
+        /// <param name="configureCommand">用于配置 DbCommandProxy 的操作。</param>
+        /// <returns><see cref="DbCommandProxy.IsReusable"/> 为 true 的命令代理实例，释放它不会影响缓存中的命令。</returns>
+        private DbCommandProxy GetOrAddPreparedCommand(DAOContext daoContext, (Type, string) key, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand)
         {
-            command.Parameters.Clear();
-            SetupCommand(command, preparedSql.Sql, preparedSql.Params);
-            configureCommand?.Invoke(command);
+            if (!daoContext.PreparedCommands.TryGetValue(key, out var target))
+            {
+                target = daoContext.CreateTargetCommand();
+                try
+                {
+                    // 装配由不拥有该命令的代理完成，装配完成后命令交给缓存持有
+                    var builder = daoContext.CreateCommand(target);
+                    var preparedSql = sqlFunc();
+                    SetupCommand(builder, preparedSql.Sql, preparedSql.Params);
+                    configureCommand?.Invoke(builder);
+                }
+                catch
+                {
+                    target.Dispose();
+                    throw;
+                }
+                var existing = daoContext.PreparedCommands.GetOrAdd(key, target);
+                // 并发下可能已有其他线程先写入，落选的新建命令在此释放
+                if (!ReferenceEquals(existing, target)) target.Dispose();
+                target = existing;
+            }
+            return daoContext.CreateCommand(target);
         }
 
         /// <summary>
@@ -337,23 +359,22 @@ namespace LiteOrm
         /// <param name="methodName">方法名称</param>
         /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
         /// <param name="configureCommand">用于配置 DbCommandProxy 的操作</param>
-        /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
+        /// <returns>
+        /// 与方法名称关联的数据库命令代理实例。包装上下文缓存命令时为可复用代理，释放它不影响缓存；
+        /// 表声明了固定筛选条件时每次调用都新建命令，此时代理拥有底层命令，调用方使用完毕后须释放。
+        /// </returns>
         protected DbCommandProxy GetPreparedCommand(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand = null)
         {
             if (TableArgs != null && Table.Columns.Count > 0) methodName += String.Join("_", TableArgs);
-            var preparedCommands = GetDaoContext().PreparedCommands;
+            var daoContext = GetDaoContext();
             if (HasConstFilter)
-            {
-                var preparedCommand = preparedCommands.GetOrAdd((ObjectType, methodName), _ => NewCommand());
-                RebuildCommand(preparedCommand, sqlFunc(), configureCommand);
-                return preparedCommand;
-            }
-            return preparedCommands.GetOrAdd((ObjectType, methodName), _ =>
             {
                 var command = MakeNamedParamCommand(sqlFunc());
                 configureCommand?.Invoke(command);
                 return command;
-            });
+            }
+            daoContext.EnsureTable(ObjectType, TableArgs);
+            return GetOrAddPreparedCommand(daoContext, (ObjectType, methodName), sqlFunc, configureCommand);
         }
 
         /// <summary>
@@ -363,29 +384,22 @@ namespace LiteOrm
         /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
         /// <param name="configureCommand">用于配置 DbCommandProxy 的操作</param>
         /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
+        /// <returns>
+        /// 与方法名称关联的数据库命令代理实例。包装上下文缓存命令时为可复用代理，释放它不影响缓存；
+        /// 表声明了固定筛选条件时每次调用都新建命令，此时代理拥有底层命令，调用方使用完毕后须释放。
+        /// </returns>
         protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand = null, CancellationToken cancellationToken = default)
         {
             if (TableArgs != null && Table.Columns.Count > 0) methodName += String.Join("_", TableArgs);
             var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
             if (HasConstFilter)
             {
-                if (!daoContext.PreparedCommands.TryGetValue((ObjectType, methodName), out var preparedCommand))
-                {
-                    var created = await NewCommandAsync(cancellationToken).ConfigureAwait(false);
-                    preparedCommand = daoContext.PreparedCommands.GetOrAdd((ObjectType, methodName), _ => created);
-                }
-                RebuildCommand(preparedCommand, sqlFunc(), configureCommand);
-                return preparedCommand;
-            }
-            if (daoContext.PreparedCommands.TryGetValue((ObjectType, methodName), out var command))
-            {
+                var command = await MakeNamedParamCommandAsync(sqlFunc(), cancellationToken).ConfigureAwait(false);
+                configureCommand?.Invoke(command);
                 return command;
             }
-
-            command = await MakeNamedParamCommandAsync(sqlFunc(), cancellationToken).ConfigureAwait(false);
-            configureCommand?.Invoke(command);
-            return daoContext.PreparedCommands.GetOrAdd((ObjectType, methodName), _ => command);
+            await daoContext.EnsureTableAsync(ObjectType, TableArgs).ConfigureAwait(false);
+            return GetOrAddPreparedCommand(daoContext, (ObjectType, methodName), sqlFunc, configureCommand);
         }
 
         /// <summary>

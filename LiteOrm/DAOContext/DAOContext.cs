@@ -102,10 +102,12 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 已准备好的 SQL 命令代理缓存。
+        /// 已准备好的底层数据库命令缓存。
         /// 键为实体类型和操作名称的组合，用于避免在同一上下文生命周期内重复构建相同的 DbCommand。
+        /// 缓存的是命令本身，取用时由 <see cref="CreateCommand(DbCommand)"/> 新建一个不拥有它的代理，
+        /// 因此代理随调用产生与释放，命令内容在上下文的生命周期内复用。
         /// </summary>
-        public ConcurrentDictionary<(Type, string), DbCommandProxy> PreparedCommands { get; } = new ConcurrentDictionary<(Type, string), DbCommandProxy>();
+        public ConcurrentDictionary<(Type, string), DbCommand> PreparedCommands { get; } = new ConcurrentDictionary<(Type, string), DbCommand>();
 
         /// <summary>
         /// 获取当前数据库提供程序的类型。
@@ -159,13 +161,34 @@ namespace LiteOrm
         public bool InTransaction => CurrentTransaction is not null;
 
         /// <summary>
-        /// 创建一个新的 <see cref="DbCommandProxy"/> 实例，该实例包装了一个新的 <see cref="DbCommand"/> 对象，并与当前上下文关联。
+        /// 创建一个新的 <see cref="DbCommandProxy"/> 实例，该实例拥有新建的底层 <see cref="DbCommand"/> 对象，并与当前上下文关联。
         /// </summary>
-        /// <returns>新创建的 <see cref="DbCommandProxy"/> 实例。</returns>
+        /// <returns>新创建的 <see cref="DbCommandProxy"/> 实例，释放它即释放底层命令。</returns>
         public DbCommandProxy CreateCommand()
         {
             EnsureNotDisposed();
-            return new DbCommandProxy(this);
+            return new DbCommandProxy(this, DbConnection.CreateCommand(), ownsTarget: true);
+        }
+
+        /// <summary>
+        /// 为已有命令创建一个不拥有它的 <see cref="DbCommandProxy"/> 实例，并与当前上下文关联。
+        /// </summary>
+        /// <param name="command">要包装的底层命令，通常来自 <see cref="PreparedCommands"/>。</param>
+        /// <returns>新创建的 <see cref="DbCommandProxy"/> 实例，释放它不会释放底层命令。</returns>
+        internal DbCommandProxy CreateCommand(DbCommand command)
+        {
+            EnsureNotDisposed();
+            return new DbCommandProxy(this, command, ownsTarget: false);
+        }
+
+        /// <summary>
+        /// 为缓存创建一个尚未装配 SQL 与参数的底层命令。
+        /// </summary>
+        /// <returns>新建的底层命令，装配完成后交由 <see cref="PreparedCommands"/> 持有。</returns>
+        internal DbCommand CreateTargetCommand()
+        {
+            EnsureNotDisposed();
+            return DbConnection.CreateCommand();
         }
 
         /// <summary>

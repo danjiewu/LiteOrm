@@ -6,6 +6,8 @@
 
 - **`DataSourceConfig` / `ReadOnlyDataSourceConfig` 的 `Provider` / `SqlBuilder` 改为可赋值 `Type` 属性 `ProviderType` / `SqlBuilderType`**（`LiteOrm.Common`）。配置文件 JSON 键名不变，加载时立即解析为 `Type`，失败抛 `TypeLoadException`；代码中构造配置只能赋 `Type`，另提供 `DataSourceConfig(Type providerType, string? connectionString)` 构造。
 
+- **`DbCommandProxy` 改为按次创建的包装代理**（`LiteOrm`）：构造函数改为内部重载 `(DAOContext context, DbCommand target, bool ownsTarget)`，`Target` 属性改为私有，`IsReusable` 改为只读（由代理是否拥有底层命令推导）；`DAOContext.PreparedCommands` 缓存的类型由 `DbCommandProxy` 改为 `DbCommand`，取用时新建不拥有该命令的代理，释放代理不再影响命令缓存。
+
 ### 新特性
 
 - **新增 `LiteOrmContext`**（`LiteOrm`）：不依赖 DI 的链式上下文。`AddDataSource<TConnection>` 登记数据源，`CreateSession()` 返回会话，`new ObjectDAO<User>(session)` 即可读写。不注册服务、不读 `IConfiguration`。
@@ -14,7 +16,7 @@
 
 - **修复 AOT 下框架内置泛型服务未注册**（`LiteOrm`）：泛型 DAO 与服务改为固定注册，`AutoRegisterServices` 只控制用户自定义服务与 DAO。
 
-- **DAO 主键读写路径补齐固定筛选条件**（`LiteOrm`）：`GetObject` / `ExistsKey` / `Update` / `Delete` / `DeleteByKeys` 及批量更新、批量删除、批量存在性查询此前只按主键过滤，未带上 `Column.Constant` 收敛出的 `TableDefinition.ConstFilter`，现改为与查询、条件更新删除等语句一致带上固定筛选——模型看不见的行读不出、改不动、删不掉。批量更新语句的附加条件按各方言目标表别名限定列名（SQL Server / MySQL 为 `T`、PostgreSQL 为 `u`、Oracle 为 `t`）。另外，声明了固定筛选的表不再缓存预定义命令的内容（每次调用重新生成 SQL 与参数，只保留命令实例用于统一释放），以免固定筛选动态生成的参数被缓存固化。
+- **DAO 主键读写路径补齐固定筛选条件**（`LiteOrm`）：`GetObject` / `ExistsKey` / `Update` / `Delete` / `DeleteByKeys` 及批量更新、批量删除、批量存在性查询此前只按主键过滤，未带上 `Column.Constant` 收敛出的 `TableDefinition.ConstFilter`，现改为与查询、条件更新删除等语句一致带上固定筛选——模型看不见的行读不出、改不动、删不掉。批量更新语句的附加条件按各方言目标表别名限定列名（SQL Server / MySQL 为 `T`、PostgreSQL 为 `u`、Oracle 为 `t`）。另外，声明了固定筛选的表不再复用命令缓存：这类表每次调用都新建命令，新建的命令也不写入缓存，以免固定筛选动态生成的参数被缓存固化，也避免占用常规（无固定筛选）命令的缓存槽位。`DbCommandProxy` 新增 `IsReusable` 属性标记命令是否由上下文缓存复用，非复用的一次性命令由调用方（或持有它的结果对象）释放。
 
 ***
 

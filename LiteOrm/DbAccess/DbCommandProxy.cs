@@ -25,27 +25,27 @@ namespace LiteOrm
     /// 7. 异步支持 - 支持异步命令执行
     /// 
     /// 该类继承自 DbCommand 类，可以作为标准 DbCommand 的替代品使用。
-    /// 通常由 DAOBase 的 NewCommand() 方法创建。
+    /// 实例由 <see cref="DAOContext.CreateCommand()"/> 按次创建：包装上下文缓存命令的代理不拥有底层命令，释放代理不会影响缓存；
+    /// 包装本次新建命令的代理拥有底层命令，释放代理即释放命令。
     /// </remarks>
     public class DbCommandProxy : DbCommand, IDbCommand
     {
+        private readonly DbCommand _target;
+        private readonly bool _ownsTarget;
+        private bool _disposed;
+
         /// <summary>
         /// 初始化 <see cref="DbCommandProxy"/> 类的新实例。
         /// </summary>
         /// <param name="context">DAO 上下文，提供数据库连接和事务管理。</param>
-        public DbCommandProxy(DAOContext context)
+        /// <param name="target">要包装的底层数据库命令。</param>
+        /// <param name="ownsTarget">是否拥有底层命令，为 true 时释放该代理将释放底层命令。</param>
+        internal DbCommandProxy(DAOContext context, DbCommand target, bool ownsTarget)
         {
             Context = context ?? throw new ArgumentNullException(nameof(context));
             SqlBuilder = context.Pool?.SqlBuilder!;
-            Target = context.DbConnection.CreateCommand();
-        }
-
-        /// <summary>
-        /// 获取目标数据库命令对象。
-        /// </summary>
-        public DbCommand Target
-        {
-            get;
+            _target = target ?? throw new ArgumentNullException(nameof(target));
+            _ownsTarget = ownsTarget;
         }
 
         /// <summary>
@@ -57,6 +57,29 @@ namespace LiteOrm
         /// 获取 SQL 构建器。
         /// </summary>
         public ISqlBuilder SqlBuilder { get; }
+
+        /// <summary>
+        /// 获取底层数据库命令。代理释放后访问将抛出 <see cref="ObjectDisposedException"/>。
+        /// </summary>
+        private DbCommand Target
+        {
+            get
+            {
+                if (_disposed) throw new ObjectDisposedException(nameof(DbCommandProxy));
+                return _target;
+            }
+        }
+
+        /// <summary>
+        /// 获取一个值，指示该命令是否由上下文缓存并在多次调用之间复用。
+        /// </summary>
+        /// <remarks>
+        /// true 表示底层命令存放在 <see cref="DAOContext.PreparedCommands"/> 中，命令文本与参数内容来自首次构建、在多次调用间保持不变，
+        /// 释放责任属于上下文，代理对它的释放请求（<see cref="IDisposable.Dispose()"/>）不会生效；
+        /// false 表示底层命令仅服务于当前一次调用（同一次调用内可重复执行），命令内容随每次调用重新生成，也不进入上下文缓存，
+        /// 持有它的代理在使用完毕后须释放。
+        /// </remarks>
+        public bool IsReusable => !_ownsTarget;
 
         #region DbCommand 重写
 
@@ -372,13 +395,16 @@ namespace LiteOrm
 
         /// <summary>
         /// 释放由该 <see cref="DbCommandProxy"/> 使用的资源。
+        /// 仅当代理拥有底层命令（<see cref="IsReusable"/> 为 false）时释放它，包装缓存命令的代理不释放，释放责任属于 <see cref="DAOContext"/>。
         /// </summary>
         /// <param name="disposing">如果为 true，则释放托管资源和非托管资源。</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
+            if (_disposed) return;
+            _disposed = true;
+            if (disposing && _ownsTarget)
             {
-                Target.Dispose();
+                _target.Dispose();
             }
             base.Dispose(disposing);
         }

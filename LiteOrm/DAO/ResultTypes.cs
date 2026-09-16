@@ -62,7 +62,7 @@ namespace LiteOrm.Common
     /// 表达式查询结果的基类。
     /// 封装了构造数据库命令、执行并返回不同结果类型的通用逻辑。
     /// 支持由预构造的 <see cref="DbCommandProxy"/>（用于复用）或按需创建命令两种模式。
-    /// 实现应负责在合适的时机释放执行命令（如果命令为按需创建）。
+    /// 实现负责在自身释放时按命令的 <see cref="DbCommandProxy.IsReusable"/> 标记释放执行命令。
     /// </summary>
     /// <typeparam name="T">表示由该结果返回的具体结果类型。</typeparam>
     public abstract class CommandResult<T> : IDisposable, IAsyncDisposable
@@ -110,7 +110,8 @@ namespace LiteOrm.Common
         /// <summary>
         /// 获取用于执行当前结果的 <see cref="DbCommandProxy"/>。
         /// 如果构造时传入了预定义的命令（用于重用），则返回该命令；否则按需创建并缓存一次性命令。
-        /// 调用方不应在每次读取后立即释放预定义命令；对于按需创建命令，释放责任由 <see cref="CommandResult{T}"/> 管理。
+        /// 释放由 <see cref="CommandResult{T}"/> 在自身释放时按命令的 <see cref="DbCommandProxy.IsReusable"/> 标记决定：
+        /// 上下文缓存复用的命令释放无效，仅服务于单次调用的命令在此时释放。
         /// </summary>
         /// <returns>用于执行查询的 <see cref="DbCommandProxy"/> 实例。</returns>
         internal protected DbCommandProxy GetCommand()
@@ -159,8 +160,7 @@ namespace LiteOrm.Common
         {
             if (disposing)
             {
-                if (_preparedCommand != null) return;
-                _executedCommand?.Dispose();
+                (_preparedCommand ?? _executedCommand)?.Dispose();
             }
         }
 
@@ -181,11 +181,12 @@ namespace LiteOrm.Common
         /// <returns>表示异步操作的任务。</returns>
         protected virtual async ValueTask DisposeAsyncCore()
         {
-            if (_preparedCommand != null) return;
+            var command = _preparedCommand ?? _executedCommand;
+            if (command is null) return;
 #if NETSTANDARD2_0
-            if(_executedCommand != null) _executedCommand.Dispose();
+            command.Dispose();
 #else
-            if (_executedCommand != null) await _executedCommand.DisposeAsync();
+            await command.DisposeAsync().ConfigureAwait(false);
 #endif
         }
     }

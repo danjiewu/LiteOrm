@@ -110,32 +110,49 @@ namespace LiteOrm.Tests
         }
 
         /// <summary>
-        /// 固定筛选条件可能动态生成参数，因此声明了固定筛选的表不缓存预定义命令的内容：
-        /// 运行时改掉 <see cref="TableDefinition.ConstFilter"/> 后，下一次调用就要按新条件执行。
+        /// 声明了固定筛选的表不复用命令缓存，每次调用都新建命令，且新建的命令不占用缓存槽位。
+        /// 因此运行时改掉 <see cref="TableDefinition.ConstFilter"/> 后，下一次调用立即按新条件执行，
+        /// 而先前由常规（无固定筛选）调用建立的缓存命令原样保留，不会被固定筛选的参数覆盖。
         /// </summary>
         [Fact]
-        public async Task ConstFilter_ChangedAtRuntime_IsRebuiltForPreparedCommands()
+        public async Task ConstFilter_ChangedAtRuntime_TakesEffectWithoutPollutingCommandCache()
         {
             var tableDefinition = TableInfoProvider.Instance.GetTableDefinition(typeof(ConstFilterOrder))!;
             var originalFilter = tableDefinition.ConstFilter;
             var ct = TestContext.Current.CancellationToken;
+            var cacheKey = (typeof(ConstFilterOrder), "GetObject");
+            var preparedCommands = ViewDao.GetDaoContext().PreparedCommands;
+            preparedCommands.TryRemove(cacheKey, out _);
             try
             {
                 var enabled = NewOrder("RuntimeEnabled", ConstFilterOrderState.Enabled);
                 var disabled = NewOrder("RuntimeDisabled", ConstFilterOrderState.Disabled);
 
-                Assert.NotNull(await ViewDao.GetObject(enabled.Id).FirstOrDefaultAsync(ct));
-                Assert.Null(await ViewDao.GetObject(disabled.Id).FirstOrDefaultAsync(ct));
+                // 先去掉固定筛选，让常规路径建立缓存命令
+                tableDefinition.ConstFilter = null;
+                Assert.NotNull(await ViewDao.GetObject(disabled.Id).FirstOrDefaultAsync(ct));
 
-                // 运行时切换固定筛选条件
+                var cachedCommand = preparedCommands[cacheKey];
+                // 缓存里存的是底层命令本身，代理按次创建
+                Assert.IsNotType<DbCommandProxy>(cachedCommand);
+                string cachedSql = cachedCommand.CommandText;
+                int cachedParamCount = cachedCommand.Parameters.Count;
+
+                // 运行时设置固定筛选条件
                 tableDefinition.ConstFilter = Expr.Prop("State") == Expr.Const(ConstFilterOrderState.Disabled);
 
                 Assert.Null(await ViewDao.GetObject(enabled.Id).FirstOrDefaultAsync(ct));
                 Assert.NotNull(await ViewDao.GetObject(disabled.Id).FirstOrDefaultAsync(ct));
 
-                // 预定义命令的 SQL 与参数已被重建，不再是首次生成时的那一份
-                var command = ViewDao.GetDaoContext().PreparedCommands[(typeof(ConstFilterOrder), "GetObject")];
-                Assert.Equal(ConstFilterOrderState.Disabled, command.Parameters[1].Value);
+                // 固定筛选的命令另起一条路径，既不读缓存也不写缓存，常规命令缓存保持原样
+                Assert.Same(cachedCommand, preparedCommands[cacheKey]);
+                Assert.Equal(cachedSql, cachedCommand.CommandText);
+                Assert.Equal(cachedParamCount, cachedCommand.Parameters.Count);
+
+                // 去掉固定筛选后，常规路径继续使用缓存命令
+                tableDefinition.ConstFilter = null;
+                Assert.Same(cachedCommand, ViewDao.GetDaoContext().PreparedCommands[cacheKey]);
+                Assert.NotNull(await ViewDao.GetObject(enabled.Id).FirstOrDefaultAsync(ct));
             }
             finally
             {

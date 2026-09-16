@@ -459,7 +459,7 @@ namespace LiteOrm
         public virtual bool Insert(T t)
         {
             if (t is null) throw new ArgumentNullException("t");
-            var insertCommand = GetPreparedCommand("Insert", MakeInsertSql, ConfigureInsertCommand);
+            using var insertCommand = GetPreparedCommand("Insert", MakeInsertSql, ConfigureInsertCommand);
             var columns = InsertableColumns;
             int count = columns.Length;
             var parameters = insertCommand.Parameters;
@@ -520,38 +520,45 @@ namespace LiteOrm
                 var batch = new List<T>(batchSize);
                 int increasement = IdentityColumn != null ? IdentityColumn.IdentityIncreasement : 0;
                 DbCommandProxy? batchCommand = null;
-                foreach (var item in values)
+                try
                 {
-                    if (!idExists && IdentityColumn is not null && !SqlBuilder.SupportBatchInsertWithIdentity)
+                    foreach (var item in values)
                     {
-                        Insert(item);
-                        nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)!) + increasement;
-                        idExists = true;
-                        continue;
-                    }
-
-                    batch.Add(item);
-                    if (batch.Count == batchSize)
-                    {
-                        batchCommand ??= GetPreparedCommand("BatchInsert" + batchSize, () => MakeBatchInsertSql(batchSize));
-                        SetBatchInsertParameterValues(insertableColumns, batch, batchCommand);
-
-                        if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                        if (!idExists && IdentityColumn is not null && !SqlBuilder.SupportBatchInsertWithIdentity)
                         {
-                            object res = batchCommand.ExecuteScalar();
-                            if (res != null && res != DBNull.Value)
+                            Insert(item);
+                            nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)!) + increasement;
+                            idExists = true;
+                            continue;
+                        }
+
+                        batch.Add(item);
+                        if (batch.Count == batchSize)
+                        {
+                            batchCommand ??= GetPreparedCommand("BatchInsert" + batchSize, () => MakeBatchInsertSql(batchSize));
+                            SetBatchInsertParameterValues(insertableColumns, batch, batchCommand);
+
+                            if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
                             {
-                                nextManualId = Convert.ToInt64(res);
-                                idExists = true;
+                                object res = batchCommand.ExecuteScalar();
+                                if (res != null && res != DBNull.Value)
+                                {
+                                    nextManualId = Convert.ToInt64(res);
+                                    idExists = true;
+                                }
                             }
+                            else
+                            {
+                                batchCommand.ExecuteNonQuery();
+                            }
+                            if (idExists) UpdateBatchIds(batch, ref nextManualId);
+                            batch.Clear();
                         }
-                        else
-                        {
-                            batchCommand.ExecuteNonQuery();
-                        }
-                        if (idExists) UpdateBatchIds(batch, ref nextManualId);
-                        batch.Clear();
                     }
+                }
+                finally
+                {
+                    batchCommand?.Dispose();
                 }
                 if (batch.Count > 0)
                 {
@@ -591,7 +598,7 @@ namespace LiteOrm
         /// <exception cref="ArgumentNullException">当 <paramref name="t"/> 为 null 时抛出。</exception>
         public virtual bool Update(T t, object? timestamp = null)
         {
-            var updateCommand = GetPreparedCommand(timestamp == null ? "Update" : "UpdateWithTimestamp", () => MakeUpdateSql(timestamp != null));
+            using var updateCommand = GetPreparedCommand(timestamp == null ? "Update" : "UpdateWithTimestamp", () => MakeUpdateSql(timestamp != null));
             var updatableColumns = UpdatableColumns;
             var keys = TableDefinition.Keys;
             int updatableCount = updatableColumns.Length;
@@ -638,16 +645,23 @@ namespace LiteOrm
             if (batchSize == 0) batchSize = Math.Max(daoContext.ParamCountLimit / paramsPerUpdate, 1);
             DbCommandProxy? batchCommand = null;
             var batch = new List<T>(batchSize);
-            foreach (var item in values)
+            try
             {
-                batch.Add(item);
-                if (batch.Count == batchSize)
+                foreach (var item in values)
                 {
-                    batchCommand ??= GetPreparedCommand("BatchUpdate" + batchSize, () => MakeBatchUpdateSql(batchSize));
-                    SetBatchUpdateParameterValues(updatableColumns, keyColumns, batch, batchCommand);
-                    batchCommand.ExecuteNonQuery();
-                    batch.Clear();
+                    batch.Add(item);
+                    if (batch.Count == batchSize)
+                    {
+                        batchCommand ??= GetPreparedCommand("BatchUpdate" + batchSize, () => MakeBatchUpdateSql(batchSize));
+                        SetBatchUpdateParameterValues(updatableColumns, keyColumns, batch, batchCommand);
+                        batchCommand.ExecuteNonQuery();
+                        batch.Clear();
+                    }
                 }
+            }
+            finally
+            {
+                batchCommand?.Dispose();
             }
             if (batch.Count > 0)
             {
@@ -685,7 +699,7 @@ namespace LiteOrm
             if (batchSize == 0) batchSize = 1;
 
             var batch = new List<T>(batchSize);
-            var command = GetPreparedCommand("BatchIDExists" + batchSize, () => MakeBatchIDExistsSql(batchSize));
+            using var command = GetPreparedCommand("BatchIDExists" + batchSize, () => MakeBatchIDExistsSql(batchSize));
 
             foreach (var item in list)
             {
@@ -831,7 +845,7 @@ namespace LiteOrm
         public virtual bool DeleteByKeys(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            var deleteCommand = GetPreparedCommand("Delete", MakeDeleteSql);
+            using var deleteCommand = GetPreparedCommand("Delete", MakeDeleteSql);
             var parameters = deleteCommand.Parameters;
             var keyColumns = Table.Keys;
 
@@ -870,18 +884,26 @@ namespace LiteOrm
             if (batchSize == 0) batchSize = Math.Max(daoContext.ParamCountLimit / paramsPerDelete, 1);
 
             var batch = new List<object[]>(batchSize);
-            foreach (var item in keys)
+            DbCommandProxy? batchCommand = null;
+            try
             {
-                object[] keyValues = NormalizeBatchDeleteKeyValues(item, paramsPerDelete);
-
-                batch.Add(keyValues);
-                if (batch.Count == batchSize)
+                foreach (var item in keys)
                 {
-                    DbCommandProxy command = GetPreparedCommand("BatchDelete" + batchSize, () => MakeBatchDeleteSql(batchSize));
-                    SetBatchDeleteByKeysParameterValues(keyColumns, batch, command);
-                    command.ExecuteNonQuery();
-                    batch.Clear();
+                    object[] keyValues = NormalizeBatchDeleteKeyValues(item, paramsPerDelete);
+
+                    batch.Add(keyValues);
+                    if (batch.Count == batchSize)
+                    {
+                        batchCommand ??= GetPreparedCommand("BatchDelete" + batchSize, () => MakeBatchDeleteSql(batchSize));
+                        SetBatchDeleteByKeysParameterValues(keyColumns, batch, batchCommand);
+                        batchCommand.ExecuteNonQuery();
+                        batch.Clear();
+                    }
                 }
+            }
+            finally
+            {
+                batchCommand?.Dispose();
             }
             if (batch.Count > 0)
             {
@@ -904,7 +926,7 @@ namespace LiteOrm
         public async virtual Task<bool> InsertAsync(T t, CancellationToken cancellationToken = default)
         {
             if (t is null) throw new ArgumentNullException("t");
-            var insertCommand = await GetPreparedCommandAsync("Insert", MakeInsertSql, ConfigureInsertCommand, cancellationToken).ConfigureAwait(false);
+            using var insertCommand = await GetPreparedCommandAsync("Insert", MakeInsertSql, ConfigureInsertCommand, cancellationToken).ConfigureAwait(false);
             var columns = InsertableColumns;
             int count = columns.Length;
             var parameters = insertCommand.Parameters;
@@ -982,41 +1004,48 @@ namespace LiteOrm
                 bool idExists = false;
                 var batch = new List<T>(batchSize);
                 DbCommandProxy? batchCommand = null;
-                foreach (var item in values)
+                try
                 {
-                    if (!idExists && IdentityColumn is not null && !SqlBuilder.SupportBatchInsertWithIdentity)
+                    foreach (var item in values)
                     {
-                        var res = await InsertAsync(item, cancellationToken);
-                        if (res)
+                        if (!idExists && IdentityColumn is not null && !SqlBuilder.SupportBatchInsertWithIdentity)
                         {
-                            nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)!) + 1;
-                            idExists = true;
-                        }
-                        continue;
-                    }
-
-                    batch.Add(item);
-                    if (batch.Count == batchSize)
-                    {
-                        batchCommand ??= await GetPreparedCommandAsync("BatchInsert" + batchSize, () => MakeBatchInsertSql(batchSize), cancellationToken).ConfigureAwait(false);
-                        SetBatchInsertParameterValues(insertableColumns, batch, batchCommand);
-
-                        if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
-                        {
-                            object? res = await batchCommand.ExecuteScalarAsync(cancellationToken);
-                            if (res != null && res != DBNull.Value)
+                            var res = await InsertAsync(item, cancellationToken);
+                            if (res)
                             {
-                                nextManualId = Convert.ToInt64(res);
+                                nextManualId = Convert.ToInt64(IdentityColumn.GetValue(item)!) + 1;
                                 idExists = true;
                             }
+                            continue;
                         }
-                        else
+
+                        batch.Add(item);
+                        if (batch.Count == batchSize)
                         {
-                            await batchCommand.ExecuteNonQueryAsync(cancellationToken);
+                            batchCommand ??= await GetPreparedCommandAsync("BatchInsert" + batchSize, () => MakeBatchInsertSql(batchSize), cancellationToken).ConfigureAwait(false);
+                            SetBatchInsertParameterValues(insertableColumns, batch, batchCommand);
+
+                            if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
+                            {
+                                object? res = await batchCommand.ExecuteScalarAsync(cancellationToken);
+                                if (res != null && res != DBNull.Value)
+                                {
+                                    nextManualId = Convert.ToInt64(res);
+                                    idExists = true;
+                                }
+                            }
+                            else
+                            {
+                                await batchCommand.ExecuteNonQueryAsync(cancellationToken);
+                            }
+                            if (idExists) UpdateBatchIds(batch, ref nextManualId);
+                            batch.Clear();
                         }
-                        if (idExists) UpdateBatchIds(batch, ref nextManualId);
-                        batch.Clear();
                     }
+                }
+                finally
+                {
+                    batchCommand?.Dispose();
                 }
                 if (batch.Count > 0)
                 {
@@ -1052,7 +1081,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，如果更新成功则返回 true。</returns>
         public async virtual Task<bool> UpdateAsync(T t, object? timestamp = null, CancellationToken cancellationToken = default)
         {
-            var updateCommand = await GetPreparedCommandAsync(timestamp == null ? "Update" : "UpdateWithTimestamp", () => MakeUpdateSql(timestamp != null), cancellationToken).ConfigureAwait(false);
+            using var updateCommand = await GetPreparedCommandAsync(timestamp == null ? "Update" : "UpdateWithTimestamp", () => MakeUpdateSql(timestamp != null), cancellationToken).ConfigureAwait(false);
             var updatableColumns = UpdatableColumns;
             var keys = TableDefinition.Keys;
             int updatableCount = updatableColumns.Length;
@@ -1101,16 +1130,23 @@ namespace LiteOrm
 
             var batch = new List<T>(batchSize);
             DbCommandProxy? batchCommand = null;
-            foreach (var t in values)
+            try
             {
-                batch.Add(t);
-                if (batch.Count == batchSize)
+                foreach (var t in values)
                 {
-                    batchCommand ??= await GetPreparedCommandAsync("BatchUpdate" + batchSize, () => MakeBatchUpdateSql(batchSize), cancellationToken).ConfigureAwait(false);
-                    SetBatchUpdateParameterValues(updatableColumns, keyColumns, batch, batchCommand);
-                    await batchCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                    batch.Clear();
+                    batch.Add(t);
+                    if (batch.Count == batchSize)
+                    {
+                        batchCommand ??= await GetPreparedCommandAsync("BatchUpdate" + batchSize, () => MakeBatchUpdateSql(batchSize), cancellationToken).ConfigureAwait(false);
+                        SetBatchUpdateParameterValues(updatableColumns, keyColumns, batch, batchCommand);
+                        await batchCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                        batch.Clear();
+                    }
                 }
+            }
+            finally
+            {
+                batchCommand?.Dispose();
             }
             if (batch.Count > 0)
             {
@@ -1147,7 +1183,7 @@ namespace LiteOrm
             if (batchSize == 0) batchSize = 1;
 
             var batch = new List<T>(batchSize);
-            var command = await GetPreparedCommandAsync("BatchIDExists" + batchSize, () => MakeBatchIDExistsSql(batchSize), cancellationToken).ConfigureAwait(false);
+            using var command = await GetPreparedCommandAsync("BatchIDExists" + batchSize, () => MakeBatchIDExistsSql(batchSize), cancellationToken).ConfigureAwait(false);
 
             foreach (var item in list)
             {
@@ -1274,7 +1310,7 @@ namespace LiteOrm
         public async virtual Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             ThrowExceptionIfWrongKeys(keys);
-            var deleteCommand = await GetPreparedCommandAsync("Delete", MakeDeleteSql, cancellationToken).ConfigureAwait(false);
+            using var deleteCommand = await GetPreparedCommandAsync("Delete", MakeDeleteSql, cancellationToken).ConfigureAwait(false);
             var parameters = deleteCommand.Parameters;
             var keyColumns = Table.Keys;
 
@@ -1341,19 +1377,27 @@ namespace LiteOrm
             if (batchSize == 0) batchSize = Math.Max(daoContext.ParamCountLimit / paramsPerDelete, 1);
 
             var batch = new List<object[]>(batchSize);
-            foreach (var item in keys)
+            DbCommandProxy? batchCommand = null;
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                object[] keyValues = NormalizeBatchDeleteKeyValues(item, paramsPerDelete);
-
-                batch.Add(keyValues);
-                if (batch.Count == batchSize)
+                foreach (var item in keys)
                 {
-                    DbCommandProxy command = await GetPreparedCommandAsync("BatchDelete" + batchSize, () => MakeBatchDeleteSql(batchSize), cancellationToken).ConfigureAwait(false);
-                    SetBatchDeleteByKeysParameterValues(keyColumns, batch, command);
-                    await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-                    batch.Clear();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    object[] keyValues = NormalizeBatchDeleteKeyValues(item, paramsPerDelete);
+
+                    batch.Add(keyValues);
+                    if (batch.Count == batchSize)
+                    {
+                        batchCommand ??= await GetPreparedCommandAsync("BatchDelete" + batchSize, () => MakeBatchDeleteSql(batchSize), cancellationToken).ConfigureAwait(false);
+                        SetBatchDeleteByKeysParameterValues(keyColumns, batch, batchCommand);
+                        await batchCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+                        batch.Clear();
+                    }
                 }
+            }
+            finally
+            {
+                batchCommand?.Dispose();
             }
             if (batch.Count > 0)
             {

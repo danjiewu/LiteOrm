@@ -149,7 +149,7 @@ The pipeline is:
 5. `ForeignExpr` / `Exists` / `ExistsRelated` `EXISTS` subqueries also apply the target table's own `ConstFilter` before combining the relation condition and your `InnerExpr`.
 6. `UPDATE` / `DELETE` statements carry the same rule, including the DAO key-based read and write paths (`GetObject`, `ExistsKey`, `Update`, `DeleteByKeys`, and the batch update/delete methods). A row the model cannot see cannot be read back, updated, or deleted.
 
-One implementation detail worth knowing: tables that declare a fixed filter do not cache the content of predefined commands. The filter may produce parameters dynamically (values, and even the parameter count, can change), so SQL and parameters are regenerated on every call and only the command instance is retained. Replacing `TableDefinition.ConstFilter` at runtime therefore takes effect on the next call, at the cost of one extra SQL build per operation for such tables; tables without a fixed filter keep using the command cache.
+Tables that declare a fixed filter do not reuse the command cache. The filter may produce parameters dynamically (values, and even the parameter count, can change), and a cache would freeze the first generated SQL and parameters; such tables build a fresh command on every call, and the new command is not written into the cache, so it never takes a cache slot away from a regular command. Replacing `TableDefinition.ConstFilter` at runtime therefore takes effect on the next call, at the cost of one extra SQL build per operation for such tables; tables without a fixed filter keep using the command cache (the cache holds the underlying command itself and every call creates a proxy that does not own it, so releasing the proxy never affects the cache).
 
 It fits:
 
