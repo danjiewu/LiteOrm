@@ -310,7 +310,7 @@ public sealed class IPAddressConverter : IDbValueConverter<string, IPAddress>
 using static LiteOrm.Common.DbValueType;
 
 SqlBuilder.Instance.RegisterDbValueConverter<SqlBuilder, string, IPAddress>(
-    targetType: String,
+    targetType: DbValueType.String,
     fromDb: s => IPAddress.Parse(s),   // read: string → IPAddress
     toDb:   ip => ip.ToString()        // write: IPAddress → string
 );
@@ -376,7 +376,18 @@ public class MySqlBinaryIpBuilder : MySqlBuilder
 }
 ```
 
-> Key point: registering the converter only solves "byte[] ↔ IPAddress"; for the column to be correctly read as `byte[]`, its DbValueType must be `Binary`. Both are required. If you don't want to subclass the Builder for one dialect, you can instead use `DbValueTypeMap.Set(typeof(IPAddress), DbValueType.Binary)` globally — but that affects all databases, so use with care.
+> Key point: registering the converter only solves "byte[] ↔ IPAddress"; for the column to be correctly read as `byte[]`, its DbValueType must be `Binary`. Both are required.
+
+**Two uses of `DbValueTypeMap.Set`.** It is a global registration of a type to a value type:
+
+```csharp
+DbValueTypeMap.Set(typeof(IPAddress), DbValueType.String);
+```
+
+- As a baseline declaration: once registered, the type no longer needs `DbType` on each column. `[Column("IpAddress")] public IPAddress? IpAddress { get; set; }` is enough, and the DDL still emits the right column type. This is less work when many entities use the custom type and every column would otherwise repeat the annotation.
+- As a dialect-wide coverage: skip overriding `GetDbValueTypeInternal` on the dialect Builder and register globally instead. Every database then treats the type as the registered value type, so use this only when the storage form is the same across all of them. When it differs per dialect (one database uses `Binary`, the rest use `String`), the override is required.
+
+Because it affects the whole process and persists in `DbValueTypeMap`'s static state, keep the registration an explicit constant rather than hiding it behind a conditional branch.
 
 ### 6.4 Column-Level Usage (When Global Registration Does Not Apply)
 

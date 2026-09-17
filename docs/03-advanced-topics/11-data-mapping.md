@@ -312,7 +312,7 @@ public sealed class IPAddressConverter : IDbValueConverter<string, IPAddress>
 using static LiteOrm.Common.DbValueType;
 
 SqlBuilder.Instance.RegisterDbValueConverter<SqlBuilder, string, IPAddress>(
-    targetType: String,
+    targetType: DbValueType.String,
     fromDb: s => IPAddress.Parse(s),   // 读取：string → IPAddress
     toDb:   ip => ip.ToString()        // 写入：IPAddress → string
 );
@@ -378,7 +378,18 @@ public class MySqlBinaryIpBuilder : MySqlBuilder
 }
 ```
 
-> 要点：注册转换器只解决"byte[] 与 IPAddress 互转"，列能正确读成 `byte[]` 还依赖列 DbValueType 为 `Binary`。二者缺一不可。若不想为某方言单独子类化 Builder，也可用 `DbValueTypeMap.Set(typeof(IPAddress), DbValueType.Binary)` 全局声明——但那样会影响所有数据库，需谨慎。
+> 要点：注册转换器只解决"byte[] 与 IPAddress 互转"，列能正确读成 `byte[]` 还依赖列 DbValueType 为 `Binary`。二者缺一不可。
+
+**`DbValueTypeMap.Set` 的两种用法。** 它是一个全局的类型到取值类型的登记：
+
+```csharp
+DbValueTypeMap.Set(typeof(IPAddress), DbValueType.String);
+```
+
+- 作为兜底声明：登记后该类型不必再逐列写 `DbType`，`[Column("IpAddress")] public IPAddress? IpAddress { get; set; }` 就够了，DDL 也照常生成对应的列类型。含自定义类型的实体多、每列都要重复标注时，这条更省事。
+- 作为方言覆盖面：不在方言 Builder 上覆写 `GetDbValueTypeInternal`，直接全局登记。此时所有数据库都会按登记的取值类型处理该类型，因此只在「所有库的存储形式一致」时才用；需要按方言区分（如某库用 `Binary`、其余用 `String`）就必须走覆写。
+
+因为它影响全进程、且会随 `DbValueTypeMap` 的静态状态常驻，登记内容要写成明确的常量，不要藏在条件分支里。
 
 ### 6.4 列级使用（全局注册不适用时）
 

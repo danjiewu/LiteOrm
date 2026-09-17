@@ -145,7 +145,86 @@ var customer = await customerService.SearchOneAsync(
     Prop(nameof(Customer.IdCardHash)) == ComputeHash(plainIdCard));
 ```
 
-**方案二：全局注册转换器。** 用 `RegisterDbValueConverter` 把（`string`, `DbValueType.String`）这一组合注册成加密转换器。副作用是所有 `string` 参数都会被加密，包括没有任何密文列的实体。字段级加密基本不能用这条路，除非库里所有字符串列都加密。
+**方案二：自定义加密字符串类型，再全局注册。** 这条路能同时解决“参数不带列上下文”与“不想写 `ConverterType`”两个问题，做法是给密文字段单独定义一个强类型。
+
+直接注册（`string`, `DbValueType.String`）是不行的，那会让所有 `string` 参数都被加密，包括没有任何密文列的实体。换个思路：用一个只表示密文的包装类型当属性类型，加密解密实现在这个类型里，再把该类型的读写转换全局注册一次。注册的键是自定义类型，只有用它声明的列会命中，其它 `string` 列完全不受影响。
+
+```csharp
+using LiteOrm.Common;
+
+/// <summary>密文字符串。构造与取值都显式，避免明文与密文互相误传。</summary>
+public readonly struct EncryptedString
+{
+    public string Cipher { get; }
+
+    private EncryptedString(string cipher) => Cipher = cipher;
+
+    /// <summary>明文加密后构造。</summary>
+    public static EncryptedString FromPlain(string plain) => new(Encrypt(plain));
+
+    /// <summary>直接由库中密文构造，读取路径专用。</summary>
+    public static EncryptedString FromCipher(string cipher) => new(cipher);
+
+    /// <summary>解密取回明文。</summary>
+    public string ToPlain() => Decrypt(Cipher);
+
+    private static string Encrypt(string plain) => /* 同场景 1 的 AES-GCM 加密 */;
+    private static string Decrypt(string cipher) => /* 同场景 1 的 AES-GCM 解密 */;
+}
+```
+
+先给自定义类型补一条数据库取值类型映射，再全局注册读写转换：
+
+```csharp
+using static LiteOrm.Common.DbValueType;
+
+// 一次声明，此后 EncryptedString 会被当成 String 列处理
+DbValueTypeMap.Set(typeof(EncryptedString), DbValueType.String);
+
+SqlBuilder.Instance.RegisterDbValueConverter<SqlBuilder, string, EncryptedString>(
+    targetType: DbValueType.String,
+    fromDb: cipher => EncryptedString.FromCipher(cipher),   // 读取：库中密文 -> EncryptedString
+    toDb:   value => value.Cipher                           // 写入：EncryptedString -> 库中密文
+);
+```
+
+有了这条映射，实体上只声明属性类型就够了，`DbType` 和 `ConverterType` 都不用写：
+
+```csharp
+[Table("Customers")]
+public class Customer : ObjectBase
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public long Id { get; set; }
+
+    [Column("IdCard", Length = 256)]
+    public EncryptedString? IdCard { get; set; }
+}
+```
+
+写下、读回与按值查询：
+
+```csharp
+// 写进去自动加密，读回来自动解密，业务代码里不出现密文
+await customerService.InsertAsync(new Customer { IdCard = EncryptedString.FromPlain(plainIdCard) });
+
+var loaded = await customerService.Search(c => c.Id == id).FirstOrDefaultAsync();
+string plain = loaded.IdCard!.Value.ToPlain();
+```
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// 查询条件里的值要显式转成密文，这条 WHERE 就查得到了
+var cipher = EncryptedString.FromPlain(plainIdCard).Cipher;
+var customer = await customerService.SearchOneAsync(Prop(nameof(Customer.IdCard)) == cipher);
+```
+
+三个必须注意的点：
+
+- `DbValueTypeMap.Set` 是全局的，登记后凡是这个类型的属性都按 `String` 处理，DDL 会生成 `VARCHAR`（`Length` 也照常用）。因为它影响面是全进程，只给确实要统一存储形式的自定义类型用。
+- 不登记映射时，`GetDbValueType` 会退回 `Object`，列上就得自己补 `DbType = DbValueType.String`，否则框架读取会走 `GetValue` 拿装箱值。两种写法二选一，不要都省略。
+- AOT 下必须显式指定，映射和全局注册都不够：源生成器读取时按 `reader.GetFieldType(i)` 拿到的实际 CLR 类型推断列的取值类型，自定义类型只会推成 `Object`；而且复杂类型的列不标 `ConverterType` 时源生成器会跳过该列的读取映射。这两件事都不会因为 `DbValueTypeMap.Set` 而改变，所以 AOT 下的列要写成 `[Column("IdCard", DbType = DbValueType.String, ConverterType = typeof(...))]`（见场景 6）。
 
 **方案三：不接受等值查询。** 把检索入口改成只按主键或盲索引，业务上放弃“按证件号查人”。
 
@@ -154,6 +233,8 @@ var customer = await customerService.SearchOneAsync(
 - 密文上的范围查询、排序、`LIKE` 都不可用。需要按前缀检索时，常见的折中是拆出明文的检索列（例如证件号前 6 位），并接受这部分信息不再受加密保护。
 - 盲索引要额外维护一列和它的写入逻辑，换来等值查询能力，同时不暴露明文。写入同步建议放在实体服务里，保证两个列永远一致。
 - 确定性加密的密文可被关联比较，安全性弱于随机 IV，只用在必须检索的字段上。
+- 方案二的全局注册是进程级的一次性动作，放在程序启动处执行，完成后再发起第一次查询。注册表以 `(值类型, DbValueType)` 为键，同一键重复注册会覆盖旧值，转换器要改成新的实现直接重新注册即可；但如果列级转换器已经按旧注册回填过，要先清掉列的 `DbValueConverter`，否则旧实例会继续生效。
+- 全局注册覆盖实体列的读写，也覆盖 `Expr` 里手写的裸值参数（按值的运行时类型查同一张注册表）。但条件里的值必须自己先转成密文，传明文进去命中的是明文的类型，查不出结果。
 
 ## 场景 3：只判断是否存在，不需要读回原文
 

@@ -145,7 +145,86 @@ var customer = await customerService.SearchOneAsync(
     Prop(nameof(Customer.IdCardHash)) == ComputeHash(plainIdCard));
 ```
 
-**Option 2: register a global converter.** Use `RegisterDbValueConverter` to register an encryption converter for the pair (`string`, `DbValueType.String`). The side effect is that every `string` parameter gets encrypted, including entities with no ciphertext column at all. Field-level encryption can rarely take this route unless every string column in the database is encrypted.
+**Option 2: define a custom encrypted string type and register it globally.** This route solves both problems at once, the context-free parameter and the wish to avoid `ConverterType`, by giving ciphertext fields a dedicated strong type.
+
+Registering the pair (`string`, `DbValueType.String`) does not work, because every `string` parameter would be encrypted, including entities with no ciphertext column at all. Invert the idea: use a wrapper type that only ever holds ciphertext as the property type, keep encryption and decryption inside that type, then register its read and write conversion once. The registry key is the custom type, so only columns declared with it match; every other `string` column is untouched.
+
+```csharp
+using LiteOrm.Common;
+
+/// <summary>Ciphertext string. Both construction and retrieval are explicit so plaintext and ciphertext cannot be mixed up.</summary>
+public readonly struct EncryptedString
+{
+    public string Cipher { get; }
+
+    private EncryptedString(string cipher) => Cipher = cipher;
+
+    /// <summary>Encrypts plaintext on construction.</summary>
+    public static EncryptedString FromPlain(string plain) => new(Encrypt(plain));
+
+    /// <summary>Wraps existing ciphertext, used by the read path.</summary>
+    public static EncryptedString FromCipher(string cipher) => new(cipher);
+
+    /// <summary>Decrypts back to plaintext.</summary>
+    public string ToPlain() => Decrypt(Cipher);
+
+    private static string Encrypt(string plain) => /* AES-GCM encryption from scenario 1 */;
+    private static string Decrypt(string cipher) => /* AES-GCM decryption from scenario 1 */;
+}
+```
+
+Register a database value type mapping for the custom type first, then register the read and write conversion globally:
+
+```csharp
+using static LiteOrm.Common.DbValueType;
+
+// Declared once; from then on EncryptedString is treated as a String column
+DbValueTypeMap.Set(typeof(EncryptedString), DbValueType.String);
+
+SqlBuilder.Instance.RegisterDbValueConverter<SqlBuilder, string, EncryptedString>(
+    targetType: DbValueType.String,
+    fromDb: cipher => EncryptedString.FromCipher(cipher),   // read: ciphertext from the database -> EncryptedString
+    toDb:   value => value.Cipher                           // write: EncryptedString -> ciphertext in the database
+);
+```
+
+With that mapping in place the entity only declares the property type; neither `DbType` nor `ConverterType` is needed:
+
+```csharp
+[Table("Customers")]
+public class Customer : ObjectBase
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public long Id { get; set; }
+
+    [Column("IdCard", Length = 256)]
+    public EncryptedString? IdCard { get; set; }
+}
+```
+
+Writing, reading back, and searching by value:
+
+```csharp
+// Write encrypts and read decrypts automatically; no ciphertext appears in business code
+await customerService.InsertAsync(new Customer { IdCard = EncryptedString.FromPlain(plainIdCard) });
+
+var loaded = await customerService.Search(c => c.Id == id).FirstOrDefaultAsync();
+string plain = loaded.IdCard!.Value.ToPlain();
+```
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// The value in a query condition must be converted to ciphertext explicitly, and then the WHERE matches
+var cipher = EncryptedString.FromPlain(plainIdCard).Cipher;
+var customer = await customerService.SearchOneAsync(Prop(nameof(Customer.IdCard)) == cipher);
+```
+
+Three points to watch:
+
+- `DbValueTypeMap.Set` is global. Once registered, every property of that type is treated as `String` and the DDL emits `VARCHAR` (`Length` still applies as usual). Because it affects the whole process, reserve it for custom types that genuinely share one storage form.
+- Without the mapping, `GetDbValueType` falls back to `Object` and the column has to carry `DbType = DbValueType.String` itself, otherwise the framework reads through `GetValue` and hands you a boxed value. Pick one of the two; do not omit both.
+- Under AOT the column must be explicit, because neither the mapping nor the global registration is enough: the source generator infers the column's value type from the actual CLR type reported by `reader.GetFieldType(i)`, and a custom type only ever infers as `Object`. On top of that, the source generator skips the read mapping for a complex-typed column that has no `ConverterType`. Neither behaviour changes because of `DbValueTypeMap.Set`, so an AOT column reads `[Column("IdCard", DbType = DbValueType.String, ConverterType = typeof(...))]` (see scenario 6).
 
 **Option 3: do not support equality search.** Restrict lookups to primary key or blind index and drop "find a person by identity number" from the product.
 
@@ -154,6 +233,8 @@ Notes:
 - Range queries, sorting and `LIKE` are unavailable on ciphertext. When prefix search is required, the usual compromise is a separate plaintext search column (for example the first six digits of the identity number) and accepting that this part is no longer protected.
 - A blind index costs an extra column plus the logic that keeps it in sync, and buys equality search without exposing plaintext. Put the synchronisation in the entity service so both columns stay consistent.
 - Deterministic ciphertext can be correlated and compared, so it is weaker than random IV. Use it only where search is mandatory.
+- The global registration in option 2 is a one-off process-wide action. Run it during startup and register before the first query. The registry is keyed by `(value type, DbValueType)` and registering the same key again overwrites the previous entry, so switching to a new converter implementation is just another registration. If a column-level converter was already backfilled from the old registration, clear the column's `DbValueConverter` first, otherwise the old instance keeps taking effect.
+- The global registration covers entity column reads and writes, and it also covers bare values written by hand inside `Expr`, which are looked up in the same registry by the value's runtime type. The value in a condition still has to be converted to ciphertext yourself: passing plaintext matches the plaintext type and returns nothing.
 
 ## Scenario 3: only prove a value exists, never read it back
 
