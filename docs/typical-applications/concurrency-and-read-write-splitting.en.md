@@ -1,4 +1,4 @@
-# Concurrency and Read/Write Splitting in Practice
+# Concurrency and Read/Write Splitting
 
 Concurrency, transactions and read paths often show up in the same incident: two users edit one row and one edit is silently overwritten, a value read inside a transaction is stale, or a write followed immediately by a read returns the old value. The scenarios below cover each case.
 
@@ -72,7 +72,7 @@ Notes:
 
 - `Delete(entity)` and `DeleteID(id)` both delete by primary key and do not use the timestamp column.
 - When the business needs "update then delete", do the timestamped update first inside the same transaction and delete only after it succeeds.
-- The `DeleteAll` predicate can also carry the data scope; see [Data Permissions in Practice](./data-permission.en.md).
+- The `DeleteAll` predicate can also carry the data scope; see [Data Permissions](./data-permission.en.md).
 
 ## Scenario 3: multi-step writes must be atomic
 
@@ -123,7 +123,7 @@ Boundary rules:
 
 Notes:
 
-- The last rule directly affects auditing: service A calling service B does not produce two call records, so propagate a correlation id yourself. See [Audit and Change Tracking in Practice](./audit-and-change-tracking.en.md).
+- The last rule directly affects auditing: service A calling service B does not produce two call records, so propagate a correlation id yourself. See [Audit and Change Tracking](./audit-and-change-tracking.en.md).
 - A background task started inside a service method does not inherit the transaction boundary. Asynchronous follow-up writes must either join the same transaction or explicitly use their own scope.
 
 ## Scenario 4: read-heavy workload on read replicas
@@ -202,7 +202,7 @@ Notes:
 - Choose among three routes by tolerance: read inside the transaction, give the critical entry point a master DAO, or make the flow asynchronous with confirmation.
 - The replica choice is driven by the DAO's `IsView` (`DAOBase.IsView` defaults to `false`, `ObjectViewDAO<T>` overrides it to `true`), so overriding it back to `false` returns to the master without changing any query text.
 - The old value used for timestamp concurrency usually comes from a query. If that query lands on a replica, the version read can be older than the master's current value and an otherwise valid update is rejected as a conflict. When the concurrency decision must be exact, pin the "read the current version" step to the master, for example by putting the critical update in a `[Transaction]` service method that reads and writes inside one transaction.
-- The same applies to ownership checks in data permissions, where replica lag causes misjudgements. See scenario 3 of [Data Permissions in Practice](./data-permission.en.md).
+- The same applies to ownership checks in data permissions, where replica lag causes misjudgements. See scenario 3 of [Data Permissions](./data-permission.en.md).
 
 ## Scenario 6: common mistakes with concurrency and transactions
 
@@ -222,5 +222,5 @@ Notes:
 - [Transactions](../di/transactions.en.md)
 - [Configuration Reference](../reference/configuration-reference.en.md)
 - [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md)
-- [Audit and Change Tracking in Practice](./audit-and-change-tracking.en.md)
-- [Data Permissions in Practice](./data-permission.en.md)
+- [Audit and Change Tracking](./audit-and-change-tracking.en.md)
+- [Data Permissions](./data-permission.en.md)

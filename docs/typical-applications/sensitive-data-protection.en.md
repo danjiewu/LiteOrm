@@ -1,4 +1,4 @@
-# Sensitive Data Protection in Practice
+# Sensitive Data Protection
 
 Encrypting a column in an ORM means solving three things: replacing plaintext with ciphertext on write, restoring it on read, and still being able to query the value when the business needs it. The third one breaks first, because query parameters and entity write parameters do not travel the same conversion path. The scenarios below show the working patterns.
 
@@ -303,7 +303,7 @@ Notes:
 
 - The mask column only has `Read` mode, so `TableDefinition.InsertableColumns` and `UpdatableColumns` both exclude it and the mask never reaches the database. Writes go through an entity without the masking converter.
 - Put display masking on a view model and keep the entity's original value, so one type does not drift in meaning between screens.
-- Logs, exports and audits need the same masking rules. Masking only in the front end misses the export path; see [Audit and Change Tracking in Practice](./audit-and-change-tracking.en.md).
+- Logs, exports and audits need the same masking rules. Masking only in the front end misses the export path; see [Audit and Change Tracking](./audit-and-change-tracking.en.md).
 
 ## Scenario 5: column length, indexes and keys
 
@@ -336,7 +336,7 @@ Notes:
 - Complex-typed columns (arrays, collections, custom classes) must declare `ConverterType` explicitly under AOT, otherwise the source generator skips the read mapping for that column.
 - The source generator always reads through the non-generic `DbReadConverter` with `reader.GetValue(i)` as input, so boxing is unavoidable. The strongly typed generic delegates only apply on the JIT path. This is one reason AOT mapping performs differently from JIT mapping.
 - A converter without a public parameterless constructor fails at compile time in generated code, which is earlier than discovering it at runtime.
-- The metadata source switches to the generated `ColumnInfo` under AOT, as described in scenario 4 of [Tenant Isolation in Practice](./tenant-isolation.en.md). Encrypted columns are unaffected; only `Constant` slices are, and the replacement is to express the fixed condition as a runtime fragment.
+- The metadata source switches to the generated `ColumnInfo` under AOT, as described in example 3 of [Tenant Isolation](./tenant-isolation.en.md). Encrypted columns are unaffected; only `Constant` slices are, and the replacement is to carry the fixed condition with a runtime `GenericSqlExpr`.
 
 ## Related links
 
@@ -344,5 +344,5 @@ Notes:
 - [Data Mapping and Value Conversion](../advanced-topics/data-mapping.en.md)
 - [NativeAOT Support](../advanced-topics/aot.en.md)
 - [Security](../advanced-topics/security.en.md)
-- [Audit and Change Tracking in Practice](./audit-and-change-tracking.en.md)
-- [Data Permissions in Practice](./data-permission.en.md)
+- [Audit and Change Tracking](./audit-and-change-tracking.en.md)
+- [Data Permissions](./data-permission.en.md)

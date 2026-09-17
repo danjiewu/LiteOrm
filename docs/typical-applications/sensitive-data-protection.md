@@ -1,4 +1,4 @@
-# 敏感字段加密与脱敏典型应用
+# 敏感字段加密与脱敏
 
 给某一列做加密存储，在 ORM 里要解决三件事：写入时把明文换成密文、读取时换回明文、查询时还能按业务需要检索。第三件事最容易出问题，因为查询条件的参数和实体写入的参数走的不是同一条转换路径。下面按场景给出写法。
 
@@ -303,7 +303,7 @@ public class CustomerMaskView : ObjectBase
 
 - 掩码列只有 `Read` 模式，`TableDefinition.InsertableColumns` 与 `UpdatableColumns` 都不会包含它，掩码不会写回库。写入走不带掩码转换器的实体。
 - 展示脱敏放在视图模型上，实体本身保留原值，避免同一个类型在不同场景下语义漂移。
-- 日志、导出、审计都要走同一套掩码规则，只在前端做脱敏会漏掉导出文件，见[审计与变更追踪典型应用](./audit-and-change-tracking.md)。
+- 日志、导出、审计都要走同一套掩码规则，只在前端做脱敏会漏掉导出文件，见[审计与变更追踪](./audit-and-change-tracking.md)。
 
 ## 场景 5：列长度、索引与密钥
 
@@ -338,7 +338,7 @@ public class CustomerMaskView : ObjectBase
 - 复杂类型（数组、集合、自定义类）列在 AOT 下必须显式声明 `ConverterType`，否则源生成器会跳过该列的读取映射。
 - 源生成器读取时统一走非泛型 `DbReadConverter`，输入是 `reader.GetValue(i)`，装箱无法避免；泛型强类型委托只在 JIT 路径生效。这是 AOT 路径映射性能与 JIT 路径有差距的原因之一。
 - 转换器缺少公共无参构造函数时，生成代码在编译期就会报错，比运行时才发现要早。
-- 元数据来源在 AOT 下会切换成源生成的 `ColumnInfo`，见[多租户隔离典型应用](./tenant-isolation.md)的场景 4，加密列本身不受影响，受影响的只有 `Constant` 切片，替代做法是把固定条件写成运行时构件。
+- 元数据来源在 AOT 下会切换成源生成的 `ColumnInfo`，见[多租户隔离](./tenant-isolation.md)的示例三，加密列本身不受影响，受影响的只有 `Constant` 切片，替代做法是改用运行时 `GenericSqlExpr` 承载固定条件。
 
 ## 相关链接
 
@@ -346,5 +346,5 @@ public class CustomerMaskView : ObjectBase
 - [数据映射与值转换](../advanced-topics/data-mapping.md)
 - [AOT 支持](../advanced-topics/aot.md)
 - [安全性](../advanced-topics/security.md)
-- [审计与变更追踪典型应用](./audit-and-change-tracking.md)
-- [数据权限典型应用](./data-permission.md)
+- [审计与变更追踪](./audit-and-change-tracking.md)
+- [数据权限](./data-permission.md)

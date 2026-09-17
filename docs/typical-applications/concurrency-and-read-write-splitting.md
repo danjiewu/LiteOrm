@@ -1,4 +1,4 @@
-# 并发控制与读写分离典型应用
+# 并发控制与读写分离
 
 并发、事务和读写路径经常出现在同一个故障现场：两个用户同时改一条记录，其中一次修改被静默覆盖；事务里读到的数据是旧值；写完立刻查又查不到。下面按场景给出处理方式。
 
@@ -72,7 +72,7 @@ if (affected == 0) throw new ConcurrencyConflictException("记录已被他人修
 
 - `Delete(entity)` / `DeleteID(id)` 都是按主键删，不使用时间戳列。
 - 需要“先更新再删除”的业务，就在同一个事务里先做一次带时间戳的更新，成功后再删。
-- `DeleteAll` 的条件里同样可以叠加数据范围条件，见[数据权限典型应用](./data-permission.md)。
+- `DeleteAll` 的条件里同样可以叠加数据范围条件，见[数据权限](./data-permission.md)。
 
 ## 场景 3：多步写入要原子
 
@@ -123,7 +123,7 @@ await SessionManager.Current!.ExecuteInTransactionAsync(async session =>
 
 要点：
 
-- 最后一条对审计有直接影响：服务 A 调用服务 B 时不会产生两条调用记录，链路标识要自己传，见[审计与变更追踪典型应用](./audit-and-change-tracking.md)。
+- 最后一条对审计有直接影响：服务 A 调用服务 B 时不会产生两条调用记录，链路标识要自己传，见[审计与变更追踪](./audit-and-change-tracking.md)。
 - 服务方法内部再开后台任务写库，不继承当前事务边界。需要异步收尾的写入要么放进同一事务，要么显式另起作用域。
 
 ## 场景 4：读多写少，想用只读副本
@@ -202,7 +202,7 @@ services.AddScoped<ObjectViewDAO<OrderView>, MasterOrderViewDAO>();
 - 三条路按业务容忍度选：读进同一事务、给关键入口准备读主库的 DAO、把关键流程改成异步确认。
 - 副本选择由 DAO 的 `IsView` 决定（`DAOBase.IsView` 默认 `false`，`ObjectViewDAO<T>` 覆盖为 `true`），覆盖回 `false` 就回到主库，不需要改查询语句。
 - 时间戳并发的旧值通常来自一次查询。这次查询落在只读副本上时，拿到的版本号可能比主库当前值旧，于是正常的更新会被判为冲突。需要在并发判断上保持精确时，把“读当前版本”这一步固定到主库，例如把关键更新收进一个带 `[Transaction]` 的服务方法，先读后写都在事务内完成。
-- 数据权限里的归属校验同理，读副本的滞后会造成误判，见[数据权限典型应用](./data-permission.md)的场景 3。
+- 数据权限里的归属校验同理，读副本的滞后会造成误判，见[数据权限](./data-permission.md)的场景 3。
 
 ## 场景 6：并发与事务的常见误区
 
@@ -222,5 +222,5 @@ services.AddScoped<ObjectViewDAO<OrderView>, MasterOrderViewDAO>();
 - [事务](../di/transactions.md)
 - [配置参考](../reference/configuration-reference.md)
 - [分表分库](../advanced-topics/sharding-and-tableargs.md)
-- [审计与变更追踪典型应用](./audit-and-change-tracking.md)
-- [数据权限典型应用](./data-permission.md)
+- [审计与变更追踪](./audit-and-change-tracking.md)
+- [数据权限](./data-permission.md)

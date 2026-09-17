@@ -1,287 +1,21 @@
-# Tenant Isolation in Practice
+# Tenant Isolation
 
-Multi-tenant work usually comes down to three questions: which layer holds the tenant condition, where the tenant value comes from, and what a single missed entry point costs. Below are the common requirements broken into seven scenarios, each with complete code.
+Multi-tenant work usually comes down to three questions: which layer holds the tenant condition, where the tenant value comes from, and what a single missed entry point costs.
 
-Start with the four isolation layers and the primitives each one uses:
+LiteOrm ships no built-in tenant mechanism; what it gives you is a set of primitives, and the tenant story has to be assembled from them. This article defines a tenant interface, then walks four examples covering four isolation layers: row filtering, physical sharding, a fixed slice, and physical databases.
 
-| Isolation layer | Primitive | Granularity |
-| --- | --- | --- |
-| One shared table, row isolation | Runtime `Expr` conditions, or a registered `GenericSqlExpr` fragment | Row |
-| Same schema, fixed slice | `TableDefinition.ConstFilter` aggregated from `[Column(Constant = ...)]` (compile-time constants only) | Table |
-| Separate physical table | `[Table("Orders_{0}")]` + `TableArgs` (`IArged` / `From<T>(tableArgs)` / `WithArgs`) | Table name |
-| Separate physical database | `[Table(DataSource = "...")]`, or a DAO overriding `DataSource` | Connection |
+| Isolation layer | Primitive | Granularity | Example |
+| --- | --- | --- | --- |
+| One shared table, row isolation | Runtime `Expr` condition | Row | Example 1 |
+| Separate physical table | `[Table("Orders_{0}")]` + `TableArgs` | Table name | Example 2 |
+| One shared table, fixed slice | `TableDefinition.ConstFilter` | Row | Example 3 |
+| Separate physical database | Overriding the DAO's `DataSource` | Connection | Example 4 |
 
 The layers combine. A common layout is "one database per tenant, monthly tables inside it".
 
-## Scenario 1: one shared table serving every tenant
+## The tenant interface
 
-**Requirement**: the `Orders` table is shared by all tenants and the tenant id is an ordinary column. Lists, counts, exports and bulk updates must never surface another tenant's rows.
-
-**Approach**: treat the tenant condition as part of the query itself, assembled by one function that every entry point calls:
-
-```csharp
-using static LiteOrm.Common.Expr;
-
-public static class OrderFilters
-{
-    public static LogicExpr For(OrderQueryRequest request)
-    {
-        var tenantId = TenantContext.Current?.TenantId
-            ?? throw new InvalidOperationException("Tenant not resolved.");
-
-        var filter = (Prop(nameof(Order.TenantId)) == tenantId)
-            & (Prop(nameof(Order.IsDeleted)) == false);
-
-        if (!string.IsNullOrEmpty(request.Keyword))
-            filter &= Prop(nameof(Order.Title)).Like($"%{request.Keyword}%");
-
-        return filter;
-    }
-}
-```
-
-Listing and counting call the same function, only the outermost statement differs:
-
-```csharp
-var page = await orderViewService.SearchAsync(
-    From<OrderView>().Where(OrderFilters.For(request)).OrderBy(Prop(nameof(Order.CreateTime)).Desc()).Section(0, 20));
-
-var total = await orderViewService.CountAsync(OrderFilters.For(request));
-```
-
-Notes:
-
-- Do not filter in memory after the query. It makes `Count` disagree with the page total, lets aggregate and export endpoints bypass the filter, and the forbidden rows already travelled into the application process.
-- Bulk update and bulk delete need the same scope condition. See scenario 2 of [Data Permissions in Practice](./data-permission.en.md).
-- Row filtering decides what a query returns, not what a primary-key operation touches. Detail, update and delete still need object-level checks.
-
-## Scenario 2: the tenant condition should not be passed down through every call
-
-**Requirement**: dozens of query entry points need the tenant condition, and threading it through parameters loses it one layer down.
-
-**Approach**: register the condition as a reusable fragment that reads the tenant from context:
-
-```csharp
-using static LiteOrm.Common.Expr;
-
-// Register once; registering the same key again does not overwrite the existing implementation
-GenericSqlExpr.Register("TenantFilter", (context, sqlBuilder, outputParams, _) =>
-{
-    var tenantId = TenantContext.Current?.TenantId
-        ?? throw new InvalidOperationException("Tenant not resolved.");
-
-    string paramName = outputParams.Count.ToString();
-    outputParams.Add(new Param(sqlBuilder.ToParamName(paramName), tenantId));
-    return $"{sqlBuilder.ToSqlName(nameof(Order.TenantId))} = {sqlBuilder.ToSqlParam(paramName)}";
-});
-```
-
-Call sites reference it by name and compose it like any other `Expr` condition:
-
-```csharp
-var filter = OrderFilters.For(request) & Expr.Sql("TenantFilter");
-
-var orders = await orderViewService.SearchAsync(From<OrderView>().Where(filter));
-```
-
-Notes:
-
-- The value goes through `outputParams.Add`, so it stays parameterized and never lands in the SQL text. See [Security](../advanced-topics/security.en.md).
-- A fragment returning `null` or an empty string produces no SQL at all, so query conditions do not need a `"1 = 1"` placeholder. Write paths give no such guarantee; see [Data Permissions in Practice](./data-permission.en.md).
-- The left operand of `&` must be a `LogicExpr`. `Expr.Sql(...)` returns a `GenericSqlExpr`, so declaring the assembling function's return type as `Expr` will not compile. Return `LogicExpr`.
-- A fragment can only contain table and column names. A wrong property name surfaces while generating SQL instead of silently pointing at another column.
-
-## Scenario 3: a model that only ever serves one tenant class
-
-**Requirement**: platform-owned orders, archived tenants or legacy compatibility models have a rule that is fixed at compile time and should not be repeated in every query.
-
-**Approach**: push the rule down into column metadata with `Constant`:
-
-```csharp
-public enum TenantKind
-{
-    Platform = 1,
-    Merchant = 2
-}
-
-[Table("Orders")]
-public class PlatformOrder : ObjectBase
-{
-    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-    public long Id { get; set; }
-
-    [Column("Amount")]
-    public decimal Amount { get; set; }
-
-    [Column("TenantKind", Constant = TenantKind.Platform)]
-    public TenantKind TenantKind => TenantKind.Platform;
-}
-```
-
-`[Column(Constant = ...)]` is aggregated into `TableDefinition.ConstFilter` while table metadata is built. The condition then appears in the main table `WHERE`, in `JOIN ... ON` for association queries, and in `UPDATE` / `DELETE` `WHERE` clauses:
-
-```sql
--- Query: an enum slice is inlined as its underlying value
-SELECT * FROM "Orders" "T0" WHERE "T0"."TenantKind" = 1                        -- Platform = 1
-
--- A slice on another view model: the joined table's slice goes into ON, a boolean slice is inlined too
-SELECT * FROM "Orders" "T0"
-LEFT JOIN "Departments" "Dept" ON "T0"."DepartmentId" = "Dept"."Id" AND "Dept"."State" = 1
-WHERE "T0"."IsDeleted" = 0                                                     -- Enabled = 1
-
--- Update and delete
-UPDATE "Customers" SET "Name" = @0 WHERE "Id" = @1 AND "IsDeleted" = 0
-DELETE FROM "Customers" WHERE "Id" = @0 AND "IsDeleted" = 0
-```
-
-Notes:
-
-- `Constant` only accepts compile-time constants: enum members, enum names, numbers, strings, booleans. The framework converts them to the property type.
-- Enum and boolean slices are both inlined as their underlying value: an enum becomes its numeric value (`= 1`), a boolean becomes `= 0` / `= 1`. A slice is a compile-time constant, so it takes no parameter slot and the parameter count of a slice condition never varies with metadata.
-- The condition means "this table only ever contains this class of data". Writing the current request's tenant id here makes every tenant share one fixed condition, which is the worst class of multi-tenant failure.
-- `INSERT` is not affected: the statement carries no slice condition, because the slice value comes from the entity property itself (the read-only property above is always `Platform`, and that is what gets inserted). With a writable property there is another side to watch: a value outside the slice is not corrected on insert, so the new row becomes invisible to the model immediately. Check the value before writing.
-- A joined table's slice reaches the `JOIN ... ON` of association queries. The DAO key-based reads (`GetObject`, `ExistsKey`) use the model's own `From` fragment, which only emits the join keys and carries no joined-table slice condition, so switch to an expression query such as `Search(...)` when the joined table must be constrained too. For the full boundary see [Permission Filtering and User Scope Control](../di/permission-filtering.en.md).
-- When the assembly enables `TableInfo` source generation (NativeAOT builds, or an explicit `[assembly: LiteOrmCodeGen(LiteOrmCodeGenKind.TableInfo)]`), table metadata comes from `CommonTableInfoProvider` and the generated `ColumnInfo` carries no `Constant`. None of the conditions above appear in that case. Those projects use the runtime fragment covered in the next scenario.
-
-## Scenario 4: the tenant value is only known at startup, and should apply automatically
-
-**Requirement**: the same entity serves a different tenant or partition per deployment, with the value coming from configuration or an environment variable. Attribute arguments must be compile-time constants, so they cannot express it, and no entry point should have to remember the condition by hand.
-
-**Approach**: wrap the tenant source in one fragment, register it once, and pass the tenant value as `Arg` when constructing the expression through `GenericSqlExpr.Get`:
-
-```csharp
-using LiteOrm.Common;
-using static LiteOrm.Common.Expr;
-
-public static class TenantFilter
-{
-    private const string Key = "TenantFilter";
-
-    /// <summary>Call once during startup; every later query reads the configured value.</summary>
-    public static void Register(IConfiguration configuration)
-    {
-        string? tenantId = configuration["Tenant:Id"];
-        if (string.IsNullOrEmpty(tenantId))
-            throw new InvalidOperationException("Tenant is not configured.");
-
-        GenericSqlExpr.Register(Key, (context, sqlBuilder, outputParams, arg) =>
-        {
-            if (arg is not string tenant || tenant.Length == 0)
-                throw new InvalidOperationException("Tenant is not resolved.");
-
-            string paramName = outputParams.Count.ToString();
-            outputParams.Add(new Param(sqlBuilder.ToSqlParam(paramName), tenant));
-            return $"{sqlBuilder.ToSqlName(nameof(Order.TenantId))} = {sqlBuilder.ToSqlParam(paramName)}";
-        });
-
-        DefaultTenantId = tenantId;   // fills Arg at construction time
-    }
-
-    public static string? DefaultTenantId { get; private set; }
-
-    public static LogicExpr For(string? tenantId = null)
-    {
-        string tenant = string.IsNullOrEmpty(tenantId) ? DefaultTenantId! : tenantId;
-        if (string.IsNullOrEmpty(tenant))
-            throw new InvalidOperationException("Tenant is not resolved.");
-
-        return GenericSqlExpr.Get(Key, tenant);
-    }
-}
-```
-
-Call sites write a single `TenantFilter.For()`, and the tenant value never travels through a parameter:
-
-```csharp
-var orders = await orderViewService.SearchAsync(
-    From<OrderView>().Where(TenantFilter.For() & (Prop(nameof(Order.IsDeleted)) == false)));
-
-// SELECT *
-// FROM "Orders" "T0"
-// WHERE "TenantId" = @0 AND "T0"."IsDeleted" = @1    -- @0 = tenant_a
-```
-
-Notes:
-
-- The point is that the tenant value rides on `Arg` instead of ambient context. The fragment captures the value at the moment the expression is built, `Clone` carries it along, and the expression still means the same tenant after it has been cached, queued, or handed to another thread, instead of drifting with whatever `AsyncLocal` happens to be active.
-- Declare the return type as `LogicExpr`. `GenericSqlExpr` derives from `LogicExpr`, so returning it composes with `&` and `|` directly.
-- Guard against the empty string, not just `null`, and keep the fragment's default behaviour in mind: returning `null` or an empty string emits no SQL and rolls back the preceding `AND` with it. A `null` makes the tenant condition disappear entirely, while an empty string still produces `"TenantId" = @0` with an empty value, so the condition is present but matches no rows. Neither failure is easy to spot in a test, so the code above throws for both.
-- Watch how columns are named inside the fragment: `sqlBuilder.ToSqlName` accepts a bare column name, so the result is an unqualified `"TenantId"`, whereas framework-generated conditions are qualified (`"T0"."IsDeleted"`). That is fine for single-table queries, but as soon as the statement joins another table with a `TenantId` column, an unqualified name can be rejected as ambiguous. Write the alias into the fragment for multi-table statements, or fall back to the `Prop(...)` form from scenario 1.
-- The fragment is a statement condition: it lands in whichever statement you put it in `Where`. It is not a `ConstFilter`, so it does not automatically reach joined `JOIN ... ON` clauses, `EXISTS` subqueries, or every `UPDATE` / `DELETE`. Add `TenantFilter.For()` in those places yourself:
-
-```csharp
-var affected = await orderService.UpdateAsync(
-    Expr.Update<Order>().Set((nameof(Order.Amount), Const(1m))).Where(TenantFilter.For()));
-
-// UPDATE "Orders" SET "Amount" = @0 WHERE "TenantId" = @1
-```
-
-- On the source-generated path this approach is a closed solution: it never touches table metadata, so it does not matter whether `ColumnInfo` has a `Constant` field, and it works in AOT builds too.
-- Keep the split with scenario 3 clear: `ConstFilter` states "this table only ever holds this class of data", while a fragment states "this query is scoped to this tenant". Only the latter works when one process serves several tenants, because the former is process-wide metadata that changes globally once set.
-- Fragment keys are global, and re-registering an existing key does not overwrite the implementation; only the first delegate registered under a key is ever used. A test that needs a different implementation must use a different key rather than relying on re-registration.
-
-## Scenario 5: the tenant decides the physical table name
-
-**Requirement**: one physical table per tenant, with the name derived from the tenant code.
-
-**Approach**: put a placeholder in the table name and implement `IArged` so writes carry the argument automatically:
-
-```csharp
-[Table("Orders_{0}")]
-public class TenantOrder : ObjectBase, IArged
-{
-    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-    public long Id { get; set; }
-
-    [Column("Amount")]
-    public decimal Amount { get; set; }
-
-    string[] IArged.TableArgs =>
-        new[] { TenantContext.Current?.TenantId ?? throw new InvalidOperationException("Tenant not resolved.") };
-}
-```
-
-Queries can specify the argument in three ways, from narrowest to widest reuse:
-
-```csharp
-// 1) Single statement
-var orders = await orderViewService.SearchAsync(From<TenantOrder>("tenant_a"));
-
-// 2) Carried on a DAO and reused by a batch of operations
-var dao = viewDAO.WithArgs("tenant_a");
-var count = dao.Count(Prop(nameof(TenantOrder.Amount)) > 100m);
-```
-
-```csharp
-// 3) Override CreateSqlBuildContext so every query on this DAO inherits it
-public sealed class TenantOrderViewDAO : ObjectViewDAO<TenantOrder>
-{
-    public TenantOrderViewDAO(SessionManager sessionManager) : base(sessionManager) { }
-
-    public override SqlBuildContext CreateSqlBuildContext(bool initTable = false)
-    {
-        var context = base.CreateSqlBuildContext(initTable);
-        context.TableArgs = new[]
-        {
-            TenantContext.Current?.TenantId ?? throw new InvalidOperationException("Tenant not resolved.")
-        };
-        return context;
-    }
-}
-```
-
-Notes:
-
-- On the write path, `EntityService<T>` detects `IArged` and adds the argument automatically; batch writes group by `TableArgs` and run group by group. Writing directly through `IObjectDAO<T>` does not do this, so sharded writes should go through the service layer.
-- A `TableExpr` carrying its own `TableArgs` overrides what the context provided. With tenant context A, `From<TenantOrder>("tenant_b")` still reads table B. Statements like this inside multi-tenant code should be rejected in review.
-- Every argument is validated as a SQL name, so a tenant code containing quotes, semicolons or spaces throws at assignment time rather than while building SQL.
-- The third form fails loudly: an unresolved tenant throws instead of silently falling back to another table name.
-
-## Scenario 6: where the tenant value comes from
-
-**Requirement**: the tenant comes from a header, token or session, and one process serves several tenants at once.
-
-**Approach**: carry it in a scoped context object instead of passing parameters around:
+The tenant comes from a header, token or session, and one process serves several tenants at once. Start by funnelling "who is the current tenant" through one interface:
 
 ```csharp
 public interface ITenantContext
@@ -305,13 +39,211 @@ public sealed class HttpTenantContext : ITenantContext
 builder.Services.AddScoped<ITenantContext, HttpTenantContext>();
 ```
 
+Entities that need scoping implement a marker interface. The interface declares only the tenant column; the implementing type supplies the current value with an expression-bodied property:
+
+```csharp
+public interface ITenantEntity
+{
+    string TenantId { get; }
+}
+
+[Table("Orders")]
+public class Order : ObjectBase, ITenantEntity
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public long Id { get; set; }
+
+    [Column("TenantId")]
+    public string TenantId => TenantContext.Current?.TenantId
+        ?? throw new InvalidOperationException("Tenant not resolved.");
+
+    [Column("Amount")]
+    public decimal Amount { get; set; }
+}
+```
+
+The entity now knows both the tenant column's name and where its value comes from, so every registration and slice below refers to that one name.
+
 Notes:
 
-- The context must be scoped or request-level. Registering it as a singleton makes every tenant read the same value.
-- Implementations that depend on ambient state (for example `IArged.TableArgs`) must be `AsyncLocal`-based, otherwise concurrent requests bleed into each other. Freezing the tenant value into the entity when it is constructed is more robust.
+- The static accessor behind the tenant context (`TenantContext.Current` above) must be `AsyncLocal` or request-scoped. A singleton makes every tenant read the same value.
+- Write the tenant column as a read-only expression-bodied property. It still participates in read mapping, and on write the value comes from the database or the entity property, so business code never assigns it by hand.
 - Cache keys must include the tenant. A key such as `"order:123"` hits across tenants in a shared-table setup.
 
-## Scenario 7: the tenant decides the connection
+## Example 1: build `Expr` from the current tenant
+
+**Requirement**: the `Orders` table is shared by all tenants and the tenant id is an ordinary column. Lists, counts, exports and bulk updates must never surface another tenant's rows.
+
+**Approach**: treat the tenant condition as part of the query itself, assembled by one function that every entry point calls:
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+public static class OrderFilters
+{
+    public static LogicExpr For(OrderQueryRequest request)
+    {
+        var filter = (Prop(nameof(ITenantEntity.TenantId)) == TenantContext.Current?.TenantId)
+            & (Prop(nameof(Order.IsDeleted)) == false);
+
+        if (!string.IsNullOrEmpty(request.Keyword))
+            filter &= Prop(nameof(Order.Title)).Like($"%{request.Keyword}%");
+
+        return filter;
+    }
+}
+```
+
+Listing and counting call the same function, only the outermost statement differs:
+
+```csharp
+var page = await orderViewService.SearchAsync(
+    From<OrderView>().Where(OrderFilters.For(request)).OrderBy(Prop(nameof(Order.CreateTime)).Desc()).Section(0, 20));
+
+var total = await orderViewService.CountAsync(OrderFilters.For(request));
+```
+
+**Strength**: it is direct. The condition sits inside the query, so anyone reading the code sees which tenant the statement is scoped to; logging, breakpoints and unit tests need no detour. `Prop(...)` emits an alias-qualified column reference, so joining another table that also has a `TenantId` column is unambiguous. Expression queries, conditional update and conditional delete all use the same function.
+
+**Weakness**: it can only constrain the current table, meaning the one table you wrote into that specific statement. Three concrete consequences:
+
+- Another table in an association query is unconstrained. When an order brings along a department that is itself tenant-scoped, `OrderFilters.For(...)` does not reach the joined department rows.
+- `EXISTS` subqueries and the `WHERE` of `UPDATE` / `DELETE` must all carry it by hand, and each entry point you miss is a tenant you leak. Bulk update and bulk delete need the same scope condition; see scenario 2 of [Data Permissions](./data-permission.en.md).
+- Primary-key paths need their own object-level check. The condition decides what a query returns, not what a primary-key operation touches, so detail, update and delete still need an ownership check.
+
+## Example 2: shard by tenant with `TableArgs`
+
+**Requirement**: one physical table per tenant, with the name derived from the tenant code.
+
+**Approach**: put a placeholder in the table name and implement `IArged` so writes carry the argument automatically:
+
+```csharp
+[Table("Orders_{0}")]
+public class TenantOrder : ObjectBase, IArged, ITenantEntity
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public long Id { get; set; }
+
+    [Column("Amount")]
+    public decimal Amount { get; set; }
+
+    [Column("TenantId")]
+    public string TenantId => TenantContext.Current?.TenantId
+        ?? throw new InvalidOperationException("Tenant not resolved.");
+
+    string[] IArged.TableArgs => new[] { TenantId };
+}
+```
+
+Queries can specify the argument in three ways, from narrowest to widest reuse:
+
+```csharp
+// 1) Single statement
+var orders = await orderViewService.SearchAsync(From<TenantOrder>("tenant_a"));
+
+// 2) Carried on a DAO and reused by a batch of operations
+var dao = viewDAO.WithArgs("tenant_a");
+var count = dao.Count(Prop(nameof(TenantOrder.Amount)) > 100m);
+```
+
+```csharp
+// 3) Override CreateSqlBuildContext so every query on this DAO inherits it
+public sealed class TenantOrderViewDAO : ObjectViewDAO<TenantOrder>
+{
+    public TenantOrderViewDAO(SessionManager sessionManager) : base(sessionManager) { }
+
+    public override SqlBuildContext CreateSqlBuildContext(bool initTable = false)
+    {
+        var context = base.CreateSqlBuildContext(initTable);
+        context.TableArgs = new[] { TenantContext.Current?.TenantId ?? throw new InvalidOperationException("Tenant not resolved.") };
+        return context;
+    }
+}
+```
+
+**Strength**: the tenant dimension lands in the real table name instead of the `WHERE` clause, so a single-table statement looks exactly like it does in a single-tenant deployment. Cleanup, archiving and migration are table-level operations.
+
+**Weakness**:
+
+- On the write path, `EntityService<T>` detects `IArged` and adds the argument automatically; batch writes group by `TableArgs` and run group by group. Writing directly through `IObjectDAO<T>` does not do this, so sharded writes should go through the service layer.
+- A `TableExpr` carrying its own `TableArgs` overrides what the context provided. With tenant context A, `From<TenantOrder>("tenant_b")` still reads table B. Statements like this inside multi-tenant code should be rejected in review.
+- Every argument is validated as a SQL name, so a tenant code containing quotes, semicolons or spaces throws at assignment time rather than while building SQL.
+- It solves table routing, not row authorization. When the same table carries another tenant dimension (organization, region), example 1 or 3 is still needed.
+
+## Example 3: set the tenant condition as `ConstFilter`, with `GenericSqlExpr` reading the context directly
+
+**Requirement**: dozens of query entry points need the tenant condition, and threading it through parameters loses it one layer down. The condition should be written once and picked up by every query, every association and every write path.
+
+**Approach**: set the tenant condition as the fixed filter on the entity's table definition (`TableDefinition.ConstFilter`), with the fragment reading `TenantContext.Current` directly.
+
+`ConstFilter` is normally aggregated from `[Column(Constant = ...)]` and holds compile-time constants. This route is a different one: assign `TableDefinition` directly, with a `GenericSqlExpr` supplying the value. Both routes land on the same property and behave identically at runtime.
+
+Register the fragment first; the delegate reads the current tenant:
+
+```csharp
+using LiteOrm.Common;
+using static LiteOrm.Common.Expr;
+
+GenericSqlExpr.Register("TenantFilter", (context, sqlBuilder, outputParams, _) =>
+{
+    string tenant = TenantContext.Current?.TenantId
+        ?? throw new InvalidOperationException("Tenant not resolved.");
+
+    string paramName = outputParams.Count.ToString();
+    outputParams.Add(new Param(sqlBuilder.ToParamName(paramName), tenant));
+    return $"{sqlBuilder.ToSqlName(nameof(ITenantEntity.TenantId))} = {sqlBuilder.ToSqlParam(paramName)}";
+});
+```
+
+Then attach it to every entity implementing the tenant interface. The key line is this one: `TableDefinition.ConstFilter` is a public read-write `get; set;` property, so getting the table definition and assigning it is all it takes. No custom metadata provider is required.
+
+```csharp
+public static class TenantEntitySetup
+{
+    public static void EnableTenantFilter(IEnumerable<Assembly> assemblies)
+    {
+        foreach (var type in assemblies.SelectMany(a => a.GetTypes())
+                                       .Where(t => !t.IsAbstract && typeof(ITenantEntity).IsAssignableFrom(t)))
+        {
+            var tableDefinition = TableInfoProvider.Instance.GetTableDefinition(type);
+            if (tableDefinition is null) continue;
+
+            tableDefinition.ConstFilter = Expr.Sql("TenantFilter");
+        }
+    }
+}
+```
+
+Call it once at startup; every later operation carries the tenant condition:
+
+```csharp
+TenantEntitySetup.EnableTenantFilter(AppDomain.CurrentDomain.GetAssemblies());
+
+var orders = await orderViewService.Search(From<OrderView>());
+
+// SELECT *
+// FROM "Orders" "T0"
+// WHERE "TenantId" = @0                            -- @0 = tenant_a
+```
+
+The value is resolved at SQL-generation time, so every query re-reads `TenantContext.Current` and a tenant switch inside the same process takes effect immediately.
+
+**Where it applies.** This is the value it has over example 1: the condition enters the framework's own SQL generation instead of depending on the caller remembering to write it.
+
+- The main table's `WHERE`, including expression queries such as `Search` / `Count` / `Exists`, and key-based read paths such as `GetObject` / `ExistsKey`.
+- The `JOIN ... ON` of association queries. When an order view with a tenant slice joins departments, each table carries its own condition.
+- The `EXISTS` subqueries produced by `ForeignExpr` / `Exists` / `ExistsRelated`; the target table's own `ConstFilter` is merged in first.
+- The `WHERE` of `UPDATE` / `DELETE`, including key paths and bulk update and delete.
+
+**Cost and limits**:
+
+- A table with a fixed filter does not reuse the prepared-command cache: it rebuilds its SQL and command on every operation, at the cost of one extra SQL composition per call. Tables without a fixed filter keep using the cache.
+- The fragment can only write bare column names. `sqlBuilder.ToSqlName` produces an unqualified `"TenantId"`, whereas framework-generated conditions are qualified (`"T0"."TenantId"`). That is fine for single-table statements, but as soon as the statement joins another table with a `TenantId` column the name can be rejected as ambiguous, so pair it with example 1 and write association conditions with `Prop(...)`.
+- The fragment must be registered before SQL generation happens. Registering the same key twice does not overwrite, so a test that needs a different implementation must use a different key.
+- The delegate is referenced from the metadata setup code, and once `TableInfoProvider` has cached a `TableDefinition` every later lookup returns the same object; an already-cached `TableView` is not rebuilt when the definition changes, so the assignment must precede the first query.
+- Strictly speaking this is "supply a fixed filter's value at runtime through `GenericSqlExpr`", not "write the current tenant in as a compile-time constant". The reverse remains off limits: `[Column(Constant = "...")]` with one concrete tenant makes every tenant share that one condition.
+
+## Example 4: shard by tenant with the DAO's `DataSource`
 
 **Requirement**: tenant data lives in different databases and the connection follows the tenant.
 
@@ -327,21 +259,40 @@ public sealed class TenantOrderDAO : ObjectDAO<TenantOrder>
 ```
 
 ```csharp
+public sealed class TenantOrderViewDAO : ObjectViewDAO<TenantOrder>
+{
+    public TenantOrderViewDAO(SessionManager sessionManager) : base(sessionManager) { }
+
+    protected override string? DataSource => TenantContext.Current?.DataSourceName;
+
+    public override SqlBuildContext CreateSqlBuildContext(bool initTable = false)
+    {
+        var context = base.CreateSqlBuildContext(initTable);
+        context.TableArgs = new[] { TenantContext.Current?.TenantId ?? throw new InvalidOperationException("Tenant not resolved.") };
+        return context;
+    }
+}
+
 services.AddScoped<ObjectDAO<TenantOrder>, TenantOrderDAO>();
 services.AddScoped<ObjectViewDAO<TenantOrder>, TenantOrderViewDAO>();
 ```
 
-Notes:
+`DataSource` is a `protected virtual` property on `DAOBase` that returns the data source name from the table definition by default. Both the write DAO and the view DAO must override it; reads and writes each go through their own.
 
-- Register the subclass in place of the base type, otherwise the service layer resolves the framework default `ObjectDAO<T>` and the connection never changes.
-- Data sources are registered at startup (`AddDataSource`, or `RegisterLiteOrm` reading configuration); runtime only selects among them.
-- All data source contexts inside one `SessionManager` join the same transaction when `BeginTransaction` runs, read-only connections are skipped. A background job that writes across tenants must use separate scopes, otherwise one tenant's failure rolls back another tenant's writes.
+**Strength**: the strongest isolation, since tenants share no physical resources, so backup, restore, migration and quotas can be handled per database. Connection selection and `TableArgs` compose without interfering: one picks the database, the other the table.
+
+**Weakness**:
+
+- Register the subclass in place of the base type, otherwise the service layer resolves the framework default `ObjectDAO<T>` and the connection never changes. The registration must cover every DAO type in use: `ObjectDAO<T>`, `ObjectViewDAO<T>`, `DataDAO<T>` and `DataViewDAO<T>`, with view DAOs on `DataViewDAO<T>` the easiest to miss.
+- Data sources are registered at startup (`AddDataSource`, or `RegisterLiteOrm` reading configuration); runtime only selects among them. When tenant connection strings come from a database or a config centre at runtime, line the registration up with tenant loading.
+- A batch that spans tenants lands on different connections with no cross-database transaction available, so split it into separate scopes. All data source contexts inside one `SessionManager` join the same transaction when `BeginTransaction` runs, read-only connections are skipped, so one tenant's failure rolls back another tenant's writes.
+- Example 3's `ConstFilter` still applies: sharding by database does not remove the need for row filtering, because one database may still hold another tenant dimension.
 
 ## Related links
 
 - [Back to index](../README.md)
 - [Permission Filtering and User Scopes](../di/permission-filtering.en.md)
 - [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md)
-- [Data Permissions in Practice](./data-permission.en.md)
-- [Audit and Change Tracking in Practice](./audit-and-change-tracking.en.md)
-- [Concurrency and Read/Write Splitting in Practice](./concurrency-and-read-write-splitting.en.md)
+- [Data Permissions](./data-permission.en.md)
+- [Audit and Change Tracking](./audit-and-change-tracking.en.md)
+- [Concurrency and Read/Write Splitting](./concurrency-and-read-write-splitting.en.md)

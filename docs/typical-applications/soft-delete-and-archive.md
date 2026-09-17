@@ -1,4 +1,4 @@
-# 软删除与历史数据典型应用
+# 软删除与历史数据
 
 LiteOrm 没有内置软删除：没有 `[SoftDelete]` 特性，也没有把 `Delete` 自动改写成 `Update` 的开关。能用的两个原语是固定切片（`[Column(Constant = ...)]`）与运行时 `Expr` 条件，判断标准还是那条：这个规则在编译期能不能确定：
 
@@ -37,7 +37,7 @@ SELECT * FROM "Customers" "T0" WHERE "T0"."IsDeleted" = 0
 - `Constant` 的值是编译期常量，属性写成只读（`=> false`），语义就是“这个模型看到的数据天然都是未删除的”。布尔切片直接内联成字面量，不会走参数。
 - 写操作要换成真实实体（不带 `Constant`），否则连“把 IsDeleted 改成 true”这条更新都会被自己的条件挡住，任何需要触碰已删除行的维护操作都做不了。
 - 视图模型上声明的切片同样作用于统计与导出，前提是这些入口也走同一个视图类型。
-- 启用 `TableInfo` 源生成（NativeAOT）时特性里的切片不会生成 `ConstFilter`，需要把固定条件改成运行时构件，写法见[多租户隔离典型应用](./tenant-isolation.md)的场景 4。
+- 启用 `TableInfo` 源生成（NativeAOT）时特性里的切片不会生成 `ConstFilter`，需要改成运行时赋值 `TableDefinition.ConstFilter`，写法见[多租户隔离](./tenant-isolation.md)的示例三。
 
 ## 场景 2：回收站与管理员查看已删除数据
 
@@ -63,7 +63,7 @@ private Expr BuildCustomerFilter(CustomerQueryRequest request, ICurrentUser user
 
 - 回收站入口不追加未删除条件，但必须限制为管理员或数据归属人，否则等于把删除数据暴露给所有用户。
 - 统计、报表、导出如果各自决定“是否包含已删除”，就会出现“列表 100 条、统计 120 条”的差异。把 `IncludeDeleted` 做成请求上的字段，所有入口读同一个值。
-- 详情、修改、删除仍要单独校验，见[数据权限典型应用](./data-permission.md)的场景 3。
+- 详情、修改、删除仍要单独校验，见[数据权限](./data-permission.md)的场景 3。
 
 ## 场景 3：删除动作改成打标记
 
@@ -110,7 +110,7 @@ public sealed class CustomerService : EntityService<Customer>, ICustomerService
 
 - 后两个异步入口是接口成员的直接实现，子类覆盖不到。与其逐个覆盖、还要记住哪几个盖不住，不如把删除语义写在自己的服务方法里。
 - 硬删除留给运维工具，并显式走 `IObjectDAO<T>`，不要和业务删除混在同一个入口上。
-- 软删除走的是一次 `Update`，触发的是 `OnUpdating` / `OnUpdated`，不会触发 `OnDeleted`。审计依赖删除事件时要么在 `OnUpdating` 里识别 `IsDeleted` 由 `false` 变 `true` 记为删除，要么在业务方法里显式写审计，见[审计与变更追踪典型应用](./audit-and-change-tracking.md)。
+- 软删除走的是一次 `Update`，触发的是 `OnUpdating` / `OnUpdated`，不会触发 `OnDeleted`。审计依赖删除事件时要么在 `OnUpdating` 里识别 `IsDeleted` 由 `false` 变 `true` 记为删除，要么在业务方法里显式写审计，见[审计与变更追踪](./audit-and-change-tracking.md)。
 
 ## 场景 4：软删除之后同一个业务编号还能再建
 
@@ -227,8 +227,8 @@ var archived = await archiveService.SearchAsync(From<OrderArchive>("202609"));
 ## 相关链接
 
 - [返回目录](../README.md)
-- [数据权限典型应用](./data-permission.md)
-- [审计与变更追踪典型应用](./audit-and-change-tracking.md)
-- [多租户隔离典型应用](./tenant-isolation.md)
+- [数据权限](./data-permission.md)
+- [审计与变更追踪](./audit-and-change-tracking.md)
+- [多租户隔离](./tenant-isolation.md)
 - [分表分库](../advanced-topics/sharding-and-tableargs.md)
 - [事务](../di/transactions.md)

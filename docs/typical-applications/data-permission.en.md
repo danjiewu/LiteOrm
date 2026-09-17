@@ -1,4 +1,4 @@
-# Data Permissions in Practice
+# Data Permissions
 
 Filtering query results by the current user is only half of data permissions. The other half is deciding, when a caller skips the list and goes straight at a primary key, who judges whether that access is allowed. The five scenarios below cover query filtering, scoped writes, object-level checks and interface-level enforcement.
 
@@ -10,7 +10,7 @@ Three places can hold the rule, and the only criterion is whether the value is k
 | `GenericSqlExpr` fragment | A rule that must be reused without threading parameters | The same rule appears at several entry points |
 | `TableDefinition.ConstFilter` | Fixed status, fixed partition, fixed tenant class | Rules that never change for the model |
 
-Writing the current user into `ConstFilter` makes every caller see the same user's data. For fixed slices see [Tenant Isolation in Practice](./tenant-isolation.en.md).
+Writing the current user into `ConstFilter` makes every caller see the same user's data. For fixed slices see [Tenant Isolation](./tenant-isolation.en.md).
 
 ## Scenario 1: lists, counts and exports only show what the caller may see
 
@@ -103,7 +103,7 @@ Notes:
 
 - Keep "does not exist" and "not allowed" distinct (`404` and `403`) so the client can show the right message. If the business must not reveal existence, return `404` everywhere, consistently.
 - Update and delete need the same check. Pushing the scope into the write statement instead (scenario 2) is more robust because the check happens in SQL.
-- The check must read from the master. A read replica returns lagging data and misjudges ownership; see [Concurrency and Read/Write Splitting in Practice](./concurrency-and-read-write-splitting.en.md).
+- The check must read from the master. A read replica returns lagging data and misjudges ownership; see [Concurrency and Read/Write Splitting](./concurrency-and-read-write-splitting.en.md).
 
 ## Scenario 4: turn the scope rule into a reusable fragment
 
@@ -215,7 +215,7 @@ Notes:
 
 - [Back to index](../README.md)
 - [Permission Filtering and User Scopes](../di/permission-filtering.en.md)
-- [Tenant Isolation in Practice](./tenant-isolation.en.md)
-- [Soft Deletes and Historical Data in Practice](./soft-delete-and-archive.en.md)
-- [Audit and Change Tracking in Practice](./audit-and-change-tracking.en.md)
+- [Tenant Isolation](./tenant-isolation.en.md)
+- [Soft Deletes and Historical Data](./soft-delete-and-archive.en.md)
+- [Audit and Change Tracking](./audit-and-change-tracking.en.md)
 - [Security](../advanced-topics/security.en.md)

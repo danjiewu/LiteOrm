@@ -1,6 +1,6 @@
-# 数据权限典型应用
+# 数据权限
 
-按当前用户过滤查询结果只是数据权限的一半，另一半是调用方绕开列表、直接按主键操作时，由谁判断这次访问越权。下面五个场景覆盖查询过滤、范围写入、对象级校验和接口级兜底。
+按当前用户过滤查询结果只是数据权限的一半，另一半是调用方绕开列表、直接按主键操作时，由谁判断这次访问越权。下面六个场景覆盖查询过滤、范围写入、对象级校验和接口级兜底。
 
 先明确三类落点，判断标准只有一条：这个值在编译期能不能确定。
 
@@ -10,7 +10,7 @@
 | `GenericSqlExpr` 构件 | 需要复用、不想层层传参的过滤规则 | 同一套规则出现在多个入口 |
 | `TableDefinition.ConstFilter` | 固定状态、固定分区、固定租户类型 | 模型层面恒定不变的规则 |
 
-把当前登录用户写进 `ConstFilter`，结果是所有人都看到同一个用户的数据。固定切片的用法见[多租户隔离典型应用](./tenant-isolation.md)。
+把当前登录用户写进 `ConstFilter`，结果是所有人都看到同一个用户的数据。固定切片的用法见[多租户隔离](./tenant-isolation.md)。
 
 ## 场景 1：列表、统计、导出只看到自己有权限的数据
 
@@ -103,7 +103,7 @@ public async Task<Order> GetOrderAsync(long id, ICurrentUser user, CancellationT
 
 - 把“不存在”和“无权访问”分开（`404` 与 `403`），前端才能给出正确提示。如果业务上不希望暴露资源是否存在，就统一返回 `404`，但要在所有入口保持一致。
 - 修改与删除走同一套判断。更稳的写法是让写操作也带上范围条件（场景 2），把校验下沉到 SQL 里。
-- 校验要读主库。从只读副本读到的是滞后数据，会误判归属，见[并发控制与读写分离典型应用](./concurrency-and-read-write-splitting.md)。
+- 校验要读主库。从只读副本读到的是滞后数据，会误判归属，见[并发控制与读写分离](./concurrency-and-read-write-splitting.md)。
 
 ## 场景 4：把范围规则做成可复用构件
 
@@ -215,7 +215,7 @@ services.AddScoped<IServiceInvokingEvent, RoleCheckEvent>();
 
 - [返回目录](../README.md)
 - [权限过滤与用户范围控制](../di/permission-filtering.md)
-- [多租户隔离典型应用](./tenant-isolation.md)
-- [软删除与历史数据典型应用](./soft-delete-and-archive.md)
-- [审计与变更追踪典型应用](./audit-and-change-tracking.md)
+- [多租户隔离](./tenant-isolation.md)
+- [软删除与历史数据](./soft-delete-and-archive.md)
+- [审计与变更追踪](./audit-and-change-tracking.md)
 - [安全性](../advanced-topics/security.md)

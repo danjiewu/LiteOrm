@@ -1,4 +1,4 @@
-# 审计与变更追踪典型应用
+# 审计与变更追踪
 
 审计通常有两类需求：一类是“谁在什么时候调了哪个接口”，一类是“这条记录从什么变成了什么”。前者靠服务调用事件，后者靠实体服务事件。下面按场景给出可直接接上的写法。
 
@@ -200,7 +200,7 @@ public void ChangePhone(long userId, string phone, [Log(false)] string idCardNum
 
 - 被标记的参数在框架日志里显示为 `*`。
 - `ServiceInvokeContext.Arguments` 保存的是原始参数，不做掩码处理。订阅者把 `Arguments` 写进日志前要自己判断。
-- 审计表本身也要分类：手机号、证件号这类字段入库前做脱敏或加密，见[敏感字段加密与脱敏典型应用](./sensitive-data-protection.md)。
+- 审计表本身也要分类：手机号、证件号这类字段入库前做脱敏或加密，见[敏感字段加密与脱敏](./sensitive-data-protection.md)。
 
 ## 场景 7：After 事件的触发条件
 
@@ -225,6 +225,6 @@ public void ChangePhone(long userId, string phone, [Log(false)] string idCardNum
 - [返回目录](../README.md)
 - [日志与诊断](../di/logging.md)
 - [事务](../di/transactions.md)
-- [软删除与历史数据典型应用](./soft-delete-and-archive.md)
-- [敏感字段加密与脱敏典型应用](./sensitive-data-protection.md)
-- [数据权限典型应用](./data-permission.md)
+- [软删除与历史数据](./soft-delete-and-archive.md)
+- [敏感字段加密与脱敏](./sensitive-data-protection.md)
+- [数据权限](./data-permission.md)

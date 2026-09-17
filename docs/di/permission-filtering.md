@@ -1,19 +1,21 @@
 # 权限过滤与用户范围控制
 
-当系统既要展示查询能力，又要避免普通用户读写到不属于自己的数据时，权限过滤就不能只停留在前端页面提示层。LiteOrm 中常见的承载位置有三层：
+当系统既要展示查询能力，又要避免普通用户读写到不属于自己的数据时，权限过滤就不能只停留在前端页面提示层。LiteOrm 中常见的承载位置有两层：
 
 1. **运行时 Expr**：按当前用户、当前租户、接口参数动态追加条件。
-2. **模型级 `ConstFilter`**：承载固定状态、固定分区、历史兼容模型这类恒定规则。
-3. **`CreateSqlBuildContext` / `TableArgs`**：当租户维度已经变成物理分表或路由参数时，直接改 SQL 构建上下文。
+2. **模型级 `ConstFilter`**：承载固定状态、固定分区、历史兼容模型这类恒定规则；值来自运行时上下文时，用 `GenericSqlExpr` 提供取值。
 
-核心原则是：**当前用户 / 当前租户属于运行时上下文，优先用 Expr 或 `GenericSqlExpr`；只有固定不变的规则才适合落到 `TableDefinition.ConstFilter`。**  
+核心原则是：**当前用户 / 当前租户属于运行时上下文，优先用 Expr；需要它们自动覆盖关联与写入路径时，落到 `TableDefinition.ConstFilter`，取值由 `GenericSqlExpr` 提供；而特性里的 `Constant` 只适合固定不变的规则。**
+
+多租户按隔离层次拆出的四种落地写法（构造 `Expr`、`TableArgs` 分表、`ConstFilter` 切片、重写 `DataSource` 分库）见[多租户隔离](../typical-applications/tenant-isolation.md)。
+
 在实际项目里，一条查询通常不是只有“权限条件”这一项，而是会同时叠加：
 
 - 业务条件
 - 软删除条件（例如 `IsDeleted == false`）
 - 当前用户 / 当前租户范围条件
 
-本篇聚焦各机制的**原理与用法**；面向业务的落地场景清单见[数据权限典型应用](../typical-applications/data-permission.md)。
+本篇聚焦各机制的**原理与用法**；面向业务的落地场景清单见[数据权限](../typical-applications/data-permission.md)。
 
 ## 场景选型
 
@@ -23,8 +25,6 @@
 | 普通用户查询列表、统计 | 运行时追加 `Expr` | 当前用户属于请求时上下文 |
 | 当前用户详情、修改、删除 | 详情接口再做显式访问校验 | 避免只靠列表过滤被绕过 |
 | 模型天然固定状态 / 固定分区 | `[Column(Constant = ...)]` / `TableDefinition.ConstFilter` | 规则在模型层面恒定不变 |
-| 共享表多租户 | 运行时追加 `TenantId == currentTenantId` | 同一张表内按行隔离 |
-| 按租户物理分表 | `TableArgs` 或重写 `CreateSqlBuildContext` | 租户决定真实表名或路由 |
 
 ## 1. WebDemo 中的当前用户过滤
 
@@ -101,7 +101,7 @@ var items = await orderService.SearchAsync(expr);
 var myItems = items.Where(x => x.CreatedByUserId == currentUser.Id).ToList();
 ```
 
-推荐把“业务条件 + `IsDeleted` + 用户范围”在同一个查询入口统一拼好，再复用到列表、统计、导出等查询。  
+推荐把“业务条件 + `IsDeleted` + 用户范围”在同一个查询入口统一拼好，再复用到列表、统计、导出等查询。
 后者虽然“看起来也能限制结果”，但会带来三个问题：
 
 1. `Count` 与分页总数不准确。
@@ -159,14 +159,20 @@ public class Department
 - 启用态、正式态、历史兼容表等**模型级恒定条件**
 - 固定业务分区、固定来源、固定租户类型这类**编译期就确定**的规则
 - 固定数值、布尔、字符串标记这类**不会随请求变化**的表级条件
+- 租户、组织这类需要**在任意查询、关联与写入路径都自动生效**的行级切片。这类值来自运行时上下文，由 `GenericSqlExpr` 承载取值，做法见本节结尾
 
 它不适合：
 
-- 当前登录用户
-- 当前请求租户
-- 来自接口参数、令牌或运行时上下文的条件
+- 用 `Column.Constant` 把某个具体的当前用户、当前租户写进模型。特性参数是编译期常量，写进去的值对所有请求相同，结果是所有人都看到同一个租户的数据
 
-如果你有自定义元数据提供器，也可以在生成 `TableDefinition` 时直接设置 `ConstFilter`；但语义仍然应该保持“固定规则”，而不是“当前请求变量”。
+如果你有自定义元数据提供器，也可以在生成 `TableDefinition` 时直接设置 `ConstFilter`。`TableDefinition.ConstFilter` 本身是公开可写属性，还有一条更直接的路：取到表定义后赋值，取值来源交给 `GenericSqlExpr`。
+
+```csharp
+var tableDefinition = TableInfoProvider.Instance.GetTableDefinition(typeof(Order))!;
+tableDefinition.ConstFilter = Expr.Sql("TenantFilter");   // 构件内部直接读当前租户
+```
+
+这样条件就脱离了「编译期常量」的约束，同时保留了 `ConstFilter`「任意查询、关联与写入路径都自动生效」的能力。取舍在于语义和代价：`ConstFilter` 变成运行时取值的属性之后，声明了它的表不再复用预定义命令缓存，每次操作都要重新拼接 SQL 并重建命令。这种做法完整的落地写法，包括租户接口、构件注册与生效范围，见[多租户隔离](../typical-applications/tenant-isolation.md)的示例三。
 
 这也意味着：如果你在 `ExistsRelated<Department>(...)` 里按部门表过滤用户，而 `Department` 本身又声明了 `State == Enabled` 一类的固定规则，那么这条规则会自动进入 `EXISTS` 子查询，不需要你在 `InnerExpr` 里再手写一次。
 
@@ -202,114 +208,6 @@ var filter = BuildBusinessFilter(request)
 
 安全注意事项见[安全性](../advanced-topics/security.md)中的 `GenericSqlExpr` 章节。
 
-## 3. 多租户实现方式
-
-多租户不是单一方案，而是“隔离层次”的选择问题。LiteOrm 中最常见的是下面三种方式。
-
-### 3.1 共享表多租户：程序里构造 `Expr`
-
-如果所有租户共用同一张表，最直接的办法是在查询构建阶段统一追加 `TenantId` 与 `IsDeleted` 条件：
-
-```csharp
-using static LiteOrm.Common.Expr;
-
-var tenantFilter = Prop(nameof(Order.TenantId)) == currentTenantId;
-var filter = BuildBusinessFilter(request)
-    & (Prop(nameof(Order.IsDeleted)) == false)
-    & tenantFilter;
-
-var result = await orderService.SearchAsync(
-    From<OrderView>()
-        .Where(filter)
-        .OrderBy(Prop(nameof(Order.CreatedTime)).Desc())
-        .Section(0, 20)
-);
-```
-
-这是最常见、也最容易和当前用户过滤叠加的方案。
-
-### 3.2 固定租户模型：用 `ConstFilter` 承载固定规则
-
-如果某个模型本身就只代表某一类固定租户切片，也可以把规则下沉到 `ConstFilter`。典型场景包括：
-
-- 只查询平台租户的数据
-- 只查询内部租户归档表的数据
-- 为历史兼容保留一个“天然固定过滤条件”的旧模型
-
-例如：
-
-```csharp
-public enum TenantKind
-{
-    Platform = 1,
-    Merchant = 2
-}
-
-[Table("Orders")]
-public class PlatformOrder : ObjectBase
-{
-    [Column("Id", IsPrimaryKey = true)]
-    public long Id { get; set; }
-
-    [Column("TenantKind", Constant = TenantKind.Platform)]
-    public TenantKind TenantKind => TenantKind.Platform;
-}
-```
-
-请注意：这里表达的是“这个模型天然只看平台租户”，**不是**“每次根据当前租户动态切换”。  
-一旦租户值来自当前请求，就应该回到运行时 Expr 或 `GenericSqlExpr`。
-
-### 3.3 按租户物理分表：重写 `CreateSqlBuildContext`
-
-如果租户维度已经体现在真实表名里，例如 `[Table("Orders_{0}")]`，那么比起加 `WHERE TenantId = ...`，更合适的是直接控制 SQL 构建上下文中的 `TableArgs`：
-
-```csharp
-[Table("Orders_{0}")]
-public class TenantOrder : ObjectBase
-{
-    [Column("Id", IsPrimaryKey = true)]
-    public long Id { get; set; }
-}
-
-public class TenantOrderViewDAO : ObjectViewDAO<TenantOrder>
-{
-    private readonly ITenantProvider _tenantProvider;
-
-    public TenantOrderViewDAO(ITenantProvider tenantProvider)
-    {
-        _tenantProvider = tenantProvider;
-    }
-
-    public override SqlBuildContext CreateSqlBuildContext(bool initTable = false)
-    {
-        var context = base.CreateSqlBuildContext(initTable);
-        context.TableArgs = new[] { _tenantProvider.CurrentTenantCode };
-        return context;
-    }
-}
-```
-
-这样生成 SQL 时会自动把当前租户代码代入真实表名，例如 `Orders_tenant_a`。
-
-适合这种方式的场景：
-
-- 不同租户落在不同物理表
-- 希望 `Expr`、`ExprString`、DAO 查询统一继承同一套路由规则
-- 租户路由是“表名问题”，而不是“行过滤问题”
-
-之所以这条路径能生效，是因为 DAO 和 `ExprString` 都会通过 `CreateSqlBuildContext(...)` 创建 SQL 构建上下文；当你重写它并写入 `TableArgs` 时，后续 SQL 生成自然会沿用这组路由参数。更多分表细节见[分表分库](../advanced-topics/sharding-and-tableargs.md)。
-
-同时也要注意：如果某个下层 `TableExpr` 又显式指定了自己的 `TableArgs`，它会覆盖当前上下文中继承下来的值。  
-在多租户或受范围约束的查询里，这意味着你可能无意中跳出了原本的租户 / 分片边界，因此这种显式覆盖必须经过审查。
-
-### 3.4 三种方案如何选择
-
-| 方案 | 适合场景 | 优点 | 限制 |
-|------|----------|------|------|
-| 运行时 Expr | 当前用户、当前租户、接口参数驱动的过滤 | 直观、灵活、最通用 | 需要在查询入口统一拼装 |
-| `ConstFilter` | 固定状态、固定业务切片、固定租户类型 | 自动注入 SQL，主表与关联查询都生效；关联表条件只进表达式查询，见 2.2 | 不适合当前请求上下文 |
-| `CreateSqlBuildContext` + `TableArgs` | 按租户物理分表或路由 | 直接命中真实表，适合分表设计 | 解决的是表路由，不是行权限 |
-
 ## 4. 前端联动建议
 
 - 在 UI 中明确告知普通用户“查询结果已自动按当前账号或租户范围过滤”。
@@ -326,9 +224,11 @@ public class TenantOrderViewDAO : ObjectViewDAO<TenantOrder>
 
 只要详情、修改、删除接口没有校验，用户就仍然可能通过直接请求访问到不属于自己的对象。
 
-### 5.3 用 `ConstFilter` 承载当前用户或当前租户
+### 5.3 用 `Column.Constant` 承载当前用户或当前租户
 
-`ConstFilter` 表达的是固定规则，不是“本次请求是谁”。如果值来自当前登录态、令牌、请求头或租户上下文，就应改用 Expr、`GenericSqlExpr` 或表路由。
+`[Column(Constant = ...)]` 的参数是编译期常量。把当前登录态、令牌、请求头里的值写进去，写进去的具体值对所有请求都相同，结果是所有人都看到同一个用户或同一个租户的数据。
+
+需要「值随请求变化、但生效范围仍覆盖全部路径」时，把 `ConstFilter` 在表定义上赋值，取值交给 `GenericSqlExpr`，见 2.2 结尾。值只在查询入口使用、不需要覆盖关联与写入路径时，用运行时 `Expr` 或 `GenericSqlExpr` 构件更轻。
 
 ### 5.4 把行过滤和物理分表混为一谈
 

@@ -1,19 +1,21 @@
 # Permission Filtering and User Scope Control
 
-When a system needs rich querying while preventing regular users from reading or writing data they do not own, permission filtering cannot stop at the frontend UI layer. In LiteOrm, scope rules usually live at one of three layers:
+When a system needs rich querying while preventing regular users from reading or writing data they do not own, permission filtering cannot stop at the frontend UI layer. In LiteOrm, scope rules usually live at one of two layers:
 
 1. **Runtime Expr**: append conditions from the current user, current tenant, or request arguments.
-2. **Model-level `ConstFilter`**: carry fixed rules such as status, partition flags, or compatibility slices.
-3. **`CreateSqlBuildContext` / `TableArgs`**: when tenant isolation is already expressed as physical table routing.
+2. **Model-level `ConstFilter`**: carry fixed rules such as status, partition flags, or compatibility slices; when the value comes from runtime context, `GenericSqlExpr` supplies it.
 
-The key rule is: **current user / current tenant belongs to runtime context, so prefer Expr or `GenericSqlExpr`; only fixed rules should go into `TableDefinition.ConstFilter`.**  
+The key rule is: **current user / current tenant belongs to runtime context, so prefer Expr; when those conditions must also cover associations and write paths automatically, put them in `TableDefinition.ConstFilter` with `GenericSqlExpr` supplying the value; the `Constant` attribute argument is only for rules that never change.**
+
+For the four multi-tenancy layouts split by isolation layer (building `Expr`, sharding with `TableArgs`, slicing with `ConstFilter`, and routing databases by overriding `DataSource`), see [Tenant Isolation](../typical-applications/tenant-isolation.en.md).
+
 In real projects, a query usually combines more than just a "permission condition". It often stacks:
 
 - business conditions
 - soft-delete conditions (for example `IsDeleted == false`)
 - current-user / current-tenant scope conditions
 
-This article focuses on the **mechanics** of each mechanism. For a business-oriented list of landed scenarios, see [Data Permissions in Practice](../typical-applications/data-permission.en.md).
+This article focuses on the **mechanics** of each mechanism. For a business-oriented list of landed scenarios, see [Data Permissions](../typical-applications/data-permission.en.md).
 
 ## Scenario Matrix
 
@@ -23,8 +25,6 @@ This article focuses on the **mechanics** of each mechanism. For a business-orie
 | Regular user queries lists and counts | Append runtime `Expr` | The current user is request-scoped |
 | Regular user reads detail, updates, or deletes | Explicit access check at the endpoint layer | Prevents bypassing list filtering |
 | Model always represents one fixed state / slice | `[Column(Constant = ...)]` / `TableDefinition.ConstFilter` | The rule is invariant at the model level |
-| Shared-table multi-tenancy | Append `TenantId == currentTenantId` at runtime | Isolation happens by rows in one table |
-| Physical tenant sharding | `TableArgs` or override `CreateSqlBuildContext` | The tenant decides the real table name or route |
 
 ## 1. Filtering Behavior in WebDemo
 
@@ -101,7 +101,7 @@ var items = await orderService.SearchAsync(expr);
 var myItems = items.Where(x => x.CreatedByUserId == currentUser.Id).ToList();
 ```
 
-It is better to assemble "business conditions + `IsDeleted` + user scope" in one place and reuse that logic for lists, counts, exports, and similar queries.  
+It is better to assemble "business conditions + `IsDeleted` + user scope" in one place and reuse that logic for lists, counts, exports, and similar queries.
 The second approach creates three problems:
 
 1. `Count` and pagination totals become inaccurate.
@@ -159,14 +159,20 @@ It fits:
 - **Model-level invariant rules** such as enabled rows, published rows, or compatibility slices
 - **Compile-time fixed** partitions such as a fixed tenant kind or source type
 - **Table-level fixed conditions** expressed by numeric, boolean, or string markers that do not vary per request
+- **Row slices that must apply on every path** — a tenant or an organization — where the value comes from runtime context and `GenericSqlExpr` supplies it. See the end of this section
 
 It does **not** fit:
 
-- the current logged-in user
-- the current request tenant
-- any value coming from request arguments, tokens, or runtime context
+- writing one concrete current user or current tenant into the model with `Column.Constant`. Attribute arguments are compile-time constants, so the value is identical for every request and every caller ends up seeing the same tenant's data
 
-If you maintain a custom metadata provider, you can also assign `ConstFilter` directly while creating `TableDefinition`; the semantic rule is still the same: it should represent a fixed model rule, not a request-scoped variable.
+If you maintain a custom metadata provider, you can also assign `ConstFilter` directly while creating `TableDefinition`. `TableDefinition.ConstFilter` is a public read-write property, and there is a more direct route: fetch the table definition and assign it, with `GenericSqlExpr` supplying the value.
+
+```csharp
+var tableDefinition = TableInfoProvider.Instance.GetTableDefinition(typeof(Order))!;
+tableDefinition.ConstFilter = Expr.Sql("TenantFilter");   // the fragment reads the current tenant itself
+```
+
+The condition is then no longer bound to compile-time constants, while keeping the property that makes `ConstFilter` useful: it applies automatically to every query, association and write path. The trade-off is semantic and has a cost: once `ConstFilter` resolves its value at runtime, tables that declare it stop reusing the prepared-command cache and rebuild their SQL and command on every operation. The complete layout, including the tenant interface, the fragment registration and the scope it covers, is in example 3 of [Tenant Isolation](../typical-applications/tenant-isolation.en.md).
 
 That also means: if you filter users with `ExistsRelated<Department>(...)`, and `Department` itself declares a fixed rule such as `State == Enabled`, that rule is automatically injected into the `EXISTS` subquery. You do not need to repeat it manually in `InnerExpr`.
 
@@ -202,114 +208,6 @@ This approach is useful because:
 
 For the security boundary, see the `GenericSqlExpr` section in [Security](../advanced-topics/security.en.md).
 
-## 3. Multi-Tenancy Patterns
-
-Multi-tenancy is not one single pattern; it depends on where the isolation boundary lives. In LiteOrm, the most common options are the following three.
-
-### 3.1 Shared-table multi-tenancy: build `Expr` in application code
-
-If all tenants share one table, the most direct option is to append both `TenantId` and `IsDeleted` in query construction:
-
-```csharp
-using static LiteOrm.Common.Expr;
-
-var tenantFilter = Prop(nameof(Order.TenantId)) == currentTenantId;
-var filter = BuildBusinessFilter(request)
-    & (Prop(nameof(Order.IsDeleted)) == false)
-    & tenantFilter;
-
-var result = await orderService.SearchAsync(
-    From<OrderView>()
-        .Where(filter)
-        .OrderBy(Prop(nameof(Order.CreatedTime)).Desc())
-        .Section(0, 20)
-);
-```
-
-This is the most common pattern, and it combines naturally with current-user filtering.
-
-### 3.2 Fixed-tenant models: carry invariant rules with `ConstFilter`
-
-If a model always represents one fixed tenant slice, the rule can be pushed down into `ConstFilter`. Typical examples include:
-
-- platform-only tenant data
-- archived internal-tenant data
-- legacy compatibility models with a built-in fixed filter
-
-For example:
-
-```csharp
-public enum TenantKind
-{
-    Platform = 1,
-    Merchant = 2
-}
-
-[Table("Orders")]
-public class PlatformOrder : ObjectBase
-{
-    [Column("Id", IsPrimaryKey = true)]
-    public long Id { get; set; }
-
-    [Column("TenantKind", Constant = TenantKind.Platform)]
-    public TenantKind TenantKind => TenantKind.Platform;
-}
-```
-
-This means "this model only sees platform tenant rows". It does **not** mean "switch dynamically per current tenant".  
-As soon as the tenant value comes from the current request, go back to runtime Expr or `GenericSqlExpr`.
-
-### 3.3 Physical tenant sharding: override `CreateSqlBuildContext`
-
-If the tenant is part of the physical table name, such as `[Table("Orders_{0}")]`, it is often better to control `TableArgs` in the SQL build context than to append `WHERE TenantId = ...`:
-
-```csharp
-[Table("Orders_{0}")]
-public class TenantOrder : ObjectBase
-{
-    [Column("Id", IsPrimaryKey = true)]
-    public long Id { get; set; }
-}
-
-public class TenantOrderViewDAO : ObjectViewDAO<TenantOrder>
-{
-    private readonly ITenantProvider _tenantProvider;
-
-    public TenantOrderViewDAO(ITenantProvider tenantProvider)
-    {
-        _tenantProvider = tenantProvider;
-    }
-
-    public override SqlBuildContext CreateSqlBuildContext(bool initTable = false)
-    {
-        var context = base.CreateSqlBuildContext(initTable);
-        context.TableArgs = new[] { _tenantProvider.CurrentTenantCode };
-        return context;
-    }
-}
-```
-
-When SQL is generated, the current tenant code is injected into the real table name, for example `Orders_tenant_a`.
-
-This fits scenarios where:
-
-- different tenants live in different physical tables
-- you want Expr, ExprString, and DAO queries to inherit the same route automatically
-- tenant isolation is a **table routing** concern rather than a **row filtering** concern
-
-This works because DAO and `ExprString` both create SQL contexts through `CreateSqlBuildContext(...)`; once you override that method and populate `TableArgs`, downstream SQL generation automatically reuses the same route parameters. For more details, see [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md).
-
-Also note that if a lower-level `TableExpr` explicitly sets its own `TableArgs`, that value overrides the inherited context value.  
-In multi-tenant or scoped queries, this means you can unintentionally leave the original tenant / shard boundary, so explicit overrides should be reviewed carefully.
-
-### 3.4 How to choose
-
-| Pattern | Best for | Advantage | Limitation |
-|------|----------|------|------|
-| Runtime Expr | current user, current tenant, request-driven filters | simple, flexible, universal | must be applied consistently at query entry points |
-| `ConstFilter` | fixed status, fixed business slice, fixed tenant type | auto-injected into SQL for the main table and association queries; joined-table conditions only reach expression queries (see 2.2) | not suitable for request-scoped context |
-| `CreateSqlBuildContext` + `TableArgs` | physical tenant sharding / routing | hits the real table directly | solves routing, not row-level authorization |
-
 ## 4. Frontend Guidance
 
 - Clearly indicate to regular users that "query results are automatically filtered to the current account or tenant scope."
@@ -326,9 +224,11 @@ The frontend can hide buttons, but this cannot serve as the final authorization 
 
 As long as detail, update, and delete endpoints lack verification, users can still directly access objects they do not own.
 
-### 5.3 Using `ConstFilter` for the current user or current tenant
+### 5.3 Using `Column.Constant` for the current user or current tenant
 
-`ConstFilter` expresses a fixed rule, not "who this request belongs to". If the value comes from login state, a token, a header, or tenant context, switch to Expr, `GenericSqlExpr`, or table routing.
+The argument of `[Column(Constant = ...)]` is a compile-time constant. Writing a login state, token or header value into it means the same concrete value applies to every request, so every caller sees one user's or one tenant's data.
+
+When "the value varies per request but must still apply on every path" is the requirement, assign `ConstFilter` on the table definition and let `GenericSqlExpr` supply the value, as shown at the end of 2.2. When the value is only needed at the query entry point and does not have to cover associations and write paths, a runtime `Expr` or `GenericSqlExpr` fragment is lighter.
 
 ### 5.4 Confusing row filters with physical sharding
 

@@ -1,4 +1,4 @@
-# Audit and Change Tracking in Practice
+# Audit and Change Tracking
 
 Auditing usually means two things: knowing who called which interface and when, and knowing what a record changed from and to. The first comes from service call events, the second from entity service events. The scenarios below show how to wire each one up.
 
@@ -200,7 +200,7 @@ Notes:
 
 - Marked parameters appear as `*` in framework logs.
 - `ServiceInvokeContext.Arguments` holds raw arguments with no masking, so a subscriber must decide for itself before writing `Arguments` anywhere.
-- Classify the audit table as well: mask or encrypt phone numbers and identity numbers before they land. See [Sensitive Data Protection in Practice](./sensitive-data-protection.en.md).
+- Classify the audit table as well: mask or encrypt phone numbers and identity numbers before they land. See [Sensitive Data Protection](./sensitive-data-protection.en.md).
 
 ## Scenario 7: when After callbacks fire
 
@@ -225,6 +225,6 @@ Two more points:
 - [Back to index](../README.md)
 - [Logging and Diagnostics](../di/logging.en.md)
 - [Transactions](../di/transactions.en.md)
-- [Soft Deletes and Historical Data in Practice](./soft-delete-and-archive.en.md)
-- [Sensitive Data Protection in Practice](./sensitive-data-protection.en.md)
-- [Data Permissions in Practice](./data-permission.en.md)
+- [Soft Deletes and Historical Data](./soft-delete-and-archive.en.md)
+- [Sensitive Data Protection](./sensitive-data-protection.en.md)
+- [Data Permissions](./data-permission.en.md)

@@ -1,4 +1,4 @@
-# Soft Deletes and Historical Data in Practice
+# Soft Deletes and Historical Data
 
 LiteOrm has no built-in soft delete: there is no `[SoftDelete]` attribute and no switch that rewrites `Delete` into an `Update`. The two primitives available are fixed slices (`[Column(Constant = ...)]`) and runtime `Expr` conditions, and the criterion is still whether the rule is known at compile time:
 
@@ -37,7 +37,7 @@ Notes:
 - The `Constant` value is a compile-time constant and the property is read-only (`=> false`), so the model means "rows visible here are always undeleted". A boolean slice is inlined as a literal rather than a parameter.
 - Writes must go through the real entity (without `Constant`). Otherwise even the update that sets `IsDeleted` to `true` is blocked by the condition, and no maintenance operation can touch a deleted row.
 - A slice declared on a view model also applies to counts and exports, provided those entry points use the same view type.
-- Under `TableInfo` source generation (NativeAOT) the attribute slice does not produce a `ConstFilter`; turn the fixed condition into a runtime fragment as shown in scenario 4 of [Tenant Isolation in Practice](./tenant-isolation.en.md).
+- Under `TableInfo` source generation (NativeAOT) the attribute slice does not produce a `ConstFilter`; assign `TableDefinition.ConstFilter` at runtime instead, as shown in example 3 of [Tenant Isolation](./tenant-isolation.en.md).
 
 ## Scenario 2: recycle bin and admin views of deleted data
 
@@ -63,7 +63,7 @@ Notes:
 
 - The recycle-bin entry point omits the undeleted condition but must be limited to administrators or the data owner, otherwise deleted rows are exposed to everyone.
 - If counts, reports and exports each decide on their own whether deleted rows are included, the list says 100 and the count says 120. Put `IncludeDeleted` on the request and have every entry point read the same value.
-- Detail, update and delete still need their own checks; see scenario 3 of [Data Permissions in Practice](./data-permission.en.md).
+- Detail, update and delete still need their own checks; see scenario 3 of [Data Permissions](./data-permission.en.md).
 
 ## Scenario 3: turn the delete action into a flag update
 
@@ -110,7 +110,7 @@ Notes:
 
 - The last two asynchronous entry points are direct interface implementations that a subclass cannot override. Rather than overriding what you can and remembering what you cannot, put the delete semantics in your own service method.
 - Keep hard deletes for operations tooling and run them explicitly through `IObjectDAO<T>`; never mix them into the business delete entry point.
-- A soft delete is an `Update`, so it triggers `OnUpdating` / `OnUpdated` and never `OnDeleted`. If auditing relies on the delete event, detect `IsDeleted` flipping from `false` to `true` inside `OnUpdating`, or write the audit entry explicitly in the business method. See [Audit and Change Tracking in Practice](./audit-and-change-tracking.en.md).
+- A soft delete is an `Update`, so it triggers `OnUpdating` / `OnUpdated` and never `OnDeleted`. If auditing relies on the delete event, detect `IsDeleted` flipping from `false` to `true` inside `OnUpdating`, or write the audit entry explicitly in the business method. See [Audit and Change Tracking](./audit-and-change-tracking.en.md).
 
 ## Scenario 4: the same business key can be created again after a soft delete
 
@@ -227,8 +227,8 @@ Notes:
 ## Related links
 
 - [Back to index](../README.md)
-- [Data Permissions in Practice](./data-permission.en.md)
-- [Audit and Change Tracking in Practice](./audit-and-change-tracking.en.md)
-- [Tenant Isolation in Practice](./tenant-isolation.en.md)
+- [Data Permissions](./data-permission.en.md)
+- [Audit and Change Tracking](./audit-and-change-tracking.en.md)
+- [Tenant Isolation](./tenant-isolation.en.md)
 - [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md)
 - [Transactions](../di/transactions.en.md)
