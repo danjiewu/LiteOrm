@@ -27,7 +27,7 @@ Start with the **docs hub**, then follow the learning-path navigation to read th
 - **Advanced Topics**: transactions, sharding, performance, window functions, permission filtering, diagnostics, remote service
 - **Extensibility**: expression extension, Expr serialization, frontend QueryString / native Expr integration, domestic database dialects
 
-The quick-start examples live under [docs/01-getting-started](./docs/01-getting-started/03-first-example.en.md); for API lookup see the [API Index](./docs/05-reference/02-api-index.en.md).
+The quick-start examples live under [docs/getting-started](./docs/getting-started/first-example.en.md); for API lookup see the [API Index](./docs/reference/api-index.en.md).
 
 ## 🎯 Core Features
 
@@ -47,7 +47,7 @@ The quick-start examples live under [docs/01-getting-started](./docs/01-getting-
 - **Dependencies**: Autofac, Castle.Core
 - **Supported databases**: SQL Server 2012+, Oracle 12c+, PostgreSQL, MySQL 8.0+, SQLite, Dameng (DM), KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, and GreatDB
 
-  > Older database versions may require custom paging. See [Custom Paging](./docs/03-advanced-topics/04-custom-paging.en.md).
+  > Older database versions may require custom paging. See [Custom Paging](./docs/advanced-topics/custom-paging.en.md).
 
 ## 📦 Packages & Installation
 
@@ -67,8 +67,8 @@ dotnet add package LiteOrm.DependencyInjection   # required for DI registration 
 
 For configuring the connection, registering LiteOrm, defining entities and services, and running the first example, see:
 
-- [First Full Example (DI Extension)](./docs/01-getting-started/05-first-example-di.en.md)
-- [First Full Example (Manual, No DI)](./docs/01-getting-started/04-first-example-manual.en.md)
+- [First Full Example (DI Extension)](./docs/getting-started/first-example-di.en.md)
+- [First Full Example (Manual, No DI)](./docs/getting-started/first-example-manual.en.md)
 
 ## ⚡ Performance Benchmarks
 
@@ -132,8 +132,8 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 |:--- |:--- |
 | [Documentation Hub](./docs/README.md) | Bilingual docs hub organized by learning path |
 | [中文文档中心](./docs/README.md) | 按学习路径组织的中英文文档导航 |
-| [API Index](./docs/05-reference/02-api-index.en.md) | Scenario-based API and capability entry points |
-| [AI Guide](./docs/05-reference/04-ai-guide.en.md) | Compact appendix for assistants and quick API orientation |
+| [API Index](./docs/reference/api-index.en.md) | Scenario-based API and capability entry points |
+| [AI Guide](./docs/reference/ai-guide.en.md) | Compact appendix for assistants and quick API orientation |
 | [Changelog](./docs/CHANGELOG.en.md) | Functional changes by version |
 | [Demo Project](./LiteOrm.Demo/) | Main feature demonstration project |
 | [Performance Report](./LiteOrm.Benchmark/) | Detailed benchmark reports |

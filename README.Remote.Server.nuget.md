@@ -148,7 +148,7 @@ builder.Services.AddRemoteServer();
 ## 📚 相关资源 / Resources
 
 - [LiteOrm 主仓库 / Main Repository](https://github.com/danjiewu/LiteOrm)
-- [远程服务文档 / Remote Service Docs](https://github.com/danjiewu/LiteOrm/blob/master/docs/03-advanced-topics/07-remote-service.md)
+- [远程服务文档 / Remote Service Docs](https://github.com/danjiewu/LiteOrm/blob/master/docs/advanced-topics/remote-service.md)
 - [客户端包 / Client Package: LiteOrm.Remote](https://www.nuget.org/packages/LiteOrm.Remote)
 - [Demo 项目 / Demo Project](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo)
 

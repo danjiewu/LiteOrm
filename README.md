@@ -27,7 +27,7 @@ LiteOrm 兼顾微型 ORM 的执行效率和完整 ORM 的易用性，适合对�
 - **高级特性篇**：事务、分表、性能、窗口函数、权限过滤、日志诊断、远程服务
 - **扩展开发篇**：表达式扩展、Expr 序列化、前端 `QueryString` / 原生 `Expr` 查询接入、国产数据库方言
 
-快速入门示例见 [docs/01-getting-started](./docs/01-getting-started/03-first-example.md)，各 API 速查见 [API 索引](./docs/05-reference/02-api-index.md)。
+快速入门示例见 [docs/getting-started](./docs/getting-started/first-example.md)，各 API 速查见 [API 索引](./docs/reference/api-index.md)。
 
 ## 🎯 核心特性
 
@@ -47,7 +47,7 @@ LiteOrm 兼顾微型 ORM 的执行效率和完整 ORM 的易用性，适合对�
 - **依赖库**：Autofac、Castle.Core
 - **支持的数据库**：SQL Server 2012+、Oracle 12c+、PostgreSQL、MySQL 8.0+、SQLite、达梦（DM）、人大金仓（KingbaseES）、华为 GaussDB / openGauss、OceanBase、TiDB、GreatDB
 
-  > 目标数据库版本较旧时可能需要自定义分页，参见[自定义分页](./docs/03-advanced-topics/04-custom-paging.md)。
+  > 目标数据库版本较旧时可能需要自定义分页，参见[自定义分页](./docs/advanced-topics/custom-paging.md)。
 
 ## 📦 包与安装
 
@@ -67,8 +67,8 @@ dotnet add package LiteOrm.DependencyInjection   # DI 注册（RegisterLiteOrm�
 
 配置连接、注册 LiteOrm、定义实体与服务，以及首个可运行示例，见：
 
-- [第一个完整示例（DI 扩展）](./docs/01-getting-started/05-first-example-di.md)
-- [第一个完整示例（手动构造，无 DI）](./docs/01-getting-started/04-first-example-manual.md)
+- [第一个完整示例（DI 扩展）](./docs/getting-started/first-example-di.md)
+- [第一个完整示例（手动构造，无 DI）](./docs/getting-started/first-example-manual.md)
 
 ## ⚡ 性能基准
 
@@ -132,8 +132,8 @@ dotnet add package LiteOrm.DependencyInjection   # DI 注册（RegisterLiteOrm�
 |:--- |:--- |
 | [文档中心](./docs/README.md) | 按学习路径组织的中英文文档导航 |
 | [English Docs Hub](./docs/README.md) | Bilingual docs hub organized by learning path |
-| [API 索引](./docs/05-reference/02-api-index.md) | 按使用场景整理的接口与能力入口 |
-| [AI 使用指南](./docs/05-reference/04-ai-guide.md) | 面向 AI 和快速查阅场景的附录 |
+| [API 索引](./docs/reference/api-index.md) | 按使用场景整理的接口与能力入口 |
+| [AI 使用指南](./docs/reference/ai-guide.md) | 面向 AI 和快速查阅场景的附录 |
 | [变更日志](./docs/CHANGELOG.md) | 按版本号记录的功能性变更 |
 | [Demo 项目](./LiteOrm.Demo/) | 主要特性的演示工程 |
 | [性能报告](./LiteOrm.Benchmark/) | 详细的性能基准测试报告 |

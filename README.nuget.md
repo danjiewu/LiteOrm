@@ -53,7 +53,7 @@ var loaded = await viewDao.GetObject(user.Id).FirstOrDefaultAsync();
 var adults = await viewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsync();
 ```
 
-`AddDataSource<TConnection>` accepts named parameters that map onto `DataSourceConfig` — `connectionString`, `@default`, `syncTable`, `sqlBuilder`, `poolSize`, `maxPoolSize`, etc., anything omitted uses the config default. Chain one call per extra data source; all options are fixed at this step and must be set before the first `CreateSession()`. This path registers no services, never reads `IConfiguration`, and never touches `SessionManager.Current`; data-source routing is decided by the entity's `[Table(DataSource = "...")]`. See [First Full Example (Manual, No DI)](docs/01-getting-started/04-first-example-manual.en.md). For DI, see [Quick Start (DI Integration)](#quick-start-di-integration) below.
+`AddDataSource<TConnection>` accepts named parameters that map onto `DataSourceConfig` — `connectionString`, `@default`, `syncTable`, `sqlBuilder`, `poolSize`, `maxPoolSize`, etc., anything omitted uses the config default. Chain one call per extra data source; all options are fixed at this step and must be set before the first `CreateSession()`. This path registers no services, never reads `IConfiguration`, and never touches `SessionManager.Current`; data-source routing is decided by the entity's `[Table(DataSource = "...")]`. See [First Full Example (Manual, No DI)](docs/getting-started/first-example-manual.en.md). For DI, see [Quick Start (DI Integration)](#quick-start-di-integration) below.
 
 ### Quick Start (DI Integration)
 
@@ -144,7 +144,7 @@ var loaded = await viewDao.GetObject(user.Id).FirstOrDefaultAsync();
 var adults = await viewDao.Search(Expr.Prop(nameof(User.Age)) > 18).ToListAsync();
 ```
 
-`AddDataSource<TConnection>` 的命名参数与 `DataSourceConfig` 一一对应——`connectionString`、`@default`、`syncTable`、`sqlBuilder`、`poolSize`、`maxPoolSize` 等，未填的按配置默认值；多个数据源就链式多调一次，所有设置都定在这一步，且必须在首次 `CreateSession()` 之前。这条线路不注册任何服务、不读取 `IConfiguration`、不设置 `SessionManager.Current`，数据源由实体的 `[Table(DataSource = "...")]` 决定。完整示例见 [第一个完整示例（手动构造，无 DI）](docs/01-getting-started/04-first-example-manual.md)。需要 DI 时见下方 [快速入门（DI 集成）](#快速入门di-集成)。
+`AddDataSource<TConnection>` 的命名参数与 `DataSourceConfig` 一一对应——`connectionString`、`@default`、`syncTable`、`sqlBuilder`、`poolSize`、`maxPoolSize` 等，未填的按配置默认值；多个数据源就链式多调一次，所有设置都定在这一步，且必须在首次 `CreateSession()` 之前。这条线路不注册任何服务、不读取 `IConfiguration`、不设置 `SessionManager.Current`，数据源由实体的 `[Table(DataSource = "...")]` 决定。完整示例见 [第一个完整示例（手动构造，无 DI）](docs/getting-started/first-example-manual.md)。需要 DI 时见下方 [快速入门（DI 集成）](#快速入门di-集成)。
 
 ### 快速入门（DI 集成）
 

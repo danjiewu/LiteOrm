@@ -258,7 +258,7 @@
 
 ### Breaking Changes
 
-This release introduces several breaking changes. See the [8.1 Upgrade Guide](./upgrade-guides/01-upgrade-guide-8.1.en.md) for migration details.
+This release introduces several breaking changes. See the [8.1 Upgrade Guide](./upgrade-guides/upgrade-guide-8.1.en.md) for migration details.
 
 - `RegisterLiteOrm()` moved from the `LiteOrm` base package to the new `LiteOrm.DependencyInjection` package; namespace changed from `LiteOrm` to `LiteOrm.DependencyInjection`
 

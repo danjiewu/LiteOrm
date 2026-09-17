@@ -256,7 +256,7 @@
 
 ### 破坏性变更
 
-本版本引入多项破坏性变更，详细迁移指南见 [8.1 升级指南](./upgrade-guides/01-upgrade-guide-8.1.md)。
+本版本引入多项破坏性变更，详细迁移指南见 [8.1 升级指南](./upgrade-guides/upgrade-guide-8.1.md)。
 
 - `RegisterLiteOrm()` 从 `LiteOrm` 基础包移至 `LiteOrm.DependencyInjection` 包（新增），命名空间由 `LiteOrm` 改为 `LiteOrm.DependencyInjection`
 
