@@ -416,5 +416,5 @@ var matureItUsers = await objectViewDAO.Search(
 - [Lambda 查询指南](./05-lambda-guide.md)
 - [Expr 使用指南](./06-expr-guide.md)
 - [增删改查](./03-crud-guide.md)
-- [性能优化](../03-advanced-topics/03-performance.md)
+- [性能优化](../03-advanced-topics/02-performance.md)
 - [API 索引](../05-reference/02-api-index.md)

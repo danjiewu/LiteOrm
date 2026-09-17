@@ -468,5 +468,5 @@ AOT 性能建议：
 - [实体映射](../02-core-usage/01-entity-mapping.md)
 - [Lambda 查询指南](../02-core-usage/05-lambda-guide.md)
 - [表达式扩展](../04-extensibility/01-expression-extension.md)
-- [AOT 支持](./06-aot.md)
-- [性能优化](./03-performance.md)
+- [AOT 支持](./05-aot.md)
+- [性能优化](./02-performance.md)

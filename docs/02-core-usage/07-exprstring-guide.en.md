@@ -265,7 +265,7 @@ Other general rules:
 | Do not use RawSql for static content | Hardcoded SQL fragments should be written directly in the `ExprString` literal; wrapping them in `RawSql` obscures the real intent |
 | Prefer Expr | Use `Expr.Prop` for simple column names (built-in name validation and quote wrapping); anything expressible via `Expr.Func`/`Expr.Sql` (pre-registered `GenericSqlExpr`) should not use `RawSql` |
 
-> If you need to safely pass runtime strings/complex values inside custom SQL, register a callback via `GenericSqlExpr.Register` and parameterize using `outputParams` inside the callback. See [Security](../03-advanced-topics/08-security.en.md).
+> If you need to safely pass runtime strings/complex values inside custom SQL, register a callback via `GenericSqlExpr.Register` and parameterize using `outputParams` inside the callback. See [Security](../03-advanced-topics/06-security.en.md).
 
 ### 8.5 Difference from GenericSqlExpr
 

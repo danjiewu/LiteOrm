@@ -343,8 +343,8 @@ public class CustomerMaskView : ObjectBase
 ## 相关链接
 
 - [返回目录](../README.md)
-- [数据映射与值转换](../03-advanced-topics/11-data-mapping.md)
-- [AOT 支持](../03-advanced-topics/06-aot.md)
-- [安全性](../03-advanced-topics/08-security.md)
+- [数据映射与值转换](../03-advanced-topics/08-data-mapping.md)
+- [AOT 支持](../03-advanced-topics/05-aot.md)
+- [安全性](../03-advanced-topics/06-security.md)
 - [审计与变更追踪典型应用](./04-audit-and-change-tracking.md)
 - [数据权限典型应用](./02-data-permission.md)

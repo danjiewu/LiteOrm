@@ -390,6 +390,6 @@ Suitable for "insert new batch of data while deleting old data" sync migration s
 - [Lambda Guide](./05-lambda-guide.en.md)
 - [Expr Guide](./06-expr-guide.en.md)
 - [Transactions](../06-di/01-transactions.en.md)
-- [Performance Optimization](../03-advanced-topics/03-performance.en.md)
+- [Performance Optimization](../03-advanced-topics/02-performance.en.md)
 
 

@@ -86,7 +86,7 @@ var orders = await orderViewService.SearchAsync(From<OrderView>().Where(filter))
 
 要点：
 
-- 参数值通过 `outputParams.Add` 走参数化，不会拼进 SQL 文本。安全边界见[安全性](../03-advanced-topics/08-security.md)。
+- 参数值通过 `outputParams.Add` 走参数化，不会拼进 SQL 文本。安全边界见[安全性](../03-advanced-topics/06-security.md)。
 - 构件返回 `null` 或空串时整个片段不产生 SQL，查询条件里不需要写 `"1 = 1"` 这类恒真条件来凑语法。写入路径没有这个保证，见[数据权限典型应用](./02-data-permission.md)。
 - 拼接时 `&` 左侧要是 `LogicExpr`。`Expr.Sql(...)` 返回的是 `GenericSqlExpr`，左侧声明成 `Expr` 会编译不过，把拼装函数的返回类型写成 `LogicExpr` 就能直接用。
 - 构件里只能写表名和列名，属性名写错会在生成 SQL 时暴露，不会静默走到别的列上。
@@ -341,7 +341,7 @@ services.AddScoped<ObjectViewDAO<TenantOrder>, TenantOrderViewDAO>();
 
 - [返回目录](../README.md)
 - [权限过滤与用户范围控制](../06-di/02-permission-filtering.md)
-- [分表分库](../03-advanced-topics/02-sharding-and-tableargs.md)
+- [分表分库](../03-advanced-topics/01-sharding-and-tableargs.md)
 - [数据权限典型应用](./02-data-permission.md)
 - [审计与变更追踪典型应用](./04-audit-and-change-tracking.md)
 - [并发控制与读写分离典型应用](./06-concurrency-and-read-write-splitting.md)

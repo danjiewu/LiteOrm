@@ -84,13 +84,6 @@ Data sources are loaded from the `LiteOrm` section of `IConfiguration`; use the 
 - When building with `PublishAot=true` / trimming enabled, the bundled source generator (`LiteOrm.Generators`) emits registration code at compile time for entity types, `SqlBuilder`/`DbConnection` types, DataReader mapping delegates and property accessors.
 - Runtime reflection-based paths are used only in the JIT fallback mode; AOT mode uses pre-registered converters and generators.
 
-### Key Features
-
-- **Lambda / Expr / ExprString** — pick the style that fits: strongly-typed lambdas for daily filters, dynamic `Expr` trees for query builders, `ExprString` for DAO-side SQL.
-- **Automatic associations** — `[ForeignType]` / `[ForeignColumn]` project joined fields onto view models without writing JOINs.
-- **Declarative transactions** — `[Transaction]` on a service method.
-- **Dynamic sharding** — implement `IArged.TableArgs` to route to physical tables.
-
 ### Documentation & Resources
 
 - [Docs Hub (EN/中文)](https://github.com/danjiewu/LiteOrm/blob/master/docs/README.md)
@@ -181,13 +174,6 @@ var users = await userService.SearchAsync(u => u.Age > 18);
 - `Expr` 表达式树通过源生成的 **`ExprJsonSerializerContext`** 序列化（经 `Expr` 上的 `[JsonConverter]` 自动注册），表达式的 JSON 序列化不依赖反射，天然兼容 NativeAOT。
 - 使用 `PublishAot=true` 或启用裁剪构建时，内置源生成器（`LiteOrm.Generators`）会在编译期生成实体类型、`SqlBuilder` / `DbConnection` 类型、DataReader 映射委托与属性访问器的注册代码。
 - 反射式路径仅在 JIT 回退模式下使用；AOT 模式下使用预注册的转换器与生成器。
-
-### 常见特性
-
-- **Lambda / Expr / ExprString**——按场景选择：强类型 Lambda 适合日常筛选，`Expr` 表达式适合动态条件拼装，`ExprString` 用于 DAO 层 SQL。
-- **自动关联**——通过 `[ForeignType]` / `[ForeignColumn]` 把联表字段投影到视图模型，无需手写 JOIN。
-- **声明式事务**——服务方法上标注 `[Transaction]` 即可。
-- **动态分表**——实现 `IArged.TableArgs` 路由到物理表。
 
 ### 文档与资源
 

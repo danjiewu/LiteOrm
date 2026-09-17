@@ -221,6 +221,6 @@ services.AddScoped<ObjectViewDAO<OrderView>, MasterOrderViewDAO>();
 - [返回目录](../README.md)
 - [事务](../06-di/01-transactions.md)
 - [配置参考](../05-reference/01-configuration-reference.md)
-- [分表分库](../03-advanced-topics/02-sharding-and-tableargs.md)
+- [分表分库](../03-advanced-topics/01-sharding-and-tableargs.md)
 - [审计与变更追踪典型应用](./04-audit-and-change-tracking.md)
 - [数据权限典型应用](./02-data-permission.md)

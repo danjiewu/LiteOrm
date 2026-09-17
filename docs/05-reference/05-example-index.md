@@ -132,7 +132,7 @@
 
 ### 分表与 `TableArgs`
 
-- 文档入口：[分表分库与 TableArgs](../03-advanced-topics/02-sharding-and-tableargs.md)
+- 文档入口：[分表分库与 TableArgs](../03-advanced-topics/01-sharding-and-tableargs.md)
 - 代码来源：
   - `LiteOrm.Demo\Demos\ShardingQueryDemo.cs`
   - `LiteOrm.Demo\Models\SalesRecord.cs`
@@ -144,7 +144,7 @@
 
 ### 性能优化与批量 Provider
 
-- 文档入口：[性能优化](../03-advanced-topics/03-performance.md)
+- 文档入口：[性能优化](../03-advanced-topics/02-performance.md)
 - 代码来源：
   - `LiteOrm.Demo\Data\DbInitializer.cs`
   - `LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs`（文件内实现类为 `MySqlBulkCopyProvider`）
@@ -157,7 +157,7 @@
 
 ### 窗口函数
 
-- 文档入口：[窗口函数](../03-advanced-topics/04-window-functions.md)
+- 文档入口：[窗口函数](../03-advanced-topics/03-window-functions.md)
 - 代码来源：
   - `LiteOrm.Demo\Demos\WindowFunctionDemo.cs`
 - 重点内容：
@@ -167,14 +167,14 @@
 
 ### 自定义分页
 
-- 文档入口：[自定义分页](../03-advanced-topics/05-custom-paging.md)
+- 文档入口：[自定义分页](../03-advanced-topics/04-custom-paging.md)
 - 适合场景：旧数据库分页语法不兼容，需要自定义方言分页逻辑
 
 ## 6. 扩展开发示例
 
 ### NativeAOT
 
-- 文档入口：[NativeAOT 支持](../03-advanced-topics/06-aot.md)
+- 文档入口：[NativeAOT 支持](../03-advanced-topics/05-aot.md)
 - 代码来源：`LiteOrm.AotDemo\Program.cs`（完整 CRUD + `SearchAs`/`SearchOneAs` 端到端示例）
 - 适合场景：无 JIT 环境下的发布；验证源生成器表元信息与 DataReader 映射的 AOT 兼容性
 
@@ -216,8 +216,8 @@
 6. [ExprString 使用指南](../02-core-usage/07-exprstring-guide.md)
 7. [关联查询](../02-core-usage/08-associations.md)
 8. [事务管理](../06-di/01-transactions.md)
-9. [分表分库与 TableArgs](../03-advanced-topics/02-sharding-and-tableargs.md)
-10. [性能优化](../03-advanced-topics/03-performance.md)
+9. [分表分库与 TableArgs](../03-advanced-topics/01-sharding-and-tableargs.md)
+10. [性能优化](../03-advanced-topics/02-performance.md)
 11. [表达式扩展](../04-extensibility/01-expression-extension.md)
 
 ## 相关链接

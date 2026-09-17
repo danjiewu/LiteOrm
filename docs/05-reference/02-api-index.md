@@ -25,7 +25,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 对应文档：
 
 - [配置参考](./01-configuration-reference.md)
-- [AOT 与源生成](../03-advanced-topics/06-aot.md)
+- [AOT 与源生成](../03-advanced-topics/05-aot.md)
 - [数据库差异与兼容性说明](./07-database-compatibility.md)
 
 ### 手动构造（不使用 DI 宿主）
@@ -132,8 +132,8 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 - [事务管理](../06-di/01-transactions.md)
 - [日志与诊断](../06-di/03-logging.md)
-- [分表分库与 TableArgs](../03-advanced-topics/02-sharding-and-tableargs.md)
-- [窗口函数](../03-advanced-topics/04-window-functions.md)
+- [分表分库与 TableArgs](../03-advanced-topics/01-sharding-and-tableargs.md)
+- [窗口函数](../03-advanced-topics/03-window-functions.md)
 - [示例索引](./05-example-index.md)
 - [生成 SQL 示例](./06-sql-examples.md)
 - [数据库差异与兼容性说明](./07-database-compatibility.md)
@@ -169,7 +169,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - [事务管理](../06-di/01-transactions.md)
 - [权限过滤](../06-di/02-permission-filtering.md)
 - [日志与诊断](../06-di/03-logging.md)
-- [远程服务调用](../03-advanced-topics/09-remote-service.md)
+- [远程服务调用](../03-advanced-topics/07-remote-service.md)
 
 ## 相关链接
 

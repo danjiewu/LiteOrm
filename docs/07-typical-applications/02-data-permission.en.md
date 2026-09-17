@@ -131,7 +131,7 @@ var filter = OrderScopes.For(request) & Expr.Sql("OwnerScope");
 
 Notes:
 
-- The generated SQL is parameterized; the value never lands in the text. See [Security](../03-advanced-topics/08-security.en.md).
+- The generated SQL is parameterized; the value never lands in the text. See [Security](../03-advanced-topics/06-security.en.md).
 - The admin branch returns `null`, not `"1 = 1"`. The composition rolls back the `" AND "` it already wrote, and a `SELECT` with no conditions emits no `WHERE` at all.
 - Declare the assembling function as returning `LogicExpr` so `&` composes with `Expr.Sql(...)`. An `Expr` left operand will not compile.
 - Do not rely on the empty-fragment semantics in write statements; see scenario 2.
@@ -218,4 +218,4 @@ Notes:
 - [Tenant Isolation in Practice](./01-tenant-isolation.en.md)
 - [Soft Deletes and Historical Data in Practice](./03-soft-delete-and-archive.en.md)
 - [Audit and Change Tracking in Practice](./04-audit-and-change-tracking.en.md)
-- [Security](../03-advanced-topics/08-security.en.md)
+- [Security](../03-advanced-topics/06-security.en.md)

@@ -354,7 +354,7 @@ LambdaExprConverter.RegisterMethodHandler("IsValid", (node, converter) => {
 
 LiteOrm 内置了一套通用 JSON 函数（`JsonExprExtensions`，命名空间 `LiteOrm.Common`），可以通过 `Expr` 或 Lambda 直接构造 JSON 查询，由各方言 SqlBuilder 映射为对应数据库的原生 JSON 函数。
 
-> 在 Lambda 中使用 `JsonNode` 索引器和 `GetValue<T>()` 的写法见 [Lambda 查询指南](../02-core-usage/05-lambda-guide.md#7-jsonnode-查询)。JsonNode 属性的自动映射与序列化机制见 [数据映射与值转换](../03-advanced-topics/11-data-mapping.md#33-jsonnode-映射导航)。
+> 在 Lambda 中使用 `JsonNode` 索引器和 `GetValue<T>()` 的写法见 [Lambda 查询指南](../02-core-usage/05-lambda-guide.md#7-jsonnode-查询)。JsonNode 属性的自动映射与序列化机制见 [数据映射与值转换](../03-advanced-topics/08-data-mapping.md#33-jsonnode-映射导航)。
 
 ### 9.1 通用 JSON 函数一览
 
@@ -570,6 +570,6 @@ LiteOrm 在首次访问 `SqlBuilder` 时通过 `LiteOrmSqlFunctionInitializer` �
 
 - [返回目录](../README.md)
 - [关联查询](../02-core-usage/08-associations.md)
-- [窗口函数](../03-advanced-topics/04-window-functions.md)
+- [窗口函数](../03-advanced-topics/03-window-functions.md)
 - [函数验证器](./02-function-validator.md)
 

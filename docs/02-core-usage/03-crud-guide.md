@@ -392,6 +392,6 @@ await service.BatchAsync(ops);
 - [Lambda 查询指南](./05-lambda-guide.md)
 - [Expr 使用指南](./06-expr-guide.md)
 - [事务管理](../06-di/01-transactions.md)
-- [性能优化](../03-advanced-topics/03-performance.md)
+- [性能优化](../03-advanced-topics/02-performance.md)
 
 

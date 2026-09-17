@@ -221,6 +221,6 @@ Notes:
 - [Back to index](../README.md)
 - [Transactions](../06-di/01-transactions.en.md)
 - [Configuration Reference](../05-reference/01-configuration-reference.en.md)
-- [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
+- [Sharding and TableArgs](../03-advanced-topics/01-sharding-and-tableargs.en.md)
 - [Audit and Change Tracking in Practice](./04-audit-and-change-tracking.en.md)
 - [Data Permissions in Practice](./02-data-permission.en.md)

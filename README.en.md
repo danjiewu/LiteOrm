@@ -1,10 +1,6 @@
 # LiteOrm
 
-
-
 > A lightweight, high-performance .NET ORM framework
-
-
 
 [![NuGet](https://img.shields.io/nuget/v/LiteOrm.svg)](https://www.nuget.org/packages/LiteOrm/)
 [![License](https://img.shields.io/github/license/danjiewu/LiteOrm.svg)](LICENSE)
@@ -20,26 +16,28 @@
 
 ## 📚 Documentation
 
-Start with the docs hub, then use the scenario-based reference pages for targeted lookups.
+LiteOrm combines micro-ORM speed with full-ORM ergonomics. It fits projects that need predictable performance while still handling rich SQL scenarios cleanly.
 
-**[Docs Hub](https://danjiewu.github.io/LiteOrm/)**
+Start with the **docs hub**, then follow the learning-path navigation to read the full documentation:
 
-- **Getting Started**: install LiteOrm, register it, and run the first working example
-- **Core Usage**: focus on entity mapping, the Expr / query guides, CRUD, associations, and **mixing Lambda with Expr**
-- **Advanced Topics**: cover transactions, sharding, performance, window functions, permission filtering, and diagnostics
-- **Extensibility**: cover expression extension, Expr serialization, and frontend QueryString / native Expr integration patterns
+**[Docs Hub](https://danjiewu.github.io/LiteOrm/)** (local nav: [docs/README.md](./docs/README.md))
 
-LiteOrm is a lightweight, high-performance .NET ORM that combines micro-ORM speed with full-ORM ergonomics. It fits projects that need predictable performance while still handling rich SQL scenarios cleanly.
+- **Getting Started**: install, register, and run your first working example
+- **Core Usage**: entity mapping, Expr / query guides, CRUD, associations, mixing Lambda with Expr
+- **Advanced Topics**: transactions, sharding, performance, window functions, permission filtering, diagnostics, remote service
+- **Extensibility**: expression extension, Expr serialization, frontend QueryString / native Expr integration, domestic database dialects
+
+The quick-start examples live under [docs/01-getting-started](./docs/01-getting-started/03-first-example.en.md); for API lookup see the [API Index](./docs/05-reference/02-api-index.en.md).
 
 ## 🎯 Core Features
 
 - **Ultra-Fast Performance**: Performance close to native Dapper, far exceeding EF Core
-- **Multi-Database Support**: Native support for SQL Server, MySQL, Oracle, PostgreSQL, SQLite, Dameng (DM), KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, and GreatDB
-- **Flexible Querying**: Multiple query methods via Lambda, `Expr`, or `ExprString`
-- **Automatic Associations**: Implement JOIN queries via attributes without manual SQL writing
-- **Declarative Transactions**: AOP transaction management via `[Transaction]` attribute
-- **Logging and Diagnostics**: Built-in `ServiceLog`, `Log`, and slow-query diagnostics
-- **Dynamic Sharding**: Table routing via `IArged` interface
+- **Multi-Database Support**: SQL Server, MySQL, Oracle, PostgreSQL, SQLite; built-in Dameng, KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, GreatDB dialects
+- **Flexible Querying**: Lambda, `Expr`, and `ExprString` query methods
+- **Automatic Associations**: Attribute-based, seamless JOIN queries without manual SQL
+- **Declarative Transactions**: AOP transaction management via `[Transaction]`
+- **Logging and Diagnostics**: `ServiceLog`, `Log`, and slow-query diagnostics
+- **Dynamic Sharding**: Table routing via the `IArged` interface
 - **Async Support**: Complete async/await support
 - **Type Safety**: Strong-typed generic interfaces with compile-time type checking
 
@@ -49,11 +47,16 @@ LiteOrm is a lightweight, high-performance .NET ORM that combines micro-ORM spee
 - **Dependencies**: Autofac, Castle.Core
 - **Supported databases**: SQL Server 2012+, Oracle 12c+, PostgreSQL, MySQL 8.0+, SQLite, Dameng (DM), KingbaseES, Huawei GaussDB / openGauss, OceanBase, TiDB, and GreatDB
 
-  > Older database versions may require custom paging. See [Custom Paging](./docs/03-advanced-topics/05-custom-paging.en.md).
+  > Older database versions may require custom paging. See [Custom Paging](./docs/03-advanced-topics/04-custom-paging.en.md).
 
-## 📦 Installation
+## 📦 Packages & Installation
 
-
+| Package | Description |
+|---------|-------------|
+| `LiteOrm` | Core library |
+| `LiteOrm.DependencyInjection` | DI registration (`RegisterLiteOrm`) and AOP support |
+| `LiteOrm.Remote` | Remote client |
+| `LiteOrm.Remote.Server` | Remote server |
 
 ```bash
 dotnet add package LiteOrm
@@ -62,434 +65,16 @@ dotnet add package LiteOrm.DependencyInjection   # required for DI registration 
 
 ## 🚀 Quick Start
 
+For configuring the connection, registering LiteOrm, defining entities and services, and running the first example, see:
 
-
-### 1. Configure the connection
-
-
-
-In `appsettings.json`:
-
-
-
-```json
-{
-    "LiteOrm": {
-        "Default": "DefaultConnection",
-        "DataSources": [
-            {
-                "Name": "DefaultConnection",
-                "ConnectionString": "Server=localhost;Database=TestDb;...",
-                "Provider": "MySqlConnector.MySqlConnection, MySqlConnector"
-            }
-        ]
-    }
-}
-```
-
-
-
-### 2. Register LiteOrm
-
-
-
-In `Program.cs`:
-
-
-
-**Console:**
-
-
-
-```csharp
-var host = Host.CreateDefaultBuilder(args)
-    .RegisterLiteOrm()  // Auto initialization
-    .Build();
-```
-
-
-
-**ASP.NET Core:**
-
-
-
-```csharp
-var builder = WebApplication.CreateBuilder(args);
-builder.Host.RegisterLiteOrm();  // Integration via IHostBuilder extension method
-```
-
-
-
-> **Prefer no DI container at all?** The base library ships `LiteOrmContext`, which registers data sources fluently and creates sessions, fully separate from `RegisterLiteOrm()` / `AddLiteOrm()`:
->
-> ```csharp
-> using var liteOrm = new LiteOrmContext()
->     .AddDataSource<SqliteConnection>("main", "Data Source=app.db", @default: true, poolSize: 8, maxPoolSize: 32);
-> using var session = liteOrm.CreateSession();
-> var userDao = new ObjectDAO<User>(session);
-> ```
->
-> See [First Full Example (Manual, No DI)](docs/01-getting-started/04-first-example-manual.en.md).
-
-
-
-### 3. Define an entity
-
-
-
-```csharp
-using LiteOrm.Common;
-
-
-
-[Table("Users")]
-public class User : ObjectBase
-{
-    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
-    public int Id { get; set; }
-
-    [Column("UserName")]
-    public string UserName { get; set; }
-
-    [Column("Email")]
-    public string Email { get; set; }
-
-    [Column("Age")]
-    public int Age { get; set; }
-
-    [Column("Status")]
-    public int Status { get; set; }
-
-    [Column("CreateTime")]
-    public DateTime? CreateTime { get; set; }
-}
-```
-
-
-
-### 4. Define a service (optional)
-
-
-
-```csharp
-// Define view model (for queries, can include related fields)
-public class UserView : User { }
-
-
-
-public interface IUserService :
-    IEntityService<User>, IEntityServiceAsync<User>,
-    IEntityViewService<UserView>, IEntityViewServiceAsync<UserView>
-{
-}
-
-
-
-public class UserService : EntityService<User, UserView>, IUserService
-{
-}
-```
-
-
-
-### 5. Use the service
-
-
-
-You can use a custom service or inject the generic interfaces directly:
-
-
-
-```csharp
-// Insert
-var user = new User { UserName = "admin", Email = "admin@test.com" };
-await userService.InsertAsync(user);
-
-
-
-// Query
-var users = await userService.SearchAsync(u => u.Email.Contains("test"));
-var admin = await userService.SearchOneAsync(u => u.UserName == "admin");
-
-
-
-// Update
-user.Email = "newemail@test.com";
-await userService.UpdateAsync(user);
-
-
-
-// Delete
-await userService.DeleteAsync(user);
-
-
-
-// Pagination
-var page = await userService.SearchAsync(
-    q => q.Where(u => u.CreateTime > DateTime.Today)
-          .OrderByDescending(u => u.CreateTime)
-          .Skip(0).Take(10)
-);
-```
-
-
-
-## 💡 Key Features
-
-
-
-### Lambda queries
-
-
-
-```csharp
-// Basic query
-var users = await userService.SearchAsync(u => u.Age > 18);
-
-
-
-// Sorting
-var sorted = await userService.SearchAsync(
-    q => q.Where(u => u.Age > 18).OrderBy(u => u.Age)
-);
-
-
-
-// Pagination
-var paged = await userService.SearchAsync(
-    q => q.Where(u => u.Status == 1)
-          .OrderBy(u => u.Id)
-          .Skip(10).Take(20)
-);
-```
-
-
-
-### `Expr` queries
-
-
-
-```csharp
-using static LiteOrm.Common.Expr;
-// Manually build expressions (supports more complex dynamic conditions)
-var expr = Prop("Age") > 18 & Prop("Status") == 1;
-var users = await userService.SearchAsync(expr);
-
-
-
-// IN query
-var users = await userService.SearchAsync(
-    Prop("Id").In(1, 2, 3, 4, 5)
-);
-
-
-
-// LIKE query
-var users = await userService.SearchAsync(
-    Prop("UserName").Contains("admin")
-);
-
-
-
-// Chain complex queries
-var query = From<User>()
-    .Where(Prop("Age") > 18)
-    .OrderBy(Prop("CreateTime"))
-    .Section(0, 10);  // LIMIT/OFFSET
-var result = await userService.SearchAsync(query);
-```
-
-
-
-### `ExprString` queries
-
-```csharp
-using static LiteOrm.Common.Expr;
-// Use parameterized interpolated strings to prevent SQL injection
-int minAge = 18;
-var expr = Prop("Age") > 25;
-
-
-
-// `ObjectViewDAO<T>` example
-var users = await objectViewDAO.Search($"WHERE {expr} AND Age > {minAge}").ToListAsync();
-
-
-
-// `DataViewDAO` example
-var dataTable = await dataViewDAO.Search(
-    $"SELECT Id, UserName FROM Users WHERE {Prop("Age")} > {minAge}",
-    isFull: true
-).GetResultAsync();
-```
-
-> `ExprString` is a DAO query entry point, not a Service query entry point. It can be used either to append a `Search` condition fragment, or to send full SQL through DAO APIs as shown in the second example.
-
-> `ExprString` does not auto-convert `SelectExpr.With(name)` / `CommonTableExpr` into `WITH` SQL. If you need CTE, use the structured `Expr` / `SelectExpr` model, or handwrite the full SQL inside the DAO call.
-
-> When you handwrite identifiers in `ExprString`, you can use `[` and `]` as provider-agnostic quote placeholders; LiteOrm replaces them with the current database's real identifier delimiters before execution.
-
-### `CTE` (Common Table Expression)
-
-LiteOrm supports CTE through `SelectExpr.With(name)`:
-
-```csharp
-using static LiteOrm.Common.Expr;
-var cteDef = From<User>()
-    .Where(Prop("Age") >= 18)
-    .Select(
-        Prop("Id").As("Id"),
-        Prop("UserName").As("Name"),
-        Prop("Age").As("Age")
-    );
-
-var query = cteDef.With("AdultUsers")
-    .Where(Prop("Age") >= 25)
-    .OrderBy(Prop("Name").Asc())
-    .Select(Prop("Name"), Prop("Age"));
-
-var result = await dataViewDAO.Search(query).GetResultAsync();
-```
-
-The same CTE expression can also be reused on both sides of a `UNION`:
-
-```csharp
-using static LiteOrm.Common.Expr;
-var adultUsers = From<User>()
-    .Where(Prop("Age") >= 18)
-    .Select(
-        Prop("UserName").As("Name"),
-        Prop("Age").As("Age"))
-    .With("AdultUsers");
-
-var query = adultUsers
-    .Where(Prop("Age") < 30)
-    .Select(Prop("Name"), Prop("Age"), Const("18-29").As("AgeGroup"))
-    .UnionAll(
-        adultUsers
-            .Where(Prop("Age") >= 30)
-            .Select(Prop("Name"), Prop("Age"), Const("30+").As("AgeGroup")));
-```
-
-Duplicate CTE aliases are now validated before SQL generation:
-
-- equal definitions: deduplicated automatically, only the first is kept
-- different definitions: an exception is thrown
-
-See: [CTE Guide](./docs/02-core-usage/10-cte-guide.en.md)
-
-
-
-### `EXISTS` subqueries
-
-
-
-```csharp
-using static LiteOrm.Common.Expr;
-// Check for existence of related data
-var result = await userService.SearchAsync(
-    q => q.Where(u => Exists<Order>(o => o.UserId == u.Id))
-);
-```
-
-
-
-### Automatic associations
-
-
-
-```csharp
-// Define association
-[Table("Orders")]
-public class Order
-{
-    [Column("Id", IsPrimaryKey = true)]
-    public int Id { get; set; }
-
-    [Column("UserId")]
-    [ForeignType(typeof(User))]
-    public int UserId { get; set; }
-}
-
-
-
-// View model with related fields
-public class OrderView : Order
-{
-    [ForeignColumn(typeof(User), Property = "UserName")]
-    public string UserName { get; set; }
-}
-
-
-
-// Automatic JOIN on query
-var orders = await orderService.SearchAsync<OrderView>();
-```
-
-
-
-### Declarative transactions
-
-
-
-```csharp
-public class BusinessService
-{
-    private readonly IUserService userService;
-    private readonly IOrderService orderService;
-
-
-
-    [Transaction]
-    public async Task CreateUserWithOrder(User user, Order order)
-    {
-        await userService.InsertAsync(user);
-        order.UserId = user.Id;
-        await orderService.InsertAsync(order);
-    }
-}
-```
-
-
-
-### Dynamic sharding
-
-
-
-```csharp
-public class Log : IArged
-{
-    [Column("Id", IsPrimaryKey = true)]
-    public int Id { get; set; }
-
-    [Column("Content")]
-    public string Content { get; set; }
-
-    [Column("CreateTime")]
-    public DateTime CreateTime { get; set; }
-
-
-
-    // Automatically route to Log_202401, Log_202402, etc. by month
-    string[] IArged.TableArgs => [CreateTime.ToString("yyyyMM")];
-}
-```
-
-At query time, you can explicitly specify shard arguments through `tableArgs`, `WithArgs(...)`, or `Expr.From<T>(...)`. `TableArgs` defined on the main table propagate to later tables in the same scope and in child scopes, and inherited values continue to apply unless a later table overrides them explicitly. When a table name contains multiple placeholders such as `Sales_{0}_{1}`, you can also pass multi-dimensional arguments like `["US", "2025"]` directly instead of manually concatenating shard names. Different tables can even use different placeholder positions, such as `Table1_{0}` and `Table2_{1}`, while sharing the same `TableArgs` array.
-
-
+- [First Full Example (DI Extension)](./docs/01-getting-started/05-first-example-di.en.md)
+- [First Full Example (Manual, No DI)](./docs/01-getting-started/04-first-example-manual.en.md)
 
 ## ⚡ Performance Benchmarks
 
-
-
 Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0.11, Linux Ubuntu 24.04.4 LTS, Intel Xeon Silver 4314 CPU 2.40GHz, MySQL):
 
-
-
 ### Insert Performance Comparison (ms)
-
-
 
 | Framework | 100 rows | 1000 rows | 10000 rows |
 |:----------| --------:| ---------:| ----------:|
@@ -499,11 +84,7 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 | EF Core | 21.13 | 210.10 | 1,837.48 |
 | Dapper | 5.28 | 27.84 | 266.28 |
 
-
-
 ### Update Performance Comparison (ms)
-
-
 
 | Framework | 100 rows | 1000 rows | 10000 rows |
 |:----------| --------:| ---------:| ----------:|
@@ -513,11 +94,7 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 | EF Core | 17.31 | 176.71 | 1,374.47 |
 | Dapper | 6.37 | 44.00 | 355.83 |
 
-
-
 ### Upsert Performance Comparison (ms)
-
-
 
 | Framework | 100 rows | 1000 rows | 10000 rows |
 |:----------| --------:| ---------:| ----------:|
@@ -527,11 +104,7 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 | EF Core | 19.85 | 221.15 | 1,538.52 |
 | Dapper | **5.99** | 33.31 | 327.69 |
 
-
-
 ### Join Query Performance Comparison (ms)
-
-
 
 | Framework | 100 rows | 1000 rows | 10000 rows |
 |:----------| --------:| ---------:| ----------:|
@@ -541,11 +114,7 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 | EF Core | 3.03 | 15.43 | 162.80 |
 | Dapper | 1.64 | 10.12 | 98.68 |
 
-
-
 ### Memory Allocation Comparison (1000 rows, KB)
-
-
 
 | Framework | Insert | Update | Upsert | Join Query |
 |:----------| ------:| ------:| ------:| ---------:|
@@ -555,19 +124,9 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 | EF Core | 31,350.14 | 24,131.62 | 25,801.93 | 9,467.87 |
 | Dapper | 5,371.92 | 6,408.03 | 5,915.40 | 669.82 |
 
-
-
 > 📊 For detailed performance benchmark reports, see [LiteOrm.Benchmark](./LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)
 
-
-
 ## 📚 Documentation & Resources
-
-
-
-For guided reading, start with the docs hub. Use the reference pages below when you need a faster path to a specific topic.
-
-
 
 | Resource | Description |
 |:--- |:--- |
@@ -580,18 +139,10 @@ For guided reading, start with the docs hub. Use the reference pages below when 
 | [Performance Report](./LiteOrm.Benchmark/) | Detailed benchmark reports |
 | [Unit Tests](./LiteOrm.Tests/) | Behavior and regression coverage |
 
-
-
 ## 🤝 Contributing
-
-
 
 Found a bug or have an improvement suggestion? Please submit an [Issue](https://github.com/danjiewu/LiteOrm/issues) or [Pull Request](https://github.com/danjiewu/LiteOrm/pulls).
 
-
-
 ## 📄 License
-
-
 
 Released under the [MIT](LICENSE) license.

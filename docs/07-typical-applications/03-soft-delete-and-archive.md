@@ -221,7 +221,7 @@ var archived = await archiveService.SearchAsync(From<OrderArchive>("202609"));
 要点：
 
 - 归档动作做成独立的批处理任务，按主键区间分批搬运，每批一个事务，避免长事务与锁等待。
-- 分表细节与 `TableArgs` 的传递规则见[分表分库](../03-advanced-topics/02-sharding-and-tableargs.md)。
+- 分表细节与 `TableArgs` 的传递规则见[分表分库](../03-advanced-topics/01-sharding-and-tableargs.md)。
 - 已删除行要不要一起搬走由保留策略决定。留在主库的已删除行会持续参与条件过滤，取值高度倾斜的 `IsDeleted` 列单独建索引收益很小，建议建成 `(IsDeleted, 常用过滤列)` 组合索引。
 
 ## 相关链接
@@ -230,5 +230,5 @@ var archived = await archiveService.SearchAsync(From<OrderArchive>("202609"));
 - [数据权限典型应用](./02-data-permission.md)
 - [审计与变更追踪典型应用](./04-audit-and-change-tracking.md)
 - [多租户隔离典型应用](./01-tenant-isolation.md)
-- [分表分库](../03-advanced-topics/02-sharding-and-tableargs.md)
+- [分表分库](../03-advanced-topics/01-sharding-and-tableargs.md)
 - [事务](../06-di/01-transactions.md)

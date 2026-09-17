@@ -284,4 +284,4 @@ ServiceInvokeInterceptor.MaxExpandedLogLength = 10;
 - [返回目录](../README.md)
 - [配置参考](../05-reference/01-configuration-reference.md)
 - [事务](./01-transactions.md)
-- [性能优化](../03-advanced-topics/03-performance.md)
+- [性能优化](../03-advanced-topics/02-performance.md)

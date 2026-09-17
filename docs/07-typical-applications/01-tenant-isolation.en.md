@@ -86,7 +86,7 @@ var orders = await orderViewService.SearchAsync(From<OrderView>().Where(filter))
 
 Notes:
 
-- The value goes through `outputParams.Add`, so it stays parameterized and never lands in the SQL text. See [Security](../03-advanced-topics/08-security.en.md).
+- The value goes through `outputParams.Add`, so it stays parameterized and never lands in the SQL text. See [Security](../03-advanced-topics/06-security.en.md).
 - A fragment returning `null` or an empty string produces no SQL at all, so query conditions do not need a `"1 = 1"` placeholder. Write paths give no such guarantee; see [Data Permissions in Practice](./02-data-permission.en.md).
 - The left operand of `&` must be a `LogicExpr`. `Expr.Sql(...)` returns a `GenericSqlExpr`, so declaring the assembling function's return type as `Expr` will not compile. Return `LogicExpr`.
 - A fragment can only contain table and column names. A wrong property name surfaces while generating SQL instead of silently pointing at another column.
@@ -341,7 +341,7 @@ Notes:
 
 - [Back to index](../README.md)
 - [Permission Filtering and User Scopes](../06-di/02-permission-filtering.en.md)
-- [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
+- [Sharding and TableArgs](../03-advanced-topics/01-sharding-and-tableargs.en.md)
 - [Data Permissions in Practice](./02-data-permission.en.md)
 - [Audit and Change Tracking in Practice](./04-audit-and-change-tracking.en.md)
 - [Concurrency and Read/Write Splitting in Practice](./06-concurrency-and-read-write-splitting.en.md)

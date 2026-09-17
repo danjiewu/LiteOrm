@@ -265,7 +265,7 @@ var result = await dataViewDAO.Search(
 | 纯静态内容不要用 RawSql | 写死的 SQL 片段直接写在 `ExprString` 字面量中即可，包成 `RawSql` 反而掩盖真实意图 |
 | 优先用 Expr | 简单列名用 `Expr.Prop`（自带名称校验和引用符包裹）；凡是能用 `Expr.Func`/`Expr.Sql`（预注册的 `GenericSqlExpr`）表达的，不要用 `RawSql` |
 
-> 如果需要在自定义 SQL 中安全地传递运行时字符串/复杂值，请用 `GenericSqlExpr.Register` 注册回调，在回调内部使用 `outputParams` 参数化，详见[安全性](../03-advanced-topics/08-security.md)。
+> 如果需要在自定义 SQL 中安全地传递运行时字符串/复杂值，请用 `GenericSqlExpr.Register` 注册回调，在回调内部使用 `outputParams` 参数化，详见[安全性](../03-advanced-topics/06-security.md)。
 
 ### 8.5 与 GenericSqlExpr 的区别
 

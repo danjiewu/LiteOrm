@@ -132,7 +132,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Sharding and `TableArgs`
 
-- Entry doc: [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
+- Entry doc: [Sharding and TableArgs](../03-advanced-topics/01-sharding-and-tableargs.en.md)
 - Code sources:
   - `LiteOrm.Demo\Demos\ShardingQueryDemo.cs`
   - `LiteOrm.Demo\Models\SalesRecord.cs`
@@ -144,7 +144,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Performance tuning and bulk providers
 
-- Entry doc: [Performance](../03-advanced-topics/03-performance.en.md)
+- Entry doc: [Performance](../03-advanced-topics/02-performance.en.md)
 - Code sources:
   - `LiteOrm.Demo\Data\DbInitializer.cs`
   - `LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs` (implementation class: `MySqlBulkCopyProvider`)
@@ -157,7 +157,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Window functions
 
-- Entry doc: [Window functions](../03-advanced-topics/04-window-functions.en.md)
+- Entry doc: [Window functions](../03-advanced-topics/03-window-functions.en.md)
 - Code source:
   - `LiteOrm.Demo\Demos\WindowFunctionDemo.cs`
 - Focus:
@@ -167,14 +167,14 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Custom paging
 
-- Entry doc: [Custom paging](../03-advanced-topics/05-custom-paging.en.md)
+- Entry doc: [Custom paging](../03-advanced-topics/04-custom-paging.en.md)
 - Best for: older databases whose paging syntax is not compatible with the default dialect behavior
 
 ## 6. Extensibility examples
 
 ### NativeAOT
 
-- Entry doc: [NativeAOT Support](../03-advanced-topics/06-aot.en.md)
+- Entry doc: [NativeAOT Support](../03-advanced-topics/05-aot.en.md)
 - Source: `LiteOrm.AotDemo\Program.cs` (an end-to-end example covering full CRUD + `SearchAs`/`SearchOneAs`)
 - Best for: publishing without a JIT; verifying AOT compatibility of source-generated table metadata and DataReader mappings
 
@@ -216,8 +216,8 @@ If you want to move from simple to advanced examples, this is a practical sequen
 6. [ExprString Guide](../02-core-usage/07-exprstring-guide.en.md)
 7. [Associations](../02-core-usage/08-associations.en.md)
 8. [Transactions](../06-di/01-transactions.en.md)
-9. [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
-10. [Performance](../03-advanced-topics/03-performance.en.md)
+9. [Sharding and TableArgs](../03-advanced-topics/01-sharding-and-tableargs.en.md)
+10. [Performance](../03-advanced-topics/02-performance.en.md)
 11. [Expression extension](../04-extensibility/01-expression-extension.en.md)
 
 ## Related links

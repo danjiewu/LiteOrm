@@ -25,7 +25,7 @@ Use this page as a scenario-based index inside the docs set.
 Related guides:
 
 - [Configuration Reference](./01-configuration-reference.en.md)
-- [AOT and Source Generation](../03-advanced-topics/06-aot.en.md)
+- [AOT and Source Generation](../03-advanced-topics/05-aot.en.md)
 - [Database Compatibility Notes](./07-database-compatibility.en.md)
 
 ### Manual construction (no DI host)
@@ -132,8 +132,8 @@ Related guides:
 
 - [Transactions](../06-di/01-transactions.en.md)
 - [Logging and Diagnostics](../06-di/03-logging.en.md)
-- [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
-- [Window functions](../03-advanced-topics/04-window-functions.en.md)
+- [Sharding and TableArgs](../03-advanced-topics/01-sharding-and-tableargs.en.md)
+- [Window functions](../03-advanced-topics/03-window-functions.en.md)
 - [Example Index](./05-example-index.en.md)
 - [Generated SQL Examples](./06-sql-examples.en.md)
 - [Database Compatibility Notes](./07-database-compatibility.en.md)
@@ -169,7 +169,7 @@ Related guides:
 - [Transactions](../06-di/01-transactions.en.md)
 - [Permission filtering](../06-di/02-permission-filtering.en.md)
 - [Logging and diagnostics](../06-di/03-logging.en.md)
-- [Remote service invocation](../03-advanced-topics/09-remote-service.en.md)
+- [Remote service invocation](../03-advanced-topics/07-remote-service.en.md)
 
 ## Related links
 

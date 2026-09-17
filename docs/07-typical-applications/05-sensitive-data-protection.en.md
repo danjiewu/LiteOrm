@@ -341,8 +341,8 @@ Notes:
 ## Related links
 
 - [Back to index](../README.md)
-- [Data Mapping and Value Conversion](../03-advanced-topics/11-data-mapping.en.md)
-- [NativeAOT Support](../03-advanced-topics/06-aot.en.md)
-- [Security](../03-advanced-topics/08-security.en.md)
+- [Data Mapping and Value Conversion](../03-advanced-topics/08-data-mapping.en.md)
+- [NativeAOT Support](../03-advanced-topics/05-aot.en.md)
+- [Security](../03-advanced-topics/06-security.en.md)
 - [Audit and Change Tracking in Practice](./04-audit-and-change-tracking.en.md)
 - [Data Permissions in Practice](./02-data-permission.en.md)

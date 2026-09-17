@@ -100,17 +100,9 @@ var levelExpr = Case(
 
 ## 2. 子查询与关联过滤
 
+Lambda 形式（`Exists` / `ExistsRelated`）见 [Lambda 查询指南](./05-lambda-guide.md#5-exists-与-existsrelated)，本节展示等价的 `Expr` 写法。
+
 ### 2.1 显式 `Exists`
-
-Lambda 写法：
-
-```csharp
-var users = await userService.SearchAsync(
-    u => Exists<Department>(d => d.Id == u.DeptId && d.Name == "研发中心")
-);
-```
-
-Expr 写法：
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -124,16 +116,6 @@ var expr = Exists<Department>(
 这类写法适合你想**自己明确写出关联条件**的场景。
 
 ### 2.2 自动关联 `ExistsRelated`
-
-Lambda 写法：
-
-```csharp
-var users = await userService.SearchAsync(
-    u => ExistsRelated<DepartmentView>(d => d.Name == "研发中心")
-);
-```
-
-Expr 写法：
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -194,18 +176,7 @@ public static LogicExpr BuildUserSearch(IReadOnlyDictionary<string, string?> que
 
 ### 3.3 和 Lambda 组合使用
 
-```csharp
-using static LiteOrm.Common.Expr;
-
-LogicExpr extra = null;
-extra &= Prop("UserName").Contains("John");
-
-var users = await userService.SearchAsync(
-    u => u.IsActive == true && extra.To<bool>()
-);
-```
-
-如果你想保持 Lambda 的业务可读性，同时又想复用动态 Expr，请继续阅读：[Lambda 与 Expr 组合使用](./09-lambda-expr-mixing.md)。
+在 Lambda 中可用 `expr.To<bool>()` 把动态 `Expr` 嵌入条件；完整方法与取舍见 [Lambda 与 Expr 组合使用](./09-lambda-expr-mixing.md)。
 
 ## 4. 用 `Expr.From<T>()` 链式构建查询
 
@@ -454,15 +425,7 @@ var update = Update<User>()
 
 ### 7.7 Lambda 三目运算符
 
-在 Lambda 查询里，可以直接写 C# 三目表达式：
-
-```csharp
-var users = await userService.SearchAsync(
-    u => (u.Age >= 18 ? "Adult" : "Minor") == "Adult"
-);
-```
-
-LiteOrm 会把它解析成 `Expr.If(...)`，并进一步生成 SQL `CASE` 表达式。
+Lambda 中的三目运算符 `a ? b : c` 会自动解析成 `Expr.If(...)` 并生成 SQL `CASE`，示例见 [Lambda 查询指南](./05-lambda-guide.md#4-三目运算符会转成-case)。
 
 ## 8. ExprExtensions 速查
 

@@ -6,20 +6,11 @@ LiteOrm 已经为这些数据库提供了开箱即用的 SqlBuilder 实现，你
 
 ## 1. 开箱即用的国产 / 兼容数据库支持
 
-LiteOrm 自带以下方言构建器，可以直接通过数据源名或连接类型注册使用：
+LiteOrm 已内置达梦、人大金仓、GaussDB / openGauss、OceanBase、TiDB、GreatDB 六个国产 / 兼容数据库的 SqlBuilder，可直接通过数据源名或连接类型注册使用。各构建器及其兼容基类、典型驱动、自动匹配关键字的清单见[数据库差异与兼容性说明](../05-reference/07-database-compatibility.md#国产兼容数据库)。
 
-| 构建器 | 兼容基类 | 典型驱动 / 连接类型 | 自动匹配关键字（仅兜底） |
-|--------|----------|---------------------|-----------------|
-| `DamengBuilder` | `OracleBuilder` | `Dm.DmConnection`（Dm 程序集） | `DAMENG`、`DMNET`、`DM.DMCONNECTION` |
-| `KingbaseESBuilder` | `PostgreSqlBuilder` | `Kdbndp.KdbndpConnection` | `KINGBASE`、`KDBNDP` |
-| `GaussDBBuilder` | `PostgreSqlBuilder` | `Npgsql.NpgsqlConnection`（openGauss 兼容） | `GAUSSDB`、`OPENGAUSS` |
-| `OceanBaseBuilder` | `MySqlBuilder` | `MySql.Data.MySqlClient`（MySQL 兼容模式） | `OCEANBASE` |
-| `TiDBBuilder` | `MySqlBuilder` | `MySqlConnector.MySqlConnection` | `TIDB` |
-| `GreatDBBuilder` | `MySqlBuilder` | `MySql.Data.MySqlClient` | `GREATDB` |
+这些构建器遵循「继承最接近的基础方言 + 仅覆盖差异点」的设计原则：在大部分场景下，国产数据库的 SQL 行为已与对应基础方言（Oracle / PostgreSQL / MySQL）保持一致，构建器内部可能只覆盖少数方法甚至为零。
 
-> 这些构建器都遵循「继承最接近的基础方言 + 仅覆盖差异点」的设计原则。在大部分场景下，国产数据库的 SQL 行为已经与对应的基础方言（Oracle / PostgreSQL / MySQL）保持一致，因此构建器内部可能只覆盖少数方法甚至为零。
->
-> 即使默认实现与基础方言完全一致，仍然建议你通过 `RegisterSqlBuilder` 显式注册到对应的数据源名，**不要依赖关键字自动识别**——后者只是兜底机制，驱动版本变化可能导致关键字不再命中。
+> 即使默认实现与基础方言完全一致，仍建议通过 `RegisterSqlBuilder` 显式注册到对应的数据源名，**不要依赖关键字自动识别**——后者只是兜底机制，驱动版本变化可能导致关键字不再命中。
 
 ## 2. 选择基类的策略
 
@@ -370,7 +361,7 @@ options.RegisterSqlBuilder("YourDataSourceName", DamengBuilder.Instance);
 
 ### Q2：达梦和 Oracle 在分页上完全一样吗？
 
-**A：** DM8 完全支持 `OFFSET ... FETCH` 语法，与 Oracle 12c+ 一致。如果是 DM7 或更老版本，可能需要降级为 `ROW_NUMBER() OVER(...)` 双层嵌套写法，参考 [Oracle 11g 自定义分页示例](../03-advanced-topics/05-custom-paging.md) 实现一个 `Dameng7Builder : DamengBuilder` 并按数据源名注册。
+**A：** DM8 完全支持 `OFFSET ... FETCH` 语法，与 Oracle 12c+ 一致。如果是 DM7 或更老版本，可能需要降级为 `ROW_NUMBER() OVER(...)` 双层嵌套写法，参考 [Oracle 11g 自定义分页示例](../03-advanced-topics/04-custom-paging.md) 实现一个 `Dameng7Builder : DamengBuilder` 并按数据源名注册。
 
 ### Q3：批量插入返回的 ID 在 TiDB 上不连续，怎么处理？
 
@@ -425,7 +416,7 @@ options.RegisterSqlBuilder(typeof(YourCustomConnection), YourBuilder.Instance);
 
 - [返回目录](../README.md)
 - [自定义 SqlBuilder / 方言扩展](./03-custom-sqlbuilder.md)
-- [自定义分页实现示例](../03-advanced-topics/05-custom-paging.md)
+- [自定义分页实现示例](../03-advanced-topics/04-custom-paging.md)
 - [数据库差异与兼容性说明](../05-reference/07-database-compatibility.md)
 - [表达式扩展](./01-expression-extension.md)
 - [配置参考](../05-reference/01-configuration-reference.md)

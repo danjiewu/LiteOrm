@@ -339,5 +339,5 @@ To watch the registration process, set the log level to `Debug` to see assembly-
 - [First End-to-End Example (DI)](../01-getting-started/05-first-example-di.en.md)
 - [Transactions](../06-di/01-transactions.en.md)
 - [Logging and Diagnostics](../06-di/03-logging.en.md)
-- [Performance](../03-advanced-topics/03-performance.en.md)
+- [Performance](../03-advanced-topics/02-performance.en.md)
 - [API Index](./02-api-index.en.md)

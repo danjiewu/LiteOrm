@@ -8,19 +8,10 @@ LiteOrm already provides out-of-the-box SqlBuilder implementations for these dat
 
 ## 1. Out-of-the-Box Domestic / Compatible Database Support
 
-LiteOrm ships with the following dialect builders, which can be registered directly by data source name or connection type:
+LiteOrm ships with SqlBuilders for six domestic / compatible databases (Dameng, KingbaseES, GaussDB / openGauss, OceanBase, TiDB, GreatDB), which can be registered directly by data source name or connection type. For the list of each builder, its compatible base class, typical driver, and auto-matched keywords, see [Database Differences and Compatibility](../05-reference/07-database-compatibility.en.md#domestic--compatible-databases).
 
-| Builder | Compatible Base | Typical Driver / Connection Type | Auto-matched keywords (fallback only) |
-|---------|-----------------|----------------------------------|--------------------------------|
-| `DamengBuilder` | `OracleBuilder` | `Dm.DmConnection` (Dm assembly) | `DAMENG`, `DMNET`, `DM.DMCONNECTION` |
-| `KingbaseESBuilder` | `PostgreSqlBuilder` | `Kdbndp.KdbndpConnection` | `KINGBASE`, `KDBNDP` |
-| `GaussDBBuilder` | `PostgreSqlBuilder` | `Npgsql.NpgsqlConnection` (openGauss compatible) | `GAUSSDB`, `OPENGAUSS` |
-| `OceanBaseBuilder` | `MySqlBuilder` | `MySql.Data.MySqlClient` (MySQL compatible mode) | `OCEANBASE` |
-| `TiDBBuilder` | `MySqlBuilder` | `MySqlConnector.MySqlConnection` | `TIDB` |
-| `GreatDBBuilder` | `MySqlBuilder` | `MySql.Data.MySqlClient` | `GREATDB` |
+These builders follow the design principle of "inherit from the closest base dialect + override only the differences": in most scenarios the SQL behavior of a domestic database already matches its base dialect (Oracle / PostgreSQL / MySQL), so a builder may override only a few methods or none at all.
 
-> These builders all follow the design principle of "inherit from the closest base dialect + override only the differences". In most scenarios, the SQL behavior of domestic databases is already consistent with the corresponding base dialect (Oracle / PostgreSQL / MySQL), so the builder may override only a few methods or none at all.
->
 > Even if the default implementation is identical to the base dialect, it is still recommended that you explicitly register the builder to the corresponding data source name via `RegisterSqlBuilder`. **Do not rely on keyword auto-recognition** — the latter is only a fallback mechanism, and driver version changes may cause keywords to no longer match.
 
 ## 2. Strategy for Choosing a Base Class
@@ -372,7 +363,7 @@ options.RegisterSqlBuilder("YourDataSourceName", DamengBuilder.Instance);
 
 ### Q2: Are Dameng and Oracle completely the same in paging?
 
-**A:** DM8 fully supports the `OFFSET ... FETCH` syntax, consistent with Oracle 12c+. For DM7 or older versions, you may need to downgrade to the `ROW_NUMBER() OVER(...)` nested subquery syntax. Refer to the [Oracle 11g custom paging example](../03-advanced-topics/05-custom-paging.en.md) to implement a `Dameng7Builder : DamengBuilder` and register it by data source name.
+**A:** DM8 fully supports the `OFFSET ... FETCH` syntax, consistent with Oracle 12c+. For DM7 or older versions, you may need to downgrade to the `ROW_NUMBER() OVER(...)` nested subquery syntax. Refer to the [Oracle 11g custom paging example](../03-advanced-topics/04-custom-paging.en.md) to implement a `Dameng7Builder : DamengBuilder` and register it by data source name.
 
 ### Q3: The IDs returned by batch insert on TiDB are not continuous. How to handle this?
 
@@ -427,7 +418,7 @@ When integrating a new domestic / compatible database, follow these steps:
 
 - [Back to docs hub](../README.md)
 - [Custom SqlBuilder / Dialect Extension](./03-custom-sqlbuilder.en.md)
-- [Custom Paging Implementation Example](../03-advanced-topics/05-custom-paging.en.md)
+- [Custom Paging Implementation Example](../03-advanced-topics/04-custom-paging.en.md)
 - [Database Differences and Compatibility Notes](../05-reference/07-database-compatibility.en.md)
 - [Expression Extension](./01-expression-extension.en.md)
 - [Configuration Reference](../05-reference/01-configuration-reference.en.md)

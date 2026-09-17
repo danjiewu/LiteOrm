@@ -524,5 +524,5 @@ As a rule of thumb:
 - [Back to docs hub](../README.md)
 - [Associations](../02-core-usage/08-associations.en.md)
 - [Permission Filtering](../06-di/02-permission-filtering.en.md)
-- [Performance Optimization](./03-performance.en.md)
+- [Performance Optimization](./02-performance.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)

@@ -141,7 +141,7 @@ var paged = await userService.SearchAsync(
 - `Skip(n)`：跳过前 `n` 条记录，对应 SQL 的 `OFFSET n`（部分数据库为 `LIMIT n, ...` 或 `ROWNUM` 方言）。
 - `Take(n)`：取 `n` 条记录，对应 SQL 的 `LIMIT n`（或 `FETCH FIRST n ROWS ONLY`）。
 - `Skip` 和 `Take` 可以单独使用，也可以组合使用；分页时通常先 `OrderBy` 再 `Skip`/`Take`。
-- 大偏移量分页（如 `Skip(10000)`）性能较差，建议改用基于 ID 的游标分页，见[性能优化](../03-advanced-topics/03-performance.md#33-分页优化)。
+- 大偏移量分页（如 `Skip(10000)`）性能较差，建议改用基于 ID 的游标分页，见[性能优化](../03-advanced-topics/02-performance.md#33-分页优化)。
 
 ## 3. 变量捕获与参数化
 
@@ -232,7 +232,7 @@ var list = await userService.SearchAsAsync(
 
 LiteOrm 原生支持 `System.Text.Json.Nodes.JsonNode`（含 `JsonObject`、`JsonArray`、`JsonValue`）类型的属性——自动映射为 JSON 列（字符串存储），并支持在 Lambda 中直接通过索引器和 `GetValue<T>()` 查询 JSON 字段。
 
-> JsonNode 属性的自动映射与序列化机制详见 [数据映射与值转换](../03-advanced-topics/11-data-mapping.md#33-jsonnode-映射导航)。
+> JsonNode 属性的自动映射与序列化机制详见 [数据映射与值转换](../03-advanced-topics/08-data-mapping.md#33-jsonnode-映射导航)。
 
 ### 7.1 基础用法：索引器访问
 

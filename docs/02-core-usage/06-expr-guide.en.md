@@ -99,15 +99,9 @@ var levelExpr = Case(
 
 ## 2. Subqueries and relation filters
 
+For the Lambda forms of `Exists` / `ExistsRelated`, see [Lambda Query Guide](./05-lambda-guide.en.md#5-exists-and-existsrelated). This section shows the equivalent `Expr` forms.
+
 ### 2.1 Explicit `Exists`
-
-Lambda style:
-
-```csharp
-var users = await userService.SearchAsync(
-    u => Exists<Department>(d => d.Id == u.DeptId && d.Name == "R&D")
-);
-```
 
 Expr style:
 
@@ -123,14 +117,6 @@ var expr = Exists<Department>(
 Use this when you want to **write the correlation condition explicitly**.
 
 ### 2.2 Auto-related `ExistsRelated`
-
-Lambda style:
-
-```csharp
-var users = await userService.SearchAsync(
-    u => ExistsRelated<DepartmentView>(d => d.Name == "R&D")
-);
-```
 
 Expr style:
 
@@ -193,18 +179,7 @@ Additional note: in string-based entry points like these, property names and `or
 
 ### 3.3 Mix with Lambda
 
-```csharp
-using static LiteOrm.Common.Expr;
-
-LogicExpr extra = null;
-extra &= Prop("UserName").Contains("John");
-
-var users = await userService.SearchAsync(
-    u => u.IsActive == true && extra.To<bool>()
-);
-```
-
-If you want Lambda readability outside and dynamic Expr reuse inside, continue with [Mixing Lambda and Expr](./09-lambda-expr-mixing.en.md).
+In a Lambda you can embed a dynamic `Expr` with `expr.To<bool>()`. For the full approach and trade-offs, see [Mixing Lambda and Expr](./09-lambda-expr-mixing.en.md).
 
 ## 4. Build chained queries with `Expr.From<T>()`
 
@@ -453,15 +428,7 @@ These are mainly about reducing ceremony so `OrderBy(...)`, `Set(...)`, and simi
 
 ### 7.7 Lambda conditional operator
 
-You can use the C# conditional operator directly inside Lambda queries:
-
-```csharp
-var users = await userService.SearchAsync(
-    u => (u.Age >= 18 ? "Adult" : "Minor") == "Adult"
-);
-```
-
-LiteOrm parses this into `Expr.If(...)`, which is then rendered as a SQL `CASE` expression.
+The C# conditional operator `a ? b : c` in a Lambda is parsed into `Expr.If(...)` and rendered as SQL `CASE`; see [Lambda Query Guide](./05-lambda-guide.en.md#4-the-conditional-operator-becomes-case).
 
 ## 8. ExprExtensions quick reference
 

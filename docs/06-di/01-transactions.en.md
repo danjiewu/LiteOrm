@@ -1,4 +1,4 @@
-﻿# Transactions
+# Transactions
 
 LiteOrm supports two transaction management approaches: declarative transactions and manual transactions.
 
@@ -301,5 +301,5 @@ Recommendation:
 ## Related Links
 
 - [Associations](../02-core-usage/08-associations.en.md)
-- [Sharding and Table Routing](../03-advanced-topics/02-sharding-and-tableargs.en.md)
-- [Performance Optimization](../03-advanced-topics/03-performance.en.md)
+- [Sharding and Table Routing](../03-advanced-topics/01-sharding-and-tableargs.en.md)
+- [Performance Optimization](../03-advanced-topics/02-performance.en.md)

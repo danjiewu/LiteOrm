@@ -32,7 +32,7 @@ public class Oracle11gBuilder : OracleBuilder
 }
 ```
 
-完整实现可参考 [自定义分页](../03-advanced-topics/05-custom-paging.md)。
+完整实现可参考 [自定义分页](../03-advanced-topics/04-custom-paging.md)。
 
 ## 注册方式
 
@@ -106,7 +106,7 @@ MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (ref ValueString
 ## 相关链接
 
 - [返回目录](../README.md)
-- [自定义分页](../03-advanced-topics/05-custom-paging.md)
+- [自定义分页](../03-advanced-topics/04-custom-paging.md)
 - [表达式扩展](./01-expression-extension.md)
 - [配置参考](../05-reference/01-configuration-reference.md)
 

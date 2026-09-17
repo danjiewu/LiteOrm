@@ -203,6 +203,6 @@ validator.Validate(expr2);  // false
 - [返回目录](../README.md)
 - [关联查询](../02-core-usage/08-associations.md)
 - [表达式扩展](./01-expression-extension.md)
-- [窗口函数](../03-advanced-topics/04-window-functions.md)
+- [窗口函数](../03-advanced-topics/03-window-functions.md)
 
 

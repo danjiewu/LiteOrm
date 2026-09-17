@@ -295,7 +295,7 @@ public class Log : IArged
 }
 ```
 
-更多内容请阅读 [分表分库与 TableArgs](../03-advanced-topics/02-sharding-and-tableargs.md)。
+更多内容请阅读 [分表分库与 TableArgs](../03-advanced-topics/01-sharding-and-tableargs.md)。
 
 ## 建模建议
 

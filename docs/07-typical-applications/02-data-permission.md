@@ -131,7 +131,7 @@ var filter = OrderScopes.For(request) & Expr.Sql("OwnerScope");
 
 要点：
 
-- 构件返回的 SQL 走参数化，值不拼进文本。安全边界见[安全性](../03-advanced-topics/08-security.md)。
+- 构件返回的 SQL 走参数化，值不拼进文本。安全边界见[安全性](../03-advanced-topics/06-security.md)。
 - 管理员分支返回 `null` 而不是 `"1 = 1"`。条件组合处会把已经写入的 `" AND "` 一起回滚，`SELECT` 语句在没有任何条件时连 `WHERE` 都不输出。
 - 拼装函数声明成返回 `LogicExpr`，`&` 才能和 `Expr.Sql(...)` 直接拼。左侧是 `Expr` 时会编译不过。
 - 同一个构件不要在写入语句上依赖空片段语义，原因见场景 2。
@@ -218,4 +218,4 @@ services.AddScoped<IServiceInvokingEvent, RoleCheckEvent>();
 - [多租户隔离典型应用](./01-tenant-isolation.md)
 - [软删除与历史数据典型应用](./03-soft-delete-and-archive.md)
 - [审计与变更追踪典型应用](./04-audit-and-change-tracking.md)
-- [安全性](../03-advanced-topics/08-security.md)
+- [安全性](../03-advanced-topics/06-security.md)

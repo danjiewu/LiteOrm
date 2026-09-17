@@ -1,4 +1,4 @@
-﻿# Permission Filtering and User Scope Control
+# Permission Filtering and User Scope Control
 
 When a system needs rich querying while preventing regular users from reading or writing data they do not own, permission filtering cannot stop at the frontend UI layer. In LiteOrm, scope rules usually live at one of three layers:
 
@@ -12,6 +12,8 @@ In real projects, a query usually combines more than just a "permission conditio
 - business conditions
 - soft-delete conditions (for example `IsDeleted == false`)
 - current-user / current-tenant scope conditions
+
+This article focuses on the **mechanics** of each mechanism. For a business-oriented list of landed scenarios, see [Data Permissions in Practice](../07-typical-applications/02-data-permission.en.md).
 
 ## Scenario Matrix
 
@@ -198,7 +200,7 @@ This approach is useful because:
 - it still composes with normal Expr, soft-delete rules, and statistics queries
 - it remains parameterized through `outputParams`, rather than concatenating user values into SQL
 
-For the security boundary, see the `GenericSqlExpr` section in [Security](../03-advanced-topics/08-security.en.md).
+For the security boundary, see the `GenericSqlExpr` section in [Security](../03-advanced-topics/06-security.en.md).
 
 ## 3. Multi-Tenancy Patterns
 
@@ -295,7 +297,7 @@ This fits scenarios where:
 - you want Expr, ExprString, and DAO queries to inherit the same route automatically
 - tenant isolation is a **table routing** concern rather than a **row filtering** concern
 
-This works because DAO and `ExprString` both create SQL contexts through `CreateSqlBuildContext(...)`; once you override that method and populate `TableArgs`, downstream SQL generation automatically reuses the same route parameters. For more details, see [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md).
+This works because DAO and `ExprString` both create SQL contexts through `CreateSqlBuildContext(...)`; once you override that method and populate `TableArgs`, downstream SQL generation automatically reuses the same route parameters. For more details, see [Sharding and TableArgs](../03-advanced-topics/01-sharding-and-tableargs.en.md).
 
 Also note that if a lower-level `TableExpr` explicitly sets its own `TableArgs`, that value overrides the inherited context value.  
 In multi-tenant or scoped queries, this means you can unintentionally leave the original tenant / shard boundary, so explicit overrides should be reviewed carefully.
@@ -336,7 +338,7 @@ As long as detail, update, and delete endpoints lack verification, users can sti
 
 - [Back to docs hub](../README.md)
 - [Associations](../02-core-usage/08-associations.en.md)
-- [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
-- [Security](../03-advanced-topics/08-security.en.md)
+- [Sharding and TableArgs](../03-advanced-topics/01-sharding-and-tableargs.en.md)
+- [Security](../03-advanced-topics/06-security.en.md)
 - [Lambda & Expr Mixing](../02-core-usage/09-lambda-expr-mixing.en.md)
 

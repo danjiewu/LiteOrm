@@ -351,7 +351,7 @@ LambdaExprConverter.RegisterMethodHandler("IsValid", (node, converter) => {
 
 LiteOrm includes a set of generic JSON functions (`JsonExprExtensions`, namespace `LiteOrm.Common`) that can be used directly via `Expr` or Lambda, with each dialect's SqlBuilder mapping them to the corresponding database's native JSON functions.
 
-> For using `JsonNode` indexers and `GetValue<T>()` in Lambda, see the [Lambda Guide](../02-core-usage/05-lambda-guide.en.md#7-jsonnode-queries). For auto-mapping and serialization of JsonNode properties, see [Data Mapping & Value Conversion](../03-advanced-topics/11-data-mapping.en.md#33-jsonnode-mapping-navigation).
+> For using `JsonNode` indexers and `GetValue<T>()` in Lambda, see the [Lambda Guide](../02-core-usage/05-lambda-guide.en.md#7-jsonnode-queries). For auto-mapping and serialization of JsonNode properties, see [Data Mapping & Value Conversion](../03-advanced-topics/08-data-mapping.en.md#33-jsonnode-mapping-navigation).
 
 ### 9.1 Generic JSON Function Overview
 
@@ -567,5 +567,5 @@ LiteOrm automatically registers the following cross-database SqlFunctions on fir
 
 - [Back to docs hub](../README.md)
 - [Associations](../02-core-usage/08-associations.en.md)
-- [Window Functions](../03-advanced-topics/04-window-functions.en.md)
+- [Window Functions](../03-advanced-topics/03-window-functions.en.md)
 - [Function Validator](./02-function-validator.en.md)

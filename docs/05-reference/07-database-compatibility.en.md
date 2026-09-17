@@ -18,18 +18,20 @@ LiteOrm includes 11 database-specific `SqlBuilder` implementations (including 6 
 
 ### Domestic / Compatible Databases
 
-| Database | SqlBuilder Class | Inherits From | Auto-detect Keywords |
-|----------|-----------------|---------------|----------------------|
-| Dameng DM | `DamengBuilder` | `OracleBuilder` | `DAMENG`, `DMNET`, `DM.DMCONNECTION` |
-| KingbaseES | `KingbaseESBuilder` | `PostgreSqlBuilder` | `KINGBASE`, `KDBNDP` |
-| Huawei GaussDB / openGauss | `GaussDBBuilder` | `PostgreSqlBuilder` | `GAUSSDB`, `OPENGAUSS` |
-| OceanBase (MySQL compat) | `OceanBaseBuilder` | `MySqlBuilder` | `OCEANBASE` |
-| TiDB | `TiDBBuilder` | `MySqlBuilder` | `TIDB` |
-| GreatDB | `GreatDBBuilder` | `MySqlBuilder` | `GREATDB` |
+LiteOrm ships with the following 6 builders for domestic / compatible databases. For the development guide (base-class selection, integration steps, dialect quick reference), see [Domestic / Compatible Database SqlBuilder Guide](../04-extensibility/07-domestic-database-sqlbuilder.en.md).
+
+| Database | SqlBuilder Class | Inherits From | Typical Driver | Auto-detect Keywords |
+|----------|-----------------|---------------|----------------|----------------------|
+| Dameng DM | `DamengBuilder` | `OracleBuilder` | Dm drivers | `DAMENG`, `DMNET`, `DM.DMCONNECTION` |
+| KingbaseES | `KingbaseESBuilder` | `PostgreSqlBuilder` | Kdbndp | `KINGBASE`, `KDBNDP` |
+| Huawei GaussDB / openGauss | `GaussDBBuilder` | `PostgreSqlBuilder` | Npgsql (openGauss compatible) | `GAUSSDB`, `OPENGAUSS` |
+| OceanBase (MySQL compat) | `OceanBaseBuilder` | `MySqlBuilder` | MySql.Data.MySqlClient | `OCEANBASE` |
+| TiDB | `TiDBBuilder` | `MySqlBuilder` | MySqlConnector.MySqlConnection | `TIDB` |
+| GreatDB | `GreatDBBuilder` | `MySqlBuilder` | MySql.Data.MySqlClient | `GREATDB` |
 
 > Domestic database builders are marker subclasses that inherit all behavior from their parent. `DamengBuilder` only overrides `GetAutoIncrementSql(ColumnDefinition)` (returns `IDENTITY(start, increment)`); the other 5 have empty class bodies.
 
-| Other (generic fallback) | `SqlBuilder` (base) | — | — |
+| Other (generic fallback) | `SqlBuilder` (base) | — | — | — |
 
 ### Dialect Auto-Detection
 
@@ -82,7 +84,7 @@ Paging is the biggest compatibility hotspot.
 > The Demo project includes [Oracle11gBuilder.cs](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo/Demos/Oracle11gBuilder.cs) which extends `OracleBuilder` and overrides `BuildSelectSql` to demonstrate nested paging for Oracle 11g.
 
 Recommended references:
-- [Custom paging](../03-advanced-topics/05-custom-paging.en.md)
+- [Custom paging](../03-advanced-topics/04-custom-paging.en.md)
 - [Custom SqlBuilder and dialect extension](../04-extensibility/03-custom-sqlbuilder.en.md)
 
 ### 2.2 Type Mapping Differences
@@ -243,7 +245,7 @@ Typical mitigations:
 
 Recommended references:
 - [Configuration reference](./01-configuration-reference.en.md)
-- [Performance](../03-advanced-topics/03-performance.en.md)
+- [Performance](../03-advanced-topics/02-performance.en.md)
 
 ## 5. Test Coverage
 
@@ -302,7 +304,7 @@ Consider a custom `SqlBuilder` when:
 - You want one place to register infrastructure-level dialect behavior
 
 Recommended starting points:
-- [Custom paging](../03-advanced-topics/05-custom-paging.en.md)
+- [Custom paging](../03-advanced-topics/04-custom-paging.en.md)
 - [Custom SqlBuilder and dialect extension](../04-extensibility/03-custom-sqlbuilder.en.md)
 
 ## 9. A Practical Compatibility Strategy
@@ -320,5 +322,5 @@ That keeps business-layer code more stable over time.
 - [Back to English docs hub](../README.md)
 - [Example Index](./05-example-index.en.md)
 - [Generated SQL Examples](./06-sql-examples.en.md)
-- [Custom paging](../03-advanced-topics/05-custom-paging.en.md)
+- [Custom paging](../03-advanced-topics/04-custom-paging.en.md)
 - [Custom SqlBuilder and dialect extension](../04-extensibility/03-custom-sqlbuilder.en.md)

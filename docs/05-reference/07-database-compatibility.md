@@ -18,18 +18,20 @@ LiteOrm 内置 11 个数据库方言的 `SqlBuilder` 实现（含 6 个国产/�
 
 ### 国产 / 兼容数据库
 
-| 数据库 | SqlBuilder 类 | 继承自 | 自动匹配关键词 |
-|--------|--------------|--------|---------------|
-| 达梦 DM | `DamengBuilder` | `OracleBuilder` | `DAMENG`、`DMNET`、`DM.DMCONNECTION` |
-| 人大金仓 KingbaseES | `KingbaseESBuilder` | `PostgreSqlBuilder` | `KINGBASE`、`KDBNDP` |
-| 华为 GaussDB / openGauss | `GaussDBBuilder` | `PostgreSqlBuilder` | `GAUSSDB`、`OPENGAUSS` |
-| OceanBase（MySQL 兼容） | `OceanBaseBuilder` | `MySqlBuilder` | `OCEANBASE` |
-| TiDB | `TiDBBuilder` | `MySqlBuilder` | `TIDB` |
-| 万里 GreatDB | `GreatDBBuilder` | `MySqlBuilder` | `GREATDB` |
+LiteOrm 内置以下 6 个国产 / 兼容数据库构建器。开发指南（基类选择、接入步骤、差异速查）见[国产 / 兼容数据库 SqlBuilder 开发指南](../04-extensibility/07-domestic-database-sqlbuilder.md)。
+
+| 数据库 | SqlBuilder 类 | 继承自 | 典型驱动 | 自动匹配关键词 |
+|--------|--------------|--------|---------|---------------|
+| 达梦 DM | `DamengBuilder` | `OracleBuilder` | Dm 系列驱动 | `DAMENG`、`DMNET`、`DM.DMCONNECTION` |
+| 人大金仓 KingbaseES | `KingbaseESBuilder` | `PostgreSqlBuilder` | Kdbndp | `KINGBASE`、`KDBNDP` |
+| 华为 GaussDB / openGauss | `GaussDBBuilder` | `PostgreSqlBuilder` | Npgsql（openGauss 兼容） | `GAUSSDB`、`OPENGAUSS` |
+| OceanBase（MySQL 兼容） | `OceanBaseBuilder` | `MySqlBuilder` | MySql.Data.MySqlClient | `OCEANBASE` |
+| TiDB | `TiDBBuilder` | `MySqlBuilder` | MySqlConnector.MySqlConnection | `TIDB` |
+| 万里 GreatDB | `GreatDBBuilder` | `MySqlBuilder` | MySql.Data.MySqlClient | `GREATDB` |
 
 > 国产数据库 Builder 均为标记子类，继承父类的全部行为。`DamengBuilder` 仅重写了 `GetAutoIncrementSql(ColumnDefinition)`（返回 `IDENTITY(起始值, 增量)`），其余 5 个为空类体。
 
-| 其他（通用兜底） | `SqlBuilder`（基类） | — | — |
+| 其他（通用兜底） | `SqlBuilder`（基类） | — | — | — |
 
 ### 方言自动检测机制
 
@@ -82,7 +84,7 @@ LiteOrm 内置 11 个数据库方言的 `SqlBuilder` 实现（含 6 个国产/�
 > Demo 项目中的 [Oracle11gBuilder.cs](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo/Demos/Oracle11gBuilder.cs) 继承 `OracleBuilder` 并重写 `BuildSelectSql`，演示了如何为 Oracle 11g 实现嵌套分页。
 
 参考文档：
-- [自定义分页](../03-advanced-topics/05-custom-paging.md)
+- [自定义分页](../03-advanced-topics/04-custom-paging.md)
 - [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)
 
 ### 2.2 类型映射差异
@@ -243,7 +245,7 @@ SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider =
 
 参考文档：
 - [配置项速查](./01-configuration-reference.md)
-- [性能优化](../03-advanced-topics/03-performance.md)
+- [性能优化](../03-advanced-topics/02-performance.md)
 
 ## 5. 测试覆盖情况
 
@@ -302,7 +304,7 @@ SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider =
 - 希望把方言差异统一收敛到基础设施层
 
 参考入口：
-- [自定义分页](../03-advanced-topics/05-custom-paging.md)
+- [自定义分页](../03-advanced-topics/04-custom-paging.md)
 - [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)
 
 ## 9. 一个务实的兼容性策略
@@ -320,5 +322,5 @@ SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider =
 - [返回目录](../README.md)
 - [示例索引](./05-example-index.md)
 - [生成 SQL 示例](./06-sql-examples.md)
-- [自定义分页](../03-advanced-topics/05-custom-paging.md)
+- [自定义分页](../03-advanced-topics/04-custom-paging.md)
 - [自定义 SqlBuilder / 方言扩展](../04-extensibility/03-custom-sqlbuilder.md)

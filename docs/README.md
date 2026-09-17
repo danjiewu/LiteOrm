@@ -31,14 +31,14 @@
 
 |中文|English|说明|
 |-|-|-|
-|[分表分库](./03-advanced-topics/02-sharding-and-tableargs.md)|[Sharding](./03-advanced-topics/02-sharding-and-tableargs.en.md)|分表策略与路由|
-|[性能](./03-advanced-topics/03-performance.md)|[Performance](./03-advanced-topics/03-performance.en.md)|性能调优建议|
-|[窗口函数](./03-advanced-topics/04-window-functions.md)|[Window Functions](./03-advanced-topics/04-window-functions.en.md)|窗口函数支持|
-|[自定义分页](./03-advanced-topics/05-custom-paging.md)|[Custom Paging](./03-advanced-topics/05-custom-paging.en.md)|分页方案扩展|
-|[AOT 支持](./03-advanced-topics/06-aot.md)|[AOT Support](./03-advanced-topics/06-aot.en.md)|NativeAOT 裁剪与源生成器|
-|[数据映射与值转换](./03-advanced-topics/11-data-mapping.md)|[Data Mapping](./03-advanced-topics/11-data-mapping.en.md)|值转换器、DataReader 映射、AOT 差异与自定义扩展|
-|[安全性](./03-advanced-topics/08-security.md)|[Security](./03-advanced-topics/08-security.en.md)|SQL 注入防护与安全机制|
-|[远程服务](./03-advanced-topics/09-remote-service.md)|[Remote Service](./03-advanced-topics/09-remote-service.en.md)|Remote 客户端与服务端使用|
+|[分表分库](./03-advanced-topics/01-sharding-and-tableargs.md)|[Sharding](./03-advanced-topics/01-sharding-and-tableargs.en.md)|分表策略与路由|
+|[性能](./03-advanced-topics/02-performance.md)|[Performance](./03-advanced-topics/02-performance.en.md)|性能调优建议|
+|[窗口函数](./03-advanced-topics/03-window-functions.md)|[Window Functions](./03-advanced-topics/03-window-functions.en.md)|窗口函数支持|
+|[自定义分页](./03-advanced-topics/04-custom-paging.md)|[Custom Paging](./03-advanced-topics/04-custom-paging.en.md)|分页方案扩展|
+|[AOT 支持](./03-advanced-topics/05-aot.md)|[AOT Support](./03-advanced-topics/05-aot.en.md)|NativeAOT 裁剪与源生成器|
+|[安全性](./03-advanced-topics/06-security.md)|[Security](./03-advanced-topics/06-security.en.md)|SQL 注入防护与安全机制|
+|[远程服务](./03-advanced-topics/07-remote-service.md)|[Remote Service](./03-advanced-topics/07-remote-service.en.md)|Remote 客户端与服务端使用|
+|[数据映射与值转换](./03-advanced-topics/08-data-mapping.md)|[Data Mapping](./03-advanced-topics/08-data-mapping.en.md)|值转换器、DataReader 映射、AOT 差异与自定义扩展|
 
 ### 扩展开发篇 / Extensibility
 
@@ -50,7 +50,7 @@
 |[Expr 序列化格式](./04-extensibility/04-expr-serialization.md)|[Expr Serialization Format](./04-extensibility/04-expr-serialization.en.md)|JSON 简洁模式与正常模式对比|
 |[前端 QueryString 查询](./04-extensibility/05-frontend-querystring.md)|[Frontend QueryString](./04-extensibility/05-frontend-querystring.en.md)|用 URL 参数驱动后端 Expr 查询|
 |[前端原生 Expr 查询](./04-extensibility/06-frontend-native-expr.md)|[Frontend Native Expr](./04-extensibility/06-frontend-native-expr.en.md)|按 LiteOrm 序列化格式提交 Expr JSON|
-| [国产/兼容数据库 SqlBuilder 开发指南](./04-extensibility/08-domestic-database-sqlbuilder.md)|[Domestic/Compatible Database SqlBuilder Guide](./04-extensibility/08-domestic-database-sqlbuilder.en.md)|达梦、人大金仓、GaussDB、OceanBase、TiDB、GreatDB 接入指南|
+| [国产/兼容数据库 SqlBuilder 开发指南](./04-extensibility/07-domestic-database-sqlbuilder.md)|[Domestic/Compatible Database SqlBuilder Guide](./04-extensibility/07-domestic-database-sqlbuilder.en.md)|达梦、人大金仓、GaussDB、OceanBase、TiDB、GreatDB 接入指南|
 
 ### DI扩展 / DI Extension
 
@@ -95,6 +95,7 @@
 |[性能报告](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)|[Benchmark report](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md)|
 |[变更日志](./CHANGELOG.md)|[Changelog](./CHANGELOG.en.md)|
 |[8.1 升级指南](./upgrade-guides/01-upgrade-guide-8.1.md)|[8.1 Upgrade Guide](./upgrade-guides/01-upgrade-guide-8.1.en.md)|
+|[LiteOrm 系列教程](./series/01-overview-and-quickstart.md)|独立的叙述式入门教程（与上表章节内容有重叠，循序阅读）|
 
 ### 推荐阅读路径
 

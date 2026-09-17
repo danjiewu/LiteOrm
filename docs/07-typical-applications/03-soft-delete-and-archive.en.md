@@ -221,7 +221,7 @@ var archived = await archiveService.SearchAsync(From<OrderArchive>("202609"));
 Notes:
 
 - Run archiving as a standalone batch job that moves data in primary-key ranges, one transaction per batch, to avoid long transactions and lock waits.
-- Sharding details and `TableArgs` propagation rules are in [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md).
+- Sharding details and `TableArgs` propagation rules are in [Sharding and TableArgs](../03-advanced-topics/01-sharding-and-tableargs.en.md).
 - Whether deleted rows move with the archive is a retention decision. Deleted rows left on the master keep participating in filtering, and a highly skewed `IsDeleted` column gains little from a dedicated index; a composite index such as `(IsDeleted, frequently-filtered column)` works better.
 
 ## Related links
@@ -230,5 +230,5 @@ Notes:
 - [Data Permissions in Practice](./02-data-permission.en.md)
 - [Audit and Change Tracking in Practice](./04-audit-and-change-tracking.en.md)
 - [Tenant Isolation in Practice](./01-tenant-isolation.en.md)
-- [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md)
+- [Sharding and TableArgs](../03-advanced-topics/01-sharding-and-tableargs.en.md)
 - [Transactions](../06-di/01-transactions.en.md)

@@ -339,5 +339,5 @@ LiteOrm 不会在启动时打印「初始化成功」之类的日志，配置问
 - [第一个完整示例（DI 版）](../01-getting-started/05-first-example-di.md)
 - [事务](../06-di/01-transactions.md)
 - [日志与诊断](../06-di/03-logging.md)
-- [性能优化](../03-advanced-topics/03-performance.md)
+- [性能优化](../03-advanced-topics/02-performance.md)
 - [API 索引](./02-api-index.md)

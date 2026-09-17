@@ -141,7 +141,7 @@ var paged = await userService.SearchAsync(
 - `Skip(n)` skips the first `n` records, rendered as SQL `OFFSET n` (or `LIMIT n, ...` / `ROWNUM` per dialect).
 - `Take(n)` takes `n` records, rendered as `LIMIT n` (or `FETCH FIRST n ROWS ONLY`).
 - `Skip` and `Take` can be used independently or together; usually combine with `OrderBy` first.
-- Large-offset paging (e.g. `Skip(10000)`) suffers poor performance; prefer ID-based cursor paging — see [Performance Optimization](../03-advanced-topics/03-performance.en.md#33-pagination-optimization).
+- Large-offset paging (e.g. `Skip(10000)`) suffers poor performance; prefer ID-based cursor paging — see [Performance Optimization](../03-advanced-topics/02-performance.en.md#33-pagination-optimization).
 
 ## 3. Variable capture and parameterization
 
@@ -232,7 +232,7 @@ var list = await userService.SearchAsAsync(
 
 LiteOrm natively supports `System.Text.Json.Nodes.JsonNode` (including `JsonObject`, `JsonArray`, `JsonValue`) properties — they are automatically mapped to JSON columns (stored as strings), and you can query JSON fields directly via indexers and `GetValue<T>()` in Lambda expressions.
 
-> For auto-mapping and serialization of JsonNode properties, see [Data Mapping & Value Conversion](../03-advanced-topics/11-data-mapping.en.md#33-jsonnode-mapping-navigation).
+> For auto-mapping and serialization of JsonNode properties, see [Data Mapping & Value Conversion](../03-advanced-topics/08-data-mapping.en.md#33-jsonnode-mapping-navigation).
 
 ### 7.1 Basic usage: indexer access
 

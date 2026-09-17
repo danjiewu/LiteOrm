@@ -279,7 +279,7 @@ public class Log : IArged
 }
 ```
 
-For more details, see [Sharding and TableArgs](../03-advanced-topics/02-sharding-and-tableargs.en.md).
+For more details, see [Sharding and TableArgs](../03-advanced-topics/01-sharding-and-tableargs.en.md).
 
 ## Modeling Recommendations
 

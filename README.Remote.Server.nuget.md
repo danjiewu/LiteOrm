@@ -47,7 +47,7 @@ For authenticated access, implement `IRemoteAuthenticationHandler` and register 
 // Using ASP.NET Core Identity
 builder.Services.AddIdentity<MyUser, MyRole>().AddEntityFrameworkStores<MyDbContext>();
 builder.Services.AddSingleton<IRemoteAuthenticationHandler, IdentityRemoteAuthenticationHandler<MyUser>>();
-builder.Services.AddRemoteServer(options => { options.EnableAuthentication = false; });
+builder.Services.AddRemoteServer();
 
 // Or implement IRemoteAuthenticationHandler directly for custom auth (JWT, etc.)
 builder.Services.AddSingleton<IRemoteAuthenticationHandler, MyAuthHandler>();
@@ -55,6 +55,8 @@ builder.Services.AddRemoteServer();
 ```
 
 That's it — interfaces marked with `[Service]` and registered in DI are now remotely callable.
+
+> Request authentication is handled by your `IRemoteAuthenticationHandler`; `RemoteServerOptions.EnableAuthentication` (default `false`) is only an opt-in that wires up ASP.NET Core cookie authentication scaffolding, and is **not** required for the Identity handler above.
 
 ### How It Works
 
@@ -115,7 +117,7 @@ app.Run();
 // 使用 ASP.NET Core Identity
 builder.Services.AddIdentity<MyUser, MyRole>().AddEntityFrameworkStores<MyDbContext>();
 builder.Services.AddSingleton<IRemoteAuthenticationHandler, IdentityRemoteAuthenticationHandler<MyUser>>();
-builder.Services.AddRemoteServer(options => { options.EnableAuthentication = false; });
+builder.Services.AddRemoteServer();
 
 // 或直接实现 IRemoteAuthenticationHandler 进行自定义认证（JWT 等）
 builder.Services.AddSingleton<IRemoteAuthenticationHandler, MyAuthHandler>();
@@ -123,6 +125,8 @@ builder.Services.AddRemoteServer();
 ```
 
 完成 — 标记了 `[Service]` 特性并注册到 DI 的接口现在即可被远程调用。
+
+> 请求认证由你注册的 `IRemoteAuthenticationHandler` 完成；`RemoteServerOptions.EnableAuthentication`（默认为 `false`）只是可选的入门开关，用于装配 ASP.NET Core Cookie 认证脚手架，上面的 Identity 示例**无需**设置它。
 
 ### 工作原理
 
@@ -144,7 +148,7 @@ builder.Services.AddRemoteServer();
 ## 📚 相关资源 / Resources
 
 - [LiteOrm 主仓库 / Main Repository](https://github.com/danjiewu/LiteOrm)
-- [远程服务文档 / Remote Service Docs](https://github.com/danjiewu/LiteOrm/blob/master/docs/03-advanced-topics/09-remote-service.md)
+- [远程服务文档 / Remote Service Docs](https://github.com/danjiewu/LiteOrm/blob/master/docs/03-advanced-topics/07-remote-service.md)
 - [客户端包 / Client Package: LiteOrm.Remote](https://www.nuget.org/packages/LiteOrm.Remote)
 - [Demo 项目 / Demo Project](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo)
 

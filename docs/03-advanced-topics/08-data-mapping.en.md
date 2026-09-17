@@ -466,5 +466,5 @@ The read-mapping delegate is cached by entity type and compiled by the **first d
 - [Entity Mapping](../02-core-usage/01-entity-mapping.en.md)
 - [Lambda Query Guide](../02-core-usage/05-lambda-guide.en.md)
 - [Expression Extension](../04-extensibility/01-expression-extension.en.md)
-- [AOT Support](./06-aot.en.md)
-- [Performance](./03-performance.en.md)
+- [AOT Support](./05-aot.en.md)
+- [Performance](./02-performance.en.md)
