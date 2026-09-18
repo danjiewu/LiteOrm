@@ -553,7 +553,7 @@ namespace LiteOrm.Service
         /// <param name="expr">删除条件表达式，用于筛选要删除的记录。</param>
         /// <param name="tableArgs">表名参数，用于支持分表场景。</param>
         /// <returns>删除的记录数。</returns>
-        public virtual int DeleteAll(LogicExpr expr, params string[] tableArgs)
+        public virtual int DeleteAll(LogicExpr? expr, params string[]? tableArgs)
         {
             if (!Notify(l => l.OnDeleteAlling(expr, tableArgs)))
                 return 0;
@@ -763,17 +763,6 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
-        /// 隐式接口实现：根据条件删除实体的非泛型版本。
-        /// </summary>
-        /// <param name="expr">删除条件表达式。</param>
-        /// <param name="tableArgs">表名参数。</param>
-        /// <returns>删除的记录数。</returns>
-        int IEntityService.DeleteAll(LogicExpr? expr, params string[]? tableArgs)
-        {
-            return DeleteAll(expr!, tableArgs!);
-        }
-
-        /// <summary>
         /// 隐式接口实现：更新或插入实体对象的非泛型版本。
         /// </summary>
         /// <param name="entity">要处理的实体对象。</param>
@@ -886,18 +875,6 @@ namespace LiteOrm.Service
         }
 
         /// <summary>
-        /// 隐式接口实现：异步根据条件删除实体的非泛型版本。
-        /// </summary>
-        /// <param name="expr">删除条件表达式。</param>
-        /// <param name="tableArgs">表名参数。</param>
-        /// <param name="cancellationToken">取消令牌。</param>
-        /// <returns>表示异步操作的任务，任务结果为删除的记录数。</returns>
-        async Task<int> IEntityServiceAsync.DeleteAllAsync(LogicExpr? expr, string[]? tableArgs, CancellationToken cancellationToken)
-        {
-            return await DeleteAllAsync(expr!, tableArgs, cancellationToken);
-        }
-
-        /// <summary>
         /// 隐式接口实现：异步更新或插入实体对象的非泛型版本。
         /// </summary>
         /// <param name="entity">要处理的实体对象。</param>
@@ -1003,7 +980,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>受影响的行数。</returns>
-        public async Task<int> DeleteAllAsync(LogicExpr expr, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+        public async virtual Task<int> DeleteAllAsync(LogicExpr? expr, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             var args = tableArgs ?? Array.Empty<string>();
             if (!Notify(l => l.OnDeleteAlling(expr, args)))
@@ -1039,7 +1016,7 @@ namespace LiteOrm.Service
         /// <param name="tableArgs">表名参数。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>是否删除成功。</returns>
-        public async Task<bool> DeleteIDAsync(object id, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+        public async virtual Task<bool> DeleteIDAsync(object id, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
             var args = tableArgs ?? Array.Empty<string>();
             if (!Notify(l => l.OnDeleteIDing(id, args)))

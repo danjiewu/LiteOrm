@@ -97,7 +97,7 @@ namespace LiteOrm.Service
         /// <param name="id">待删除的主键值。</param>
         /// <param name="tableArgs">表名参数。</param>
         /// <returns><see langword="false"/> 表示取消删除。</returns>
-        bool OnDeleteIDing(object id, string[] tableArgs);
+        bool OnDeleteIDing(object id, string[]? tableArgs);
 
         /// <summary>
         /// 按 ID 批量删除前回调。
@@ -105,7 +105,7 @@ namespace LiteOrm.Service
         /// <param name="ids">待删除的主键值集合。</param>
         /// <param name="tableArgs">表名参数。</param>
         /// <returns><see langword="false"/> 表示取消本次批量删除。</returns>
-        bool OnBatchDeleteIDing(IEnumerable ids, string[] tableArgs);
+        bool OnBatchDeleteIDing(IEnumerable ids, string[]? tableArgs);
 
         #endregion
 
@@ -116,14 +116,14 @@ namespace LiteOrm.Service
         /// </summary>
         /// <param name="id">已删除的主键值。</param>
         /// <param name="tableArgs">表名参数。</param>
-        void OnDeleteIDed(object id, string[] tableArgs);
+        void OnDeleteIDed(object id, string[]? tableArgs);
 
         /// <summary>
         /// 按 ID 批量删除成功后回调。
         /// </summary>
         /// <param name="ids">已删除的主键值集合。</param>
         /// <param name="tableArgs">表名参数。</param>
-        void OnBatchDeleteIDed(IEnumerable ids, string[] tableArgs);
+        void OnBatchDeleteIDed(IEnumerable ids, string[]? tableArgs);
 
         #endregion
 
@@ -135,7 +135,7 @@ namespace LiteOrm.Service
         /// <param name="expr">删除条件表达式。</param>
         /// <param name="tableArgs">表名参数。</param>
         /// <returns><see langword="false"/> 表示取消删除。</returns>
-        bool OnDeleteAlling(LogicExpr expr, string[] tableArgs);
+        bool OnDeleteAlling(LogicExpr? expr, string[]? tableArgs);
 
         /// <summary>
         /// 按表达式更新前回调。
@@ -143,7 +143,7 @@ namespace LiteOrm.Service
         /// <param name="expr">更新表达式。</param>
         /// <param name="tableArgs">表名参数。</param>
         /// <returns><see langword="false"/> 表示取消更新。</returns>
-        bool OnUpdateAlling(UpdateExpr expr, string[] tableArgs);
+        bool OnUpdateAlling(UpdateExpr expr, string[]? tableArgs);
 
         #endregion
 
@@ -155,7 +155,7 @@ namespace LiteOrm.Service
         /// <param name="count">受影响的行数。</param>
         /// <param name="expr">删除条件表达式。</param>
         /// <param name="tableArgs">表名参数。</param>
-        void OnDeleteAlled(int count, LogicExpr expr, string[] tableArgs);
+        void OnDeleteAlled(int count, LogicExpr? expr, string[]? tableArgs);
 
         /// <summary>
         /// 按表达式更新成功后回调。
@@ -163,7 +163,7 @@ namespace LiteOrm.Service
         /// <param name="count">受影响的行数。</param>
         /// <param name="expr">更新表达式。</param>
         /// <param name="tableArgs">表名参数。</param>
-        void OnUpdateAlled(int count, UpdateExpr expr, string[] tableArgs);
+        void OnUpdateAlled(int count, UpdateExpr expr, string[]? tableArgs);
 
         #endregion
     }

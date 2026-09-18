@@ -819,7 +819,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="expr">条件</param>
         /// <returns>删除对象数量</returns>
-        public virtual int Delete(LogicExpr expr)
+        public virtual int Delete(LogicExpr? expr)
         {
             var deleteExpr = new DeleteExpr(new TableExpr(ObjectType), expr);
             using var command = MakeExprCommand(deleteExpr);
@@ -1329,7 +1329,7 @@ namespace LiteOrm
         /// <param name="expr">条件。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步操作的任务，返回删除对象数量。</returns>
-        public async virtual Task<int> DeleteAsync(LogicExpr expr, CancellationToken cancellationToken = default)
+        public async virtual Task<int> DeleteAsync(LogicExpr? expr, CancellationToken cancellationToken = default)
         {
             var deleteExpr = new DeleteExpr(new TableExpr(ObjectType), expr);
             using var command = await MakeExprCommandAsync(deleteExpr, false, cancellationToken);

@@ -33,7 +33,7 @@ namespace LiteOrm.Service
         public virtual bool OnBatchDeleteIDing(IEnumerable ids, string[] tableArgs) => true;
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnDeleteAlling"/>
-        public virtual bool OnDeleteAlling(LogicExpr expr, string[] tableArgs) => true;
+        public virtual bool OnDeleteAlling(LogicExpr? expr, string[] tableArgs) => true;
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnUpdateAlling"/>
         public virtual bool OnUpdateAlling(UpdateExpr expr, string[] tableArgs) => true;
@@ -57,7 +57,7 @@ namespace LiteOrm.Service
         public virtual void OnBatchDeleteIDed(IEnumerable ids, string[] tableArgs) { }
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnDeleteAlled"/>
-        public virtual void OnDeleteAlled(int count, LogicExpr expr, string[] tableArgs) { }
+        public virtual void OnDeleteAlled(int count, LogicExpr? expr, string[] tableArgs) { }
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnUpdateAlled"/>
         public virtual void OnUpdateAlled(int count, UpdateExpr expr, string[] tableArgs) { }
