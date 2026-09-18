@@ -1516,17 +1516,17 @@ namespace LiteOrm.Tests
             public override void OnUpdatedOrInserted(SqliteTestUser entity) => Calls.Add(nameof(OnUpdatedOrInserted));
             public override void OnDeleted(SqliteTestUser entity) => Calls.Add(nameof(OnDeleted));
 
-            public override bool OnDeleteIDing(object id, string[] tableArgs) { Calls.Add(nameof(OnDeleteIDing)); return !Block; }
-            public override void OnDeleteIDed(object id, string[] tableArgs) => Calls.Add(nameof(OnDeleteIDed));
+            public override bool OnDeleteIDing(object id, string[]? tableArgs) { Calls.Add(nameof(OnDeleteIDing)); return !Block; }
+            public override void OnDeleteIDed(object id, string[]? tableArgs) => Calls.Add(nameof(OnDeleteIDed));
 
-            public override bool OnBatchDeleteIDing(System.Collections.IEnumerable ids, string[] tableArgs) { Calls.Add(nameof(OnBatchDeleteIDing)); return !Block; }
-            public override void OnBatchDeleteIDed(System.Collections.IEnumerable ids, string[] tableArgs) => Calls.Add(nameof(OnBatchDeleteIDed));
+            public override bool OnBatchDeleteIDing(System.Collections.IEnumerable ids, string[]? tableArgs) { Calls.Add(nameof(OnBatchDeleteIDing)); return !Block; }
+            public override void OnBatchDeleteIDed(System.Collections.IEnumerable ids, string[]? tableArgs) => Calls.Add(nameof(OnBatchDeleteIDed));
 
-            public override bool OnUpdateAlling(UpdateExpr expr, string[] tableArgs) { Calls.Add(nameof(OnUpdateAlling)); return !Block; }
-            public override void OnUpdateAlled(int count, UpdateExpr expr, string[] tableArgs) => Calls.Add(nameof(OnUpdateAlled));
+            public override bool OnUpdateAlling(UpdateExpr expr, string[]? tableArgs) { Calls.Add(nameof(OnUpdateAlling)); return !Block; }
+            public override void OnUpdateAlled(int count, UpdateExpr expr, string[]? tableArgs) => Calls.Add(nameof(OnUpdateAlled));
 
-            public override bool OnDeleteAlling(LogicExpr expr, string[] tableArgs) { Calls.Add(nameof(OnDeleteAlling)); return !Block; }
-            public override void OnDeleteAlled(int count, LogicExpr expr, string[] tableArgs) => Calls.Add(nameof(OnDeleteAlled));
+            public override bool OnDeleteAlling(LogicExpr? expr, string[]? tableArgs) { Calls.Add(nameof(OnDeleteAlling)); return !Block; }
+            public override void OnDeleteAlled(int count, LogicExpr? expr, string[]? tableArgs) => Calls.Add(nameof(OnDeleteAlled));
         }
 
         /// <summary>
