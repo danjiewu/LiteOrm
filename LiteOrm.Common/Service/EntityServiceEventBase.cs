@@ -27,16 +27,16 @@ namespace LiteOrm.Service
         public virtual bool OnDeleting(T entity) => true;
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnDeleteIDing"/>
-        public virtual bool OnDeleteIDing(object id, string[] tableArgs) => true;
+        public virtual bool OnDeleteIDing(object id, string[]? tableArgs) => true;
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnBatchDeleteIDing"/>
-        public virtual bool OnBatchDeleteIDing(IEnumerable ids, string[] tableArgs) => true;
+        public virtual bool OnBatchDeleteIDing(IEnumerable ids, string[]? tableArgs) => true;
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnDeleteAlling"/>
-        public virtual bool OnDeleteAlling(LogicExpr? expr, string[] tableArgs) => true;
+        public virtual bool OnDeleteAlling(LogicExpr? expr, string[]? tableArgs) => true;
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnUpdateAlling"/>
-        public virtual bool OnUpdateAlling(UpdateExpr expr, string[] tableArgs) => true;
+        public virtual bool OnUpdateAlling(UpdateExpr expr, string[]? tableArgs) => true;
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnInserted"/>
         public virtual void OnInserted(T entity) { }
@@ -51,15 +51,15 @@ namespace LiteOrm.Service
         public virtual void OnDeleted(T entity) { }
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnDeleteIDed"/>
-        public virtual void OnDeleteIDed(object id, string[] tableArgs) { }
+        public virtual void OnDeleteIDed(object id, string[]? tableArgs) { }
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnBatchDeleteIDed"/>
-        public virtual void OnBatchDeleteIDed(IEnumerable ids, string[] tableArgs) { }
+        public virtual void OnBatchDeleteIDed(IEnumerable ids, string[]? tableArgs) { }
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnDeleteAlled"/>
-        public virtual void OnDeleteAlled(int count, LogicExpr? expr, string[] tableArgs) { }
+        public virtual void OnDeleteAlled(int count, LogicExpr? expr, string[]? tableArgs) { }
 
         /// <inheritdoc cref="IEntityServiceEvent{T}.OnUpdateAlled"/>
-        public virtual void OnUpdateAlled(int count, UpdateExpr expr, string[] tableArgs) { }
+        public virtual void OnUpdateAlled(int count, UpdateExpr expr, string[]? tableArgs) { }
     }
 }
