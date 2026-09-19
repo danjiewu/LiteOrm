@@ -8,7 +8,7 @@ LiteOrm's SQL injection prevention uses a **multi-layered defense-in-depth** str
 
 | Layer | Mechanism | Description |
 |-------|-----------|-------------|
-| Parameterized SQL | `outputParams` + placeholders | All user values are passed as parameters, no exceptions |
+| Parameterized SQL | `context.OutputParams` + placeholders | All user values are passed as parameters, no exceptions |
 | LIKE escaping + parameterization | Wildcard escaping + conditional `ESCAPE` clause | Dual protection against LIKE injection |
 | ExprString auto-parameterization | Non-Expr values auto-converted to named params | User values in interpolated strings are automatically parameterized |
 | Expression type whitelist | `ExprTypeValidator` | Controls allowed expression types |
@@ -21,14 +21,13 @@ LiteOrm's SQL injection prevention uses a **multi-layered defense-in-depth** str
 
 ### 2.1 Parameter Passing Mechanism
 
-All SQL value passing in LiteOrm goes through the `outputParams` collection:
+All SQL value passing in LiteOrm goes through the `SqlBuildContext.OutputParams` collection:
 
 ```csharp
-public static string ToSql(this Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder,
-    ICollection<Param> outputParams)
+public static string ToSql(this Expr expr, SqlBuildContext context)
 ```
 
-The generated SQL uses parameter placeholders (e.g., `@0`, `@1`), and values are passed independently through `outputParams` — **user input is never directly concatenated into the SQL string**.
+The generated SQL uses parameter placeholders (e.g., `@0`, `@1`), and values are passed independently through `context.OutputParams` — **user input is never directly concatenated into the SQL string**.
 
 **Example**:
 
@@ -110,7 +109,7 @@ Placeholder generation is abstracted by the `ISqlBuilder` interface, with each d
 using static LiteOrm.Common.Expr;
 dao.Search($"WHERE {Prop("Age")} > {minAge}");
 // Prop("Age")  → goes through ToSql(), fully parameterized
-// minAge (int)      → auto-generated parameter placeholder @0, value added to outputParams
+// minAge (int)      → auto-generated parameter placeholder @0, value added to context.OutputParams
 ```
 
 ### 3.2 Processing Paths
@@ -260,8 +259,7 @@ Validator groups use **short-circuit evaluation**: execution stops at the first 
 
 ```csharp
 public delegate string? SqlGenerateHandler(
-    SqlBuildContext context, ISqlBuilder sqlBuilder,
-    ICollection<Param> outputParams, object? arg);
+    SqlBuildContext context, object? arg);
 
 public sealed class GenericSqlExpr : LogicExpr
 {
@@ -275,12 +273,12 @@ public sealed class GenericSqlExpr : LogicExpr
 ```csharp
 using static LiteOrm.Common.Expr;
 // Register a custom SQL generator
-GenericSqlExpr.Register("CustomCheck", (context, sqlBuilder, outputParams, arg) =>
+GenericSqlExpr.Register("CustomCheck", (context, arg) =>
 {
-    // Parameterize: use outputParams to pass user values
-    string paramName = outputParams.Count.ToString();
-    outputParams.Add(new(sqlBuilder.ToParamName(paramName), arg));
-    return $"dbo.CustomCheck({sqlBuilder.ToSqlParam(paramName)})";
+    // Parameterize: use context.OutputParams to pass user values
+    string paramName = context.OutputParams.Count.ToString();
+    context.OutputParams.Add(new(context.SqlBuilder.ToParamName(paramName), arg));
+    return $"dbo.CustomCheck({context.SqlBuilder.ToSqlParam(paramName)})";
 });
 
 // Use in queries
@@ -292,7 +290,7 @@ var users = await userService.SearchAsync(expr);
 ### 5.3 Security Features
 
 1. **Must be pre-registered**: Maintains a global registry via `ConcurrentDictionary`; unregistered keys throw exceptions
-2. **Supports parameterization**: The delegate signature includes `outputParams`, allowing safe passing of user values
+2. **Supports parameterization**: The delegate can reach the parameter collection via `context.OutputParams`, allowing safe passing of user values
 3. **Parameter passing**: Business parameters are passed via the `Arg` property, not concatenated into SQL
 
 If you want to use it for business scenarios such as "current-user scope filtering" or "multi-tenant filtering", read this together with [Permission Filtering](../di/permission-filtering.en.md), which focuses on **when to use runtime Expr / GenericSqlExpr versus `ConstFilter` or table routing**.
@@ -327,22 +325,22 @@ Within `ExprString`, **literal strings** (`AppendLiteral`) are developer-hardcod
 
 ### 6.2 GenericSqlExpr Freedom
 
-The `SqlGenerateHandler` delegate can return any string. If `outputParams` is not carefully used within the callback, injection points can be introduced in custom SQL:
+The `SqlGenerateHandler` delegate can return any string. If `context.OutputParams` is not carefully used within the callback, injection points can be introduced in custom SQL:
 
 ```csharp
 using static LiteOrm.Common.Expr;
 // ❌ Dangerous: user input concatenated directly in delegate
-GenericSqlExpr.Register("UnsafeLookup", (ctx, sb, outputParams, arg) =>
+GenericSqlExpr.Register("UnsafeLookup", (ctx, arg) =>
 {
     return $"SELECT * FROM Users WHERE Code = '{arg}'";
 });
 
-// ✅ Safe: use outputParams for parameterization
-GenericSqlExpr.Register("SafeLookup", (ctx, sb, outputParams, arg) =>
+// ✅ Safe: use context.OutputParams for parameterization
+GenericSqlExpr.Register("SafeLookup", (ctx, arg) =>
 {
-    string paramName = outputParams.Count.ToString();
-    outputParams.Add(new(sb.ToParamName(paramName), arg));
-    return $"SELECT * FROM Users WHERE Code = {sb.ToSqlParam(paramName)}";
+    string paramName = ctx.OutputParams.Count.ToString();
+    ctx.OutputParams.Add(new(ctx.SqlBuilder.ToParamName(paramName), arg));
+    return $"SELECT * FROM Users WHERE Code = {ctx.SqlBuilder.ToSqlParam(paramName)}";
 });
 ```
 
@@ -443,7 +441,7 @@ When using LiteOrm in production, confirm each item:
 |------------|-------------|
 | ✅ Enable `AllowRegisted` function policy | Prevent execution of unregistered SQL functions |
 | ✅ Use validators before frontend Expr queries | Restrict expression types and field access |
-| ✅ Use `outputParams` in custom SQL | Parameterize within GenericSqlExpr callbacks |
+| ✅ Use `context.OutputParams` in custom SQL | Parameterize within GenericSqlExpr callbacks |
 | ✅ Expr.Prop has built-in name validation | Invalid names throw exceptions; use whitelist only for field range restrictions |
 | ✅ Use ExprString through DAO methods | Regular interpolated strings do not produce ExprString; use `dao.Search(...)` etc. |
 | ✅ Validate RawSql dynamic values first | `RawSql` is exclusively for dynamic values unsuitable for params (e.g. `LIMIT` counts, `ASC`/`DESC`, dynamic column names); validate numeric values via range (e.g. non-negative integers), string/token values via whitelist; never splice unvalidated input; write purely static text directly in the literal; frontend Expr JSON cannot carry RawSql |

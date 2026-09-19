@@ -11,7 +11,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Register_WithNullKey_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => GenericSqlExpr.Register(null!, (_, _, _, _) => "sql"));
+            Assert.Throws<ArgumentNullException>(() => GenericSqlExpr.Register(null!, (_, _) => "sql"));
         }
 
         [Fact]
@@ -24,7 +24,7 @@ namespace LiteOrm.Common.UnitTests
         public void Register_AndGet_ReturnsExpressionWithSameKey()
         {
             var key = Guid.NewGuid().ToString("N");
-            GenericSqlExpr.Register(key, (_, _, _, _) => "sql");
+            GenericSqlExpr.Register(key, (_, _) => "sql");
 
             var expr = GenericSqlExpr.Get(key);
 
@@ -35,7 +35,7 @@ namespace LiteOrm.Common.UnitTests
         public void Get_WithArg_SetsArg()
         {
             var key = Guid.NewGuid().ToString("N");
-            GenericSqlExpr.Register(key, (_, _, _, arg) => arg?.ToString() ?? string.Empty);
+            GenericSqlExpr.Register(key, (_, arg) => arg?.ToString() ?? string.Empty);
 
             var expr = GenericSqlExpr.Get(key, 5);
 
@@ -46,10 +46,10 @@ namespace LiteOrm.Common.UnitTests
         public void GenerateSql_UsesRegisteredHandler()
         {
             var key = Guid.NewGuid().ToString("N");
-            GenericSqlExpr.Register(key, (_, _, _, arg) => $"X{arg}");
+            GenericSqlExpr.Register(key, (_, arg) => $"X{arg}");
             var expr = GenericSqlExpr.Get(key, 3);
 
-            var sql = expr.GenerateSql(null!, null!, new List<Param>());
+            var sql = expr.GenerateSql(null!);
 
             Assert.Equal("X3", sql);
         }

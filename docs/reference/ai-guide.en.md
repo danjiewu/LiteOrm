@@ -679,7 +679,7 @@ var result = await dataViewDAO.Search(
 | No JSON round-trip | `RawSql` cannot be serialized/deserialized via `ExprJsonConverter`; frontend Expr JSON cannot carry it |
 | Prefer Expr | Use `Expr.Prop` for simple column names (built-in name validation and quote wrapping); anything expressible via `Expr.Func`/`Expr.Sql` (pre-registered `GenericSqlExpr`) should not use `RawSql` |
 
-> When you need to pass runtime strings/complex values inside custom SQL, register a callback via `GenericSqlExpr.Register` and parameterize using `outputParams` inside the callback. See [ExprString Guide - Section 8](../core-usage/exprstring-guide.en.md#8-inserting-raw-sql-rawsql) and [Security](../advanced-topics/security.en.md).
+> When you need to pass runtime strings/complex values inside custom SQL, register a callback via `GenericSqlExpr.Register` and parameterize using `context.OutputParams` inside the callback. See [ExprString Guide - Section 8](../core-usage/exprstring-guide.en.md#8-inserting-raw-sql-rawsql) and [Security](../advanced-topics/security.en.md).
 
 ### Common patterns
 

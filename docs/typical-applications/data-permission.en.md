@@ -55,7 +55,7 @@ Attach the condition to the table definition so every entry point applies it aut
 using LiteOrm.Common;
 using static LiteOrm.Common.Expr;
 
-GenericSqlExpr.Register("OwnerScope", (context, sqlBuilder, outputParams, _) =>
+GenericSqlExpr.Register("OwnerScope", (context, _) =>
 {
     var user = UserContext.Current ?? throw new InvalidOperationException("User not resolved.");
     if (user.IsAdmin) return null;                     // admins produce no fragment
@@ -67,7 +67,7 @@ GenericSqlExpr.Register("OwnerScope", (context, sqlBuilder, outputParams, _) =>
         ? own | (Prop(nameof(Order.DeptId)) == user.DeptId)
         : own;
 
-    return condition.ToSql(context, sqlBuilder, outputParams);
+    return condition.ToSql(context);
 });
 ```
 
@@ -86,7 +86,7 @@ foreach (var type in typeof(Order).Assembly.GetTypes())
 Notes:
 
 - The role branch is recomputed at SQL-generation time: every query re-reads the current user, so switching roles takes effect immediately rather than from a snapshot taken at login.
-- Column references are no longer hand concatenated as bare names. The delegate builds a `PropertyExpr` with `Prop(...)`, and the rendered SQL is produced by `ExprSqlConverter.ToSql`; columns pick up the current table alias automatically (e.g. `"T0"."OwnerId"`). Comparing against a concrete value (e.g. `user.Id`) uses the built-in operator overload, which parameterizes the value, so no explicit `Value(...)` or `outputParams` index bookkeeping is needed.
+- Column references are no longer hand concatenated as bare names. The delegate builds a `PropertyExpr` with `Prop(...)`, and the rendered SQL is produced by `ExprSqlConverter.ToSql`; columns pick up the current table alias automatically (e.g. `"T0"."OwnerId"`). Comparing against a concrete value (e.g. `user.Id`) uses the built-in operator overload, which parameterizes the value, so no explicit `Value(...)` or `context.OutputParams` index bookkeeping is needed.
 - The generated SQL is parameterized; values never land in the text. An admin returns `null`, so the fragment is ignored.
 
 The underlying mechanics of `GenericSqlExpr` and `ConstFilter` — the coverage (primary-key reads, `JOIN ON`, `EXISTS`, `UPDATE` / `DELETE`), the performance cost, and the NativeAOT difference — match example 3 of [Tenant Isolation](./tenant-isolation.en.md), so they are not repeated here.

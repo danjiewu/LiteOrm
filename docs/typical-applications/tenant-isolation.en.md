@@ -184,14 +184,14 @@ Register the fragment first; the delegate reads the current tenant:
 using LiteOrm.Common;
 using static LiteOrm.Common.Expr;
 
-GenericSqlExpr.Register("TenantFilter", (context, sqlBuilder, outputParams, _) =>
+GenericSqlExpr.Register("TenantFilter", (context, _) =>
 {
     string tenant = TenantContext.Current?.TenantId
         ?? throw new InvalidOperationException("Tenant not resolved.");
 
-    string paramName = outputParams.Count.ToString();
-    outputParams.Add(new Param(sqlBuilder.ToParamName(paramName), tenant));
-    return $"{sqlBuilder.ToSqlName(nameof(ITenantEntity.TenantId))} = {sqlBuilder.ToSqlParam(paramName)}";
+    string paramName = context.OutputParams.Count.ToString();
+    context.OutputParams.Add(new Param(context.SqlBuilder.ToParamName(paramName), tenant));
+    return $"{context.SqlBuilder.ToSqlName(nameof(ITenantEntity.TenantId))} = {context.SqlBuilder.ToSqlParam(paramName)}";
 });
 ```
 

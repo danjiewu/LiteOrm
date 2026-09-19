@@ -174,14 +174,15 @@ namespace LiteOrm
         public string[]? TableArgs { get; internal set; }
 
         /// <summary>
-        /// 创建 SQL 执行上下文。
+        /// 创建 SQL 执行上下文，并绑定当前 DAO 使用的 SQL 构建器。
         /// </summary>
         /// <param name="initTable">是否在上下文中初始化表信息，默认为 false。对于某些操作（如生成 SQL 语句），可能需要在上下文中包含表信息以正确解析列和别名等细节。</param>
         /// <returns>SQL 构建上下文实例。</returns>
         public virtual SqlBuildContext CreateSqlBuildContext(bool initTable = false)
         {
-            if (initTable) return new SqlBuildContext(Table, Constants.DefaultTableAlias, TableArgs) { SingleTable = !IsView };
-            else return new SqlBuildContext() { TableArgs = TableArgs, SingleTable = !IsView };
+            return initTable
+                ? new SqlBuildContext(SqlBuilder, Table, Constants.DefaultTableAlias, TableArgs) { SingleTable = !IsView }
+                : new SqlBuildContext(SqlBuilder) { TableArgs = TableArgs, SingleTable = !IsView };
         }
 
         private SqlBuildContext? _initSqlBuildContext;
@@ -237,7 +238,7 @@ namespace LiteOrm
             {
                 if (_fromTable is null)
                 {
-                    _fromTable = Table.ToSql(InitSqlBuildContext, SqlBuilder);
+                    _fromTable = Table.ToSql(InitSqlBuildContext);
                 }
                 return _fromTable;
             }
@@ -283,7 +284,7 @@ namespace LiteOrm
                 SqlColumn column = columns[i];
                 bool computed = column is ColumnDefinition cd && cd.IsComputed;
                 if (i > 0) strAllFields.Append(",");
-                strAllFields.Append(column.ToSql(InitSqlBuildContext, SqlBuilder));
+                strAllFields.Append(column.ToSql(InitSqlBuildContext));
                 if (computed || !String.Equals(column.Name, column.PropertyName, StringComparison.OrdinalIgnoreCase))
                 {
                     strAllFields.Append(" AS ");
@@ -522,7 +523,7 @@ namespace LiteOrm
         {
             if (isQuery) expr = ToSelectExpr(expr);
             if (expr is null) throw new ArgumentNullException(nameof(expr));
-            return MakeNamedParamCommand(expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder));
+            return MakeNamedParamCommand(expr.ToPreparedSql(CreateSqlBuildContext()));
         }
         /// <summary>
         /// 异步根据表达式创建命令
@@ -536,7 +537,7 @@ namespace LiteOrm
         {
             if (isQuery) expr = ToSelectExpr(expr);
             if (expr is null) throw new ArgumentNullException(nameof(expr));
-            return await MakeNamedParamCommandAsync(expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder), cancellationToken).ConfigureAwait(false);
+            return await MakeNamedParamCommandAsync(expr.ToPreparedSql(CreateSqlBuildContext()), cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -672,8 +673,8 @@ namespace LiteOrm
             LogicExpr? constFilter = TableDefinition.ConstFilter;
             if (constFilter is null) return null;
             if (tableAlias is null && IsView) tableAlias = Constants.DefaultTableAlias;
-            var context = new SqlBuildContext(Table, tableAlias ?? Constants.DefaultTableAlias, TableArgs) { SingleTable = tableAlias is null };
-            return constFilter.ToSql(context, SqlBuilder, paramValues);
+            var context = new SqlBuildContext(SqlBuilder, Table, tableAlias ?? Constants.DefaultTableAlias, TableArgs) { SingleTable = tableAlias is null, OutputParams = paramValues };
+            return constFilter.ToSql(context);
         }
 
         /// <summary>
@@ -702,7 +703,7 @@ namespace LiteOrm
             {
                 return cachedSql;
             }
-            string sql = column.ToSql(InitSqlBuildContext, SqlBuilder);
+            string sql = column.ToSql(InitSqlBuildContext);
             _columnSqlCache[column] = sql;
             return sql;
         }

@@ -7,13 +7,12 @@ namespace LiteOrm
 {
     /// <summary>
     /// 函数 SQL 生成委托，将函数表达式直接写入 <see cref="ValueStringBuilder"/>。
+    /// 构建器与参数集合均取自 <paramref name="context"/>。
     /// </summary>
     /// <param name="outSql"></param>
     /// <param name="expr"></param>
     /// <param name="context"></param>
-    /// <param name="sqlBuilder"></param>
-    /// <param name="outputParams"></param>
-    public delegate void FunctionSqlHandler(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<Param> outputParams);
+    public delegate void FunctionSqlHandler(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context);
 
     /// <summary>
     /// 简单函数 SQL 生成委托，直接提供函数名称和参数列表，适用于仅需调整函数格式，不需要自定义解析参数的场景。

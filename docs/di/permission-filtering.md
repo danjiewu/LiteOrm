@@ -184,14 +184,14 @@ tableDefinition.ConstFilter = Expr.Sql("TenantFilter");   // 构件内部直接�
 using static LiteOrm.Common.Expr;
 
 // 这里的 UserContext.Current 只是示意，请替换成你自己的用户上下文访问器
-GenericSqlExpr.Register("CurrentUserFilter", (context, sqlBuilder, outputParams, _) =>
+GenericSqlExpr.Register("CurrentUserFilter", (context, _) =>
 {
     var currentUser = UserContext.Current
         ?? throw new InvalidOperationException("Current user not found.");
 
-    string paramName = outputParams.Count.ToString();
-    outputParams.Add(new(sqlBuilder.ToParamName(paramName), currentUser.Id));
-    return $"{sqlBuilder.ToSqlName(nameof(Order.CreatedByUserId))} = {sqlBuilder.ToSqlParam(paramName)}";
+    string paramName = context.OutputParams.Count.ToString();
+    context.OutputParams.Add(new(context.SqlBuilder.ToParamName(paramName), currentUser.Id));
+    return $"{context.SqlBuilder.ToSqlName(nameof(Order.CreatedByUserId))} = {context.SqlBuilder.ToSqlParam(paramName)}";
 });
 
 var filter = BuildBusinessFilter(request)
@@ -204,7 +204,7 @@ var filter = BuildBusinessFilter(request)
 - 可以把“当前用户数据过滤”做成统一构件复用
 - 当前用户值来自用户上下文，而不是由调用方手动传参
 - 可以和普通 Expr、软删除条件、统计查询一起组合
-- 仍然通过 `outputParams` 走参数化，不需要把用户值直接拼进 SQL
+- 仍然通过 `context.OutputParams` 走参数化，不需要把用户值直接拼进 SQL
 
 安全注意事项见[安全性](../advanced-topics/security.md)中的 `GenericSqlExpr` 章节。
 

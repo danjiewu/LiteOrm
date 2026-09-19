@@ -265,7 +265,7 @@ var result = await dataViewDAO.Search(
 | 纯静态内容不要用 RawSql | 写死的 SQL 片段直接写在 `ExprString` 字面量中即可，包成 `RawSql` 反而掩盖真实意图 |
 | 优先用 Expr | 简单列名用 `Expr.Prop`（自带名称校验和引用符包裹）；凡是能用 `Expr.Func`/`Expr.Sql`（预注册的 `GenericSqlExpr`）表达的，不要用 `RawSql` |
 
-> 如果需要在自定义 SQL 中安全地传递运行时字符串/复杂值，请用 `GenericSqlExpr.Register` 注册回调，在回调内部使用 `outputParams` 参数化，详见[安全性](../advanced-topics/security.md)。
+> 如果需要在自定义 SQL 中安全地传递运行时字符串/复杂值，请用 `GenericSqlExpr.Register` 注册回调，在回调内部使用 `context.OutputParams` 参数化，详见[安全性](../advanced-topics/security.md)。
 
 ### 8.5 与 GenericSqlExpr 的区别
 
@@ -273,7 +273,7 @@ var result = await dataViewDAO.Search(
 |------|----------|------------------|
 | 是否为 `Expr` | 否（独立 struct） | 是（继承 `LogicExpr`） |
 | 注册要求 | 无，直接构造 | 必须先 `Register` 注册回调 |
-| 参数化支持 | 不支持，纯文本内联 | 支持，回调内可用 `outputParams` |
+| 参数化支持 | 不支持，纯文本内联 | 支持，回调内可用 `context.OutputParams` |
 | 适用场景 | 不适合参数化的动态值（LIMIT 行数、ASC/DESC、动态列名） | 可复用、需要运行时参数的动态 SQL 片段 |
 | 验证器管控 | 不被扫描 | `ExprValidator.CreateQueryOnly()` 默认放行 |
 

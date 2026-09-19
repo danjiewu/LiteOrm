@@ -9,12 +9,10 @@ namespace LiteOrm.Common
     /// <summary>
     /// SQL生成委托，用于动态生成SQL片段
     /// </summary>
-    /// <param name="context">SQL构建上下文</param>
-    /// <param name="sqlBuilder">SQL构建器</param>
-    /// <param name="outputParams">输出参数集合</param>
+    /// <param name="context">SQL构建上下文，构建器与参数集合均由上下文提供</param>
     /// <param name="arg">额外参数</param>
     /// <returns>生成的SQL字符串</returns>
-    public delegate string? SqlGenerateHandler(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams, object? arg);
+    public delegate string? SqlGenerateHandler(SqlBuildContext context, object? arg);
 
     /// <summary>
     /// 通过委托生成的 SQL 片段表达式类。
@@ -51,12 +49,10 @@ namespace LiteOrm.Common
         /// 使用预注册的SQL生成委托和内部参数生成SQL字符串。
         /// </summary>
         /// <param name="context">SQL构造上下文</param>
-        /// <param name="sqlBuilder">SQL构造器 </param>
-        /// <param name="outputParams">输出参数的列表</param>
         /// <returns></returns>
-        public string? GenerateSql(SqlBuildContext context, ISqlBuilder sqlBuilder, ICollection<Param> outputParams)
+        public string? GenerateSql(SqlBuildContext context)
         {
-            return SqlHandler?.Invoke(context, sqlBuilder, outputParams, Arg);
+            return SqlHandler?.Invoke(context, Arg);
         }
 
         /// <summary>

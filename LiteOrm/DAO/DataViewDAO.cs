@@ -48,7 +48,7 @@ namespace LiteOrm
         public virtual DataTableResult Search(Expr expr)
         {
             expr = ToSelectExpr(expr);
-            return new DataTableResult(this, expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder));
+            return new DataTableResult(this, expr.ToPreparedSql(CreateSqlBuildContext()));
         }
 
         /// <summary>
@@ -60,7 +60,7 @@ namespace LiteOrm
         public virtual DataTableResult Search(string[] propertyNames, Expr expr)
         {
             SelectExpr selectExpr = BuildSelectExpr(propertyNames, expr);
-            return new DataTableResult(this, selectExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder));
+            return new DataTableResult(this, selectExpr.ToPreparedSql(CreateSqlBuildContext()));
         }
 
         /// <summary>

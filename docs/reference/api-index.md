@@ -143,6 +143,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - `LambdaExprConverter.RegisterMethodHandler`
 - `LambdaExprConverter.RegisterMemberHandler`
 - `SqlBuilder.RegisterFunctionSqlHandler`
+- `SqlBuilder.RegisterSimpleFunctionSqlHandler`
 - `FunctionSqlHandler`
 - `FunctionExprValidator`
 - `CycleDetector` — 检测 Expr 树中的循环引用

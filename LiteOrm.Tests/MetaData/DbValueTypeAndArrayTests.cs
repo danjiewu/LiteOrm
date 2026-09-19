@@ -79,7 +79,7 @@ namespace LiteOrm.Tests
                 Expr.From<PgsqlArrayModel>().Where(Expr.Prop(nameof(PgsqlArrayModel.Tags)).Any(new ValueExpr(new[] { "a", "b" }))),
                 Expr.Prop(nameof(PgsqlArrayModel.Id)));
 
-            var prepared = query.ToPreparedSql(new SqlBuildContext { SingleTable = false }, PostgreSqlBuilder.Instance);
+            var prepared = query.ToPreparedSql(new SqlBuildContext(PostgreSqlBuilder.Instance) { SingleTable = false });
 
             Assert.Contains("ANY(@0)", prepared.Sql);
             Assert.Single(prepared.Params);

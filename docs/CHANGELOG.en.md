@@ -6,6 +6,12 @@
 
 - **`DbCommandProxy` is now a per-call wrapper** (`LiteOrm`): the constructor is an internal overload `(DAOContext, DbCommand, bool ownsTarget)`, `Target` is private and `IsReusable` is read-only; `DAOContext.PreparedCommands` caches `DbCommand` and each call creates a proxy that does not own the cached command, so releasing the proxy no longer affects the cache.
 
+- **`SqlBuildContext` now takes the builder in its constructor** (`LiteOrm.Common` / `LiteOrm`): `SqlBuilder` is a required non-null constructor parameter; the parameterless and three-argument constructors were replaced by `SqlBuildContext(ISqlBuilder)` and `SqlBuildContext(ISqlBuilder, SqlTable?, string, string[]?)`, and `ToSql` / `ToPreparedSql` / `RenderComputedExpression` / `BuildFunctionSql` no longer take an `ISqlBuilder` or a parameter collection, reading both from the context instead.
+
+- **Simplified delegate signatures for function handlers and dynamic SQL** (`LiteOrm` / `LiteOrm.Common`): `FunctionSqlHandler` is now `(ref ValueStringBuilder, FunctionExpr, SqlBuildContext)` and `SqlGenerateHandler` is `(SqlBuildContext, object?)`; `RegisterFunctionSqlHandler(string, SimpleFunctionSqlHandler)` was renamed to `RegisterSimpleFunctionSqlHandler`.
+
+- **`IExprStringBuildContext.SqlBuilder` is now non-nullable** (`LiteOrm.Common`): narrowed from `ISqlBuilder?` to `ISqlBuilder`, and the null fallback in `ExprString` is gone.
+
 ### Enhancements
 
 - **Enum constants are inlined** (`LiteOrm.Common`): an enum value in `Expr.Const` is emitted as its underlying number directly in the SQL (for example `"State" = 1`) instead of a parameter, so slices take no parameter slot.

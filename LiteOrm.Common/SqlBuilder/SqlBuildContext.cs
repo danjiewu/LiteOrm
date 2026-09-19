@@ -9,21 +9,25 @@ namespace LiteOrm.Common
     public class SqlBuildContext
     {
         /// <summary>
-        /// 初始化 <see cref="SqlBuildContext"/> 类的新实例
+        /// 使用指定的 SQL 构建器初始化 <see cref="SqlBuildContext"/> 类的新实例
         /// </summary>
-        public SqlBuildContext()
+        /// <param name="sqlBuilder">SQL 构建器，提供当前数据库方言的名称、参数与函数处理，不能为空</param>
+        public SqlBuildContext(ISqlBuilder sqlBuilder)
         {
+            SqlBuilder = sqlBuilder ?? throw new ArgumentNullException(nameof(sqlBuilder));
             CurrentScope = new SqlScopeContext();
         }
 
         /// <summary>
-        /// 使用指定的表、别名和表名参数初始化 <see cref="SqlBuildContext"/> 类的新实例
+        /// 使用指定的 SQL 构建器、表、别名和表名参数初始化 <see cref="SqlBuildContext"/> 类的新实例
         /// </summary>
+        /// <param name="sqlBuilder">SQL 构建器，提供当前数据库方言的名称、参数与函数处理，不能为空</param>
         /// <param name="table">SQL表定义</param>
         /// <param name="aliasName">表别名</param>
         /// <param name="tableArgs">动态表名参数</param>
-        public SqlBuildContext(SqlTable? table, string aliasName, string[]? tableArgs)
+        public SqlBuildContext(ISqlBuilder sqlBuilder, SqlTable? table, string aliasName, string[]? tableArgs)
         {
+            SqlBuilder = sqlBuilder ?? throw new ArgumentNullException(nameof(sqlBuilder));
             CurrentScope = new SqlScopeContext
             {
                 DefaultTableAliasName = aliasName,
@@ -33,6 +37,23 @@ namespace LiteOrm.Common
             {
                 CurrentScope.AddTableAlias(aliasName ?? Constants.DefaultTableAlias, table);
             }
+        }
+
+        private ICollection<Param>? _outputParams;
+
+        /// <summary>
+        /// SQL 构建器，提供当前数据库方言的名称、参数与函数处理。在构造时注入，保证非空。
+        /// </summary>
+        public ISqlBuilder SqlBuilder { get; }
+
+        /// <summary>
+        /// 构建 SQL 过程中产生的参数集合，渲染表达式时生成的参数会依次追加到该集合。
+        /// 未显式设置时自动创建一个空集合。
+        /// </summary>
+        public ICollection<Param> OutputParams
+        {
+            get => _outputParams ??= new List<Param>();
+            set => _outputParams = value;
         }
 
         /// <summary>

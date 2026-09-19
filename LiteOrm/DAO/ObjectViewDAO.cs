@@ -137,7 +137,7 @@ namespace LiteOrm
         public virtual ValueResult<int> Count(Expr expr)
         {
             var selectExpr = new SelectExpr(expr.ToSource<T>(), Expr.Aggregate("Count", Expr.Const(1)));
-            var prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
+            var prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext());
             return new ValueResult<int>(this, prepared);
         }
 
@@ -188,7 +188,7 @@ namespace LiteOrm
         public virtual ValueResult<bool> Exists(Expr expr)
         {
             var selectExpr = new SelectExpr(expr.ToSource<T>(), Expr.Const(1));
-            var prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
+            var prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext());
             return new ValueResult<bool>(this, prepared, (obj) => obj != null);
         }
 
@@ -201,7 +201,7 @@ namespace LiteOrm
         public virtual EnumerableResult<T> Search(Expr? expr = null)
         {
             expr = ToSelectExpr(expr!);
-            var prepared = expr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
+            var prepared = expr.ToPreparedSql(CreateSqlBuildContext());
             return new EnumerableResult<T>(this, prepared, DataReaderConverter.GetConverterByTable<T>(SqlBuilder));
         }
 
@@ -214,7 +214,7 @@ namespace LiteOrm
         {
             var seg = LambdaExprConverter.ToSqlSegment(expr);
             seg = ToSelectExpr(seg);
-            var prepared = seg.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
+            var prepared = seg.ToPreparedSql(CreateSqlBuildContext());
             return new EnumerableResult<T>(this, prepared, DataReaderConverter.GetConverterByTable<T>(SqlBuilder));
         }
 
@@ -227,7 +227,7 @@ namespace LiteOrm
         /// <returns>自定义类型的集合。</returns>
         public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(SelectExpr selectExpr, Func<AutoLockDataReader, TResult>? readerFunc = null)
         {
-            var prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
+            var prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext());
             return new EnumerableResult<TResult>(this, prepared, readerFunc);
         }
 
@@ -242,7 +242,7 @@ namespace LiteOrm
         {
             var seg = LambdaExprConverter.ToSqlSegment(expr);
             seg = ToSelectExpr(seg);
-            var prepared = seg.ToPreparedSql(CreateSqlBuildContext(), SqlBuilder);
+            var prepared = seg.ToPreparedSql(CreateSqlBuildContext());
             return new EnumerableResult<TResult>(this, prepared, readerFunc);
         }
 

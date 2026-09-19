@@ -55,7 +55,6 @@ namespace LiteOrm.Common
         private ValueStringBuilder _builder;
         private readonly List<Param> _params = new List<Param>();
         private readonly SqlBuildContext _context;
-        private readonly ISqlBuilder? _sqlBuilder;
 
         /// <summary>
         /// 初始化插值字符串处理器
@@ -67,7 +66,7 @@ namespace LiteOrm.Common
         {
             _builder = ValueStringBuilder.Create(literalLength + formattedCount * 16);
             _context = context.CreateSqlBuildContext(true);
-            _sqlBuilder = context.SqlBuilder;
+            _context.OutputParams = _params;
         }
 
         /// <summary>
@@ -76,7 +75,7 @@ namespace LiteOrm.Common
         /// <param name="literal">字面量字符串</param>
         public void AppendLiteral(string literal)
         {
-            _builder.Append(_sqlBuilder == null ? literal : _sqlBuilder.ReplaceSqlName(literal));
+            _builder.Append(_context.SqlBuilder.ReplaceSqlName(literal));
         }
 
         /// <summary>
@@ -88,7 +87,7 @@ namespace LiteOrm.Common
         {
             if (value is Expr expr)
             {
-                expr.ToSql(ref _builder, _context, _sqlBuilder!, _params);
+                expr.ToSql(ref _builder, _context);
             }
             else if (value is RawSql rawSql)
             {
@@ -98,7 +97,7 @@ namespace LiteOrm.Common
             else if (value != null)
             {
                 string paramName = $"{_params.Count}";
-                _builder.Append(_sqlBuilder!.ToSqlParam(paramName));
+                _builder.Append(_context.SqlBuilder.ToSqlParam(paramName));
                 _params.Add(new Param(paramName, value));
             }
         }

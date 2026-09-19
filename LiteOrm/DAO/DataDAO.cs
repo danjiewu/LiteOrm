@@ -60,7 +60,8 @@ namespace LiteOrm
                 paramValues.Add(new Param(paramValues.Count.ToString(), value.Value, column.GetDbValueType(SqlBuilder)));
             }
             var context = CreateSqlBuildContext(true);
-            string where = expr.ToSql(context, SqlBuilder, paramValues);
+            context.OutputParams = paramValues;
+            string where = expr.ToSql(context);
             // 固定筛选条件追加在调用方条件之后，与参数顺序保持一致
             where = AppendConstFilter(where, paramValues);
             string whereClause = String.IsNullOrEmpty(where) ? "" : "\nWHERE " + where;

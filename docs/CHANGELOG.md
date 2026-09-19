@@ -6,6 +6,12 @@
 
 - **`DbCommandProxy` 改为按次创建的包装代理**（`LiteOrm`）：构造函数改为内部重载 `(DAOContext, DbCommand, bool ownsTarget)`，`Target` 改为私有，`IsReusable` 改为只读；`DAOContext.PreparedCommands` 改存 `DbCommand`，取用时新建不拥有缓存的代理，释放代理不再影响缓存。
 
+- **`SqlBuildContext` 改为构造注入构建器**（`LiteOrm.Common` / `LiteOrm`）：`SqlBuilder` 成为必填的非空构造参数，无参构造与三参构造替换为 `SqlBuildContext(ISqlBuilder)` 与 `SqlBuildContext(ISqlBuilder, SqlTable?, string, string[]?)`；`ToSql` / `ToPreparedSql` / `RenderComputedExpression` / `BuildFunctionSql` 等不再接收 `ISqlBuilder` 与参数集合，改从上下文读取。
+
+- **函数处理器与动态 SQL 委托签名简化**（`LiteOrm` / `LiteOrm.Common`）：`FunctionSqlHandler` 改为 `(ref ValueStringBuilder, FunctionExpr, SqlBuildContext)`，`SqlGenerateHandler` 改为 `(SqlBuildContext, object?)`；`RegisterFunctionSqlHandler(string, SimpleFunctionSqlHandler)` 更名为 `RegisterSimpleFunctionSqlHandler`。
+
+- **`IExprStringBuildContext.SqlBuilder` 改为非空**（`LiteOrm.Common`）：由 `ISqlBuilder?` 收窄为 `ISqlBuilder`，`ExprString` 的空值兜底分支随之移除。
+
 ### 改进
 
 - **枚举常量改为内联字面量**（`LiteOrm.Common`）：`Expr.Const` 的枚举值按底层数值直接内联进 SQL（如 `"State" = 1`），不再走参数，切片不占参数位。

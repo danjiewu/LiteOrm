@@ -114,14 +114,14 @@ namespace LiteOrm
         /// <param name="sqlBuilder">要注册处理器的 SQL 构建器实例。</param>
         /// <param name="functionName">要处理的函数名称。</param>
         /// <param name="handler">将函数名成和参数表达式直接写入输出缓冲区的处理委托。</param>
-        public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, string functionName, SimpleFunctionSqlHandler handler) where T : SqlBuilder
+        public static void RegisterSimpleFunctionSqlHandler<T>(this T sqlBuilder, string functionName, SimpleFunctionSqlHandler handler) where T : SqlBuilder
         {
-            SqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, SqlBuilder sqlBuilder, ICollection<Param> outputParams) =>
+            SqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
             {
                 List<string> arguments = new List<string>();
                 foreach (var arg in expr.Args)
                 {
-                    arguments.Add(arg.ToSql(context, sqlBuilder, outputParams));
+                    arguments.Add(arg.ToSql(context));
                 }
                 handler(ref outSql, functionName, arguments);
             });
@@ -134,11 +134,11 @@ namespace LiteOrm
         /// <param name="sqlBuilder">要注册处理器的 SQL 构建器实例。</param>
         /// <param name="functionNames">要处理的函数名称集合。</param>
         /// <param name="handler">将函数名成和参数表达式直接写入输出缓冲区的处理委托。</param>
-        public static void RegisterFunctionSqlHandler<T>(this T sqlBuilder, IEnumerable<string> functionNames, SimpleFunctionSqlHandler handler) where T : SqlBuilder
+        public static void RegisterSimpleFunctionSqlHandler<T>(this T sqlBuilder, IEnumerable<string> functionNames, SimpleFunctionSqlHandler handler) where T : SqlBuilder
         {
             foreach (string functionName in functionNames)
             {
-                RegisterFunctionSqlHandler(sqlBuilder, functionName, handler);
+                RegisterSimpleFunctionSqlHandler(sqlBuilder, functionName, handler);
             }
         }
 

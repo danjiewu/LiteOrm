@@ -88,7 +88,7 @@ namespace LiteOrm.Tests
             var cteDef = From<TestUser>().Select(Prop("Id").As("Id"));
             var query = cteDef.With("MyCTE").Select(Prop("Id"));
 
-            var sql = query.ToPreparedSql(new SqlBuildContext { SingleTable = false }, SQLiteBuilder.Instance);
+            var sql = query.ToPreparedSql(new SqlBuildContext(SQLiteBuilder.Instance) { SingleTable = false });
 
             Assert.Contains("WITH RECURSIVE", sql.Sql);
         }
@@ -102,7 +102,7 @@ namespace LiteOrm.Tests
             var cteDef = From<TestUser>().Select(Prop("Id").As("Id"));
             var query = cteDef.With("MyCTE").Select(Prop("Id"));
 
-            var sql = query.ToPreparedSql(new SqlBuildContext { SingleTable = false }, SqlServerBuilder.Instance);
+            var sql = query.ToPreparedSql(new SqlBuildContext(SqlServerBuilder.Instance) { SingleTable = false });
 
             Assert.Contains("WITH ", sql.Sql);
             Assert.DoesNotContain("WITH RECURSIVE", sql.Sql);
@@ -119,7 +119,7 @@ namespace LiteOrm.Tests
             var cte = cteDef.With("MyCTE");
             var query = cte.Select(Prop("Id"));
 
-            var sql = query.ToPreparedSql(new SqlBuildContext { SingleTable = false }, SQLiteBuilder.Instance);
+            var sql = query.ToPreparedSql(new SqlBuildContext(SQLiteBuilder.Instance) { SingleTable = false });
 
             Assert.Contains("WITH RECURSIVE", sql.Sql);
         }
@@ -135,7 +135,7 @@ namespace LiteOrm.Tests
             var cte = cteDef.With("MyCTE");
             var query = cte.Select(Prop("Id"));
 
-            var sql = query.ToPreparedSql(new SqlBuildContext { SingleTable = false }, SqlServerBuilder.Instance);
+            var sql = query.ToPreparedSql(new SqlBuildContext(SqlServerBuilder.Instance) { SingleTable = false });
 
             Assert.Contains("WITH ", sql.Sql);
             Assert.DoesNotContain("WITH RECURSIVE", sql.Sql);
@@ -157,7 +157,7 @@ namespace LiteOrm.Tests
             var branch2 = cte2.Select(Prop("Name").As("Val"));
             var query = branch1.UnionAll(branch2);
 
-            var sql = query.ToPreparedSql(new SqlBuildContext { SingleTable = false }, SQLiteBuilder.Instance);
+            var sql = query.ToPreparedSql(new SqlBuildContext(SQLiteBuilder.Instance) { SingleTable = false });
 
             Assert.Contains("WITH RECURSIVE", sql.Sql);
         }
@@ -178,7 +178,7 @@ namespace LiteOrm.Tests
             var branch2 = cte2.Select(Prop("Name").As("Val"));
             var query = branch1.UnionAll(branch2);
 
-            var sql = query.ToPreparedSql(new SqlBuildContext { SingleTable = false }, SqlServerBuilder.Instance);
+            var sql = query.ToPreparedSql(new SqlBuildContext(SqlServerBuilder.Instance) { SingleTable = false });
 
             Assert.Contains("WITH ", sql.Sql);
             Assert.DoesNotContain("WITH RECURSIVE", sql.Sql);

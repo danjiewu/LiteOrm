@@ -324,7 +324,7 @@ namespace LiteOrm.Tests
                 .OrderBy(Expr.Prop("Name").Asc())
                 .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Prop("DeptId"));
 
-            var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext(), dataViewDAO.SqlBuilder);
+            var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext());
             var dt = await dataViewDAO.Search(query).GetResultAsync(ct);
 
             Assert.Contains("WITH", prepared.Sql, StringComparison.OrdinalIgnoreCase);
@@ -370,7 +370,7 @@ namespace LiteOrm.Tests
                 .OrderBy(Expr.Prop("UserCount").Desc())
                 .Select(Expr.Prop("DeptId"), Expr.Prop("UserCount"), Expr.Prop("AvgAge"));
 
-            var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext(), dataViewDAO.SqlBuilder);
+            var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext());
             var dt = await dataViewDAO.Search(query).GetResultAsync(ct);
 
             Assert.Contains("WITH", prepared.Sql, StringComparison.OrdinalIgnoreCase);
@@ -423,7 +423,7 @@ namespace LiteOrm.Tests
                         .Where(Expr.Prop("Age") >= 30)
                         .Select(Expr.Prop("Name"), Expr.Prop("Age"), Expr.Prop("DeptId"), Expr.Const("30+").As("AgeGroup")));
 
-            var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext(), dataViewDAO.SqlBuilder);
+            var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext());
             var dt = await dataViewDAO.Search(query).GetResultAsync(ct);
 
             var cteName = dataViewDAO.SqlBuilder.ToSqlName("AdultUsers");
@@ -453,7 +453,7 @@ namespace LiteOrm.Tests
                 .Select(Expr.Prop("Name"))
                 .Union(second.Select(Expr.Prop("Name")));
 
-            var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext(), dataViewDAO.SqlBuilder);
+            var prepared = query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext());
             var cteName = dataViewDAO.SqlBuilder.ToSqlName("DupCte");
             Assert.Single(Regex.Matches(prepared.Sql, $"{cteName} AS", RegexOptions.IgnoreCase));
         }
@@ -475,7 +475,7 @@ namespace LiteOrm.Tests
                 .Select(Expr.Prop("Name"))
                 .Union(second.Select(Expr.Prop("Name")));
 
-            var ex = Assert.Throws<InvalidOperationException>(() => query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext(), dataViewDAO.SqlBuilder));
+            var ex = Assert.Throws<InvalidOperationException>(() => query.ToPreparedSql(dataViewDAO.CreateSqlBuildContext()));
             Assert.Contains("DupCte", ex.Message);
         }
 

@@ -143,6 +143,7 @@ Related guides:
 - `LambdaExprConverter.RegisterMethodHandler`
 - `LambdaExprConverter.RegisterMemberHandler`
 - `SqlBuilder.RegisterFunctionSqlHandler`
+- `SqlBuilder.RegisterSimpleFunctionSqlHandler`
 - `FunctionSqlHandler`
 - `FunctionExprValidator`
 - `CycleDetector` — detects circular references in Expr trees

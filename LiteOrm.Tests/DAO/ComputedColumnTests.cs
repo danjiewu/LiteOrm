@@ -124,9 +124,9 @@ namespace LiteOrm.Tests
             var table = new AttributeTableInfoProvider().GetTableDefinition(typeof(ComputedExprModel))!;
             var totalCol = table.Columns.First(c => c.Name == "Total");
 
-            var context = new SqlBuildContext(table, "T0", null) { SingleTable = false };
+            var context = new SqlBuildContext(SQLiteBuilder.Instance, table, "T0", null) { SingleTable = false };
             var sb = new ValueStringBuilder();
-            totalCol.RenderComputedExpression(ref sb, context, SQLiteBuilder.Instance);
+            totalCol.RenderComputedExpression(ref sb, context);
             string sql = sb.ToString();
             sb.Dispose();
 
@@ -147,12 +147,12 @@ namespace LiteOrm.Tests
             var table = new AttributeTableInfoProvider().GetTableDefinition(typeof(ComputedExprModel))!;
 
             // 模拟 DAOBase.GetSelectFieldsSql 的行为
-            var context = new SqlBuildContext(table, "T0", null);
+            var context = new SqlBuildContext(SQLiteBuilder.Instance, table, "T0", null);
             var sb = new ValueStringBuilder();
             foreach (var col in table.Columns)
             {
                 if (sb.Length > 0) sb.Append(",");
-                ((SqlObject)col).ToSql(ref sb, context, SQLiteBuilder.Instance);
+                ((SqlObject)col).ToSql(ref sb, context);
             }
             string sql = sb.ToString();
             sb.Dispose();
@@ -171,10 +171,11 @@ namespace LiteOrm.Tests
             var table = new AttributeTableInfoProvider().GetTableDefinition(typeof(ComputedExprModel))!;
 
             // 模拟 ExprSqlConverter.ToSql(PropertyExpr) 的行�?
-            var context = new SqlBuildContext(table, "T0", null);
+            var context = new SqlBuildContext(SQLiteBuilder.Instance, table, "T0", null);
             context.AddTableAlias("T0", table);
             var outputParams = new List<Param>();
-            string sql = Expr.Prop("Total").ToSql(context, SQLiteBuilder.Instance, outputParams);
+            context.OutputParams = outputParams;
+            string sql = Expr.Prop("Total").ToSql(context);
 
             // Total 列应渲染�?(...Price... * ...Quantity...) 而非 T0."Total"
             Assert.Contains("Price", sql);
@@ -195,11 +196,11 @@ namespace LiteOrm.Tests
             // 非常量字符串值会产生参数化，不允许（同时覆盖了字符串 Expression）
             totalCol.ExpressionExpr = Expr.Prop("Price") + Expr.Value("surcharge");
 
-            var context = new SqlBuildContext(table, "T0", null);
+            var context = new SqlBuildContext(SQLiteBuilder.Instance, table, "T0", null);
             Assert.Throws<NotSupportedException>(() =>
             {
                 var sb = new ValueStringBuilder();
-                try { totalCol.RenderComputedExpression(ref sb, context, SQLiteBuilder.Instance); }
+                try { totalCol.RenderComputedExpression(ref sb, context); }
                 finally { sb.Dispose(); }
             });
         }
@@ -216,9 +217,9 @@ namespace LiteOrm.Tests
             // 常量值不产生参数化，允许（同时覆盖了字符形式 Expression）
             totalCol.ExpressionExpr = Expr.Prop("Price") + Expr.Const(100);
 
-            var context = new SqlBuildContext(table, "T0", null);
+            var context = new SqlBuildContext(SQLiteBuilder.Instance, table, "T0", null);
             var sb = new ValueStringBuilder();
-            totalCol.RenderComputedExpression(ref sb, context, SQLiteBuilder.Instance);
+            totalCol.RenderComputedExpression(ref sb, context);
             string sql = sb.ToString();
             sb.Dispose();
 

@@ -190,11 +190,11 @@ namespace LiteOrm.Tests
         public void ConstString_RendersLiteralOrParam_DependingOnSafety(string value, int expectedParamCount)
         {
             var builder = SQLiteBuilder.Instance;
-            var context = new SqlBuildContext(null, "T0", null);
-            var sb = new ValueStringBuilder();
             var outputParams = new List<Param>();
+            var context = new SqlBuildContext(builder, null, "T0", null) { OutputParams = outputParams };
+            var sb = new ValueStringBuilder();
             var expr = (Expr)new ValueExpr(value) { IsConst = true };
-            expr.ToSql(ref sb, context, builder, outputParams);
+            expr.ToSql(ref sb, context);
             sb.Dispose();
             Assert.Equal(expectedParamCount, outputParams.Count);
         }

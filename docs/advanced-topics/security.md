@@ -8,7 +8,7 @@ LiteOrm 的 SQL 注入防护采用**多层纵深防御**策略：
 
 | 层次 | 机制 | 说明 |
 |------|------|------|
-| 参数化 SQL | `outputParams` + 占位符 | 所有用户值默认以参数形式传递；走 `ExprString`/动态拼接时需自行消毒 |
+| 参数化 SQL | `context.OutputParams` + 占位符 | 所有用户值默认以参数形式传递；走 `ExprString`/动态拼接时需自行消毒 |
 | LIKE 转义 + 参数化 | 通配符转义 + 按需生成 `ESCAPE` 子句 | 双重保护防止 LIKE 注入 |
 | ExprString 自动参数化 | 非 Expr 值自动转为命名参数 | 插值字符串中的用户值自动参数化 |
 | 表达式类型白名单 | `ExprTypeValidator` | 控制允许的表达式类型 |
@@ -21,14 +21,13 @@ LiteOrm 的 SQL 注入防护采用**多层纵深防御**策略：
 
 ### 2.1 参数传递机制
 
-LiteOrm 所有 SQL 值传递都通过 `outputParams` 集合完成：
+LiteOrm 所有 SQL 值传递都通过 `SqlBuildContext.OutputParams` 集合完成：
 
 ```csharp
-public static string ToSql(this Expr expr, SqlBuildContext context, ISqlBuilder sqlBuilder,
-    ICollection<Param> outputParams)
+public static string ToSql(this Expr expr, SqlBuildContext context)
 ```
 
-生成的 SQL 中使用参数占位符（如 `@0`、`@1`），值通过 `outputParams` 独立传递，**从不将用户输入直接拼接到 SQL 字符串中**。
+生成的 SQL 中使用参数占位符（如 `@0`、`@1`），值通过 `context.OutputParams` 独立传递，**从不将用户输入直接拼接到 SQL 字符串中**。
 
 **示例**：
 
@@ -110,7 +109,7 @@ var results = await viewService.SearchAsync(u => u.UserName == null);
 using static LiteOrm.Common.Expr;
 dao.Search($"WHERE {Prop("Age")} > {minAge}");
 // Prop("Age")  → 走 ToSql()，完整参数化
-// minAge (int)      → 自动生成参数占位符 @0，值加入 outputParams
+// minAge (int)      → 自动生成参数占位符 @0，值加入 context.OutputParams
 ```
 
 ### 3.2 处理路径
@@ -260,8 +259,7 @@ if (!ExprVisitor.Validate(validator, expr))
 
 ```csharp
 public delegate string? SqlGenerateHandler(
-    SqlBuildContext context, ISqlBuilder sqlBuilder,
-    ICollection<Param> outputParams, object? arg);
+    SqlBuildContext context, object? arg);
 
 public sealed class GenericSqlExpr : LogicExpr
 {
@@ -275,12 +273,12 @@ public sealed class GenericSqlExpr : LogicExpr
 ```csharp
 using static LiteOrm.Common.Expr;
 // 注册自定义 SQL 生成器
-GenericSqlExpr.Register("CustomCheck", (context, sqlBuilder, outputParams, arg) =>
+GenericSqlExpr.Register("CustomCheck", (context, arg) =>
 {
-    // 参数化：使用 outputParams 传递用户值
-    string paramName = outputParams.Count.ToString();
-    outputParams.Add(new(sqlBuilder.ToParamName(paramName), arg));
-    return $"dbo.CustomCheck({sqlBuilder.ToSqlParam(paramName)})";
+    // 参数化：使用 context.OutputParams 传递用户值
+    string paramName = context.OutputParams.Count.ToString();
+    context.OutputParams.Add(new(context.SqlBuilder.ToParamName(paramName), arg));
+    return $"dbo.CustomCheck({context.SqlBuilder.ToSqlParam(paramName)})";
 });
 
 // 在查询中使用
@@ -292,7 +290,7 @@ var users = await userService.SearchAsync(expr);
 ### 5.3 安全特性
 
 1. **必须预注册**：通过 `ConcurrentDictionary` 维护全局注册表，未注册的 key 会抛出异常
-2. **支持参数化**：委托签名包含 `outputParams`，可以安全地传递用户值
+2. **支持参数化**：委托可通过 `context.OutputParams` 拿到参数集合并安全地传递用户值
 3. **参数传递**：通过 `Arg` 属性传递业务参数，不拼接到 SQL 中
 
 如果你是想把它用于“当前用户范围过滤”或“多租户过滤”等业务场景，请再结合[权限过滤](../di/permission-filtering.md)一并阅读，那里更强调**什么时候该用运行时 Expr / GenericSqlExpr，什么时候该用 `ConstFilter` 或表路由**。
@@ -327,22 +325,22 @@ var users = await userService.SearchAsync(expr);
 
 ### 6.2 GenericSqlExpr 的自由度
 
-`SqlGenerateHandler` 委托可以返回任意字符串。如果回调中不谨慎使用 `outputParams`，可能在自定义 SQL 中引入注入点：
+`SqlGenerateHandler` 委托可以返回任意字符串。如果回调中不谨慎使用 `context.OutputParams`，可能在自定义 SQL 中引入注入点：
 
 ```csharp
 using static LiteOrm.Common.Expr;
 // ❌ 危险：直接在委托中拼接用户输入
-GenericSqlExpr.Register("UnsafeLookup", (ctx, sb, params, arg) =>
+GenericSqlExpr.Register("UnsafeLookup", (ctx, arg) =>
 {
     return $"SELECT * FROM Users WHERE Code = '{arg}'";
 });
 
-// ✅ 安全：使用 outputParams 参数化
-GenericSqlExpr.Register("SafeLookup", (ctx, sb, params, arg) =>
+// ✅ 安全：使用 context.OutputParams 参数化
+GenericSqlExpr.Register("SafeLookup", (ctx, arg) =>
 {
-    string paramName = params.Count.ToString();
-    params.Add(new(sb.ToParamName(paramName), arg));
-    return $"SELECT * FROM Users WHERE Code = {sb.ToSqlParam(paramName)}";
+    string paramName = ctx.OutputParams.Count.ToString();
+    ctx.OutputParams.Add(new(ctx.SqlBuilder.ToParamName(paramName), arg));
+    return $"SELECT * FROM Users WHERE Code = {ctx.SqlBuilder.ToSqlParam(paramName)}";
 });
 ```
 
@@ -443,7 +441,7 @@ Expr 表达式体系虽然可以从架构层面杜绝 SQL 注入，但其功能�
 |--------|------|
 | ✅ 启用 `AllowRegisted` 函数策略 | 防止执行未注册的 SQL 函数 |
 | ✅ 前端 Expr 查询前使用验证器 | 限制表达式类型和字段访问范围 |
-| ✅ 自定义 SQL 使用 `outputParams` | GenericSqlExpr 回调中使用参数化 |
+| ✅ 自定义 SQL 使用 `context.OutputParams` | GenericSqlExpr 回调中使用参数化 |
 | ✅ Expr.Prop 已内置名称校验 | 非法名称会直接抛异常；如需限制字段范围，额外使用白名单 |
 | ✅ 通过 DAO 方法使用 ExprString | 普通插值字符串不生成 ExprString，需通过 `dao.Search(...)` 等方法触发 |
 | ✅ RawSql 动态值需先校验 | `RawSql` 专用于不适合参数化的动态值（如 `LIMIT` 行数、`ASC`/`DESC`、动态列名）；数值类用范围校验（如非负整数），字符串/token 类用白名单校验；禁止拼入未验证的用户输入；纯静态文本直接写字面量；前端 Expr JSON 不能携带 RawSql |

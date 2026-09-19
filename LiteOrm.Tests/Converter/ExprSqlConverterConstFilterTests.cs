@@ -21,7 +21,7 @@ namespace LiteOrm.Common.UnitTests
             {
                 var expr = new SelectExpr { Source = new FromExpr(typeof(ConstFilterOrder)) };
 
-                var sql = expr.ToPreparedSql(new SqlBuildContext() { SingleTable = false }, SqlBuilder.Instance);
+                var sql = expr.ToPreparedSql(new SqlBuildContext(SqlBuilder.Instance) { SingleTable = false });
 
                 Assert.Contains("WHERE", sql.Sql);
                 Assert.Contains("State", sql.Sql);
@@ -40,7 +40,7 @@ namespace LiteOrm.Common.UnitTests
             {
                 var expr = new SelectExpr { Source = new FromExpr(typeof(ConstFilterJoinOrderView)) };
 
-                var sql = expr.ToPreparedSql(new SqlBuildContext() { SingleTable = false }, SqlBuilder.Instance);
+                var sql = expr.ToPreparedSql(new SqlBuildContext(SqlBuilder.Instance) { SingleTable = false });
 
                 Assert.Contains("JOIN", sql.Sql);
                 Assert.Contains("Dept", sql.Sql);
@@ -64,7 +64,7 @@ namespace LiteOrm.Common.UnitTests
                     Expr.Prop("DepartmentId") == Expr.Prop("Dept", "Id")));
                 var expr = new SelectExpr { Source = from };
 
-                var sql = expr.ToPreparedSql(new SqlBuildContext() { SingleTable = false }, SqlBuilder.Instance);
+                var sql = expr.ToPreparedSql(new SqlBuildContext(SqlBuilder.Instance) { SingleTable = false });
 
                 Assert.Contains("JOIN", sql.Sql);
                 Assert.Contains("Dept", sql.Sql);
@@ -89,7 +89,7 @@ namespace LiteOrm.Common.UnitTests
                     Where = Expr.Prop("Id") == 1
                 };
 
-                var sql = expr.ToPreparedSql(new SqlBuildContext() { SingleTable = false }, SqlBuilder.Instance);
+                var sql = expr.ToPreparedSql(new SqlBuildContext(SqlBuilder.Instance) { SingleTable = false });
 
                 Assert.Contains("WHERE", sql.Sql);
                 Assert.Contains("State", sql.Sql);
@@ -108,7 +108,7 @@ namespace LiteOrm.Common.UnitTests
             {
                 var expr = new DeleteExpr(new TableExpr(typeof(ConstFilterOrder)), Expr.Prop("Id") == 1);
 
-                var sql = expr.ToPreparedSql(new SqlBuildContext() { SingleTable = false }, SqlBuilder.Instance);
+                var sql = expr.ToPreparedSql(new SqlBuildContext(SqlBuilder.Instance) { SingleTable = false });
 
                 Assert.Contains("WHERE", sql.Sql);
                 Assert.Contains("State", sql.Sql);
@@ -127,7 +127,7 @@ namespace LiteOrm.Common.UnitTests
             {
                 var expr = new SelectExpr { Source = new FromExpr(typeof(NonEnumConstFilterOrder)) };
 
-                var sql = expr.ToPreparedSql(new SqlBuildContext() { SingleTable = false }, SqlBuilder.Instance);
+                var sql = expr.ToPreparedSql(new SqlBuildContext(SqlBuilder.Instance) { SingleTable = false });
 
                 Assert.Contains("WHERE", sql.Sql);
                 Assert.Contains("Status", sql.Sql);
@@ -151,7 +151,7 @@ namespace LiteOrm.Common.UnitTests
                     }
                 };
 
-                var sql = expr.ToPreparedSql(new SqlBuildContext() { SingleTable = false }, SqlBuilder.Instance);
+                var sql = expr.ToPreparedSql(new SqlBuildContext(SqlBuilder.Instance) { SingleTable = false });
 
                 Assert.Contains("EXISTS", sql.Sql);
                 Assert.Contains("State", sql.Sql);
@@ -177,7 +177,7 @@ namespace LiteOrm.Common.UnitTests
                     }
                 };
 
-                var sql = expr.ToPreparedSql(new SqlBuildContext() { SingleTable = false }, SqlBuilder.Instance);
+                var sql = expr.ToPreparedSql(new SqlBuildContext(SqlBuilder.Instance) { SingleTable = false });
 
                 Assert.Contains("EXISTS", sql.Sql);
                 Assert.Contains("State", sql.Sql);

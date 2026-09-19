@@ -16,6 +16,9 @@
     <Description>LiteOrm.Common 公共库：LiteOrm 的共享核心，提供表达式树（Expr）、SQL 片段、表元数据（TableInfoProvider）、特性与公共接口，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
       8.1.8:
+      - 破坏性变更：SqlBuildContext 的 SqlBuilder 改为构造函数必填参数（非空），无参/三参构造替换为 SqlBuildContext(ISqlBuilder) 与 SqlBuildContext(ISqlBuilder, SqlTable?, string, string[]?)。
+      - 破坏性变更：ToSql / ToPreparedSql / RenderComputedExpression / BuildFunctionSql 去掉 ISqlBuilder 与参数集合形参，改从上下文读取；SqlGenerateHandler 委托签名简化为 (SqlBuildContext, object?)。
+      - 破坏性变更：IExprStringBuildContext.SqlBuilder 收窄为非空 ISqlBuilder。
       - 枚举常量改为按底层数值直接内联进 SQL，不再参数化，切片不占参数位。
 
       8.1.7:

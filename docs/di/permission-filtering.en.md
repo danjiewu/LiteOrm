@@ -184,14 +184,14 @@ When you want to reuse a "current user scope" rule but do not want to pass `curr
 using static LiteOrm.Common.Expr;
 
 // UserContext.Current is illustrative here; replace it with your own user-context accessor
-GenericSqlExpr.Register("CurrentUserFilter", (context, sqlBuilder, outputParams, _) =>
+GenericSqlExpr.Register("CurrentUserFilter", (context, _) =>
 {
     var currentUser = UserContext.Current
         ?? throw new InvalidOperationException("Current user not found.");
 
-    string paramName = outputParams.Count.ToString();
-    outputParams.Add(new(sqlBuilder.ToParamName(paramName), currentUser.Id));
-    return $"{sqlBuilder.ToSqlName(nameof(Order.CreatedByUserId))} = {sqlBuilder.ToSqlParam(paramName)}";
+    string paramName = context.OutputParams.Count.ToString();
+    context.OutputParams.Add(new(context.SqlBuilder.ToParamName(paramName), currentUser.Id));
+    return $"{context.SqlBuilder.ToSqlName(nameof(Order.CreatedByUserId))} = {context.SqlBuilder.ToSqlParam(paramName)}";
 });
 
 var filter = BuildBusinessFilter(request)
@@ -204,7 +204,7 @@ This approach is useful because:
 - you can reuse "current user data scope" as a shared building block
 - the current-user value comes from user context instead of caller-provided arguments
 - it still composes with normal Expr, soft-delete rules, and statistics queries
-- it remains parameterized through `outputParams`, rather than concatenating user values into SQL
+- it remains parameterized through `context.OutputParams`, rather than concatenating user values into SQL
 
 For the security boundary, see the `GenericSqlExpr` section in [Security](../advanced-topics/security.en.md).
 

@@ -265,7 +265,7 @@ Other general rules:
 | Do not use RawSql for static content | Hardcoded SQL fragments should be written directly in the `ExprString` literal; wrapping them in `RawSql` obscures the real intent |
 | Prefer Expr | Use `Expr.Prop` for simple column names (built-in name validation and quote wrapping); anything expressible via `Expr.Func`/`Expr.Sql` (pre-registered `GenericSqlExpr`) should not use `RawSql` |
 
-> If you need to safely pass runtime strings/complex values inside custom SQL, register a callback via `GenericSqlExpr.Register` and parameterize using `outputParams` inside the callback. See [Security](../advanced-topics/security.en.md).
+> If you need to safely pass runtime strings/complex values inside custom SQL, register a callback via `GenericSqlExpr.Register` and parameterize using `context.OutputParams` inside the callback. See [Security](../advanced-topics/security.en.md).
 
 ### 8.5 Difference from GenericSqlExpr
 
@@ -273,7 +273,7 @@ Other general rules:
 |--------|----------|------------------|
 | Is it an `Expr` | No (independent struct) | Yes (inherits `LogicExpr`) |
 | Registration | None, construct directly | Must call `Register` first |
-| Parameterization | Not supported, plain text inlining | Supported, callback can use `outputParams` |
+| Parameterization | Not supported, plain text inlining | Supported, callback can use `context.OutputParams` |
 | Use case | Dynamic values unsuitable for parameterization (LIMIT row counts, ASC/DESC, dynamic column names) | Reusable, dynamic SQL fragments needing runtime parameters |
 | Validator control | Not scanned | `ExprValidator.CreateQueryOnly()` allows it by default |
 

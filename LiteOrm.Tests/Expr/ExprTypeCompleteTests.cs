@@ -680,7 +680,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void GenericSqlExpr_Tests()
         {
-            GenericSqlExpr.Register("TestKey", (ctx, builder, pms, arg) => "TEST SQL");
+            GenericSqlExpr.Register("TestKey", (ctx, arg) => "TEST SQL");
             var g1 = GenericSqlExpr.Get("TestKey", 123);
             var g2 = GenericSqlExpr.Get("TestKey", 123);
             var g3 = GenericSqlExpr.Get("TestKey", 456);

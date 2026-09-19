@@ -52,9 +52,9 @@ namespace LiteOrm.CodeGen
         public SqlBuildContext CreateSqlBuildContext(bool initTable = false)
         {
             if (initTable)
-                return new SqlBuildContext(TableInfoProvider.Instance.GetTableView(ObjectType), Constants.DefaultTableAlias, TableArgs);
+                return new SqlBuildContext(SqlBuilder, TableInfoProvider.Instance.GetTableView(ObjectType), Constants.DefaultTableAlias, TableArgs);
             else
-                return new SqlBuildContext() { TableArgs = TableArgs };
+                return new SqlBuildContext(SqlBuilder) { TableArgs = TableArgs };
         }
 
         /// <summary>
@@ -66,7 +66,7 @@ namespace LiteOrm.CodeGen
         {     
             bool isFull = expr is UpdateExpr || expr is DeleteExpr || expr is SelectExpr;
             var context = CreateSqlBuildContext(!isFull);
-            return expr.ToPreparedSql(context, SqlBuilder);
+            return expr.ToPreparedSql(context);
         }
 
         /// <summary>
