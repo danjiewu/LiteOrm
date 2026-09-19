@@ -6,11 +6,6 @@ namespace LiteOrm.Common
     public interface IExprStringBuildContext
     {
         /// <summary>
-        /// 获取SQL构建器。实现方必须返回非空实例。
-        /// </summary>
-        ISqlBuilder SqlBuilder { get; }
-
-        /// <summary>
         /// 创建SQL构建上下文
         /// </summary>
         /// <param name="initTable">是否初始化表信息</param>

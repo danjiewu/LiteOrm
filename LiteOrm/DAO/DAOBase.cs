@@ -15,6 +15,7 @@ namespace LiteOrm
     /// <summary>
     /// 提供常用的数据访问操作基类
     /// </summary>
+    /// <param name="sessionManager">会话管理器，由依赖注入容器自动解析。</param>
     /// <remarks>
     /// DAOBase 是一个抽象基类，为各种数据访问对象(DAO)提供通用的操作方法。
     /// 它封装了与数据库交互的常见操作，如生成SQL语句、创建数据库命令、处理参数等。
@@ -30,19 +31,8 @@ namespace LiteOrm
     /// 5. 扩展性 - 通过虚方法和抽象属性，允许子类根据具体需求重写和扩展功能，如处理视图、添加更多的SQL替换标记等。
     /// 
     /// </remarks>
-    public abstract class DAOBase : IExprStringBuildContext
+    public abstract class DAOBase(SessionManager sessionManager) : IExprStringBuildContext
     {
-        #region 构造函数
-        /// <summary>
-        /// 初始化 <see cref="DAOBase"/> 类的新实例。
-        /// </summary>
-        /// <param name="sessionManager">会话管理器，由依赖注入容器自动解析。</param>
-        protected DAOBase(SessionManager sessionManager)
-        {
-            Session = sessionManager ?? throw new ArgumentNullException(nameof(sessionManager));
-        }
-        #endregion
-
         #region 预定义变量
         /// <summary>
         /// 表示SQL查询中条件语句的标记
@@ -131,15 +121,13 @@ namespace LiteOrm
             return Session.GetDAOContextPool(DataSource)?.ProviderType;
         }
 
-        ISqlBuilder IExprStringBuildContext.SqlBuilder => SqlBuilder;
-
         /// <summary>
         /// 会话管理器，由依赖注入容器在构造 DAO 时自动注入。
         /// </summary>
         /// <remarks>
         /// 替代原先内部依赖的 <see cref="SessionManager.Current"/>；DAO 不再依赖全局静态会话。
         /// </remarks>
-        public SessionManager Session { get; }
+        public SessionManager Session => sessionManager;
 
         /// <summary>
         /// 获取当前数据访问对象上下文
