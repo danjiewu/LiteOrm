@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LiteOrm — 轻量级高性能 .NET ORM 框架</title>
+<meta name="description" content="LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，结合微 ORM 的速度与完整 ORM 的功能性。性能接近原生 Dapper，远超 EF Core，支持 11 种数据库。">
+<link rel="icon" href="./assets/logo/favicon.ico" sizes="48x48">
+<link rel="icon" href="./assets/logo/logo-mark.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./assets/logo/logo-mark-256.png">
+<meta property="og:title" content="LiteOrm — 轻量级高性能 .NET ORM 框架">
+<meta property="og:description" content="微 ORM 的速度 × 完整 ORM 的能力。1 万条插入 178ms，内存分配仅为竞品 1/3，支持 11 种数据库。">
+<meta property="og:type" content="website">
+<meta property="og:image" content="./assets/logo/logo-mark-512.png">
+<style>
+:root{
+  --bg-0:#050A14;--bg-1:#0B1524;--bg-2:#111E33;--line:#1D2D47;
+  --text-1:#E8EEF7;--text-2:#8FA3BF;--text-3:#5C7089;
+  --cyan:#33A1F6;--blue:#1972D8;
+  --grad:linear-gradient(135deg,#33A1F6,#1972D8);
+  --mono:'JetBrains Mono','Fira Code',ui-monospace,SFMono-Regular,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{background:var(--bg-0);color:var(--text-1);font-family:var(--sans);line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+img{max-width:100%}
+.container{max-width:1120px;margin:0 auto;padding:0 24px}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:4px}
+
+.nav{position:sticky;top:0;z-index:100;background:rgba(5,10,20,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+.nav-logo{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:20px;font-weight:700;color:var(--text-1)}
+.nav-logo:hover{text-decoration:none}
+.nav-logo svg{display:block}
+.nav-logo .nav-icon{border-radius:6px;flex-shrink:0}
+.nav-logo .brand-orm{color:var(--cyan)}
+.nav-links{display:flex;align-items:center;gap:28px}
+.nav-links a{color:var(--text-2);font-size:14.5px}
+.nav-links a:hover{color:var(--text-1);text-decoration:none}
+.nav-cta{display:flex;align-items:center;gap:16px}
+.nav-github{display:flex;align-items:center;gap:8px;color:var(--text-2);font-size:14.5px}
+.nav-github:hover{color:var(--text-1);text-decoration:none}
+.nav-github svg{fill:currentColor}
+
+.hero{position:relative;overflow:hidden;padding:96px 0 72px}
+.hero-bg{position:absolute;inset:0;pointer-events:none}
+.hero-glow{position:absolute;top:-220px;left:50%;transform:translateX(-50%);width:960px;height:560px;background:radial-gradient(ellipse at center,rgba(51,161,246,.13),rgba(25,114,216,.07) 45%,transparent 70%)}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(29,45,71,.4) 1px,transparent 1px),linear-gradient(90deg,rgba(29,45,71,.4) 1px,transparent 1px);background-size:56px 56px;mask-image:radial-gradient(ellipse 90% 70% at 50% 30%,#000 30%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 30%,#000 30%,transparent 75%)}
+.hero-particles{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.hero-particles i{position:absolute;top:-14px;width:4px;height:4px;border-radius:50%;background:linear-gradient(180deg,#33A1F6,#1972D8);box-shadow:0 0 6px rgba(51,161,246,.55);opacity:0;animation:pfall linear infinite}
+@keyframes pfall{0%{transform:translateY(0);opacity:0}8%{opacity:.65}100%{transform:translateY(560px);opacity:0}}
+.hero-inner{position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(17,30,51,.6);font-size:13px;color:var(--text-2);margin-bottom:24px}
+.hero-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.hero h1{font-size:52px;line-height:1.2;font-weight:800;letter-spacing:-.5px;margin-bottom:8px}
+.hero h1 .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.hero-sub{font-size:18px;color:var(--text-2);margin:16px 0 32px;max-width:520px}
+.hero-sub strong{color:var(--text-1);font-weight:600}
+.hero-actions{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:32px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 26px;border-radius:10px;font-size:15.5px;font-weight:600;border:1px solid transparent;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
+.btn:hover{text-decoration:none;transform:translateY(-2px)}
+.btn-primary{background:var(--grad);color:#04121F;box-shadow:0 4px 24px rgba(51,161,246,.25)}
+.btn-primary:hover{box-shadow:0 6px 32px rgba(51,161,246,.4)}
+.btn-ghost{border-color:var(--line);color:var(--text-1);background:rgba(17,30,51,.4)}
+.btn-ghost:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn svg{fill:currentColor}
+.install{display:flex;align-items:center;gap:14px;max-width:480px;background:var(--bg-1);border:1px solid var(--line);border-radius:10px;padding:12px 16px;font-family:var(--mono);font-size:14px}
+.install .ps1{color:var(--text-3);user-select:none}
+.install .cmd{color:var(--text-1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.install .cmd .pkg{color:var(--cyan)}
+.copy-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text-2);cursor:pointer;flex-shrink:0;transition:color .15s,border-color .15s}
+.copy-btn:hover{color:var(--cyan);border-color:var(--cyan)}
+.copy-btn svg{fill:currentColor}
+.copy-btn.done{color:#34D399;border-color:#34D399}
+
+.terminal{background:var(--bg-1);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.5),0 0 0 1px rgba(51,161,246,.06)}
+.terminal-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--bg-2)}
+.terminal-bar .tdot{width:12px;height:12px;border-radius:50%}
+.tdot-r{background:#FF5F57}.tdot-y{background:#FEBC2E}.tdot-g{background:#28C840}
+.terminal-title{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--text-3)}
+.terminal-body{padding:20px 22px;font-family:var(--mono);font-size:13.5px;line-height:1.85;overflow-x:auto}
+.tok-kw{color:#7DA6FF}.tok-str{color:#7EE7C7}.tok-cm{color:#5C7089;font-style:italic}
+.tok-ty{color:#7CC0FA}.tok-api{color:#33A1F6}.tok-num{color:#F0A868}.tok-pn{color:#8FA3BF}.tok-fn{color:#C4B5FD}
+.tok-sql-kw{color:#7DA6FF;font-weight:600}
+.terminal .divider{border:none;border-top:1px dashed var(--line);margin:12px 0}
+.terminal-out-label{display:inline-block;font-size:11px;color:var(--text-3);border:1px solid var(--line);border-radius:4px;padding:0 6px;margin-bottom:6px}
+
+.stats{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(11,21,36,.5)}
+.stats-inner{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0;padding:22px 0}
+.stat{display:flex;align-items:baseline;gap:10px;padding:6px 26px;border-left:1px solid var(--line)}
+.stat:first-child{border-left:none;padding-left:0}
+.stat-v{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--cyan)}
+.stat-v .unit{font-size:14px;color:var(--text-2);font-weight:400}
+.stat-l{font-size:13px;color:var(--text-2)}
+
+section{padding:88px 0}
+.sec-head{max-width:640px;margin-bottom:52px}
+.sec-tag{font-family:var(--mono);font-size:13px;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
+.sec-head h2{font-size:34px;font-weight:800;letter-spacing:-.3px;line-height:1.3}
+.sec-head p{color:var(--text-2);margin-top:14px;font-size:16px}
+
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.card{background:var(--bg-1);border:1px solid var(--line);border-radius:14px;padding:28px;transition:border-color .2s,transform .2s}
+.card:hover{border-color:rgba(51,161,246,.45);transform:translateY(-3px)}
+.card-icon{width:44px;height:44px;border-radius:10px;background:rgba(51,161,246,.1);border:1px solid rgba(51,161,246,.25);display:flex;align-items:center;justify-content:center;margin-bottom:18px}
+.card-icon svg{stroke:var(--cyan);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.card h3{font-size:17.5px;font-weight:700;margin-bottom:10px}
+.card p{font-size:14.5px;color:var(--text-2)}
+.card code{font-family:var(--mono);font-size:12.5px;color:var(--cyan);background:rgba(51,161,246,.08);padding:1px 6px;border-radius:4px}
+
+.code-tabs{background:var(--bg-1);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.tabs-bar{display:flex;gap:4px;padding:10px 12px 0;border-bottom:1px solid var(--line);background:var(--bg-2);overflow-x:auto}
+.tab-btn{font-family:var(--mono);font-size:14px;color:var(--text-2);background:transparent;border:none;border-bottom:2px solid transparent;padding:10px 20px;cursor:pointer;white-space:nowrap}
+.tab-btn:hover{color:var(--text-1)}
+.tab-btn[aria-selected="true"]{color:var(--cyan);border-bottom-color:var(--cyan)}
+.tab-panel{display:none;padding:24px 26px;font-family:var(--mono);font-size:13.5px;line-height:1.9;overflow-x:auto}
+.tab-panel.active{display:block}
+.code-note{margin-top:16px;color:var(--text-2);font-size:14.5px}
+.code-note code{font-family:var(--mono);font-size:13px;color:var(--cyan);background:rgba(51,161,246,.08);padding:1px 6px;border-radius:4px}
+
+.bench-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--bg-1)}
+table.bench{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
+table.bench th{font-family:var(--mono);font-size:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;text-align:right;padding:14px 18px;border-bottom:1px solid var(--line);font-weight:600}
+table.bench th:first-child{text-align:left}
+table.bench td{padding:12px 18px;text-align:right;font-family:var(--mono);font-size:13.5px;color:var(--text-2);border-bottom:1px solid rgba(29,45,71,.5)}
+table.bench td:first-child{text-align:left;font-family:var(--sans);color:var(--text-1)}
+table.bench tr:last-child td{border-bottom:none}
+table.bench tr.hl td{background:rgba(51,161,246,.06);color:var(--text-1)}
+table.bench tr.hl td:first-child{color:var(--cyan);font-weight:700}
+table.bench .best{color:#34D399;font-weight:700}
+.bench-meta{margin-top:14px;font-size:13px;color:var(--text-3)}
+.bench-meta a{color:var(--text-2)}
+
+.mem-chart{margin-top:44px}
+.mem-chart h3{font-size:18px;font-weight:700;margin-bottom:6px}
+.mem-chart .sub{font-size:13.5px;color:var(--text-3);margin-bottom:26px}
+.mem-row{display:grid;grid-template-columns:110px 1fr 92px;align-items:center;gap:14px;margin-bottom:14px}
+.mem-name{font-size:14px;color:var(--text-2);text-align:right}
+.mem-row.hl .mem-name{color:var(--cyan);font-weight:700}
+.mem-track{background:var(--bg-2);border-radius:6px;height:22px;overflow:hidden}
+.mem-bar{height:100%;border-radius:6px;background:linear-gradient(90deg,#2A3B58,#3D5480);width:0;transition:width 1s ease}
+.mem-row.hl .mem-bar{background:var(--grad)}
+.mem-val{font-family:var(--mono);font-size:13px;color:var(--text-2)}
+.mem-row.hl .mem-val{color:var(--cyan)}
+
+.db-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.db-chip{position:relative;display:flex;flex-direction:column;gap:6px;background:var(--bg-1);border:1px solid var(--line);border-radius:12px;padding:18px 20px;transition:border-color .2s}
+.db-chip:hover{border-color:rgba(51,161,246,.45)}
+.db-name{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--text-1)}
+.db-desc{font-size:12.5px;color:var(--text-3)}
+.db-chip.domestic::after{content:'国产';position:absolute;top:-9px;right:12px;font-size:11px;color:#04121F;background:var(--grad);border-radius:4px;padding:1px 8px;font-weight:700}
+.db-note{margin-top:24px;font-size:13.5px;color:var(--text-3)}
+
+.docs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.doc-card{background:var(--bg-1);border:1px solid var(--line);border-radius:14px;padding:26px;transition:border-color .2s,transform .2s}
+.doc-card:hover{border-color:rgba(51,161,246,.45);transform:translateY(-3px)}
+.doc-card h3{font-size:16.5px;font-weight:700;margin-bottom:4px}
+.doc-card .en{font-family:var(--mono);font-size:11.5px;color:var(--text-3);letter-spacing:1px;text-transform:uppercase;margin-bottom:16px}
+.doc-card ul{list-style:none}
+.doc-card li{margin-bottom:9px}
+.doc-card li a{font-size:14px;color:var(--text-2)}
+.doc-card li a:hover{color:var(--cyan)}
+.doc-card li a::before{content:'›';color:var(--text-3);margin-right:8px}
+.doc-ref{margin-top:28px;display:flex;flex-wrap:wrap;gap:12px}
+.doc-ref a{font-size:13.5px;color:var(--text-2);border:1px solid var(--line);border-radius:999px;padding:6px 16px;background:var(--bg-1)}
+.doc-ref a:hover{color:var(--cyan);border-color:var(--cyan);text-decoration:none}
+
+.footer{border-top:1px solid var(--line);background:var(--bg-1);padding:56px 0 40px}
+.footer-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:40px;margin-bottom:40px}
+.footer-brand p{font-size:13.5px;color:var(--text-3);margin-top:14px;max-width:280px}
+.footer h4{font-size:13px;color:var(--text-1);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:18px}
+.footer ul{list-style:none}
+.footer li{margin-bottom:11px}
+.footer li a{font-size:14px;color:var(--text-2)}
+.footer li a:hover{color:var(--cyan)}
+.footer-bottom{border-top:1px solid var(--line);padding-top:28px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px;font-size:13px;color:var(--text-3)}
+.footer-badges{display:flex;gap:10px}
+.footer-badges img{height:20px}
+
+@media (max-width:1024px){
+  .hero-inner{grid-template-columns:1fr;gap:44px}
+  .hero h1{font-size:42px}
+  .grid-3,.docs-grid{grid-template-columns:repeat(2,1fr)}
+  .db-grid{grid-template-columns:repeat(3,1fr)}
+  .footer-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:768px){
+  .nav-links{display:none}
+  .hero{padding:64px 0 48px}
+  .hero h1{font-size:34px}
+  .hero-sub{font-size:16px}
+  section{padding:64px 0}
+  .stats-inner{flex-wrap:wrap;gap:10px}
+  .stat{border-left:none;padding:6px 14px}
+  .grid-3,.docs-grid,.db-grid{grid-template-columns:1fr}
+  .sec-head h2{font-size:27px}
+  .mem-row{grid-template-columns:84px 1fr 76px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .hero-particles{display:none!important}
+  .mem-bar{width:var(--w)!important}
+}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="container nav-inner">
+    <a class="nav-logo" href="./" aria-label="LiteOrm 首页">
+      <img class="nav-icon" src="./assets/logo/logo-mark.svg" alt="" width="38" height="38">
+      <span>Lite<span class="brand-orm">Orm</span></span>
+    </a>
+    <nav class="nav-links" aria-label="主导航">
+      <a href="#features">特性</a>
+      <a href="#query">查询方式</a>
+      <a href="#benchmark">性能</a>
+      <a href="#databases">数据库</a>
+      <a href="#docs">文档</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="nav-github" href="https://github.com/danjiewu/LiteOrm" target="_blank" rel="noopener">
+        <svg width="19" height="19" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        GitHub
+      </a>
+      <a class="btn btn-primary" style="padding:8px 18px;font-size:14px" href="./getting-started/first-example-di.md">快速开始</a>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-bg" aria-hidden="true">
+    <div class="hero-glow"></div>
+    <div class="hero-grid"></div>
+    <div class="hero-particles" aria-hidden="true">
+      <i style="left:8%;animation-duration:11s;animation-delay:0s"></i>
+      <i style="left:22%;animation-duration:9s;animation-delay:1.2s"></i>
+      <i style="left:35%;animation-duration:13s;animation-delay:.6s"></i>
+      <i style="left:48%;animation-duration:10s;animation-delay:2.1s"></i>
+      <i style="left:61%;animation-duration:12s;animation-delay:.3s"></i>
+      <i style="left:74%;animation-duration:9.5s;animation-delay:1.8s"></i>
+      <i style="left:86%;animation-duration:14s;animation-delay:.9s"></i>
+      <i style="left:15%;animation-duration:10.5s;animation-delay:3s"></i>
+      <i style="left:55%;animation-duration:11.5s;animation-delay:2.6s"></i>
+      <i style="left:90%;animation-duration:9s;animation-delay:1.5s"></i>
+      <i style="left:30%;animation-duration:12.5s;animation-delay:3.8s"></i>
+      <i style="left:66%;animation-duration:8.8s;animation-delay:2.3s"></i>
+    </div>
+  </div>
+  <div class="container hero-inner">
+    <div>
+      <span class="hero-badge"><span class="dot" aria-hidden="true"></span>v8.1 现已发布 · 支持 NativeAOT</span>
+      <h1>轻如无物<span class="grad-text">，快如闪电</span></h1>
+      <p class="hero-sub">LiteOrm 是一个<strong>轻量级、高性能的 .NET ORM 框架</strong>——微 ORM 的执行效率，完整 ORM 的易用性。适合对性能敏感且需要灵活处理复杂 SQL 的业务场景。</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="./getting-started/first-example-di.md">
+          快速开始
+          <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8h12.5L9 3.5 10.5 2 16 8l-5.5 6L9 12.5l4.5-4.5H1z"/></svg>
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/danjiewu/LiteOrm" target="_blank" rel="noopener">
+          <svg width="17" height="17" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
+          GitHub 星标
+        </a>
+      </div>
+      <div class="install">
+        <span class="ps1" aria-hidden="true">❯</span>
+        <span class="cmd">dotnet add package <span class="pkg">LiteOrm</span></span>
+        <button class="copy-btn" id="copyBtn" aria-label="复制安装命令" title="复制安装命令">
+          <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="terminal" role="img" aria-label="LiteOrm 代码示例：定义实体、查询并生成参数化 SQL">
+      <div class="terminal-bar" aria-hidden="true">
+        <span class="tdot tdot-r"></span><span class="tdot tdot-y"></span><span class="tdot tdot-g"></span>
+        <span class="terminal-title">Program.cs</span>
+      </div>
+      <div class="terminal-body"><pre style="font-family:inherit;margin:0"><code><span class="tok-cm">// 1. 定义实体，特性即映射</span>
+<span class="tok-kw">[</span><span class="tok-ty">Table</span><span class="tok-pn">(</span><span class="tok-str">"Users"</span><span class="tok-pn">)]</span>
+<span class="tok-kw">public class</span> <span class="tok-ty">User</span>
+<span class="tok-pn">{</span>
+    <span class="tok-kw">[</span><span class="tok-ty">Column</span><span class="tok-pn">(</span><span class="tok-str">"Id"</span><span class="tok-pn">,</span> IsPrimaryKey <span class="tok-pn">=</span> <span class="tok-kw">true</span><span class="tok-pn">)]</span>
+    <span class="tok-kw">public int</span> Id <span class="tok-pn">{</span> <span class="tok-kw">get</span><span class="tok-pn">;</span> <span class="tok-kw">set</span><span class="tok-pn">;</span> <span class="tok-pn">}</span>
+    <span class="tok-kw">[</span><span class="tok-ty">Column</span><span class="tok-pn">(</span><span class="tok-str">"UserName"</span><span class="tok-pn">)]</span>
+    <span class="tok-kw">public string</span>? UserName <span class="tok-pn">{</span> <span class="tok-kw">get</span><span class="tok-pn">;</span> <span class="tok-kw">set</span><span class="tok-pn">;</span> <span class="tok-pn">}</span>
+    <span class="tok-kw">[</span><span class="tok-ty">Column</span><span class="tok-pn">(</span><span class="tok-str">"Age"</span><span class="tok-pn">)]</span>
+    <span class="tok-kw">public int</span> Age <span class="tok-pn">{</span> <span class="tok-kw">get</span><span class="tok-pn">;</span> <span class="tok-kw">set</span><span class="tok-pn">;</span> <span class="tok-pn">}</span>
+<span class="tok-pn">}</span>
+
+<span class="tok-cm">// 2. 一行注册，一行查询</span>
+builder<span class="tok-pn">.</span>Host<span class="tok-pn">.</span><span class="tok-api">RegisterLiteOrm</span><span class="tok-pn">();</span>
+
+<span class="tok-kw">var</span> adults <span class="tok-pn">=</span> <span class="tok-kw">await</span> userService<span class="tok-pn">.</span><span class="tok-api">SearchAsync</span><span class="tok-pn">(</span>
+    u <span class="tok-pn">=&gt;</span> u<span class="tok-pn">.</span>Age <span class="tok-pn">&gt;=</span> <span class="tok-num">18</span> <span class="tok-pn">&amp;&amp;</span> u<span class="tok-pn">.</span>UserName<span class="tok-pn">!.</span><span class="tok-fn">StartsWith</span><span class="tok-pn">(</span><span class="tok-str">"A"</span><span class="tok-pn">));</span>
+
+<hr class="divider">
+<span class="terminal-out-label">生成 SQL</span>
+<span class="tok-sql-kw">SELECT</span> [T0]<span class="tok-pn">.</span>[Id]<span class="tok-pn">,</span> [T0]<span class="tok-pn">.</span>[UserName]<span class="tok-pn">,</span> [T0]<span class="tok-pn">.</span>[Age]
+<span class="tok-sql-kw">FROM</span> [Users] [T0]
+<span class="tok-sql-kw">WHERE</span> [T0]<span class="tok-pn">.</span>[Age] <span class="tok-sql-kw">&gt;=</span> @0 <span class="tok-sql-kw">AND</span> [T0]<span class="tok-pn">.</span>[UserName] <span class="tok-sql-kw">LIKE</span> @1
+<span class="tok-cm">-- 全程参数化，杜绝 SQL 注入</span></code></pre></div>
+    </div>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="container stats-inner">
+    <div class="stat"><span class="stat-v">178<span class="unit">ms</span></span><span class="stat-l">插入 1 万条</span></div>
+    <div class="stat"><span class="stat-v">1/3</span><span class="stat-l">内存分配仅为竞品均值</span></div>
+    <div class="stat"><span class="stat-v">11<span class="unit">种</span></span><span class="stat-l">数据库方言</span></div>
+    <div class="stat"><span class="stat-v">AOT</span><span class="stat-l">NativeAOT / Trim 兼容</span></div>
+    <div class="stat"><span class="stat-v">.NET 8+</span><span class="stat-l">兼容 Framework 4.6.1+</span></div>
+  </div>
+</div>
+
+<section id="features">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-tag">Features</div>
+      <h2>为什么选择 LiteOrm</h2>
+      <p>兼顾微型 ORM 的执行效率和完整 ORM 的易用性——不隐藏 SQL，也不强迫你手写 SQL。</p>
+    </div>
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg></div>
+        <h3>极速性能</h3>
+        <p>性能接近原生 Dapper，远超 EF Core。批量插入、更新、关联查询全面领先，内存分配最小。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3M8 12h8M12 8v8"/></svg></div>
+        <h3>三种查询方式</h3>
+        <p><code>Lambda</code>、<code>Expr</code>、<code>ExprString</code> 自由混用：强类型过滤、动态条件拼装、DAO 层手写 SQL 片段各得其所。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 7.5 16 16.5M8 16.5 16 7.5"/></svg></div>
+        <h3>自动关联查询</h3>
+        <p>通过 <code>[ForeignType]</code> / <code>[TableJoin]</code> 特性声明关联，无需手写 JOIN，<code>ExistsRelated</code> 一键按关联表过滤。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 3v18M5 8l7-5 7 5M5 3h4M15 3h4"/><circle cx="12" cy="21" r="1.5"/></svg></div>
+        <h3>声明式事务</h3>
+        <p><code>[Transaction]</code> 特性实现 AOP 事务管理，支持嵌套与回滚，业务代码零侵入。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="2.5"/><path d="M4 5v14c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5V5M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/></svg></div>
+        <h3>11 种数据库方言</h3>
+        <p>SQL Server、MySQL、Oracle、PostgreSQL、SQLite，内置达梦、金仓、GaussDB、OceanBase、TiDB、GreatDB 国产数据库支持。</p>
+      </div>
+      <div class="card">
+        <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/><circle cx="19" cy="12" r="2.5"/></svg></div>
+        <h3>分表与读写分离</h3>
+        <p><code>IArged</code> 接口支持分表路由，多数据源与只读副本开箱即用，中大型系统的常规需求全覆盖。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="query" style="background:rgba(11,21,36,.35);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-tag">Query</div>
+      <h2>同一查询，三种写法</h2>
+      <p>三种方式最终都生成参数化 SQL。Lambda 最直观，Expr 适合动态拼装，ExprString 留给需要精确控制 SQL 的 DAO 层。</p>
+    </div>
+    <div class="code-tabs">
+      <div class="tabs-bar" role="tablist" aria-label="查询方式切换">
+        <button class="tab-btn" role="tab" id="tab-lambda" aria-controls="panel-lambda" aria-selected="true">Lambda</button>
+        <button class="tab-btn" role="tab" id="tab-expr" aria-controls="panel-expr" aria-selected="false">Expr</button>
+        <button class="tab-btn" role="tab" id="tab-exprstring" aria-controls="panel-exprstring" aria-selected="false">ExprString</button>
+      </div>
+      <div class="tab-panel active" role="tabpanel" id="panel-lambda" aria-labelledby="tab-lambda"><pre style="font-family:inherit;margin:0"><code><span class="tok-cm">// 像写 C# 一样写查询，强类型、可读性最好</span>
+<span class="tok-kw">var</span> users <span class="tok-pn">=</span> <span class="tok-kw">await</span> userService<span class="tok-pn">.</span><span class="tok-api">SearchAsync</span><span class="tok-pn">(</span>
+    u <span class="tok-pn">=&gt;</span> u<span class="tok-pn">.</span>Age <span class="tok-pn">&gt;=</span> <span class="tok-num">18</span> <span class="tok-pn">&amp;&amp;</span> u<span class="tok-pn">.</span>UserName<span class="tok-pn">!.</span><span class="tok-fn">StartsWith</span><span class="tok-pn">(</span><span class="tok-str">"A"</span><span class="tok-pn">));</span>
+
+<span class="tok-cm">// 排序 + 分页</span>
+<span class="tok-kw">var</span> page <span class="tok-pn">=</span> <span class="tok-kw">await</span> userService<span class="tok-pn">.</span><span class="tok-api">SearchAsync</span><span class="tok-pn">(</span>
+    q <span class="tok-pn">=&gt;</span> q<span class="tok-pn">.</span><span class="tok-fn">Where</span><span class="tok-pn">(</span>u <span class="tok-pn">=&gt;</span> u<span class="tok-pn">.</span>Age <span class="tok-pn">&gt;=</span> <span class="tok-num">18</span><span class="tok-pn">)</span>
+          <span class="tok-pn">.</span><span class="tok-fn">OrderByDescending</span><span class="tok-pn">(</span>u <span class="tok-pn">=&gt;</span> u<span class="tok-pn">.</span>CreateTime<span class="tok-pn">)</span>
+          <span class="tok-pn">.</span><span class="tok-fn">Skip</span><span class="tok-pn">(</span><span class="tok-num">20</span><span class="tok-pn">).</span><span class="tok-fn">Take</span><span class="tok-pn">(</span><span class="tok-num">10</span><span class="tok-pn">));</span></code></pre></div>
+      <div class="tab-panel" role="tabpanel" id="panel-expr" aria-labelledby="tab-expr"><pre style="font-family:inherit;margin:0"><code><span class="tok-cm">// 动态拼装条件，适合查询构造器与后台筛选</span>
+<span class="tok-kw">using static</span> <span class="tok-ty">LiteOrm.Common.Expr</span><span class="tok-pn">;</span>
+
+<span class="tok-kw">var</span> expr <span class="tok-pn">=</span> <span class="tok-pn">(</span><span class="tok-api">Prop</span><span class="tok-pn">(</span><span class="tok-str">"Age"</span><span class="tok-pn">)</span> <span class="tok-pn">&gt;=</span> <span class="tok-num">18</span><span class="tok-pn">)</span>
+          <span class="tok-pn">&amp;</span> <span class="tok-api">Prop</span><span class="tok-pn">(</span><span class="tok-str">"UserName"</span><span class="tok-pn">).</span><span class="tok-fn">StartsWith</span><span class="tok-pn">(</span><span class="tok-str">"A"</span><span class="tok-pn">);</span>
+<span class="tok-kw">var</span> users <span class="tok-pn">=</span> <span class="tok-kw">await</span> userService<span class="tok-pn">.</span><span class="tok-api">SearchAsync</span><span class="tok-pn">(</span>expr<span class="tok-pn">);</span>
+
+<span class="tok-cm">// 条件可序列化为 JSON，跨层传递、前端直传</span>
+<span class="tok-kw">string</span> json <span class="tok-pn">=</span> expr<span class="tok-pn">.</span><span class="tok-api">ToJson</span><span class="tok-pn">();</span></code></pre></div>
+      <div class="tab-panel" role="tabpanel" id="panel-exprstring" aria-labelledby="tab-exprstring"><pre style="font-family:inherit;margin:0"><code><span class="tok-cm">// 插值字符串手写 SQL 片段，仅 DAO 层使用</span>
+<span class="tok-kw">using static</span> <span class="tok-ty">LiteOrm.Common.Expr</span><span class="tok-pn">;</span>
+
+<span class="tok-kw">int</span> minAge <span class="tok-pn">=</span> <span class="tok-num">18</span><span class="tok-pn">;</span>
+<span class="tok-kw">var</span> users <span class="tok-pn">=</span> <span class="tok-kw">await</span> userViewDAO<span class="tok-pn">.</span><span class="tok-api">Search</span><span class="tok-pn">(</span>
+    <span class="tok-str">$"WHERE {</span><span class="tok-api">Prop</span><span class="tok-pn">(</span><span class="tok-str">"Age"</span><span class="tok-pn">)</span><span class="tok-str">} &gt; {</span>minAge<span class="tok-str">}"</span><span class="tok-pn">)</span>
+    <span class="tok-pn">.</span><span class="tok-api">ToListAsync</span><span class="tok-pn">();</span>
+
+<span class="tok-cm">// 插值项自动参数化，既灵活又安全</span></code></pre></div>
+    </div>
+    <p class="code-note">Service 层提供 Lambda / <code>Expr</code> 入口与 <code>SearchAs</code> 投影查询；DAO 层额外开放 <code>ExprString</code>、<code>DataTable</code> 查询等底层能力。详见<a href="./core-usage/query-overview.md">查询总览</a>。</p>
+  </div>
+</section>
+
+<section id="benchmark">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-tag">Benchmark</div>
+      <h2>用数据说话</h2>
+      <p>.NET 10.0.11 · MySQL · BenchmarkDotNet MediumRun。以下为 10000 条批次实测耗时。</p>
+    </div>
+    <div class="bench-scroll">
+      <table class="bench">
+        <thead>
+          <tr><th>框架</th><th>插入</th><th>更新</th><th>Upsert</th><th>关联查询</th></tr>
+        </thead>
+        <tbody>
+          <tr class="hl"><td>LiteOrm</td><td><span class="best">178.12 ms</span></td><td><span class="best">280.36 ms</span></td><td><span class="best">247.92 ms</span></td><td><span class="best">78.65 ms</span></td></tr>
+          <tr><td>Dapper</td><td>266.28 ms</td><td>355.83 ms</td><td>327.69 ms</td><td>98.68 ms</td></tr>
+          <tr><td>FreeSql</td><td>332.71 ms</td><td>570.89 ms</td><td>257.39 ms</td><td>101.45 ms</td></tr>
+          <tr><td>SqlSugar</td><td>352.86 ms</td><td>734.61 ms</td><td>7042.44 ms</td><td>179.25 ms</td></tr>
+          <tr><td>EF Core</td><td>1837.48 ms</td><td>1374.47 ms</td><td>1538.52 ms</td><td>162.80 ms</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="bench-meta">测试环境：Linux Ubuntu 24.04.4 LTS · Intel Xeon Silver 4314 2.40GHz · 异步批量操作。完整报告见 <a href="https://github.com/danjiewu/LiteOrm/blob/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md" target="_blank" rel="noopener">LiteOrm.Benchmark</a>。</p>
+    <div class="mem-chart">
+      <h3>内存分配对比（1000 条，KB）</h3>
+      <p class="sub">插入 / 更新 / Upsert / 关联查询四项分配之和，最省内存意味着更低的 GC 压力与更稳的延迟</p>
+      <div class="mem-row hl"><span class="mem-name">LiteOrm</span><div class="mem-track"><div class="mem-bar" data-w="6431" role="img" aria-label="LiteOrm 6431 KB"></div></div><span class="mem-val">6,431</span></div>
+      <div class="mem-row"><span class="mem-name">Dapper</span><div class="mem-track"><div class="mem-bar" data-w="18365" role="img" aria-label="Dapper 18365 KB"></div></div><span class="mem-val">18,365</span></div>
+      <div class="mem-row"><span class="mem-name">FreeSql</span><div class="mem-track"><div class="mem-bar" data-w="32912" role="img" aria-label="FreeSql 32912 KB"></div></div><span class="mem-val">32,912</span></div>
+      <div class="mem-row"><span class="mem-name">SqlSugar</span><div class="mem-track"><div class="mem-bar" data-w="74954" role="img" aria-label="SqlSugar 74954 KB"></div></div><span class="mem-val">74,954</span></div>
+      <div class="mem-row"><span class="mem-name">EF Core</span><div class="mem-track"><div class="mem-bar" data-w="90752" role="img" aria-label="EF Core 90752 KB"></div></div><span class="mem-val">90,752</span></div>
+      <p class="bench-meta">数据口径：插入 / 更新 / Upsert / 关联查询四项分配之和（1000 条批次），源自 LiteOrm.Benchmark 实测，详见<a href="https://github.com/danjiewu/LiteOrm/blob/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md" target="_blank" rel="noopener">性能报告</a>。</p>
+    </div>
+  </div>
+</section>
+
+<section id="databases" style="background:rgba(11,21,36,.35);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-tag">Databases</div>
+      <h2>广泛的数据库支持</h2>
+      <p>一套实体映射，适配主流与国产数据库。国产方言自动检测、优先匹配，无需额外配置。</p>
+    </div>
+    <div class="db-grid">
+      <div class="db-chip"><span class="db-name">SQL Server</span><span class="db-desc">2012+</span></div>
+      <div class="db-chip"><span class="db-name">MySQL</span><span class="db-desc">8.0+</span></div>
+      <div class="db-chip"><span class="db-name">Oracle</span><span class="db-desc">12c+</span></div>
+      <div class="db-chip"><span class="db-name">PostgreSQL</span><span class="db-desc">—</span></div>
+      <div class="db-chip"><span class="db-name">SQLite</span><span class="db-desc">—</span></div>
+      <div class="db-chip domestic"><span class="db-name">达梦 DM</span><span class="db-desc">Oracle 兼容</span></div>
+      <div class="db-chip domestic"><span class="db-name">KingbaseES</span><span class="db-desc">PostgreSQL 兼容</span></div>
+      <div class="db-chip domestic"><span class="db-name">GaussDB</span><span class="db-desc">openGauss 系</span></div>
+      <div class="db-chip domestic"><span class="db-name">OceanBase</span><span class="db-desc">MySQL 兼容</span></div>
+      <div class="db-chip domestic"><span class="db-name">TiDB</span><span class="db-desc">MySQL 兼容</span></div>
+      <div class="db-chip domestic"><span class="db-name">GreatDB</span><span class="db-desc">MySQL 兼容</span></div>
+    </div>
+    <p class="db-note">国产 / 兼容数据库 Builder 继承主流方言，仅覆盖差异点；旧版本数据库可通过 <a href="./advanced-topics/custom-paging.md">自定义分页</a> 与 <a href="./extensibility/custom-sqlbuilder.md">自定义 SqlBuilder</a> 扩展。详见<a href="./reference/database-compatibility.md">数据库兼容性说明</a>。</p>
+  </div>
+</section>
+
+<section id="docs">
+  <div class="container">
+    <div class="sec-head">
+      <div class="sec-tag">Documentation</div>
+      <h2>按学习路径组织的文档</h2>
+      <p>从入门到落地，每个场景都有可直接抄的代码。中英双语，AI 友好。</p>
+    </div>
+    <div class="docs-grid">
+      <div class="doc-card">
+        <h3>入门篇</h3>
+        <div class="en">Getting Started</div>
+        <ul>
+          <li><a href="./getting-started/overview.md">框架概览</a></li>
+          <li><a href="./getting-started/installation.md">安装与环境要求</a></li>
+          <li><a href="./getting-started/first-example-di.md">第一个示例（DI 版）</a></li>
+          <li><a href="./getting-started/first-example-manual.md">第一个示例（无 DI）</a></li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <h3>核心使用篇</h3>
+        <div class="en">Core Usage</div>
+        <ul>
+          <li><a href="./core-usage/query-overview.md">查询总览与选型</a></li>
+          <li><a href="./core-usage/lambda-guide.md">Lambda 查询指南</a></li>
+          <li><a href="./core-usage/expr-guide.md">Expr 使用指南</a></li>
+          <li><a href="./core-usage/associations.md">关联查询</a></li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <h3>DI 扩展</h3>
+        <div class="en">DI Extension</div>
+        <ul>
+          <li><a href="./reference/configuration-reference.md">配置参考</a></li>
+          <li><a href="./di/transactions.md">事务与并发控制</a></li>
+          <li><a href="./di/logging.md">日志与诊断</a></li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <h3>高级特性篇</h3>
+        <div class="en">Advanced Topics</div>
+        <ul>
+          <li><a href="./advanced-topics/sharding-and-tableargs.md">分表分库</a></li>
+          <li><a href="./advanced-topics/window-functions.md">窗口函数</a></li>
+          <li><a href="./advanced-topics/aot.md">AOT 支持</a></li>
+          <li><a href="./advanced-topics/security.md">安全性</a></li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <h3>扩展开发篇</h3>
+        <div class="en">Extensibility</div>
+        <ul>
+          <li><a href="./extensibility/expression-extension.md">表达式扩展</a></li>
+          <li><a href="./extensibility/expr-serialization.md">Expr 序列化格式</a></li>
+          <li><a href="./extensibility/frontend-querystring.md">前端 QueryString 查询</a></li>
+          <li><a href="./extensibility/domestic-database-sqlbuilder.md">国产数据库接入指南</a></li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <h3>应用场景</h3>
+        <div class="en">Use Cases</div>
+        <ul>
+          <li><a href="./typical-applications/tenant-isolation.md">多租户隔离</a></li>
+          <li><a href="./typical-applications/data-permission.md">数据权限</a></li>
+          <li><a href="./typical-applications/soft-delete-and-archive.md">软删除与归档</a></li>
+          <li><a href="./typical-applications/sensitive-data-protection.md">敏感字段加密</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="doc-ref">
+      <a href="./reference/api-index.md">API 索引</a>
+      <a href="./reference/sql-examples.md">SQL 生成示例</a>
+      <a href="./reference/glossary.md">术语表</a>
+      <a href="./reference/example-index.md">示例索引</a>
+      <a href="./reference/ai-guide.md">AI 使用指南</a>
+      <a href="./CHANGELOG.md">变更日志</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="nav-logo" href="./" aria-label="LiteOrm 首页">
+          <img class="nav-icon" src="./assets/logo/logo-mark.svg" alt="" width="34" height="34">
+          <span>Lite<span class="brand-orm">Orm</span></span>
+        </a>
+        <p>轻量级、高性能的 .NET ORM 框架。微 ORM 的速度，完整 ORM 的能力。</p>
+      </div>
+      <div>
+        <h4>软件包</h4>
+        <ul>
+          <li><a href="https://www.nuget.org/packages/LiteOrm/" target="_blank" rel="noopener">LiteOrm（核心库）</a></li>
+          <li><a href="https://www.nuget.org/packages/LiteOrm.DependencyInjection/" target="_blank" rel="noopener">LiteOrm.DependencyInjection</a></li>
+          <li><a href="https://www.nuget.org/packages/LiteOrm.Remote/" target="_blank" rel="noopener">LiteOrm.Remote</a></li>
+          <li><a href="https://www.nuget.org/packages/LiteOrm.Remote.Server/" target="_blank" rel="noopener">LiteOrm.Remote.Server</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>资源</h4>
+        <ul>
+          <li><a href="./README.md">文档中心</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo" target="_blank" rel="noopener">Demo 项目</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests" target="_blank" rel="noopener">单元测试</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm/blob/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md" target="_blank" rel="noopener">性能报告</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>社区</h4>
+        <ul>
+          <li><a href="https://github.com/danjiewu/LiteOrm" target="_blank" rel="noopener">GitHub 仓库</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm/issues" target="_blank" rel="noopener">提交 Issue</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm/pulls" target="_blank" rel="noopener">提交 PR</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm/blob/master/LICENSE" target="_blank" rel="noopener">MIT 协议</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 LiteOrm · 基于 MIT 协议发布</span>
+      <div class="footer-badges">
+        <img src="https://img.shields.io/nuget/v/LiteOrm.svg" alt="NuGet 版本" loading="lazy">
+        <img src="https://img.shields.io/github/license/danjiewu/LiteOrm.svg" alt="License" loading="lazy">
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var btn=document.getElementById('copyBtn');
+  if(btn){
+    btn.addEventListener('click',function(){
+      var text='dotnet add package LiteOrm';
+      var done=function(){
+        btn.classList.add('done');
+        btn.innerHTML='&#10003;';
+        setTimeout(function(){btn.classList.remove('done');btn.innerHTML='<svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg>';},1600);
+      };
+      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done);}
+      else{
+        var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+        document.body.appendChild(ta);ta.select();
+        try{document.execCommand('copy');done();}catch(e){}
+        document.body.removeChild(ta);
+      }
+    });
+  }
+
+  var tabs=document.querySelectorAll('.tab-btn');
+  for(var i=0;i<tabs.length;i++){
+    tabs[i].addEventListener('click',function(){
+      for(var j=0;j<tabs.length;j++){
+        tabs[j].setAttribute('aria-selected','false');
+        document.getElementById(tabs[j].getAttribute('aria-controls')).classList.remove('active');
+      }
+      this.setAttribute('aria-selected','true');
+      document.getElementById(this.getAttribute('aria-controls')).classList.add('active');
+    });
+  }
+
+  var bars=document.querySelectorAll('.mem-bar');
+  var max=1;
+  for(var k=0;k<bars.length;k++){var v=parseFloat(bars[k].getAttribute('data-w'));if(v>max)max=v;}
+  var grow=function(){
+    for(var m=0;m<bars.length;m++){
+      var val=parseFloat(bars[m].getAttribute('data-w'));
+      bars[m].style.setProperty('--w',(val/max*100)+'%');
+      if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+        bars[m].style.width=(val/max*100)+'%';
+      }else{
+        bars[m].style.width='var(--w)';
+      }
+    }
+  };
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){grow();io.disconnect();}
+      });
+    },{threshold:.3});
+    io.observe(document.querySelector('.mem-chart'));
+  }else{grow();}
+})();
+</script>
+</body>
+</html>

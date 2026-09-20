@@ -6,6 +6,10 @@
 [![License](https://img.shields.io/github/license/danjiewu/LiteOrm.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-LiteOrm-brightgreen)](https://github.com/danjiewu/LiteOrm)
 
+<p align="center">
+  <img src="docs/assets/logo/logo.svg" alt="LiteOrm logo" width="220">
+</p>
+
 ***
 
 ## 📖 Language / 语言
@@ -20,7 +24,7 @@ LiteOrm combines micro-ORM speed with full-ORM ergonomics. It fits projects that
 
 Start with the **docs hub**, then follow the learning-path navigation to read the full documentation:
 
-**[Docs Hub](https://danjiewu.github.io/LiteOrm/)** (local nav: [docs/README.md](./docs/README.md))
+**Homepage**: [https://danjiewu.github.io/LiteOrm/](https://danjiewu.github.io/LiteOrm/) ｜ Local docs nav: **[docs/README.md](./docs/README.md)**
 
 - **Getting Started**: install, register, and run your first working example
 - **Core Usage**: entity mapping, Expr / query guides, CRUD, associations, mixing Lambda with Expr

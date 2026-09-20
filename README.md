@@ -6,6 +6,10 @@
 [![License](https://img.shields.io/github/license/danjiewu/LiteOrm.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-LiteOrm-brightgreen)](https://github.com/danjiewu/LiteOrm)
 
+<p align="center">
+  <img src="docs/assets/logo/logo.svg" alt="LiteOrm 标志" width="220">
+</p>
+
 ***
 
 ## 📖 Language / 语言
@@ -20,7 +24,7 @@ LiteOrm 兼顾微型 ORM 的执行效率和完整 ORM 的易用性，适合对�
 
 建议从**文档中心**进入，按学习路径阅读完整文档：
 
-**[文档中心](https://danjiewu.github.io/LiteOrm/)**（[docs/README.md](./docs/README.md) 本地导航）
+**官网主页**：[https://danjiewu.github.io/LiteOrm/](https://danjiewu.github.io/LiteOrm/) ｜ 本地文档导航：**[docs/README.md](./docs/README.md)**
 
 - **入门篇**：快速完成安装、注册和第一个可运行示例
 - **核心使用篇**：实体映射、Expr / 查询指南、CRUD、关联查询、Lambda 与 Expr 组合
