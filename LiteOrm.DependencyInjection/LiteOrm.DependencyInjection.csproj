@@ -13,6 +13,7 @@
 		<Authors>danjiewu</Authors>
 		<Description>LiteOrm.DependencyInjection DI 扩展：LiteOrm 的依赖注入与 AOP 集成层。基于 Autofac 与 Castle DynamicProxy，通过 RegisterLiteOrm() 一键注册，支持声明式事务、权限、日志拦截与自动建表。</Description>
 		<PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
+		<PackageIcon>icon.png</PackageIcon>
 		<PackageTags>orm;autofac;castle;proxy;aop;interceptor;di;ioc</PackageTags>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -64,6 +65,10 @@
 
 	<ItemGroup>
 		<None Include="..\README.DependencyInjection.nuget.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+		<None Include="..\icon.png">
 			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
 		</None>

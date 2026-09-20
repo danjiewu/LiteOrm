@@ -13,6 +13,7 @@
 		<Authors>danjiewu</Authors>
 		<Description>LiteOrm 基础库：轻量级、高性能的 .NET ORM。内置多数据库方言与 Lambda、Expr、ExprString 查询，支持自动关联、声明式事务、动态分表与异步操作；不含 DI 与 AOP，可配合 LiteOrm.DependencyInjection 使用。</Description>
 		<PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
+		<PackageIcon>icon.png</PackageIcon>
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
@@ -117,6 +118,10 @@
 
 	<ItemGroup>
 	  <None Include="..\README.nuget.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	  <None Include="..\icon.png">
 	    <Pack>True</Pack>
 	    <PackagePath>\</PackagePath>
 	  </None>

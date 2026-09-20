@@ -37,7 +37,8 @@
 - 改进：
   - LiteOrm.Common 更新至 8.1.1。
     </PackageReleaseNotes>
-    <PackageProjectUrl>https://github.com/danjiewu/LiteOrm</PackageProjectUrl>
+    <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
     <Copyright>Copyright @ 2026 danjiewu</Copyright>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -49,6 +50,10 @@
 
   <ItemGroup>
     <None Include="..\README.Remote.Server.nuget.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\icon.png">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
