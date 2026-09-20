@@ -61,7 +61,7 @@ namespace LiteOrm
         /// <summary>
         /// 获取底层数据库命令。代理释放后访问将抛出 <see cref="ObjectDisposedException"/>。
         /// </summary>
-        internal DbCommand Target
+        public DbCommand Target
         {
             get
             {

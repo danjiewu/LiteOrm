@@ -286,7 +286,7 @@ public class UsersController : ControllerBase
 If you can successfully run this code, your basic LiteOrm integration is complete.
 The recommended approach is to gradually migrate generic services to custom `IUserService` after the business layer stabilizes, to accommodate transactions, auditing, and composite business logic.
 
-When you have many entities, you can also use [Generic Controller or Dynamic Controller Generation](../di/generic-controller.en.md) to reduce repetitive code.
+When you have many entities, you can also use [Generic Controller or Dynamic Controller Generation](../extensibility/generic-controller.en.md) to reduce repetitive code.
 
 ## 9. Common Beginner Troubleshooting
 

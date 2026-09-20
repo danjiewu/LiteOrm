@@ -29,12 +29,13 @@
 
 ### DI扩展 / DI Extension
 
+> 本节基于 `LiteOrm.DependencyInjection` 包，须先安装该包并做 DI 注册。
+
 |中文|English|说明|
 |-|-|-|
 |[事务](./di/transactions.md)|[Transactions](./di/transactions.en.md)|事务与并发控制|
 |[权限过滤](./di/permission-filtering.md)|[Permission Filtering](./di/permission-filtering.en.md)|用户范围过滤与访问控制|
 |[日志与诊断](./di/logging.md)|[Logging \& Diagnostics](./di/logging.en.md)|ServiceLog、Log 特性与慢查询日志|
-|[泛型 Controller 与动态生成](./di/generic-controller.md)|[Generic Controller](./di/generic-controller.en.md)|泛型基类 Controller 与动态 Controller 生成|
 
 ### 高级特性篇 / Advanced Topics
 
@@ -60,6 +61,7 @@
 |[前端 QueryString 查询](./extensibility/frontend-querystring.md)|[Frontend QueryString](./extensibility/frontend-querystring.en.md)|用 URL 参数驱动后端 Expr 查询|
 |[前端原生 Expr 查询](./extensibility/frontend-native-expr.md)|[Frontend Native Expr](./extensibility/frontend-native-expr.en.md)|按 LiteOrm 序列化格式提交 Expr JSON|
 | [国产/兼容数据库 SqlBuilder 开发指南](./extensibility/domestic-database-sqlbuilder.md)|[Domestic/Compatible Database SqlBuilder Guide](./extensibility/domestic-database-sqlbuilder.en.md)|达梦、人大金仓、GaussDB、OceanBase、TiDB、GreatDB 接入指南|
+|[泛型 Controller 与动态生成](./extensibility/generic-controller.md)|[Generic Controller](./extensibility/generic-controller.en.md)|泛型基类 Controller 与动态 Controller 生成|
 
 ### 应用场景 / Use Cases
 
@@ -70,6 +72,7 @@
 |[软删除与历史数据](./typical-applications/soft-delete-and-archive.md)|[Soft Deletes and Historical Data](./typical-applications/soft-delete-and-archive.en.md)|固定切片读路径、软删除写入、唯一约束与归档|
 |[审计与变更追踪](./typical-applications/audit-and-change-tracking.md)|[Audit and Change Tracking](./typical-applications/audit-and-change-tracking.en.md)|实体事件、字段 diff、审计落库的事务边界与调用日志|
 |[敏感字段加密与脱敏](./typical-applications/sensitive-data-protection.md)|[Sensitive Data Protection](./typical-applications/sensitive-data-protection.en.md)|列密文存储、自定义类型全局注册、盲索引与密钥管理|
+|[计算列的实际应用](./typical-applications/computed-columns.md)|[Computed Columns in Practice](./typical-applications/computed-columns.en.md)|派生展示、表达式过滤与排序、可见性归一化|
 |[并发控制与读写分离](./typical-applications/concurrency-and-read-write-splitting.md)|[Concurrency and Read/Write Splitting](./typical-applications/concurrency-and-read-write-splitting.en.md)|时间戳乐观并发、事务边界、只读副本与读写一致性|
 
 ### 参考文档 / Reference

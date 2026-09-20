@@ -88,6 +88,7 @@ foreach (var type in typeof(Order).Assembly.GetTypes())
 - 角色分支在 SQL 生成那一刻重新计算，每次查询都重新读一遍当前用户，切换即生效，不是登录时的快照。
 - 列引用不再手拼裸列名，而是用 `Prop(...)` 构造 `PropertyExpr`，交给 `ExprSqlConverter.ToSql` 渲染，列名自动带上当前表别名（如 `"T0"."OwnerId"`）。与具体类型（如 `user.Id`）比较走已实现的运算符重载，等价参数化，无需手写 `Value(...)`，也无需维护 `context.OutputParams` 下标。
 - 构件返回的 SQL 走参数化，值不拼进文本；管理员返回 `null`，片段被忽略。
+- `ConstFilter` 不只约束主表：本表作为 `JOIN` 的右表或 `EXISTS` 子查询的目标表时，其 `ConstFilter` 仍会叠加生效，范围条件随关联路径一起带上。
 
 `GenericSqlExpr` 与 `ConstFilter` 的底层机制（生效范围：主键读、`JOIN ON`、`EXISTS`、`UPDATE`/`DELETE`，以及性能代价与 NativeAOT 差异）与[多租户隔离](./tenant-isolation.md)示例三一致，此处不再重复。
 

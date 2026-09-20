@@ -20,7 +20,7 @@
 - 破坏性变更：SqlBuildContext 的 SqlBuilder 改为构造函数必填参数（非空），无参/三参构造替换为 SqlBuildContext(ISqlBuilder) 与 SqlBuildContext(ISqlBuilder, SqlTable?, string, string[]?)。
 - 破坏性变更：ToSql / ToPreparedSql / BuildFunctionSql 等去掉 ISqlBuilder 与参数集合形参，FunctionSqlHandler、SqlGenerateHandler 委托签名同步简化。
 - 破坏性变更：RegisterFunctionSqlHandler(string, SimpleFunctionSqlHandler) 更名为 RegisterSimpleFunctionSqlHandler。
-- 破坏性变更：DbCommandProxy 改为按次创建的包装代理，Target 改为私有、IsReusable 改为只读；PreparedCommands 改存 DbCommand，释放代理不再影响缓存。
+- 破坏性变更：DbCommandProxy 改为按次创建的包装代理，IsReusable 改为只读；PreparedCommands 改存 DbCommand，释放代理不再影响缓存。
 - 修复：DAO 主键读写路径与批量读写现带上 Column.Constant 收敛出的固定筛选条件。
 - 修复：命令缓存装配后即被释放（缓存里一直是已释放命令，复用抛 ObjectDisposedException）；DAOContext.IsValid 未判断上下文已释放，池释放后的上下文仍被复用。
 - 同步 LiteOrm.Common 8.1.8。

@@ -330,4 +330,4 @@ app.Run();
 - [返回目录](../README.md)
 - [第一个完整示例（DI 版）](../getting-started/first-example-di.md)
 - [视图模型与服务层](../core-usage/view-models-and-services.md)
-- [权限过滤](./permission-filtering.md)
+- [权限过滤](../di/permission-filtering.md)

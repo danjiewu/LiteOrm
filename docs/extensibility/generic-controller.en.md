@@ -330,4 +330,4 @@ During dynamic generation, the code checks whether a Controller with the same na
 - [Back to docs hub](../README.md)
 - [First Example (DI)](../getting-started/first-example-di.en.md)
 - [View Models and Services](../core-usage/view-models-and-services.en.md)
-- [Permission Filtering](./permission-filtering.en.md)
+- [Permission Filtering](../di/permission-filtering.en.md)
