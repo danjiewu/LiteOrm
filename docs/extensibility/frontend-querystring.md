@@ -174,6 +174,6 @@ QueryString 只是传参方式，不承担授权职责。后端应统一注入�
 ## 8. 相关链接
 
 - [返回目录](../README.md)
-- [权限过滤](../di/permission-filtering.md)
+- [权限过滤](../advanced-topics/permission-filtering.md)
 - [查询总览](../core-usage/query-overview.md)
 

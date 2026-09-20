@@ -359,7 +359,7 @@ Usage recommendations:
 
 > `ForeignColumnAttribute.ConverterType` declares this foreign projection column's own column-level converter. When reading, **it prefers its own declared converter and otherwise falls back to the target column's converter** (the target column may itself be another `ForeignColumn`, enabling stepwise fallback). Its usage matches `ColumnAttribute.ConverterType` — provide a type implementing `IDbValueConverter`.
 
-In implementation, LiteOrm merges ForeignType and TableJoin information during the metadata phase to generate JoinedTable / ForeignTable structures. For fixed-filter metadata and SQL injection details, see [Permission Filtering and User Scope Control](../di/permission-filtering.en.md).
+In implementation, LiteOrm merges ForeignType and TableJoin information during the metadata phase to generate JoinedTable / ForeignTable structures. For fixed-filter metadata and SQL injection details, see [Permission Filtering and User Scope Control](../advanced-topics/permission-filtering.en.md).
 
 ---
 
@@ -385,7 +385,7 @@ In implementation, LiteOrm merges ForeignType and TableJoin information during t
   A: Prefer ForeignType for single-column foreign keys; prefer TableJoin for joint primary keys or multi-column associations.
 
 - Q: When should I use `Column.Constant`?
-  A: Use it when the model itself always represents one fixed slice. For the full boundary, `ConstFilter` pipeline, and multi-tenant guidance, see [Permission Filtering and User Scope Control](../di/permission-filtering.en.md).
+  A: Use it when the model itself always represents one fixed slice. For the full boundary, `ConstFilter` pipeline, and multi-tenant guidance, see [Permission Filtering and User Scope Control](../advanced-topics/permission-filtering.en.md).
 
 ---
 

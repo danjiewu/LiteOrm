@@ -168,7 +168,7 @@ Related guides:
 
 - [First complete example (base library only)](../getting-started/first-example.en.md)
 - [Transactions](../di/transactions.en.md)
-- [Permission filtering](../di/permission-filtering.en.md)
+- [Permission filtering](../advanced-topics/permission-filtering.en.md)
 - [Logging and diagnostics](../di/logging.en.md)
 - [Remote service invocation](../advanced-topics/remote-service.en.md)
 

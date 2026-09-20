@@ -293,7 +293,7 @@ var users = await userService.SearchAsync(expr);
 2. **Supports parameterization**: The delegate can reach the parameter collection via `context.OutputParams`, allowing safe passing of user values
 3. **Parameter passing**: Business parameters are passed via the `Arg` property, not concatenated into SQL
 
-If you want to use it for business scenarios such as "current-user scope filtering" or "multi-tenant filtering", read this together with [Permission Filtering](../di/permission-filtering.en.md), which focuses on **when to use runtime Expr / GenericSqlExpr versus `ConstFilter` or table routing**.
+If you want to use it for business scenarios such as "current-user scope filtering" or "multi-tenant filtering", read this together with [Permission Filtering](../advanced-topics/permission-filtering.en.md), which focuses on **when to use runtime Expr / GenericSqlExpr versus `ConstFilter` or table routing**.
 
 ---
 
@@ -407,7 +407,7 @@ if (!ExprVisitor.Validate(propValidator, expr))
 
 ### 6.5 Coordination with Permission Filtering
 
-Security filtering should be used in conjunction with [Permission Filtering](../di/permission-filtering.en.md):
+Security filtering should be used in conjunction with [Permission Filtering](../advanced-topics/permission-filtering.en.md):
 
 ```csharp
 // Before entering Search, append user scope conditions
@@ -455,6 +455,6 @@ When using LiteOrm in production, confirm each item:
 
 - [Back to docs hub](../README.md)
 - [Function Validator](../extensibility/function-validator.en.md)
-- [Permission Filtering](../di/permission-filtering.en.md)
+- [Permission Filtering](../advanced-topics/permission-filtering.en.md)
 - [Frontend Native Expr](../extensibility/frontend-native-expr.en.md)
 - [Expression Extension](../extensibility/expression-extension.en.md)

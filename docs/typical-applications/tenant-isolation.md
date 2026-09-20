@@ -291,7 +291,7 @@ services.AddScoped<ObjectViewDAO<TenantOrder>, TenantOrderViewDAO>();
 ## 相关链接
 
 - [返回目录](../README.md)
-- [权限过滤与用户范围控制](../di/permission-filtering.md)
+- [权限过滤与用户范围控制](../advanced-topics/permission-filtering.md)
 - [分表分库](../advanced-topics/sharding-and-tableargs.md)
 - [数据权限](./data-permission.md)
 - [审计与变更追踪](./audit-and-change-tracking.md)

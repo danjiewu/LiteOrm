@@ -34,7 +34,6 @@
 |中文|English|说明|
 |-|-|-|
 |[事务](./di/transactions.md)|[Transactions](./di/transactions.en.md)|事务与并发控制|
-|[权限过滤](./di/permission-filtering.md)|[Permission Filtering](./di/permission-filtering.en.md)|用户范围过滤与访问控制|
 |[日志与诊断](./di/logging.md)|[Logging \& Diagnostics](./di/logging.en.md)|ServiceLog、Log 特性与慢查询日志|
 
 ### 高级特性篇 / Advanced Topics
@@ -47,6 +46,7 @@
 |[自定义分页](./advanced-topics/custom-paging.md)|[Custom Paging](./advanced-topics/custom-paging.en.md)|分页方案扩展|
 |[AOT 支持](./advanced-topics/aot.md)|[AOT Support](./advanced-topics/aot.en.md)|NativeAOT 裁剪与源生成器|
 |[安全性](./advanced-topics/security.md)|[Security](./advanced-topics/security.en.md)|SQL 注入防护与安全机制|
+|[权限过滤与用户范围](./advanced-topics/permission-filtering.md)|[Permission Filtering and User Scopes](./advanced-topics/permission-filtering.en.md)|运行时 Expr/GenericSqlExpr、ConstFilter 与表路由选型|
 |[远程服务](./advanced-topics/remote-service.md)|[Remote Service](./advanced-topics/remote-service.en.md)|Remote 客户端与服务端使用|
 |[数据映射与值转换](./advanced-topics/data-mapping.md)|[Data Mapping](./advanced-topics/data-mapping.en.md)|值转换器、DataReader 映射、AOT 差异与自定义扩展|
 

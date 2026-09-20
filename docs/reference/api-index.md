@@ -168,7 +168,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 - [第一个完整示例（仅基础库）](../getting-started/first-example.md)
 - [事务管理](../di/transactions.md)
-- [权限过滤](../di/permission-filtering.md)
+- [权限过滤](../advanced-topics/permission-filtering.md)
 - [日志与诊断](../di/logging.md)
 - [远程服务调用](../advanced-topics/remote-service.md)
 

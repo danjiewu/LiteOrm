@@ -523,6 +523,6 @@ As a rule of thumb:
 
 - [Back to docs hub](../README.md)
 - [Associations](../core-usage/associations.en.md)
-- [Permission Filtering](../di/permission-filtering.en.md)
+- [Permission Filtering](../advanced-topics/permission-filtering.en.md)
 - [Performance Optimization](./performance.en.md)
 - [Expression Extension](../extensibility/expression-extension.en.md)

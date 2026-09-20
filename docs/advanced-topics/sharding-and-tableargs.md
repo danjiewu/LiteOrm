@@ -523,6 +523,6 @@ public class Log : IArged
 
 - [返回目录](../README.md)
 - [关联查询](../core-usage/associations.md)
-- [权限过滤](../di/permission-filtering.md)
+- [权限过滤](../advanced-topics/permission-filtering.md)
 - [性能优化](./performance.md)
 - [表达式扩展](../extensibility/expression-extension.md)

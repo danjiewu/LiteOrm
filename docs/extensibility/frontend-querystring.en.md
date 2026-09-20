@@ -171,6 +171,6 @@ When you need multiple AND/OR groups, dynamic sorting, or compound filters, swit
 ## 8. Related Links
 
 - [Back to index](../README.md)
-- [Permission filtering](../di/permission-filtering.en.md)
+- [Permission filtering](../advanced-topics/permission-filtering.en.md)
 - [Query Overview](../core-usage/query-overview.en.md)
 

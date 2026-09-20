@@ -293,7 +293,7 @@ var users = await userService.SearchAsync(expr);
 2. **支持参数化**：委托可通过 `context.OutputParams` 拿到参数集合并安全地传递用户值
 3. **参数传递**：通过 `Arg` 属性传递业务参数，不拼接到 SQL 中
 
-如果你是想把它用于“当前用户范围过滤”或“多租户过滤”等业务场景，请再结合[权限过滤](../di/permission-filtering.md)一并阅读，那里更强调**什么时候该用运行时 Expr / GenericSqlExpr，什么时候该用 `ConstFilter` 或表路由**。
+如果你是想把它用于“当前用户范围过滤”或“多租户过滤”等业务场景，请再结合[权限过滤](../advanced-topics/permission-filtering.md)一并阅读，那里更强调**什么时候该用运行时 Expr / GenericSqlExpr，什么时候该用 `ConstFilter` 或表路由**。
 
 ---
 
@@ -407,7 +407,7 @@ if (!ExprVisitor.Validate(propValidator, expr))
 
 ### 6.5 权限过滤的配合
 
-安全过滤应与[权限过滤](../di/permission-filtering.md)配合使用：
+安全过滤应与[权限过滤](../advanced-topics/permission-filtering.md)配合使用：
 
 ```csharp
 // 在进入 Search 之前，先拼上用户范围条件
@@ -455,6 +455,6 @@ Expr 表达式体系虽然可以从架构层面杜绝 SQL 注入，但其功能�
 
 - [返回目录](../README.md)
 - [函数验证器](../extensibility/function-validator.md)
-- [权限过滤](../di/permission-filtering.md)
+- [权限过滤](../advanced-topics/permission-filtering.md)
 - [前端原生 Expr 查询](../extensibility/frontend-native-expr.md)
 - [表达式扩展](../extensibility/expression-extension.md)

@@ -192,6 +192,6 @@ LiteOrm 的 `Expr` 已经实现了结构化 `Equals/GetHashCode`，因此相同�
 ## 7. 相关链接
 
 - [返回目录](../README.md)
-- [权限过滤](../di/permission-filtering.md)
+- [权限过滤](../advanced-topics/permission-filtering.md)
 - [查询总览](../core-usage/query-overview.md)
 
