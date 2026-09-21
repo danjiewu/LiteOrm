@@ -486,6 +486,8 @@ LiteOrm 不是 EF Core 的简化版，而是一个独立设计的 ORM 框架。�
 
 实际上，你可以直接注入框架提供的泛型接口 `IEntityServiceAsync<T>` 和 `IEntityViewServiceAsync<T>`，无需定义任何自定义 Service 类。这在原型开发阶段非常方便。等业务稳定后，再逐步封装自定义 Service。
 
+> 注意读写能力是按接口拆分的：`IEntityServiceAsync<T>` 只有增删改、没有查询方法；`IEntityViewServiceAsync<T>` 只有查询、没有写方法。直接注入泛型接口时需要分别解析这两个对象；希望单个服务对象读写兼备，可以继承全部四个接口（`IEntityService<T>`、`IEntityServiceAsync<T>`、`IEntityViewService<T>`、`IEntityViewServiceAsync<T>`），或直接使用 `EntityService<T>` 具体类。
+
 ### 误区三：Lambda 查询和 Expr 查询是互斥的
 
 三种查询方式（Lambda、Expr、ExprString）可以混合使用。Lambda 表达式会自动转换为 Expr，Expr 也可以嵌入到 ExprString 中作为片段。你可以根据场景灵活选择最合适的方式。

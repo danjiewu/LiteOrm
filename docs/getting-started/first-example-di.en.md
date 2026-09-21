@@ -70,11 +70,13 @@ public class UserService : EntityService<User>, IUserService
 ```
 
 > **Line-by-line explanation**:
-> - `IEntityService<User>`: Provides synchronous write operations (Insert, Update, Delete).
-> - `IEntityServiceAsync<User>`: Provides async write operations (InsertAsync, UpdateAsync, DeleteAsync).
-> - `IEntityViewService<User>`: Provides synchronous read operations (Search, SearchOne, Count).
-> - `IEntityViewServiceAsync<User>`: Provides async read operations (SearchAsync, SearchOneAsync, CountAsync).
-> - `EntityService<User>`: Framework-provided base class that already implements all the above interface methods.
+> - `IEntityService<User>`: Provides synchronous write operations (Insert, Update, Delete). **The interface itself has no query methods.**
+> - `IEntityServiceAsync<User>`: Provides async write operations (InsertAsync, UpdateAsync, DeleteAsync). **The interface itself has no query methods.**
+> - `IEntityViewService<User>`: Provides synchronous read operations (Search, SearchOne, Count, Exists). **The interface itself has no write methods.**
+> - `IEntityViewServiceAsync<User>`: Provides async read operations (SearchAsync, SearchOneAsync, CountAsync, ExistsAsync). **The interface itself has no write methods.**
+> - `EntityService<User>`: Framework-provided base class that implements all the interfaces above, so a single object can both read and write.
+>
+> Read and write capabilities are split by interface: injecting a single generic interface (e.g. `IEntityServiceAsync<User>`) gives you only half of them. When you need both, either inherit all four interfaces (like `IUserService` above) or use the concrete `EntityService<User>` class directly.
 
 If you're not ready to define custom services in your project yet, you can also directly inject the framework's generic service interfaces. The complete flow below demonstrates both approaches.
 
@@ -122,7 +124,28 @@ app.Run();
 > - `RegisterLiteOrm()` (this article): Autofac container + Castle AOP interception, supporting `[Transaction]`, `[ServicePermission]`, `[ServiceLog]` and more; called on `builder.Host`.
 > - `AddLiteOrm()` (base library, plain MS DI): use it when you don't need Autofac / AOP; call it on `builder.Services`. See [First Complete Example (Base Library Only)](./first-example.md).
 
-## 5. Insert a Record
+## 5. Resolve a Service and Insert a Record
+
+The code in sections 5–7 needs a `userService` instance, so first create a scope and resolve the service. Both approaches are shown:
+
+```csharp
+using var scope = app.Services.CreateScope();
+
+// Approach 1: resolve the custom service defined in section 2
+// (it inherits all four interfaces, so it has both read and write capabilities)
+var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+
+// Approach 2: resolve the framework generic interfaces directly.
+// Note that reads and writes live on two separate interfaces and must be resolved separately:
+// - IEntityServiceAsync<T>: write operations only (InsertAsync, UpdateAsync, DeleteAsync, etc.) — no query methods
+// - IEntityViewServiceAsync<T>: queries only (SearchAsync, SearchOneAsync, CountAsync, ExistsAsync, etc.) — no write methods
+var entityService = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<User>>();    // for writes
+var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<User>>(); // for queries
+```
+
+> **Important**: the `IEntityServiceAsync<T>` interface has no query methods, and the `IEntityViewServiceAsync<T>` interface has no write methods. With the generic interfaces (Approach 2), writes must go through `entityService` and queries through `viewService`. If you want a single service object with both read and write capabilities, use a custom service (Approach 1) or resolve the concrete `EntityService<User>` class directly.
+>
+> The sections below use Approach 1's `userService`; the equivalent calls for Approach 2 are given as comments, and section 8 shows the complete loop.
 
 ```csharp
 var user = new User
@@ -134,6 +157,7 @@ var user = new User
 };
 
 await userService.InsertAsync(user);
+// Approach 2: await entityService.InsertAsync(user);
 ```
 
 > **Note**: `InsertAsync` inserts the entity into the database. If `Id` is an auto-increment column (`IsIdentity = true`), the entity's `Id` property is automatically populated with the database-generated value after insertion.
@@ -143,12 +167,17 @@ await userService.InsertAsync(user);
 ```csharp
 var adults = await userService.SearchAsync(u => u.Age >= 18);
 var admin = await userService.SearchOneAsync(u => u.UserName == "admin");
+
+// Approach 2: query methods only exist on IEntityViewServiceAsync<T>, so switch to viewService
+// var adults = await viewService.SearchAsync(u => u.Age >= 18);
+// var admin = await viewService.SearchOneAsync(u => u.UserName == "admin");
 ```
 
 > **Note**:
 > - `SearchAsync` returns a list of matching records. If called without parameters, it returns all records.
 > - `SearchOneAsync` returns the first matching record, or `null` if no match is found.
 > - The Lambda expression `u => u.Age >= 18` is automatically converted to SQL `WHERE Age >= 18`.
+> - Query methods (`SearchAsync` / `SearchOneAsync` / `CountAsync` / `ExistsAsync`) are defined on `IEntityViewService(Async)<T>`; `IEntityServiceAsync<T>` has no query methods.
 
 ## 7. Execute Pagination
 
@@ -159,6 +188,7 @@ var page = await userService.SearchAsync(
           .Skip(0)
           .Take(10)
 );
+// Approach 2: just replace userService with viewService (pagination is also a query method)
 ```
 
 > **Note**:
@@ -183,9 +213,10 @@ using var scope = app.Services.CreateScope();
 // Approach 1: Custom service defined in the project
 var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
-// Approach 2: Use framework-provided generic services directly
-var entityService = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<User>>();
-var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<User>>();
+// Approach 2: use framework-provided generic services directly
+// IEntityServiceAsync<T> has write methods only, IEntityViewServiceAsync<T> has query methods only; resolve both separately
+var entityService = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<User>>();    // for writes
+var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<User>>(); // for queries
 
 var user = new User
 {
@@ -334,6 +365,12 @@ builder.Host.RegisterLiteOrm(options =>
 **Cause**: Missing `using LiteOrm.DependencyInjection;` reference, or only `LiteOrm` / `LiteOrm.Common` was installed instead of `LiteOrm.DependencyInjection`.
 
 **Solution**: Confirm that the `LiteOrm.DependencyInjection` NuGet package is installed (`RegisterLiteOrm()` is defined there), and add `using LiteOrm.DependencyInjection;` at the top of your file.
+
+### Issue 6: Compile error `'IEntityServiceAsync<User>' does not contain a definition for 'SearchAsync'`
+
+**Cause**: The `IEntityServiceAsync<T>` interface only contains write (create/update/delete) methods and no query methods; query methods are defined on `IEntityViewServiceAsync<T>`. Conversely, `IEntityViewServiceAsync<T>` has no write methods either.
+
+**Solution**: When using the generic interfaces directly, resolve both `IEntityServiceAsync<User>` (for writes) and `IEntityViewServiceAsync<User>` (for reads) and call each one accordingly. Alternatively, define a custom service that inherits all four interfaces (see section 2), or resolve the concrete `EntityService<User>` class directly so a single object handles all reads and writes.
 
 ## 10. Verification Checklist
 

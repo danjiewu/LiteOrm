@@ -488,6 +488,8 @@ LiteOrm is not a simplified version of EF Core—it's an independently designed 
 
 You can directly inject the framework's generic interfaces `IEntityServiceAsync<T>` and `IEntityViewServiceAsync<T>` without defining any custom Service class. This is very convenient during prototyping. Once your business logic stabilizes, you can gradually encapsulate custom Services.
 
+> Note that read/write capabilities are split by interface: `IEntityServiceAsync<T>` has write operations only and no query methods, while `IEntityViewServiceAsync<T>` has queries only and no write methods. When injecting the generic interfaces directly, you need to resolve both objects separately. If you want a single service object with both capabilities, inherit all four interfaces (`IEntityService<T>`, `IEntityServiceAsync<T>`, `IEntityViewService<T>`, `IEntityViewServiceAsync<T>`), or use the concrete `EntityService<T>` class directly.
+
 ### Misconception 3: Lambda queries and Expr queries are mutually exclusive
 
 The three query styles (Lambda, Expr, ExprString) can be mixed. Lambda expressions are automatically converted to Expr, and Expr can be embedded into ExprString as fragments. Choose the most appropriate style for each scenario.

@@ -70,11 +70,13 @@ public class UserService : EntityService<User>, IUserService
 ```
 
 > **逐行解释**：
-> - `IEntityService<User>`：提供同步的增删改操作（Insert、Update、Delete）。
-> - `IEntityServiceAsync<User>`：提供异步的增删改操作（InsertAsync、UpdateAsync、DeleteAsync）。
-> - `IEntityViewService<User>`：提供同步的查询操作（Search、SearchOne、Count）。
-> - `IEntityViewServiceAsync<User>`：提供异步的查询操作（SearchAsync、SearchOneAsync、CountAsync）。
-> - `EntityService<User>`：框架提供的基类，已经实现了上述所有接口的方法。
+> - `IEntityService<User>`：提供同步的增删改操作（Insert、Update、Delete）。**接口本身没有查询方法**。
+> - `IEntityServiceAsync<User>`：提供异步的增删改操作（InsertAsync、UpdateAsync、DeleteAsync）。**接口本身没有查询方法**。
+> - `IEntityViewService<User>`：提供同步的查询操作（Search、SearchOne、Count、Exists）。**接口本身没有写方法**。
+> - `IEntityViewServiceAsync<User>`：提供异步的查询操作（SearchAsync、SearchOneAsync、CountAsync、ExistsAsync）。**接口本身没有写方法**。
+> - `EntityService<User>`：框架提供的基类，已经实现了上述所有接口的方法，单个对象即可同时读写。
+>
+> 读写能力是按接口拆分的：直接注入单个泛型接口（如 `IEntityServiceAsync<User>`）只能拿到其中一半能力；需要读写兼备时，要么继承全部四个接口（如上面的 `IUserService`），要么直接使用 `EntityService<User>` 具体类。
 
 如果你的项目暂时不准备定义自定义服务，也可以直接注入框架提供的泛型服务接口，后面的完整闭环里会同时演示两种写法。
 
@@ -122,7 +124,26 @@ app.Run();
 > - `RegisterLiteOrm()`（本文）：Autofac 容器 + Castle AOP 拦截，支持 `[Transaction]`、`[ServicePermission]`、`[ServiceLog]` 等特性，在 `builder.Host` 上调用。
 > - `AddLiteOrm()`（基础库，纯 MS DI）：不需要 Autofac / AOP 时使用，在 `builder.Services` 上调用即可，详见[第一个完整示例（仅基础库）](./first-example.md)。
 
-## 5. 插入一条数据
+## 5. 解析服务并插入一条数据
+
+第 5~7 节的代码需要一个 `userService` 实例，先创建作用域并解析服务。这里同时给出两种写法：
+
+```csharp
+using var scope = app.Services.CreateScope();
+
+// 写法一：解析第 2 节定义的自定义服务（继承全部四个接口，读、写能力齐全）
+var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+
+// 写法二：直接解析框架泛型接口。注意读写分属两个接口，必须分别解析：
+// - IEntityServiceAsync<T>：只有增删改（InsertAsync、UpdateAsync、DeleteAsync 等），没有查询方法
+// - IEntityViewServiceAsync<T>：只有查询（SearchAsync、SearchOneAsync、CountAsync、ExistsAsync 等），没有写方法
+var entityService = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<User>>();    // 负责写入
+var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<User>>(); // 负责查询
+```
+
+> **重要**：`IEntityServiceAsync<T>` 接口没有查询方法，`IEntityViewServiceAsync<T>` 接口没有写方法。使用泛型接口（写法二）时，写入必须调用 `entityService`，查询必须调用 `viewService`；希望一个服务对象同时具备读、写能力时，请使用自定义服务（写法一），或直接解析 `EntityService<User>` 具体类。
+>
+> 下文统一用写法一的 `userService` 演示，写法二的对应调用以注释给出，第 8 节是完整闭环。
 
 ```csharp
 var user = new User
@@ -134,6 +155,7 @@ var user = new User
 };
 
 await userService.InsertAsync(user);
+// 写法二：await entityService.InsertAsync(user);
 ```
 
 > **说明**：`InsertAsync` 会将实体插入数据库。如果 `Id` 是自增列（`IsIdentity = true`），插入后实体的 `Id` 属性会自动填充为数据库生成的值。
@@ -143,12 +165,17 @@ await userService.InsertAsync(user);
 ```csharp
 var adults = await userService.SearchAsync(u => u.Age >= 18);
 var admin = await userService.SearchOneAsync(u => u.UserName == "admin");
+
+// 写法二：查询方法只在 IEntityViewServiceAsync<T> 上，需改用 viewService
+// var adults = await viewService.SearchAsync(u => u.Age >= 18);
+// var admin = await viewService.SearchOneAsync(u => u.UserName == "admin");
 ```
 
 > **说明**：
 > - `SearchAsync` 返回满足条件的列表。如果不传参数，返回所有记录。
 > - `SearchOneAsync` 返回满足条件的第一条记录，如果没有匹配则返回 `null`。
 > - Lambda 表达式 `u => u.Age >= 18` 会被自动转换为 SQL 的 `WHERE Age >= 18`。
+> - 查询方法（`SearchAsync` / `SearchOneAsync` / `CountAsync` / `ExistsAsync`）定义在 `IEntityViewService(Async)<T>` 上，`IEntityServiceAsync<T>` 没有查询方法。
 
 ## 7. 执行分页
 
@@ -159,6 +186,7 @@ var page = await userService.SearchAsync(
           .Skip(0)
           .Take(10)
 );
+// 写法二：把 userService 换成 viewService 即可（分页同样属于查询方法）
 ```
 
 > **说明**：
@@ -184,8 +212,9 @@ using var scope = app.Services.CreateScope();
 var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
 // 写法二：直接使用框架提供的泛型服务
-var entityService = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<User>>();
-var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<User>>();
+// IEntityServiceAsync<T> 只有写方法，IEntityViewServiceAsync<T> 只有查询方法，两者需分别解析
+var entityService = scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<User>>();    // 负责写入
+var viewService = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<User>>(); // 负责查询
 
 var user = new User
 {
@@ -334,6 +363,12 @@ builder.Host.RegisterLiteOrm(options =>
 **原因**：没有添加 `using LiteOrm.DependencyInjection;` 引用，或者安装的是 `LiteOrm` / `LiteOrm.Common` 包而未安装 `LiteOrm.DependencyInjection` 包。
 
 **解决方法**：确认安装了 `LiteOrm.DependencyInjection` NuGet 包（`RegisterLiteOrm()` 定义于该包），并在文件顶部添加 `using LiteOrm.DependencyInjection;`。
+
+### 问题六：编译错误 `'IEntityServiceAsync<User>' does not contain a definition for 'SearchAsync'`
+
+**原因**：`IEntityServiceAsync<T>` 接口只有增删改方法，没有查询方法；查询方法定义在 `IEntityViewServiceAsync<T>` 上。反过来，`IEntityViewServiceAsync<T>` 也没有写方法。
+
+**解决方法**：直接使用泛型接口时，需同时解析 `IEntityServiceAsync<User>`（负责写）与 `IEntityViewServiceAsync<User>`（负责读）两个对象，分别调用；或者定义继承全部四个接口的自定义服务（见第 2 节），也可以直接解析 `EntityService<User>` 具体类，用一个对象完成全部读写。
 
 ## 10. 运行验证清单
 

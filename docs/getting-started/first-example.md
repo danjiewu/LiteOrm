@@ -112,6 +112,8 @@ var sp = scope.ServiceProvider;
 var userService = sp.GetRequiredService<EntityService<User>>();
 ```
 
+> **读写接口拆分提示**：框架把服务能力按接口拆分为 `IEntityService(Async)<T>`（只有增删改，没有查询方法）与 `IEntityViewService(Async)<T>`（只有查询，没有写方法）。示例直接解析 `EntityService<User>` 具体类，单个对象即可完成全部读写；如果改为注入接口，则读写必须分别解析 `IEntityServiceAsync<User>` 与 `IEntityViewServiceAsync<User>` 两个对象。
+
 > **作用域与 SessionManager 的关系**：
 > `SessionManager` 注册为 Scoped，每个 `CreateScope()`（如每个 Web 请求）创建的作用域会获得独立的 `SessionManager` 实例。`AddLiteOrm()` 在注册 `SessionManager` 时已自动绑定 `SessionManager.Current`（解析到当前作用域实例），因此无需手动调用 `SetCurrent` 或编写中间件。
 >

@@ -106,6 +106,8 @@ var sp = scope.ServiceProvider;
 var userService = sp.GetRequiredService<EntityService<User>>();
 ```
 
+> **Read/write interface split**: the framework splits service capabilities across interfaces — `IEntityService(Async)<T>` (writes only, no query methods) and `IEntityViewService(Async)<T>` (queries only, no write methods). This example resolves the concrete `EntityService<User>` class, so a single object handles all reads and writes. If you inject the interfaces instead, you must resolve `IEntityServiceAsync<User>` and `IEntityViewServiceAsync<User>` separately for writes and reads.
+
 > **Scopes and SessionManager**:
 > `SessionManager` is registered as Scoped, so each `CreateScope()` call (e.g., each web request) produces an independent `SessionManager` instance. `AddLiteOrm()` binds `SessionManager.Current` automatically when registering `SessionManager` (resolving to the scope's instance), so no manual `SetCurrent` call or middleware is required.
 >
