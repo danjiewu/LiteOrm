@@ -108,7 +108,6 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, "Failed to initialize connection pool for data source '{DataSource}'", configName);
                         throw new InvalidOperationException($"Failed to initialize connection pool for data source '{configName}'", ex);
                     }
                 }

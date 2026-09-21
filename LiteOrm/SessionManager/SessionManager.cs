@@ -204,7 +204,6 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction for pool '{PoolName}' (ContextId: {ContextId})", SessionID, context.Pool?.Name, context.Id);
                         // 如果某个连接开启事务失败，回滚并抛出异常
                         RollbackInternal();
                         throw new InvalidOperationException($"Session {SessionID} failed to start transaction: {ex.Message}", ex);
@@ -253,7 +252,6 @@ namespace LiteOrm
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogError(ex, "Session {SessionID} failed to begin transaction for pool '{PoolName}' (ContextId: {ContextId})", SessionID, context.Pool?.Name, context.Id);
                         await RollbackInternalAsync(cancellationToken).ConfigureAwait(false);
                         throw new InvalidOperationException($"Session {SessionID} failed to start transaction: {ex.Message}", ex);
                     }

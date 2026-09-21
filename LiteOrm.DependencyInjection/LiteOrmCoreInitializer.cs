@@ -44,15 +44,7 @@ namespace LiteOrm
         /// </summary>
         public Task StartAsync(CancellationToken cancellationToken = default)
         {
-            try
-            {
-                SyncTables();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogCritical(ex, "LiteOrm startup initialization failed");
-                throw;
-            }
+            SyncTables();
             return Task.CompletedTask;
         }
 
@@ -149,7 +141,6 @@ namespace LiteOrm
 
                 if (!currentDsTypes.Any()) return;
 
-                try
                 {
                     _logger?.LogInformation("Syncing data source '{DataSource}' with {Count} entity type(s)", ds.Name, currentDsTypes.Count);
 
@@ -182,32 +173,11 @@ namespace LiteOrm
                         pool.ReturnContext(context);
                     }
                 }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "An error occurred while syncing data source '{DataSource}'", ds.Name);
-                    throw;
-                }
             }).ToArray();
 
             var whenAllTask = Task.WhenAll(syncTasks);
-            try
-            {
-                whenAllTask.GetAwaiter().GetResult();
-                _logger?.LogInformation("Database schema synchronization complete");
-            }
-            catch
-            {
-                var innerExceptions = whenAllTask.Exception?.Flatten().InnerExceptions;
-                if (innerExceptions != null && innerExceptions.Count > 0)
-                {
-                    _logger?.LogCritical("Database schema synchronization failed with {Count} exception(s)", innerExceptions.Count);
-                }
-                else
-                {
-                    _logger?.LogCritical("Database schema synchronization failed");
-                }
-                throw;
-            }
+            whenAllTask.GetAwaiter().GetResult();
+            _logger?.LogInformation("Database schema synchronization complete");
         }
 
     }
