@@ -1,5 +1,7 @@
 # Permission Filtering and User Scope Control
 
+Permissions have two layers. One decides "may this method be called at all", enforced at the service layer by `[ServicePermission]`; see [Service Authorization](../di/service-authorization.en.md). The other decides "which rows are visible once called", which is the data filtering this article covers. The two are independent and usually used together.
+
 When a system needs rich querying while preventing regular users from reading or writing data they do not own, permission filtering cannot stop at the frontend UI layer. In LiteOrm, scope rules usually live at one of two layers:
 
 1. **Runtime Expr**: append conditions from the current user, current tenant, or request arguments.
@@ -237,6 +239,7 @@ When "the value varies per request but must still apply on every path" is the re
 ## Related Links
 
 - [Back to docs hub](../README.md)
+- [Service Authorization](../di/service-authorization.en.md)
 - [Associations](../core-usage/associations.en.md)
 - [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md)
 - [Security](../advanced-topics/security.en.md)

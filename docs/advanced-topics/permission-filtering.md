@@ -1,5 +1,7 @@
 # 权限过滤与用户范围控制
 
+权限分两层：一层决定「能不能调用这个方法」，由 `[ServicePermission]` 在 Service 层拦截，见[服务鉴权](../di/service-authorization.md)；另一层决定「调用之后能看到哪些行」，就是本篇讲的数据过滤。两层各管各的，通常搭配使用。
+
 当系统既要展示查询能力，又要避免普通用户读写到不属于自己的数据时，权限过滤就不能只停留在前端页面提示层。LiteOrm 中常见的承载位置有两层：
 
 1. **运行时 Expr**：按当前用户、当前租户、接口参数动态追加条件。
@@ -237,6 +239,7 @@ var filter = BuildBusinessFilter(request)
 ## 相关链接
 
 - [返回目录](../README.md)
+- [服务鉴权](../di/service-authorization.md)
 - [关联查询](../core-usage/associations.md)
 - [分表分库](../advanced-topics/sharding-and-tableargs.md)
 - [安全性](../advanced-topics/security.md)

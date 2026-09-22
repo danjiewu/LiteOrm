@@ -265,6 +265,7 @@ WHERE ([T0].[Id] = @0) AND ([T0].[OwnerId] = @1)
 ## 相关链接
 
 - [返回目录](../README.md)
+- [服务鉴权](../di/service-authorization.md)
 - [多租户隔离](./tenant-isolation.md)
 - [软删除与历史数据](./soft-delete-and-archive.md)
 - [审计与变更追踪](./audit-and-change-tracking.md)

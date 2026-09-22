@@ -7,10 +7,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Security.Claims;
 using System.Security.Principal;
 using System.Threading.Tasks;
 using Xunit;
+using static LiteOrm.Common.Expr;
 
 namespace LiteOrm.Tests
 {
@@ -247,6 +249,86 @@ namespace LiteOrm.Tests
             using var scope = host.Services.CreateScope();
             var userContext = Assert.IsType<TestUserContext>(scope.ServiceProvider.GetRequiredService<IUserContext>());
             Assert.True(userContext.UserPrincipal?.Identity?.IsAuthenticated);
+        }
+
+        [Fact]
+        public void RegisterUserContext_LaterRegistrationWins()
+        {
+            // 多次调用叠加注册，后注册的实现优先被解析
+            var first = new TestUserContext { UserPrincipal = CreatePrincipal("First") };
+            var second = new TestUserContext { UserPrincipal = CreatePrincipal("Second") };
+
+            using var host = BuildHost(options => options
+                .RegisterUserContext(first)
+                .RegisterUserContext(second));
+
+            using var scope = host.Services.CreateScope();
+            Assert.Same(second, scope.ServiceProvider.GetRequiredService<IUserContext>());
+        }
+
+        /// <summary>
+        /// 框架内置接口自带的权限姿态：读取接口声明的 <c>AllowAnonymous = true</c> 使其匿名放行，
+        /// 写入接口声明的 <c>AllowAnonymous = false</c> 使其在接入用户上下文后要求已认证主体。
+        /// 直接读取服务描述元数据断言，不触库。
+        /// </summary>
+        [Theory]
+        [InlineData(typeof(IEntityService<>), false)]
+        [InlineData(typeof(IEntityServiceAsync<>), false)]
+        [InlineData(typeof(IEntityViewService<>), true)]
+        [InlineData(typeof(IEntityViewServiceAsync<>), true)]
+        public void BuiltinServiceInterfaces_DeclareExpectedPermissionShape(Type openGeneric, bool allowAnonymous)
+        {
+            var attr = openGeneric.GetCustomAttribute<ServicePermissionAttribute>();
+
+            Assert.NotNull(attr);
+            Assert.Equal(allowAnonymous, attr!.AllowAnonymous);
+            Assert.True(string.IsNullOrEmpty(attr.AllowRoles));
+        }
+
+        /// <summary>
+        /// 写入接口（<c>AllowAnonymous = false</c>）在注册了用户上下文且当前无已认证主体时被拦截。
+        /// </summary>
+        [Fact]
+        public void BuiltinWriteInterface_WithUserContextWithoutPrincipal_ThrowsBeforeDbAccess()
+        {
+            var user = new TestUserContext();
+
+            using var host = BuildHost(options => options.RegisterUserContext(user));
+
+            using var scope = host.Services.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<IEntityService<ProbeEntity>>();
+
+            Assert.Throws<ServicePermissionException>(() => service.Insert(new ProbeEntity { Name = "x" }));
+        }
+
+        /// <summary>
+        /// 读取接口（<c>AllowAnonymous = true</c>）匿名放行，同样的用户上下文下不会被权限异常拦截。
+        /// </summary>
+        [Fact]
+        public void BuiltinReadInterface_WithUserContextWithoutPrincipal_IsAllowed()
+        {
+            var user = new TestUserContext();
+
+            using var host = BuildHost(options => options.RegisterUserContext(user));
+
+            using var scope = host.Services.CreateScope();
+            var service = scope.ServiceProvider.GetRequiredService<IEntityViewService<ProbeEntity>>();
+
+            // 表不存在，调用会在 SQL 生成阶段以非权限异常失败；断言的是「不因权限被拒」
+            var ex = Record.Exception(() => service.Search(From<ProbeEntity>()));
+            Assert.False(ex is ServicePermissionException, $"unexpected: {ex}");
+        }
+
+        /// <summary>
+        /// 供内置接口权限姿态测试使用的探针实体。
+        /// </summary>
+        public class ProbeEntity : ObjectBase
+        {
+            [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+            public int Id { get; set; }
+
+            [Column("Name")]
+            public string? Name { get; set; }
         }
 
         /// <summary>

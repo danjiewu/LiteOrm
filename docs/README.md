@@ -37,6 +37,7 @@
 |-|-|-|
 |[事务](./di/transactions.md)|[Transactions](./di/transactions.en.md)|事务与并发控制|
 |[日志与诊断](./di/logging.md)|[Logging \& Diagnostics](./di/logging.en.md)|ServiceLog、Log 特性与慢查询日志|
+|[服务鉴权](./di/service-authorization.md)|[Service Authorization](./di/service-authorization.en.md)|`[ServicePermission]` 声明与 `IUserContext` 接入|
 
 ### 高级特性篇 / Advanced Topics
 
@@ -105,7 +106,7 @@
 1. 第一次接触 LiteOrm：先看"入门篇"的[概览](./getting-started/overview.md)与[安装](./getting-started/installation.md)。
 2. 配置与第一个示例：根据项目类型选择[仅基础库](./getting-started/first-example.md)、[手动构造（无 DI）](./getting-started/first-example-manual.md)或 [DI 扩展](./getting-started/first-example-di.md)。
 3. 准备接入业务项目：继续阅读"核心使用篇"，建立实体、查询、写入和关联的整体认识。
-4. 使用 `LiteOrm.DependencyInjection` 集成（Autofac、AOP）：先阅读[配置参考](./reference/configuration-reference.md)，再了解"DI扩展"中的事务、权限过滤等特性。
+4. 使用 `LiteOrm.DependencyInjection` 集成（Autofac、AOP）：先阅读[配置参考](./reference/configuration-reference.md)，再了解"DI扩展"中的事务、日志与服务鉴权等特性。
 5. 涉及分表、性能或数据库方言差异：继续阅读"高级特性篇"。
 6. 需要扩展框架能力：查阅"扩展开发篇"。
 7. 落地具体业务场景（多租户隔离、数据权限、软删除与归档、审计、敏感字段加密、并发与读写分离）：查阅"应用场景"，每个场景都有需求描述与可直接抄的代码。
