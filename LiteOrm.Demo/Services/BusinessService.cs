@@ -1,3 +1,4 @@
+using Autofac.Extras.DynamicProxy;
 using LiteOrm.Common;
 using LiteOrm.Demo.Models;
 using LiteOrm.DependencyInjection;

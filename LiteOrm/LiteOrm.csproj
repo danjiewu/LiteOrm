@@ -11,19 +11,17 @@
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
-		<Description>LiteOrm 基础库：轻量级、高性能的 .NET ORM。内置多数据库方言与 Lambda、Expr、ExprString 查询，支持自动关联、声明式事务、动态分表与异步操作；不含 DI 与 AOP，可配合 LiteOrm.DependencyInjection 使用。</Description>
+		<Description>LiteOrm 基础库：轻量级、高性能的 .NET ORM，内置多数据库方言与 Lambda / Expr / ExprString 查询、自动关联、声明式事务、动态分表与异步操作；DI 与 AOP 见 LiteOrm.DependencyInjection。</Description>
 		<PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
 8.1.8:
-- 破坏性变更：SqlBuildContext 的 SqlBuilder 改为构造函数必填参数（非空），无参/三参构造替换为 SqlBuildContext(ISqlBuilder) 与 SqlBuildContext(ISqlBuilder, SqlTable?, string, string[]?)。
-- 破坏性变更：ToSql / ToPreparedSql / BuildFunctionSql 等去掉 ISqlBuilder 与参数集合形参，FunctionSqlHandler、SqlGenerateHandler 委托签名同步简化。
-- 破坏性变更：RegisterFunctionSqlHandler(string, SimpleFunctionSqlHandler) 更名为 RegisterSimpleFunctionSqlHandler。
-- 破坏性变更：DbCommandProxy 改为按次创建的包装代理，IsReusable 改为只读；PreparedCommands 改存 DbCommand，释放代理不再影响缓存。
-- 修复：DAO 主键读写路径与批量读写现带上 Column.Constant 收敛出的固定筛选条件。
-- 修复：命令缓存装配后即被释放（缓存里一直是已释放命令，复用抛 ObjectDisposedException）；DAOContext.IsValid 未判断上下文已释放，池释放后的上下文仍被复用。
+- 破坏性变更：SqlBuildContext 的 SqlBuilder 改为构造必填参数，ToSql / ToPreparedSql / BuildFunctionSql 等与委托签名同步简化；RegisterFunctionSqlHandler 更名为 RegisterSimpleFunctionSqlHandler。
+- 破坏性变更：DbCommandProxy 改为按次创建的包装代理，PreparedCommands 改存 DbCommand，释放代理不再影响缓存。
+- 修复：DAO 主键读写路径与批量读写带上 Column.Constant 收敛出的固定筛选条件。
+- 修复：命令缓存装配后即被释放；DAOContext.IsValid 未判断上下文已释放。
 - 同步 LiteOrm.Common 8.1.8。
 
 8.1.7:

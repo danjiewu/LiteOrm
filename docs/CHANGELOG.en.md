@@ -12,9 +12,15 @@
 
 - **`IExprStringBuildContext.SqlBuilder` is now non-nullable** (`LiteOrm.Common`): narrowed from `ISqlBuilder?` to `ISqlBuilder`, and the null fallback in `ExprString` is gone.
 
+- **`[Intercept]` now uses Autofac's built-in attribute** (`LiteOrm.Common` / `LiteOrm.DependencyInjection`): LiteOrm's own `InterceptAttribute` (formerly `LiteOrm.Common/Attributes/InterceptAttribute.cs`) was removed in favour of `Autofac.Extras.DynamicProxy.InterceptAttribute`; code using the attribute must add `using Autofac.Extras.DynamicProxy;`. Auto registration now calls `EnableInterfaceInterceptors()` for implementation types declaring it, so the interceptors it lists take effect.
+
 ### Enhancements
 
 - **Enum constants are inlined** (`LiteOrm.Common`): an enum value in `Expr.Const` is emitted as its underlying number directly in the SQL (for example `"State" = 1`) instead of a parameter, so slices take no parameter slot.
+
+### New Features
+
+- **Service authorization** (`LiteOrm.DependencyInjection` / `LiteOrm.Common`): the anonymous and role restrictions declared by `[ServicePermission]` are now enforced in `ServiceInvokeInterceptor`, with the caller's principal obtained from the injected `IUserContext.UserPrincipal` (authentication from `Identity.IsAuthenticated`, role matching via `IsInRole`; `LiteOrmOptions.RegisterUserContext` accepts a type, an instance or a factory). A failed check throws the new `ServicePermissionException`. Methods declaring `AllowAnonymous`, and calls made while no `IUserContext` is registered, pass through without a role check.
 
 ### Fixes
 

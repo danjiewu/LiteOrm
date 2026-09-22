@@ -12,9 +12,15 @@
 
 - **`IExprStringBuildContext.SqlBuilder` 改为非空**（`LiteOrm.Common`）：由 `ISqlBuilder?` 收窄为 `ISqlBuilder`，`ExprString` 的空值兜底分支随之移除。
 
+- **`[Intercept]` 改用 Autofac 内置特性**（`LiteOrm.Common` / `LiteOrm.DependencyInjection`）：移除 LiteOrm 自带的 `InterceptAttribute`（原 `LiteOrm.Common/Attributes/InterceptAttribute.cs`），统一使用 `Autofac.Extras.DynamicProxy.InterceptAttribute`，引用该特性的代码需添加 `using Autofac.Extras.DynamicProxy;`；自动注册时会对声明该特性的实现类型调用 `EnableInterfaceInterceptors()`，特性声明的拦截器随之生效。
+
 ### 改进
 
 - **枚举常量改为内联字面量**（`LiteOrm.Common`）：`Expr.Const` 的枚举值按底层数值直接内联进 SQL（如 `"State" = 1`），不再走参数，切片不占参数位。
+
+### 新特性
+
+- **服务鉴权落地**（`LiteOrm.DependencyInjection` / `LiteOrm.Common`）：`[ServicePermission]` 声明的匿名与角色限制在 `ServiceInvokeInterceptor` 中生效，用户主体从注入的 `IUserContext.UserPrincipal` 获取（认证状态取 `Identity.IsAuthenticated`，角色匹配走 `IsInRole`；`LiteOrmOptions.RegisterUserContext` 支持泛型 / 实例 / 工厂注册），校验未通过抛新增的 `ServicePermissionException`。声明 `AllowAnonymous` 的方法与未注册 `IUserContext` 的场景直接放行，不校验角色。
 
 ### 修复
 

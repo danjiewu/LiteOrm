@@ -11,6 +11,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
+using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,7 +28,8 @@ namespace LiteOrm.Service
     /// 1. 会话管理 - 为每个服务调用创建和管理会话上下文
     /// 2. 事务处理 - 根据 TransactionAttribute 自动处理事务
     /// 3. 日志记录 - 记录服务方法的调用、参数和性能信息
-    /// 4. 权限验证 - 根据 ServicePermissionAttribute 进行权限检查
+    /// 4. 权限验证 - 根据 ServicePermissionAttribute 进行匿名访问与角色校验，
+    ///    用户主体从 DI 注入的 <see cref="IUserContext"/> 获取
     /// 5. 性能监控 - 测量方法执行时间并记录性能数据
     /// 6. 异常处理 - 捕获和记录方法执行中的异常
     /// 7. 异步支持 - 同时支持同步和异步方法拦截
@@ -77,6 +79,7 @@ namespace LiteOrm.Service
         private static readonly ConcurrentDictionary<(Type? TargetType, MethodInfo Method), ServiceDescription> _methodDescriptions = new();
         private readonly ILogger _logger;
         private readonly SessionManager _sessionManager;
+        private readonly IServiceProvider _serviceProvider;
         private readonly IReadOnlyList<IServiceInvokingEvent> _invokingListeners;
         private readonly IReadOnlyList<IServiceInvokedEvent> _invokedListeners;
         private readonly IReadOnlyList<IServiceExceptionEvent> _exceptionListeners;
@@ -86,7 +89,7 @@ namespace LiteOrm.Service
         /// </summary>
         /// <param name="loggerFactory">日志工厂</param>
         /// <param name="sessionManager">会话管理器</param>
-        /// <param name="serviceProvider">服务提供程序，用于解析注入的事件服务。</param>
+        /// <param name="serviceProvider">服务提供程序，用于解析注入的事件服务与用户上下文。</param>
         public ServiceInvokeInterceptor(ILoggerFactory loggerFactory, SessionManager sessionManager, IServiceProvider serviceProvider)
         {
             if (loggerFactory is null) throw new ArgumentNullException(nameof(loggerFactory));
@@ -94,6 +97,7 @@ namespace LiteOrm.Service
             if (serviceProvider is null) throw new ArgumentNullException(nameof(serviceProvider));
             _logger = loggerFactory.CreateLogger<ServiceInvokeInterceptor>();
             _sessionManager = sessionManager;
+            _serviceProvider = serviceProvider;
             _invokingListeners = serviceProvider.GetServices<IServiceInvokingEvent>() as IReadOnlyList<IServiceInvokingEvent> ?? serviceProvider.GetServices<IServiceInvokingEvent>().ToList();
             _invokedListeners = serviceProvider.GetServices<IServiceInvokedEvent>() as IReadOnlyList<IServiceInvokedEvent> ?? serviceProvider.GetServices<IServiceInvokedEvent>().ToList();
             _exceptionListeners = serviceProvider.GetServices<IServiceExceptionEvent>() as IReadOnlyList<IServiceExceptionEvent> ?? serviceProvider.GetServices<IServiceExceptionEvent>().ToList();
@@ -171,6 +175,7 @@ namespace LiteOrm.Service
                     _inProcess = true;
                     _sessionManager.Reset();
                     var invokeContext = CreateInvokeContext(invocation);
+                    CheckPermission(invocation);
                     OnInvoking(invokeContext);
                     LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
@@ -236,6 +241,7 @@ namespace LiteOrm.Service
                     _inProcess = true;
                     _sessionManager.Reset();
                     var invokeContext = CreateInvokeContext(invocation);
+                    CheckPermission(invocation);
                     OnInvoking(invokeContext);
                     LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
@@ -282,6 +288,7 @@ namespace LiteOrm.Service
                     _inProcess = true;
                     _sessionManager.Reset();
                     var invokeContext = CreateInvokeContext(invocation);
+                    CheckPermission(invocation);
                     OnInvoking(invokeContext);
                     LogBeforeInvoke(invocation);
                     var timer = Stopwatch.StartNew();
@@ -501,6 +508,64 @@ namespace LiteOrm.Service
                 method,
                 invocation.Arguments?.ToArray() ?? Array.Empty<object?>(),
                 _sessionManager.SessionID);
+        }
+
+        /// <summary>
+        /// 校验方法的服务权限，依据 <c>[ServicePermission]</c> 声明的匿名访问与角色限制。
+        /// </summary>
+        /// <param name="invocation">方法调用信息</param>
+        /// <remarks>
+        /// 校验规则：
+        /// 1. 方法与声明类型均未声明 <c>[ServicePermission]</c> 时不校验，直接放行；
+        /// 2. 声明 <c>AllowAnonymous = true</c> 时放行，不校验身份与角色；
+        /// 3. 未注册 <see cref="IUserContext"/> 时放行：没有身份来源，不做角色校验（兼容未接入用户体系的应用）；
+        /// 4. 其余情况从注册的 <see cref="IUserContext"/> 取当前用户主体：主体未认证（无主体或 <c>Identity.IsAuthenticated</c> 为 false）抛 <see cref="ServicePermissionException"/>，
+        /// 声明了 <c>AllowRoles</c> 时要求主体 <c>IsInRole</c> 命中其中之一（声明侧忽略首尾空白），否则抛 <see cref="ServicePermissionException"/>。
+        /// 嵌套服务调用（已在处理中的递归调用）不重复校验。
+        /// </remarks>
+        protected virtual void CheckPermission(IInvocation invocation)
+        {
+            var serviceDesc = GetDescription(invocation);
+            if (!serviceDesc.HasPermission)
+                return;
+
+            // 允许匿名访问的方法直接放行
+            if (serviceDesc.AllowAnonymous)
+                return;
+
+            // 未注入用户上下文：没有身份来源，不校验角色
+            var userContext = _serviceProvider.GetService<IUserContext>();
+            if (userContext is null)
+                return;
+
+            var allowRoles = serviceDesc.AllowRoles;
+            bool hasRoles = allowRoles is { Length: > 0 };
+
+            var principal = userContext.UserPrincipal;
+            if (principal?.Identity?.IsAuthenticated != true)
+                throw new ServicePermissionException(
+                    $"Access to '{serviceDesc.ServiceName}.{invocation.Method.Name}' requires an authenticated user.");
+
+            if (hasRoles && !MatchesAnyRole(principal, allowRoles!))
+                throw new ServicePermissionException(
+                    $"Access to '{serviceDesc.ServiceName}.{invocation.Method.Name}' requires one of the roles: {string.Join(", ", allowRoles!)}.");
+        }
+
+        /// <summary>
+        /// 判断用户主体是否命中允许角色列表中的任意一项（声明侧去除首尾空白，匹配语义由 <see cref="IPrincipal.IsInRole(string)"/> 决定）。
+        /// </summary>
+        /// <param name="principal">当前用户主体</param>
+        /// <param name="allowRoles">允许的角色列表</param>
+        /// <returns>命中返回 true；否则 false。</returns>
+        private static bool MatchesAnyRole(IPrincipal principal, string[] allowRoles)
+        {
+            foreach (var allow in allowRoles)
+            {
+                if (string.IsNullOrWhiteSpace(allow)) continue;
+                if (principal.IsInRole(allow.Trim()))
+                    return true;
+            }
+            return false;
         }
 
         private static Type? GetHandledResultType(Type returnType)

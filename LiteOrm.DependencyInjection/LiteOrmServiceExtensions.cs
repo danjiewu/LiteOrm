@@ -95,6 +95,12 @@ namespace LiteOrm.DependencyInjection
                     // 注册核心服务（Autofac 原生注册）
                     builder.RegisterCoreServices();
 
+                    // 注册用户上下文（服务鉴权的身份来源）
+                    foreach (var registerUserContext in options.UserContextRegistrations)
+                    {
+                        registerUserContext(builder);
+                    }
+
                     // 自动扫描并注册标记 [AutoRegister] 的服务（Autofac 版，含拦截器支持）
                     if (options.AutoRegisterServices)
                     {
@@ -317,6 +323,11 @@ namespace LiteOrm.DependencyInjection
             internal Dictionary<Type, SqlBuilder> SqlBuildersByType { get; } = new Dictionary<Type, SqlBuilder>();
 
             /// <summary>
+            /// 待应用到 Autofac 容器的用户上下文注册动作。
+            /// </summary>
+            internal List<Action<ContainerBuilder>> UserContextRegistrations { get; } = new List<Action<ContainerBuilder>>();
+
+            /// <summary>
             /// 是否自动扫描程序集注册标记 <c>[AutoRegister]</c> 的类型到 Autofac 容器（含拦截器支持）。
             /// 默认为 <c>true</c>；设为 <c>false</c> 时跳过自动扫描，需手动注册服务。
             /// </summary>
@@ -350,6 +361,84 @@ namespace LiteOrm.DependencyInjection
             public void RegisterSqlBuilder(Type providerType, SqlBuilder sqlBuilder)
             {
                 SqlBuildersByType[providerType] = sqlBuilder;
+            }
+
+            /// <summary>
+            /// 注册用户上下文服务，供 <see cref="ServiceInvokeInterceptor"/> 的服务鉴权获取当前用户主体（<see cref="IUserContext.UserPrincipal"/>）。
+            /// </summary>
+            /// <typeparam name="TUserContext">用户上下文实现类型。</typeparam>
+            /// <param name="lifetime">服务生命周期，默认为 Scoped（随请求/作用域变化）。</param>
+            /// <returns>本选项实例，便于链式配置。</returns>
+            /// <remarks>
+            /// 实现类型可声明构造函数依赖（如 <c>IHttpContextAccessor</c>），由容器注入。
+            /// 多次调用会叠加注册，后注册的实现优先被解析。
+            /// <code>
+            /// var builder = Host.CreateDefaultBuilder(args)
+            ///     .RegisterLiteOrm(options =&gt;
+            ///     {
+            ///         options.RegisterUserContext&lt;HttpUserContext&gt;();
+            ///     });
+            /// </code>
+            /// </remarks>
+            public LiteOrmOptions RegisterUserContext<TUserContext>(Lifetime lifetime = Lifetime.Scoped) where TUserContext : class, IUserContext
+            {
+                UserContextRegistrations.Add(builder =>
+                {
+                    var registration = builder.RegisterType<TUserContext>().As<IUserContext>();
+                    switch (lifetime)
+                    {
+                        case Lifetime.Singleton:
+                            registration.SingleInstance();
+                            break;
+                        case Lifetime.Transient:
+                            registration.InstancePerDependency();
+                            break;
+                        default:
+                            registration.InstancePerLifetimeScope();
+                            break;
+                    }
+                });
+                return this;
+            }
+
+            /// <summary>
+            /// 以实例方式注册用户上下文服务（单例），供服务鉴权获取当前用户主体。
+            /// </summary>
+            /// <param name="userContext">用户上下文实例。</param>
+            /// <returns>本选项实例，便于链式配置。</returns>
+            public LiteOrmOptions RegisterUserContext(IUserContext userContext)
+            {
+                if (userContext is null) throw new ArgumentNullException(nameof(userContext));
+                UserContextRegistrations.Add(builder => builder.RegisterInstance(userContext).As<IUserContext>());
+                return this;
+            }
+
+            /// <summary>
+            /// 以工厂方式注册用户上下文服务，供服务鉴权获取当前用户主体。
+            /// </summary>
+            /// <param name="userContextFactory">用户上下文工厂，接收 <see cref="IServiceProvider"/>，返回用户上下文。</param>
+            /// <param name="lifetime">服务生命周期，默认为 Scoped。</param>
+            /// <returns>本选项实例，便于链式配置。</returns>
+            public LiteOrmOptions RegisterUserContext(Func<IServiceProvider, IUserContext> userContextFactory, Lifetime lifetime = Lifetime.Scoped)
+            {
+                if (userContextFactory is null) throw new ArgumentNullException(nameof(userContextFactory));
+                UserContextRegistrations.Add(builder =>
+                {
+                    var registration = builder.Register(ctx => userContextFactory(ctx.Resolve<IServiceProvider>())).As<IUserContext>();
+                    switch (lifetime)
+                    {
+                        case Lifetime.Singleton:
+                            registration.SingleInstance();
+                            break;
+                        case Lifetime.Transient:
+                            registration.InstancePerDependency();
+                            break;
+                        default:
+                            registration.InstancePerLifetimeScope();
+                            break;
+                    }
+                });
+                return this;
             }
         }
 
@@ -516,6 +605,14 @@ namespace LiteOrm.DependencyInjection
                     .InterceptedBy(typeof(ServiceInvokeInterceptor));
                 logger?.LogDebug(
                     "Applied interception to '{Type}' with interceptor 'ServiceInvokeInterceptor' ([Service])",
+                    implementationType.FullName);
+            }
+            else if (HasInterceptAttribute(implementationType))
+            {
+                // 带 [Intercept] 特性的类型启用接口拦截，拦截器类型由特性声明
+                registration.EnableInterfaceInterceptors();
+                logger?.LogDebug(
+                    "Applied interception to '{Type}' with interceptors declared by [Intercept]",
                     implementationType.FullName);
             }
             else if (hasAdditionalServices)

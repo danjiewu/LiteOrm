@@ -11,7 +11,7 @@
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm.DependencyInjection</Title>
 		<Authors>danjiewu</Authors>
-		<Description>LiteOrm.DependencyInjection DI 扩展：LiteOrm 的依赖注入与 AOP 集成层。基于 Autofac 与 Castle DynamicProxy，通过 RegisterLiteOrm() 一键注册，支持声明式事务、权限、日志拦截与自动建表。</Description>
+		<Description>LiteOrm 依赖注入与 AOP 集成：基于 Autofac 与 Castle DynamicProxy，RegisterLiteOrm() 一键注册，支持声明式事务、权限与日志拦截。</Description>
 		<PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageTags>orm;autofac;castle;proxy;aop;interceptor;di;ioc</PackageTags>
@@ -20,6 +20,8 @@
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
 8.1.8:
+- 新增服务鉴权：[ServicePermission] 的匿名与角色限制在 ServiceInvokeInterceptor 中生效，用户主体取自注入的 IUserContext，LiteOrmOptions.RegisterUserContext 提供注册。
+- 破坏性变更：[Intercept] 改用 Autofac 内置 InterceptAttribute，移除 LiteOrm.Common 自带的 InterceptAttribute。
 - 同步 LiteOrm.Common 8.1.8 / LiteOrm 8.1.8。
 
 8.1.7:

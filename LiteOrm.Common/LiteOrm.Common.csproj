@@ -14,13 +14,14 @@
     <PackageIcon>icon.png</PackageIcon>
     <PackageReadmeFile>README.nuget.md</PackageReadmeFile>
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
-    <Description>LiteOrm.Common 公共库：LiteOrm 的共享核心，提供表达式树（Expr）、SQL 片段、表元数据（TableInfoProvider）、特性与公共接口，由 LiteOrm 包自动引用。</Description>
+    <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
       8.1.8:
-      - 破坏性变更：SqlBuildContext 的 SqlBuilder 改为构造函数必填参数（非空），无参/三参构造替换为 SqlBuildContext(ISqlBuilder) 与 SqlBuildContext(ISqlBuilder, SqlTable?, string, string[]?)。
-      - 破坏性变更：ToSql / ToPreparedSql / RenderComputedExpression / BuildFunctionSql 去掉 ISqlBuilder 与参数集合形参，改从上下文读取；SqlGenerateHandler 委托签名简化为 (SqlBuildContext, object?)。
-      - 破坏性变更：IExprStringBuildContext.SqlBuilder 收窄为非空 ISqlBuilder。
-      - 枚举常量改为按底层数值直接内联进 SQL，不再参数化，切片不占参数位。
+      - 破坏性变更：SqlBuildContext 的 SqlBuilder 改为构造必填参数，ToSql / ToPreparedSql 等方法与 SqlGenerateHandler 签名随之简化。
+      - 破坏性变更：IExprStringBuildContext.SqlBuilder 收窄为非空。
+      - 破坏性变更：移除自带的 InterceptAttribute，改用 Autofac 内置 InterceptAttribute。
+      - 枚举常量按底层数值内联进 SQL，不再参数化。
+      - 新增 ServicePermissionException 与 ServiceDescription.HasPermission。
 
       8.1.7:
       - 破坏性变更：DataSourceConfig / ReadOnlyDataSourceConfig 的 Provider / SqlBuilder 字符串属性改为可赋值的类型属性 ProviderType / SqlBuilderType。appsettings.json 中的 JSON 键名 Provider / SqlBuilder 不变，加载配置时立即解析为 Type，解析失败抛 TypeLoadException；在代码中构造配置时只能赋 Type 实例。

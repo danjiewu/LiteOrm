@@ -54,6 +54,11 @@ namespace LiteOrm.Service
         public bool IsService { get; set; }
 
         /// <summary>
+        /// 是否声明了权限特性（方法或声明类型带 [ServicePermission]）
+        /// </summary>
+        public bool HasPermission { get; set; }
+
+        /// <summary>
         /// 是否允许匿名访问
         /// </summary>
         public bool AllowAnonymous { get; set; }
@@ -89,6 +94,7 @@ namespace LiteOrm.Service
             var permAtt = GetServiceAttribute<ServicePermissionAttribute>(method);
             if (permAtt is not null)
             {
+                desc.HasPermission = true;
                 desc.AllowAnonymous = permAtt.AllowAnonymous;
                 if (!string.IsNullOrEmpty(permAtt.AllowRoles))
                     desc.AllowRoles = (permAtt.AllowRoles ?? string.Empty).Split(',');
