@@ -15,7 +15,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using InterceptAttribute = LiteOrm.Common.InterceptAttribute;
 
 namespace LiteOrm.DependencyInjection
 {
@@ -510,22 +509,7 @@ namespace LiteOrm.DependencyInjection
                 }
             }
 
-            // 检测 InterceptAttribute
-            var interceptAttribute = implementationType.GetCustomAttribute<InterceptAttribute>()
-                ?? implementationType.GetInterfaces()
-                    .Select(i => i.GetCustomAttribute<InterceptAttribute>())
-                    .FirstOrDefault(a => a is not null);
-
-            if (interceptAttribute != null)
-            {
-                // 应用 Castle DynamicProxy 拦截
-                registration.EnableInterfaceInterceptors()
-                    .InterceptedBy(interceptAttribute.InterceptorType);
-                logger?.LogDebug(
-                    "Applied interception to '{Type}' with interceptor '{Interceptor}'",
-                    implementationType.FullName, interceptAttribute.InterceptorType.FullName);
-            }
-            else if (HasServiceAttribute(implementationType))
+           if (HasServiceAttribute(implementationType))
             {
                 // 带 [Service] 特性的类型自动应用服务调用拦截器
                 registration.EnableInterfaceInterceptors()
