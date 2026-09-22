@@ -1,6 +1,22 @@
 # Changelog
 
-## v8.1.8 (2026-09-16)
+## v8.1.9 (2026-09-22)
+
+### Breaking changes
+
+- **`[Intercept]` now uses Autofac's built-in attribute** (`LiteOrm.Common` / `LiteOrm.DependencyInjection`): LiteOrm's own `InterceptAttribute` (formerly `LiteOrm.Common/Attributes/InterceptAttribute.cs`) was removed in favour of `Autofac.Extras.DynamicProxy.InterceptAttribute`; code using the attribute must add `using Autofac.Extras.DynamicProxy;`. Auto registration now calls `EnableInterfaceInterceptors()` for implementation types declaring it, so the interceptors it lists take effect.
+
+### New Features
+
+- **Service authorization** (`LiteOrm.DependencyInjection` / `LiteOrm.Common`): the anonymous and role restrictions declared by `[ServicePermission]` are now enforced in `ServiceInvokeInterceptor`, with the caller's principal obtained from the injected `IUserContext.UserPrincipal` (authentication from `Identity.IsAuthenticated`, role matching via `IsInRole`; `LiteOrmOptions.RegisterUserContext` accepts a type, an instance or a factory). A failed check throws the new `ServicePermissionException`. Methods declaring `AllowAnonymous`, and calls made while no `IUserContext` is registered, pass through without a role check. The built-in `IEntityViewService<T>` is declared anonymous and `IEntityService<T>` requires authentication, so once `IUserContext` is registered a write with no principal is rejected.
+
+### Enhancements
+
+- **Simplified exception logging** (`LiteOrm` / `LiteOrm.DependencyInjection`): syncing schema at startup, beginning a transaction and initializing a connection pool no longer log the exception and then rethrow it; they throw directly and let the caller decide, so the same exception is no longer recorded twice. `LiteOrmCoreInitializer.SyncTables` drops the try/catch wrapping the whole sync pass and keeps only the per-table failure log.
+
+***
+
+## v8.1.8 (2026-09-20)
 
 ### Breaking changes
 
@@ -10,17 +26,11 @@
 
 - **Simplified delegate signatures for function handlers and dynamic SQL** (`LiteOrm` / `LiteOrm.Common`): `FunctionSqlHandler` is now `(ref ValueStringBuilder, FunctionExpr, SqlBuildContext)` and `SqlGenerateHandler` is `(SqlBuildContext, object?)`; `RegisterFunctionSqlHandler(string, SimpleFunctionSqlHandler)` was renamed to `RegisterSimpleFunctionSqlHandler`.
 
-- **`IExprStringBuildContext.SqlBuilder` is now non-nullable** (`LiteOrm.Common`): narrowed from `ISqlBuilder?` to `ISqlBuilder`, and the null fallback in `ExprString` is gone.
-
-- **`[Intercept]` now uses Autofac's built-in attribute** (`LiteOrm.Common` / `LiteOrm.DependencyInjection`): LiteOrm's own `InterceptAttribute` (formerly `LiteOrm.Common/Attributes/InterceptAttribute.cs`) was removed in favour of `Autofac.Extras.DynamicProxy.InterceptAttribute`; code using the attribute must add `using Autofac.Extras.DynamicProxy;`. Auto registration now calls `EnableInterfaceInterceptors()` for implementation types declaring it, so the interceptors it lists take effect.
+- **`IExprStringBuildContext` drops the `SqlBuilder` property** (`LiteOrm.Common`): the builder is read from `SqlBuildContext` instead, and the explicit interface implementation on `DAOBase` plus the null fallback in `ExprString` are gone.
 
 ### Enhancements
 
 - **Enum constants are inlined** (`LiteOrm.Common`): an enum value in `Expr.Const` is emitted as its underlying number directly in the SQL (for example `"State" = 1`) instead of a parameter, so slices take no parameter slot.
-
-### New Features
-
-- **Service authorization** (`LiteOrm.DependencyInjection` / `LiteOrm.Common`): the anonymous and role restrictions declared by `[ServicePermission]` are now enforced in `ServiceInvokeInterceptor`, with the caller's principal obtained from the injected `IUserContext.UserPrincipal` (authentication from `Identity.IsAuthenticated`, role matching via `IsInRole`; `LiteOrmOptions.RegisterUserContext` accepts a type, an instance or a factory). A failed check throws the new `ServicePermissionException`. Methods declaring `AllowAnonymous`, and calls made while no `IUserContext` is registered, pass through without a role check.
 
 ### Fixes
 

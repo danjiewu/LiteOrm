@@ -1,6 +1,22 @@
 # 变更日志 (Changelog)
 
-## v8.1.8 (2026-09-16)
+## v8.1.9 (2026-09-22)
+
+### 破坏性变更
+
+- **`[Intercept]` 改用 Autofac 内置特性**（`LiteOrm.Common` / `LiteOrm.DependencyInjection`）：移除 LiteOrm 自带的 `InterceptAttribute`（原 `LiteOrm.Common/Attributes/InterceptAttribute.cs`），统一使用 `Autofac.Extras.DynamicProxy.InterceptAttribute`，引用该特性的代码需添加 `using Autofac.Extras.DynamicProxy;`；自动注册时会对声明该特性的实现类型调用 `EnableInterfaceInterceptors()`，特性声明的拦截器随之生效。
+
+### 新特性
+
+- **服务鉴权落地**（`LiteOrm.DependencyInjection` / `LiteOrm.Common`）：`[ServicePermission]` 声明的匿名与角色限制在 `ServiceInvokeInterceptor` 中生效，用户主体从注入的 `IUserContext.UserPrincipal` 获取（认证状态取 `Identity.IsAuthenticated`，角色匹配走 `IsInRole`；`LiteOrmOptions.RegisterUserContext` 支持泛型 / 实例 / 工厂注册），校验未通过抛新增的 `ServicePermissionException`。声明 `AllowAnonymous` 的方法与未注册 `IUserContext` 的场景直接放行，不校验角色。框架内置的 `IEntityViewService<T>` 声明为匿名放行，`IEntityService<T>` 声明为要求已认证，注册 `IUserContext` 后无主体的写入会被拒绝。
+
+### 改进
+
+- **简化异常的日志记录**（`LiteOrm` / `LiteOrm.DependencyInjection`）：启动同步表结构、开启事务、初始化连接池等位置不再先记日志再原样抛出，改为直接抛出，由调用方决定如何处理，同一异常不再重复记录。`LiteOrmCoreInitializer.SyncTables` 随之去掉包裹整段同步流程的 try/catch，只保留单表同步失败时的记录。
+
+***
+
+## v8.1.8 (2026-09-20)
 
 ### 破坏性变更
 
@@ -10,17 +26,11 @@
 
 - **函数处理器与动态 SQL 委托签名简化**（`LiteOrm` / `LiteOrm.Common`）：`FunctionSqlHandler` 改为 `(ref ValueStringBuilder, FunctionExpr, SqlBuildContext)`，`SqlGenerateHandler` 改为 `(SqlBuildContext, object?)`；`RegisterFunctionSqlHandler(string, SimpleFunctionSqlHandler)` 更名为 `RegisterSimpleFunctionSqlHandler`。
 
-- **`IExprStringBuildContext.SqlBuilder` 改为非空**（`LiteOrm.Common`）：由 `ISqlBuilder?` 收窄为 `ISqlBuilder`，`ExprString` 的空值兜底分支随之移除。
-
-- **`[Intercept]` 改用 Autofac 内置特性**（`LiteOrm.Common` / `LiteOrm.DependencyInjection`）：移除 LiteOrm 自带的 `InterceptAttribute`（原 `LiteOrm.Common/Attributes/InterceptAttribute.cs`），统一使用 `Autofac.Extras.DynamicProxy.InterceptAttribute`，引用该特性的代码需添加 `using Autofac.Extras.DynamicProxy;`；自动注册时会对声明该特性的实现类型调用 `EnableInterfaceInterceptors()`，特性声明的拦截器随之生效。
+- **`IExprStringBuildContext` 移除 `SqlBuilder` 属性**（`LiteOrm.Common`）：构建器统一从 `SqlBuildContext` 读取，`DAOBase` 的显式接口实现与 `ExprString` 的空值兜底分支一并移除。
 
 ### 改进
 
 - **枚举常量改为内联字面量**（`LiteOrm.Common`）：`Expr.Const` 的枚举值按底层数值直接内联进 SQL（如 `"State" = 1`），不再走参数，切片不占参数位。
-
-### 新特性
-
-- **服务鉴权落地**（`LiteOrm.DependencyInjection` / `LiteOrm.Common`）：`[ServicePermission]` 声明的匿名与角色限制在 `ServiceInvokeInterceptor` 中生效，用户主体从注入的 `IUserContext.UserPrincipal` 获取（认证状态取 `Identity.IsAuthenticated`，角色匹配走 `IsInRole`；`LiteOrmOptions.RegisterUserContext` 支持泛型 / 实例 / 工厂注册），校验未通过抛新增的 `ServicePermissionException`。声明 `AllowAnonymous` 的方法与未注册 `IUserContext` 的场景直接放行，不校验角色。
 
 ### 修复
 

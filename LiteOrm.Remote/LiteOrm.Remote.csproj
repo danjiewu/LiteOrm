@@ -6,41 +6,12 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程服务调用</Description>
-    <AssemblyVersion>8.1.8.0</AssemblyVersion>
-    <FileVersion>8.1.8.0</FileVersion>
-    <VersionPrefix>8.1.8</VersionPrefix>
+    <AssemblyVersion>8.1.9.0</AssemblyVersion>
+    <FileVersion>8.1.9.0</FileVersion>
+    <VersionPrefix>8.1.9</VersionPrefix>
     <PackageReleaseNotes>
-8.1.8:
-- 同步 LiteOrm.Common 8.1.8 / LiteOrm 8.1.8。
-
-8.1.7:
-- 同步 LiteOrm.Common 8.1.7 / LiteOrm 8.1.7（DataSourceConfig / ReadOnlyDataSourceConfig 的 Provider / SqlBuilder 改为类型化属性 ProviderType / SqlBuilderType；新增 LiteOrmContext 无 DI 上下文；内置泛型服务改为固定注册）。
-- 修正远程服务扩展方法文档注释中的类型名（AddRemoteServiceFactory、ServiceGenerateInterceptor）。
-
-8.1.6:
-- 同步 LiteOrm.Common 8.1.6（源生成器重构、DefaultTypeResolver 重命名与命名空间列表解析）。
-
-8.1.5:
-- 注册方式重构为「配置回调 + 注入工厂」：新增 AddLiteOrmRemote(Func&lt;IServiceProvider, LiteOrmRemoteOptions&gt;) 工厂重载，选项可经 IServiceProvider（如 IConfiguration）构造，运行时工厂优先于 configure 回调。
-- 破坏性变更：AddLiteOrmRemote 由 IHostBuilder 扩展改为 IServiceCollection 扩展，返回服务集合以支持链式注册；用法由 Host.CreateDefaultBuilder(args).AddLiteOrmRemote(...) 调整为 Host.CreateApplicationBuilder(args).Services.AddLiteOrmRemote(...)。
-- 破坏性变更：移除 AddLiteOrmRemote(string configSection, ...) 配置节重载，配置改为在工厂或 configure 回调中从 IConfiguration 读取。
-- 移除 LiteOrmRemoteOptions.TransportFactory，自定义传输层统一通过 Transport 实例或 AddLiteOrmRemote 工厂重载注册；IRemoteServiceTransport 改为延迟解析，未配置时在校验阶段抛出。
-- 同步 LiteOrm.Common 8.1.5。
-
-8.1.4:
-- 同步 LiteOrm.Common 8.1.4（Regex Lambda 支持、复杂类型映射变更、SQL 函数方言补全、字符串常量内联）。
-- RemoteViewServiceAsyncProxy 的 SearchAsAsync / SearchOneAsAsync 补充 CancellationToken 参数。
-- 增加泛型方法支持。
-
-8.1.3:
-- LiteOrm.Common 更新至 8.1.3。
-
-8.1.2:
-
-8.1.1:
-- 改进：
-  - LiteOrm.Common 更新至 8.1.1；
-  - ProxyGenerator 采用单例模式。
+8.1.9:
+- 同步 LiteOrm.Common 8.1.9 / LiteOrm 8.1.9。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>
