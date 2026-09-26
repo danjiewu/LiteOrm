@@ -123,7 +123,7 @@ namespace LiteOrm.Common
                         sb.Append(" AS ");
                         ToSqlInternal(ref sb, cteList[i].Source, context, MaxPriority);
                         sb.NewLine(0);
-                        context.AddTableAlias(cteList[i].Alias, null);
+                        context.AddTableAlias(cteList[i].Alias!, null);
                     }
                     context.DefaultTableAliasName = null;// CTE 定义中的别名不应影响主查询的默认表别名解析
                 }
@@ -262,7 +262,7 @@ namespace LiteOrm.Common
                     if (joined.Used)
                     {
                         ToSql(ref sb, joined, context);
-                        context.AddTableAlias(joined.Name, joined.TableDefinition);
+                        context.AddTableAlias(joined.Name!, joined.TableDefinition);
                     }
                 }
             }
@@ -668,33 +668,28 @@ namespace LiteOrm.Common
             var column = table?.GetColumn(expr.PropertyName!);
             var columnName = column?.Name ?? expr.PropertyName;
 
-            // 计算列（非实际列）：按表达式渲染，不输出物理列名
-            if (column is ColumnDefinition columnDef && columnDef.IsComputed && columnDef.HasExpression)
+            if (column != null)
             {
-                columnDef.RenderComputedExpression(ref sb, context);
-                if (aliasName != null)
+                // PropertyExpr 对应的列定义存在，使用列定义中的名称和类型信息生成 SQL
+                if (expr.TableAlias != null)
                 {
-                    sb.Append(" AS ");
-                    sb.Append(context.SqlBuilder.ToSqlName(aliasName));
+                    // 如果 PropertyExpr 中指定了 TableAlias，则使用该别名来限定列名，正确处理计算列
+                    var prevDefaultAlias = context.DefaultTableAliasName;
+                    context.DefaultTableAliasName = expr.TableAlias;
+                    column.ToSql(ref sb, context);
+                    context.DefaultTableAliasName = prevDefaultAlias;
                 }
-                return;
-            }
-
-            if (context.SingleTable)
-            {
-                // 单表模式下只需要输出列名
-                sb.Append(context.SqlBuilder.ToSqlName(columnName!));
-            }
-            else if (column is ForeignColumn foreignColumn)
-            {
-                foreignColumn.TargetColumn!.ToSql(ref sb, context);
+                else
+                {
+                    column.ToSql(ref sb, context);
+                }                    
             }
             else
             {
+                //无列定义时，直接使用 PropertyName 作为列名，并尝试使用 TableAlias 限定
                 string? tableAlias = expr.TableAlias ?? context.DefaultTableAliasName;
                 if (!String.IsNullOrEmpty(tableAlias))
-                {
-                    // 如果 PropertyExpr 中指定了 TableAlias，则使用该别名来限定列名
+                {                    
                     sb.Append(context.SqlBuilder.ToSqlName(tableAlias!));
                     sb.Append(".");
                 }
@@ -753,7 +748,7 @@ namespace LiteOrm.Common
 
             using (context.BeginScope())
             {
-                context.AddTableAlias(foreignAlias, foreignTable);
+                context.AddTableAlias(foreignAlias!, foreignTable);
                 context.TableArgs = foreignExpr.TableArgs;
 
                 sb.Append("EXISTS(SELECT 1 FROM ");
@@ -1051,7 +1046,7 @@ namespace LiteOrm.Common
             sb.Append(context.SqlBuilder.ToSqlName(joined.Name!));
             sb.Append(" ON ");
 
-            context.AddTableAlias(joined.Name, joined.TableDefinition);
+            context.AddTableAlias(joined.Name!, joined.TableDefinition);
 
             bool isFirst = true;
             int count = joined.ForeignKeys.Count;

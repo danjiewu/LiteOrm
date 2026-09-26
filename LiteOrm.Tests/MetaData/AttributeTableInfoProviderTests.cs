@@ -145,7 +145,7 @@ namespace LiteOrm.Common.UnitTests
             {
                 TableInfoProvider.Set(() => provider);
                 var context = new SqlBuildContext(SqlBuilder.Instance, tableView, "T", null) { SingleTable = false };
-                context.AddTableAlias(joinedTable.Name, joinedTable.TableDefinition);
+                context.AddTableAlias(joinedTable.Name!, joinedTable.TableDefinition);
                 var sql = joinedTable.ConstFilter.ToPreparedSql(context);
 
                 Assert.Contains(joinedTable.Name!, sql.Sql);

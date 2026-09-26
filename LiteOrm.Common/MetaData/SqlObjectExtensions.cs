@@ -81,15 +81,12 @@ namespace LiteOrm.Common
                 columnDef.RenderComputedExpression(ref sb, context);
                 return;
             }
-            if (!context.SingleTable)
+            else if (!context.SingleTable)
             {
-                if (column.Table == null || column.Table == context.Table)
+                if (context.DefaultTableAliasName != null)
                 {
-                    if (context.DefaultTableAliasName != null)
-                    {
-                        sb.Append(context.SqlBuilder.ToSqlName(context.DefaultTableAliasName));
-                        sb.Append('.');
-                    }
+                    sb.Append(context.SqlBuilder.ToSqlName(context.DefaultTableAliasName));
+                    sb.Append('.');
                 }
                 else if (column.Table != null)
                 {
@@ -117,25 +114,16 @@ namespace LiteOrm.Common
             // 优先使用 ValueTypeExpr 形式
             if (column.ExpressionExpr is not null)
             {
-                // 计算列只允许固定 SQL 表达式，这里用临时参数集合接管上下文渲染并校验：
-                // 渲染结束后恢复原参数集合，避免临时集合的编号覆盖外层已有参数。
-                var outerParams = context.OutputParams;
-                var paramList = new List<Param>();
-                context.OutputParams = paramList;
-                try
-                {
-                    sb.Append('(');
-                    column.ExpressionExpr.ToSql(ref sb, context);
-                    sb.Append(')');
-                    if (paramList.Count > 0)
-                        throw new NotSupportedException(
-                            $"ColumnDefinition.ExpressionExpr for column '{column.Name}' produced {paramList.Count} parameter(s); " +
-                            $"only fixed SQL expressions (property references, constants, functions, arithmetic) are allowed for computed columns.");
-                }
-                finally
-                {
-                    context.OutputParams = outerParams;
-                }
+                // 计算列只允许固定 SQL 表达式，若有动态参数则抛异常
+                int paramCount = context.OutputParams.Count;
+                sb.Append('(');
+                column.ExpressionExpr.ToSql(ref sb, context);
+                sb.Append(')');
+                if (context.OutputParams.Count > paramCount)
+                    throw new NotSupportedException(
+                        $"ColumnDefinition.ExpressionExpr for column '{column.Name}' produced {context.OutputParams.Count - paramCount} parameter(s); " +
+                        $"only fixed SQL expressions (property references, constants, functions, arithmetic) are allowed for computed columns.");
+
                 return;
             }
 
@@ -166,9 +154,19 @@ namespace LiteOrm.Common
         /// </summary>
         private static void ToSql(ref ValueStringBuilder sb, ForeignColumn foreignColumn, SqlBuildContext context)
         {
-            if (foreignColumn.TargetColumn != null)
+            var foreignTable = foreignColumn.TargetColumn?.Table;
+            if (foreignTable != null)
             {
-                ToSql(ref sb, foreignColumn.TargetColumn, context);
+
+                //优先使用目标列定义进行解析，正确处理引用的计算列
+                var tableAlias = foreignTable.Name!;
+                using var scope = context.BeginScope();
+                context.CurrentScope!.AddTableAlias(tableAlias, foreignColumn.Table);
+                foreignColumn.Definition.ToSql(ref sb, context);
+            }
+            else
+            {
+                ToSql(ref sb, foreignColumn.TargetColumn!, context);
             }
         }
 
@@ -222,7 +220,7 @@ namespace LiteOrm.Common
             sb.Append(" ");
             sb.Append(context.SqlBuilder.ToSqlName(joined.Name ?? string.Empty));
             sb.Append(" ON ");
-            context.AddTableAlias(joined.Name, joined.TableDefinition);
+            context.AddTableAlias(joined.Name!, joined.TableDefinition);
 
             bool isFirst = true;
             int count = joined.ForeignKeys.Count;

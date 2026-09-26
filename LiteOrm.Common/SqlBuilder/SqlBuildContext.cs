@@ -130,7 +130,7 @@ namespace LiteOrm.Common
         /// <param name="aliasName">表别名</param>
         /// <param name="table">表定义</param>
         /// <returns>是否添加成功</returns>
-        public bool AddTableAlias(string? aliasName, SqlTable? table)
+        public bool AddTableAlias(string aliasName, SqlTable? table)
         {
             return CurrentScope!.AddTableAlias(aliasName, table);
         }
@@ -227,12 +227,11 @@ namespace LiteOrm.Common
             /// <param name="aliasName">表别名</param>
             /// <param name="table">表定义</param>
             /// <returns>是否添加成功</returns>
-            public bool AddTableAlias(string? aliasName, SqlTable? table)
+            public bool AddTableAlias(string aliasName, SqlTable? table)
             {
-                if (string.IsNullOrEmpty(aliasName)) throw new ArgumentException("Alias name cannot be null or empty.");
-                if (_aliasTableMap.ContainsKey(aliasName!)) return false;
+                if (_aliasTableMap.ContainsKey(aliasName)) return false;
                 if (String.IsNullOrEmpty(DefaultTableAliasName)) DefaultTableAliasName = aliasName;
-                _aliasTableMap.Add(aliasName!, table!);
+                _aliasTableMap.Add(aliasName, table!);
                 return true;
             }
 
