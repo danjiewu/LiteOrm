@@ -115,13 +115,13 @@ namespace LiteOrm.Common
             if (column.ExpressionExpr is not null)
             {
                 // 计算列只允许固定 SQL 表达式，若有动态参数则抛异常
-                int paramCount = context.OutputParams.Count;
+                int preParamCount = context.OutputParams.Count;
                 sb.Append('(');
                 column.ExpressionExpr.ToSql(ref sb, context);
                 sb.Append(')');
-                if (context.OutputParams.Count > paramCount)
+                if (context.OutputParams.Count > preParamCount)
                     throw new NotSupportedException(
-                        $"ColumnDefinition.ExpressionExpr for column '{column.Name}' produced {context.OutputParams.Count - paramCount} parameter(s); " +
+                        $"ColumnDefinition.ExpressionExpr for column '{column.Name}' produced {context.OutputParams.Count - preParamCount} parameter(s); " +
                         $"only fixed SQL expressions (property references, constants, functions, arithmetic) are allowed for computed columns.");
 
                 return;
@@ -137,8 +137,12 @@ namespace LiteOrm.Common
                 {
                     string propertyName = match.Groups[1].Value;
                     SqlColumn? refColumn = column.Table?.View.GetColumn(propertyName);
-                    if (refColumn != null) return refColumn.ToSql(context);
-                    return context.SqlBuilder.ToSqlName(propertyName);
+                    if (refColumn != null) 
+                        return refColumn.ToSql(context);
+                    else if (!context.SingleTable && context.DefaultTableAliasName != null)
+                        return $"{context.SqlBuilder.ToSqlName(context.DefaultTableAliasName)}.{context.SqlBuilder.ToSqlName(propertyName)}";
+                    else
+                        return context.SqlBuilder.ToSqlName(propertyName);
                 });
                 sb.Append(rendered);
             }
