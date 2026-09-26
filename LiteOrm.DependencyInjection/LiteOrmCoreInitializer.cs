@@ -80,7 +80,12 @@ namespace LiteOrm
                     return ex.Types.OfType<Type>();
                 }
             })
-            .Where(t => !t.IsAbstract && t.GetCustomAttribute<TableAttribute>() != null)
+            // 标记为永不同步（TableAttribute.SyncTable = Never）的类型直接排除：
+            .Where(t =>
+            {
+                var tableAttribute = t.GetCustomAttribute<TableAttribute>();
+                return !t.IsAbstract && tableAttribute != null && tableAttribute.SyncTable != SyncTableMode.Never;
+            })
             .ToList();
 
             tableTypes = tableTypes.Where(t => !typeof(IArged).IsAssignableFrom(t)).ToList();

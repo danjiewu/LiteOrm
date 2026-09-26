@@ -219,7 +219,7 @@ namespace LiteOrm.Common.UnitTests
             public string? DepartmentName { get; set; }
         }
 
-        [Table("InvalidTableJoinPrimeKeyViews")]
+        [Table("InvalidTableJoinPrimeKeyViews", SyncTable = SyncTableMode.Never)]
         [TableJoin(typeof(PrimeKeyDepartment), nameof(InvalidTableJoinPrimeKeyView.DepartmentCode), PrimeKeys = "MissingCode")]
         private class InvalidTableJoinPrimeKeyView
         {
