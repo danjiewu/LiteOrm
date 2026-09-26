@@ -75,7 +75,7 @@
 |[软删除与历史数据](./typical-applications/soft-delete-and-archive.md)|[Soft Deletes and Historical Data](./typical-applications/soft-delete-and-archive.en.md)|固定切片读路径、软删除写入、唯一约束与归档|
 |[审计与变更追踪](./typical-applications/audit-and-change-tracking.md)|[Audit and Change Tracking](./typical-applications/audit-and-change-tracking.en.md)|实体事件、字段 diff、审计落库的事务边界与调用日志|
 |[敏感字段加密与脱敏](./typical-applications/sensitive-data-protection.md)|[Sensitive Data Protection](./typical-applications/sensitive-data-protection.en.md)|列密文存储、自定义类型全局注册、盲索引与密钥管理|
-|[计算列的实际应用](./typical-applications/computed-columns.md)|[Computed Columns in Practice](./typical-applications/computed-columns.en.md)|派生展示、表达式过滤与排序、可见性归一化|
+|[计算列的实际应用](./typical-applications/computed-columns.md)|[Computed Columns in Practice](./typical-applications/computed-columns.en.md)|派生展示、表达式过滤与排序、可见性归一化、层层引用与跨表嵌套|
 |[并发控制与读写分离](./typical-applications/concurrency-and-read-write-splitting.md)|[Concurrency and Read/Write Splitting](./typical-applications/concurrency-and-read-write-splitting.en.md)|时间戳乐观并发、事务边界、只读副本与读写一致性|
 
 ### 参考文档 / Reference

@@ -160,6 +160,7 @@ table.Columns.First(c => c.Name == "Total").ExpressionExpr = Expr.Prop("Price") 
 - **不生成物理列**：`CREATE TABLE` / `ALTER TABLE ADD COLUMN` 均跳过该列，插入/更新也不写入。
 - **表达式返回结果**：默认 SELECT 渲染为 `({expr}) AS "PropertyName"`，读取结果回填到属性。
 - **生成查询条件**：`SearchAsync(u => u.FullName == "张三 李四")` 会生成 `WHERE ("FirstName" || ' ' || "LastName") = @0`。
+- **占位符可嵌套引用**：`{属性名}` 既能指向物理列，也能指向同一实体上的其他计算列或关联列（`[ForeignColumn]`），渲染时递归展开为嵌套表达式，每层自带括号；框架不检测环形引用。写法与注意事项见[计算列的实际应用](../typical-applications/computed-columns.md)。
 - 设了 `Expression` / `ExpressionExpr` 即使未写 `ColumnMode.Computed`，也会自动视为计算列；建议显式声明 `ColumnMode = ColumnMode.Computed`。
 - 字符串形式按数据库方言书写（示例为 SQLite/PostgreSQL 的 `||`，MySQL 用 `CONCAT(...)`）；Expr 树形式自动按方言渲染。
 - Expr 树形式同时设置时优先于字符串形式；仅允许固定 SQL（不生成参数）。`Expr.Const(100)` 可用；`Expr.Const(" ")` 等常规字符串常量以 `' '` 形式内联（单引号以 `''` 转义），含反斜杠或控制字符的字符串仍会参数化并抛异常；`Expr.Value("str")` 始终参数化，会抛异常。

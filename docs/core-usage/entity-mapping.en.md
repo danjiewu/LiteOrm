@@ -144,6 +144,7 @@ table.Columns.First(c => c.Name == "Total").ExpressionExpr = Expr.Prop("Price") 
 - **No physical column**: skipped by `CREATE TABLE` / `ALTER TABLE ADD COLUMN`, and not written on insert/update.
 - **Expression result**: the default SELECT renders `({expr}) AS "PropertyName"` and the read result is mapped back to the property.
 - **Query conditions**: `SearchAsync(u => u.FullName == "John Smith")` produces `WHERE ("FirstName" || ' ' || "LastName") = @0`.
+- **Placeholders can nest**: `{property}` may point at a physical column, at another computed column on the same entity, or at an association column (`[ForeignColumn]`); rendering unfolds them recursively into nested expressions, each level in its own parentheses. There is no cycle detection. See [Computed Columns in Practice](../typical-applications/computed-columns.en.md) for the patterns and caveats.
 - Setting `Expression` / `ExpressionExpr` alone (without `ColumnMode.Computed`) is also treated as a computed column; declaring `ColumnMode = ColumnMode.Computed` is recommended.
 - The string form is dialect-specific (the example uses SQLite/PostgreSQL `||`; MySQL uses `CONCAT(...)`); the Expr tree form renders automatically per dialect.
 - When both forms are set, the Expr tree form takes precedence; only fixed SQL (no parameters) is allowed. `Expr.Const(100)` works; regular string constants like `Expr.Const(" ")` are inlined as `' '` (single quotes escaped via `''`); strings with backslash or control characters are parameterized and throw; `Expr.Value("str")` is always parameterized and throws.
