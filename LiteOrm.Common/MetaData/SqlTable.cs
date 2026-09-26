@@ -32,6 +32,14 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 对应的数据库表或视图的名称
+        /// </summary>
+        public abstract TableView View
+        {
+            get;
+        }
+
+        /// <summary>
         /// 对象类型
         /// </summary>
         [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]

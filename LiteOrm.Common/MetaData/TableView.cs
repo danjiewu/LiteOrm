@@ -20,7 +20,7 @@ namespace LiteOrm.Common
             : base(columns)
         {
             _table = table;
-            _tables = new List<JoinedTable>(joinedTables);
+            _tables = new(joinedTables);
         }
 
         private readonly TableDefinition _table;
@@ -116,6 +116,11 @@ namespace LiteOrm.Common
         {
             get { return _table; }
         }
+
+        /// <summary>
+        /// 获取当前视图对象本身。
+        /// </summary>
+        public override TableView View => this;
     }
 
     /// <summary>

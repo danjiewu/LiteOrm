@@ -33,6 +33,23 @@ namespace LiteOrm.Common
             get { return this; }
         }
 
+        private TableView? _view;
+        /// <summary>
+        /// 获取当前表的视图定义信息。
+        /// </summary>
+
+        public override TableView View
+        {
+            get => _view!;
+        }
+
+        internal void SetView(TableView view)
+        {
+            if (view == null) throw new ArgumentNullException(nameof(view));
+            if (view.Definition != this) throw new ArgumentException("The view's definition does not match this table definition.", nameof(view));
+            _view = view;
+        }
+
         /// <summary>
         /// 获取对应的实体类型。
         /// </summary>

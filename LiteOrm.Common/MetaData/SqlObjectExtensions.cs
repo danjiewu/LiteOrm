@@ -136,7 +136,7 @@ namespace LiteOrm.Common
                 var rendered = Regex.Replace(expression, @"\{([^{}]+)\}", match =>
                 {
                     string propertyName = match.Groups[1].Value;
-                    SqlColumn? refColumn = column.Table?.GetColumn(propertyName);
+                    SqlColumn? refColumn = column.Table?.View.GetColumn(propertyName);
                     if (refColumn != null) return refColumn.ToSql(context);
                     return context.SqlBuilder.ToSqlName(propertyName);
                 });
@@ -157,7 +157,6 @@ namespace LiteOrm.Common
             var foreignTable = foreignColumn.TargetColumn?.Table;
             if (foreignTable != null)
             {
-
                 //优先使用目标列定义进行解析，正确处理引用的计算列
                 var tableAlias = foreignTable.Name!;
                 using var scope = context.BeginScope();

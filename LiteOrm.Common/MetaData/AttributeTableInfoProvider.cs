@@ -45,7 +45,11 @@ namespace LiteOrm
             {
                 if (_tableInfoCache.TryGetValue(objectType, out tableDef)) return tableDef;
                 tableDef = GenerateTableDefinition(objectType);
-                if (tableDef != null) _tableInfoCache[objectType] = tableDef;
+                if (tableDef != null)
+                {
+                    _tableInfoCache[objectType] = tableDef;
+                    tableDef.SetView(GetTableView(objectType)!);
+                }
                 return tableDef;
             }
         }
@@ -169,7 +173,7 @@ namespace LiteOrm
             {
                 ForeignColumn foreignColumn = new ForeignColumn(property);
                 foreignColumn.ForeignTables = GetForeignTables(property);
-                foreignColumn.DbValueConverter = CreateDbValueConverter(foreignColumnAttribute.ConverterType, property);               
+                foreignColumn.DbValueConverter = CreateDbValueConverter(foreignColumnAttribute.ConverterType, property);
                 return foreignColumn;
             }
             else
