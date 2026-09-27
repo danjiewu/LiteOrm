@@ -1,7 +1,8 @@
 # Expr Guide
 
-`Expr` is LiteOrm's core object-expression model, and this article mainly explains how to construct, compose, reuse, and understand its semantics.  
-For the choice between Lambda, `Expr`, or `ExprString`, start with the [Query Overview](./query-overview.en.md). For Lambda usage, see the [Lambda Guide](./lambda-guide.en.md); for handwritten SQL in the DAO, see the [ExprString Guide](./exprstring-guide.en.md). 
+`Expr` is LiteOrm's core object-expression model, and this article mainly explains how to construct, compose, reuse, and understand its semantics.
+For the choice between Lambda, `Expr`, or `ExprString`, start with the [Query Overview](./query-overview.en.md). For Lambda usage, see the [Lambda Guide](./lambda-guide.en.md); for handwritten SQL in the DAO, see the [ExprString Guide](./exprstring-guide.en.md).
+
 ## 1. Creating basic expressions
 
 ### 1.1 Properties, values, and constants
@@ -128,7 +129,7 @@ var expr = ExistsRelated<DepartmentView>(
 );
 ```
 
-`ExistsRelated` fills in the relation condition from metadata such as `ForeignType` and `TableJoin`.  
+`ExistsRelated` fills in the relation condition from metadata such as `ForeignType` and `TableJoin`.<br/>
 For the detailed matching rules, see [Associations](./associations.en.md).
 
 ## 3. Building Expr dynamically

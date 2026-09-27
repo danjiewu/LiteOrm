@@ -196,7 +196,7 @@ If `TResult` is an entity type registered in `TableInfoProvider` (e.g. using `Se
 | `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>>)` | ✅ returns `List<TResult>` (Lambda projection extension) | ✅ Lambda projection |
 | `SearchAs<TResult>(ref ExprString sqlBody)` | ❌ | ✅ raw SQL projection |
 
-Switch to the DAO only for raw SQL projection (`ExprString`); Lambda projection is now supported directly on the Service (see [Lambda Guide](./lambda-guide.en.md#6-projection-queries-searchas--searchoneas)).
+Switch to the DAO only for raw SQL projection (`ExprString`); Lambda projection is now supported directly on the Service (see [Lambda Guide](./lambda-guide.en.md#6-projection-queries-searchas-searchoneas)).
 
 ## 4. Related links
 

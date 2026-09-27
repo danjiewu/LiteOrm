@@ -91,7 +91,7 @@ only fixed SQL expressions (property references, constants, functions, arithmeti
 
 原因是计算列会出现在 `SELECT`、`WHERE`、`ORDER BY`、`JOIN ON` 任一位置，参数列表由构建方在外部统一管理，表达式自己往里追加参数会打乱占位符编号。
 
-所以折扣率只能以内联字面量写进 SQL。这意味着等级一变，生成的 SQL 文本就变，命令缓存也随之失效——这正是这套写法的适用边界。
+所以折扣率只能以内联字面量写进 SQL。等级一变生成的 SQL 文本就变，引用这个计算列的语句不取用命令缓存，每次重新拼接，这正是这套写法的适用边界。
 
 还带来两个必须自己处理的点：
 
@@ -100,7 +100,7 @@ only fixed SQL expressions (property references, constants, functions, arithmeti
 
 ### 等级变化与命令缓存
 
-`DiscountAmount` 的 SQL 随等级变化，而 LiteOrm 会按 SQL 文本缓存命令，所以不同等级自然落在不同缓存项上，不会串用。要留意的是**等级会长时间保持不变**：缓存按等级各存一份，属于可接受的开销。如果折扣规则改成「每个订单一个费率」，等级这种低频维度的好处就没了，应换成把费率落成物理列，让计算列只做 `{Amount} * {DiscountRate}`。
+`DiscountAmount` 的 SQL 随等级变化，而 `SELECT` 字段列表里引用计算列的语句（`GetObject`）不取用命令缓存，每次按当前等级重新拼接，等级一变立即生效，也不会把上一等级的 SQL 串用过来。代价是这类语句每次查询多一次 SQL 拼接：等级这种低频维度下可以接受，如果折扣规则改成「每个订单一个费率」，就该把费率落成物理列，让计算列只做 `{Amount} * {DiscountRate}`。
 
 ### 用在哪里
 

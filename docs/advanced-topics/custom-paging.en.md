@@ -266,7 +266,7 @@ WHERE "__T"."RN__" > 10 AND "__T"."RN__" <= 30
 ## 5. Performance Optimization Tips
 
 1. **Index optimization**: Ensure appropriate indexes on ORDER BY fields
-2. **Reduce data transfer**: Select only necessary columns, avoid SELECT *
+2. **Reduce data transfer**: Select only necessary columns, avoid `SELECT *`
 3. **Set reasonable page sizes**: Adjust Take value according to actual needs
 4. **Use bound parameters**: Avoid SQL injection and improve performance
 

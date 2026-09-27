@@ -205,4 +205,3 @@ validator.Validate(expr2);  // false
 - [表达式扩展](./expression-extension.md)
 - [窗口函数](../advanced-topics/window-functions.md)
 
-

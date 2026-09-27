@@ -131,7 +131,7 @@ LiteOrm 内置以下 6 个国产 / 兼容数据库构建器。开发指南（基
 | 数据库 | 拼接方式 |
 |--------|---------|
 | SQL Server | `+` 运算符 |
-| PostgreSQL / SQLite / Oracle / 达梦 | `||` 运算符 |
+| PostgreSQL / SQLite / Oracle / 达梦 | `\|\|` 运算符 |
 | MySQL / OceanBase / TiDB / GreatDB | `CONCAT(...)` 函数（基类默认） |
 
 ### 2.5 字符串常量内联
@@ -150,7 +150,7 @@ LiteOrm 内置以下 6 个国产 / 兼容数据库构建器。开发指南（基
 | `Char` | `CHAR` | `CHR` | `CHR` | — |
 | `Ceiling` | `CEILING` | `CEIL` | `CEIL` | — |
 | `Truncate` | `TRUNCATE(x,0)` | `TRUNC` | `TRUNC` | `ROUND(x,0,1)` |
-| `Concat` | `CONCAT` | `||` | — | — |
+| `Concat` | `CONCAT` | `\|\|` | — | — |
 | `Log` | `LOG` (自然对数) | `LN` | `LN` | — |
 | `Log10` | `LOG10` | `LOG(10,x)` | `LOG` | — |
 | `Atan2` | `ATAN2` | — | — | `ATN2` |

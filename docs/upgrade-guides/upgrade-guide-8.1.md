@@ -76,7 +76,7 @@ var userService = serviceProvider.GetRequiredService<EntityService<User>>();
 
 #### Service `SearchAs` 投影扩展
 
-Service 层新增 IQueryable Lambda 形式的 `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` 扩展，可将结果投影为自定义类或匿名类（详见 [Lambda 查询指南](../core-usage/lambda-guide.md#6-投影查询searchas--searchoneas)）。
+Service 层新增 IQueryable Lambda 形式的 `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` 扩展，可将结果投影为自定义类或匿名类（详见 [Lambda 查询指南](../core-usage/lambda-guide.md#6-投影查询searchas-searchoneas)）。
 
 #### 计算列（非实际列）
 

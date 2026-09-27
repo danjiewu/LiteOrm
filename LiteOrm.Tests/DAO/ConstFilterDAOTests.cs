@@ -160,6 +160,27 @@ namespace LiteOrm.Tests
             }
         }
 
+        /// <summary>缓存与否按语句判定：含固定筛选的 <c>GetObject</c> 不入缓存，<c>Insert</c> 照旧入缓存。</summary>
+        [Fact]
+        public async Task CommandCachePolicy_IsJudgedPerStatement()
+        {
+            var order = NewOrder("PerStatement", ConstFilterOrderState.Enabled);
+
+            var insertCommands = ObjectDao.GetDaoContext().PreparedCommands;
+            var getObjectCommands = ViewDao.GetDaoContext().PreparedCommands;
+            var insertKey = (typeof(ConstFilterOrder), "Insert");
+            var getObjectKey = (typeof(ConstFilterOrder), "GetObject");
+            getObjectCommands.TryRemove(getObjectKey, out _);
+
+            // Insert 不含固定筛选，入缓存
+            Assert.True(insertCommands.ContainsKey(insertKey));
+
+            Assert.NotNull(await ViewDao.GetObject(order.Id).FirstOrDefaultAsync(TestContext.Current.CancellationToken));
+
+            // GetObject 含固定筛选，不入缓存
+            Assert.False(getObjectCommands.ContainsKey(getObjectKey));
+        }
+
         private ConstFilterOrder NewOrder(string name, ConstFilterOrderState state)
         {
             var order = new ConstFilterOrder { Name = name, State = state };

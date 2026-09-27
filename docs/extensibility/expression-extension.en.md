@@ -471,7 +471,7 @@ LiteOrm automatically registers many default methods on first access through `Li
 | `string` | `.EndsWith()` | Suffix match | SQL `LIKE '%xxx'` |
 | `string` | `.Contains()` | Contains | SQL `LIKE '%xxx%'` |
 | `string` | `.Length` | String length | Database LENGTH function |
-| `string` | `.Concat()` | String concatenation | Database `+` or `||` or CONCAT |
+| `string` | `.Concat()` | String concatenation | Database `+` or `\|\|` or CONCAT |
 | `string` | `.IndexOf()` | Substring position | Database INSTR / CHARINDEX |
 | `string` | `.Substring()` | Substring extraction | Database SUBSTR / SUBSTRING |
 | `string` | `.Trim()` / `.TrimStart()` / `.TrimEnd()` | Trim whitespace | SQL TRIM / LTRIM / RTRIM |

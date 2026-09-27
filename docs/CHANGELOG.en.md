@@ -12,6 +12,8 @@
 
 - **Entities with `SyncTable = Never` are no longer touched at initialization** (`LiteOrm.DependencyInjection`): they are excluded from the startup sync, so no table is created and no table metadata is preloaded, and their invalid metadata configuration can no longer abort the whole sync pass.
 
+- **Command caching is now decided per statement** (`LiteOrm`): a table declaring a fixed filter or a computed column used to give up the command cache as a whole; the new `useCache` parameter on `GetPreparedCommand(Async)` now decides per statement, so `Insert` / `BatchInsert` reuse the cache again. The previous overload signatures are kept, so existing callers need no change.
+
 ***
 
 ## v8.1.9 (2026-09-22)

@@ -252,7 +252,7 @@ The interpolation holes above go through different paths:
 
 | Dynamic value type | Validation | Example |
 |-------------------|------------|---------|
-| Numeric (LIMIT row count, etc.) | Range validation: non-negative integer + reasonable upper bound | `if (pageSize < 0 || pageSize > 1000) throw ...` |
+| Numeric (LIMIT row count, etc.) | Range validation: non-negative integer + reasonable upper bound | `if (pageSize < 0 \|\| pageSize > 1000) throw ...` |
 | SQL keyword (ASC/DESC) | Enum whitelist: only predefined legal tokens | `direction = ascending ? "ASC" : "DESC";` |
 | Identifier (column name) | Whitelist: only real columns on the entity, with charset validation (alphanumeric + underscore) | `string[] allowed = {...}; if (!allowed.Contains(f)) throw ...` |
 

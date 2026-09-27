@@ -41,6 +41,7 @@ This page is a complete reference for LiteOrm configuration fields, defaults, re
 > These are the most minimal configurations, containing only required fields. Copy and replace the connection string with your own.
 
 **SQL Server:**
+
 ```json
 {
   "LiteOrm": {
@@ -57,6 +58,7 @@ This page is a complete reference for LiteOrm configuration fields, defaults, re
 ```
 
 **MySQL:**
+
 ```json
 {
   "LiteOrm": {
@@ -73,6 +75,7 @@ This page is a complete reference for LiteOrm configuration fields, defaults, re
 ```
 
 **PostgreSQL:**
+
 ```json
 {
   "LiteOrm": {
@@ -89,6 +92,7 @@ This page is a complete reference for LiteOrm configuration fields, defaults, re
 ```
 
 **SQLite (recommended for beginners):**
+
 ```json
 {
   "LiteOrm": {

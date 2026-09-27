@@ -252,7 +252,7 @@ var result = await dataViewDAO.Search(
 
 | 动态值类型 | 校验方式 | 示例 |
 |------------|----------|------|
-| 数值类（LIMIT 行数等） | 范围校验：非负整数 + 合理上限 | `if (pageSize < 0 || pageSize > 1000) throw ...` |
+| 数值类（LIMIT 行数等） | 范围校验：非负整数 + 合理上限 | `if (pageSize < 0 \|\| pageSize > 1000) throw ...` |
 | SQL 关键字类（ASC/DESC） | 枚举白名单：仅允许预定义的合法 token | `direction = ascending ? "ASC" : "DESC";` |
 | 标识符类（列名） | 白名单：仅允许实体中真实存在的列名，且校验字符集（仅字母数字下划线） | `string[] allowed = {...}; if (!allowed.Contains(f)) throw ...` |
 

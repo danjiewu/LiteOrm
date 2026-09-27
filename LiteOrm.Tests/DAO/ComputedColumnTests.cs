@@ -79,6 +79,32 @@ namespace LiteOrm.Tests
             Assert.Equal("A C", retrieved.FullName);
         }
 
+        /// <summary>表声明计算列表达式时，<c>GetObject</c> 不入缓存，不含计算列的 <c>ExistsKey</c> 照旧入缓存。</summary>
+        [Fact]
+        public async Task CommandCachePolicy_IsJudgedPerStatement()
+        {
+            var dao = ServiceProvider.GetRequiredService<ObjectDAO<ComputedUserModel>>();
+            var viewDao = ServiceProvider.GetRequiredService<ObjectViewDAO<ComputedUserModel>>();
+            var ct = TestContext.Current.CancellationToken;
+
+            var model = new ComputedUserModel { FirstName = "Cache", LastName = "Policy" };
+            Assert.True(await dao.InsertAsync(model, ct));
+
+            var existsKey = (typeof(ComputedUserModel), "ExistsKey");
+            var getObjectKey = (typeof(ComputedUserModel), "GetObject");
+            var preparedCommands = viewDao.GetDaoContext().PreparedCommands;
+            preparedCommands.TryRemove(existsKey, out _);
+            preparedCommands.TryRemove(getObjectKey, out _);
+
+            // ExistsKey 不含计算列，入缓存
+            Assert.True(await viewDao.ExistsKey(model.Id).GetResultAsync(ct));
+            Assert.True(preparedCommands.ContainsKey(existsKey));
+
+            // GetObject 的字段列表含计算列，不入缓存
+            Assert.NotNull(await viewDao.GetObject(model.Id).FirstOrDefaultAsync(ct));
+            Assert.False(preparedCommands.ContainsKey(getObjectKey));
+        }
+
         [Table("ComputedUserModels")]
         public class ComputedUserModel
         {

@@ -126,7 +126,7 @@ public class OrderView : Order
 }
 ```
 
-- 说明：`TableJoin` 适合表达复合关联关系。  
+- 说明：`TableJoin` 适合表达复合关联关系。<br/>
   如果目标表使用**联合主键**，可以通过 `ForeignKeys = "Key1,Key2"` 这种写法，按目标主键顺序提供多个外键列；`ForeignType` 不支持这种多列关联场景。
 
 - 如确有历史兼容需求，也可以通过 `PrimeKeys = "Code"` 或 `PrimeKeys = "Key1,Key2"` 显式覆盖目标表参与关联的键属性。
@@ -166,7 +166,7 @@ public class SalesRecordView : SalesRecord
 // 查询 SalesRecordView 时，LiteOrm 可以继续沿着 User 已定义好的关联路径解析 DepartmentName。
 ```
 
-- 注意：AutoExpand 的核心作用是“让下一层关联路径可被继续解析”。  
+- 注意：AutoExpand 的核心作用是“让下一层关联路径可被继续解析”。<br/>
   实际是否生成更多 JOIN，仍然取决于查询里是否真的引用了这些路径上的字段或条件。
 
 ### 2.4.1 AutoExpand 开关对比
@@ -207,7 +207,7 @@ public class SalesRecordView : SalesRecord
 - 但因为 `User` 本身又通过 `ForeignType/TableJoin` 关联了 `Department`
 - `AutoExpand = true` 允许 `SalesRecordView` 直接读取 `Department.Name`
 
-如果没有开启 `AutoExpand`，`DepartmentName` 这类二级字段通常需要额外声明连接路径。  
+如果没有开启 `AutoExpand`，`DepartmentName` 这类二级字段通常需要额外声明连接路径。<br/>
 这也是 `AutoExpand` 最常见、也最值得使用的场景：**补足多级关联的可解析路径**。
 更多示例请参考代码中的 Demo（LiteOrm.Demo.Models）以及单元测试中的 TableJoin/AutoExpand 相关测试用例。
 

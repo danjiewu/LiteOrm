@@ -131,7 +131,7 @@ public abstract class EntityControllerBase<T, TView> : ControllerBase
 
 ```csharp
 public class UsersController : EntityControllerBase<User, UserView>
-{    
+{
 }
 ```
 

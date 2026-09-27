@@ -185,7 +185,7 @@ Expression<Func<UserView, bool>> where =
 var results2 = await userService.SearchAsync(where);
 ```
 
-这个示例的价值在于：它验证了“手动构造函数表达式”和“直接写 Lambda”两条路径都能落到数据库原生格式化函数上。  
+这个示例的价值在于：它验证了“手动构造函数表达式”和“直接写 Lambda”两条路径都能落到数据库原生格式化函数上。<br/>
 如果项目里并不需要自定义 `DateTime.Format(...)` 这种业务别名，通常直接用 `ToString(format)` 更自然。
 
 ## 5. 示例二：计算属性

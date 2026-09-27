@@ -169,7 +169,7 @@ var results = await factory.SalesDAO
     ).ToListAsync();
 ```
 
-如果你准备把窗口函数能力提供给业务层长期复用，推荐采用这种“启动期注册 + 查询期直接调用”的模式。  
+如果你准备把窗口函数能力提供给业务层长期复用，推荐采用这种“启动期注册 + 查询期直接调用”的模式。
 
 **生成的 SQL**：
 
@@ -269,5 +269,4 @@ var results = await saleDAO
 - [关联查询](../core-usage/associations.md)
 - [表达式扩展](../extensibility/expression-extension.md)
 - [函数验证器](../extensibility/function-validator.md)
-
 

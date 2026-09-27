@@ -322,7 +322,7 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 **Function**: Abstract base class for all DAOs, providing common operation methods
 
 **Main Methods**:
-- `GetPreparedCommand()`: Get a prepared command (regular tables reuse the context command cache, tables with a fixed filter build a one-off command)
+- `GetPreparedCommand()`: Get a prepared command (reuses the context command cache by default; pass `useCache: false` for a statement that contains a fixed filter or a computed-column expression, and it builds a one-off command)
 - `MakeNamedParamCommand()`: Create parameterized command
 - `MakeExprCommand()`: Create command from expression
 - `GetValue<T>()`: Execute query and return single value

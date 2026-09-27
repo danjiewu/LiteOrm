@@ -12,6 +12,8 @@
 
 - **`SyncTable = Never` 的实体初始化时不再触碰**（`LiteOrm.DependencyInjection`）：启动同步时排除这些类型，既不建表也不预加载表信息，其非法元数据配置不会再中断整批同步。
 
+- **命令缓存改为逐语句判定**（`LiteOrm`）：此前表上声明固定筛选条件或计算列就整体放弃命令缓存，现由 `GetPreparedCommand(Async)` 新增的 `useCache` 参数按语句决定，`Insert` / `BatchInsert` 恢复复用缓存；原签名的重载一并保留，既有调用无需改动。
+
 ***
 
 ## v8.1.9 (2026-09-22)

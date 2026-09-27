@@ -122,7 +122,7 @@ var users = await userService.SearchAsync(
 );
 ```
 
-> String `+` inside a Lambda is converted to concat during parsing, and ultimately rendered via `SqlBuilder.BuildConcatSql` as `CONCAT(a,b,...)` or `a || b` per dialect. When handwriting `Expr`, you must use `.Concat(...)` explicitly — see the [Expr Guide](./expr-guide.en.md#string-concatenation-do-not-use--use-concat).
+> String `+` inside a Lambda is converted to concat during parsing, and ultimately rendered via `SqlBuilder.BuildConcatSql` as `CONCAT(a,b,...)` or `a || b` per dialect. When handwriting `Expr`, you must use `.Concat(...)` explicitly — see the [Expr Guide](./expr-guide.en.md#string-concatenation-do-not-use-use-concat).
 
 ### 2.5 Skip/Take paging semantics
 

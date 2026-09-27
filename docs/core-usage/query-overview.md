@@ -195,7 +195,7 @@ var count = await viewService.SearchAsAsync<int>(
 | `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>>)` | ✅ 返回 `List<TResult>`（Lambda 投影扩展） | ✅ Lambda 投影 |
 | `SearchAs<TResult>(ref ExprString sqlBody)` | ❌ | ✅ 原生 SQL 投影 |
 
-需要原生 SQL 投影（`ExprString`）时切到 DAO；Lambda 投影在 Service 已直接支持（见 [Lambda 查询指南](./lambda-guide.md#6-投影查询searchas--searchoneas)）。
+需要原生 SQL 投影（`ExprString`）时切到 DAO；Lambda 投影在 Service 已直接支持（见 [Lambda 查询指南](./lambda-guide.md#6-投影查询searchas-searchoneas)）。
 
 ## 4. 相关链接
 

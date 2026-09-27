@@ -237,7 +237,7 @@ var orders = await orderViewService.Search(From<OrderView>());
 
 **代价与限制**：
 
-- 声明了固定筛选的表不复用预定义命令缓存：每次操作都重新拼接 SQL、重建命令，代价是每次操作多一次 SQL 拼接。没有固定筛选的表照旧走缓存。
+- 含固定筛选条件的语句不复用预定义命令缓存：`GetObject` / `ExistsKey` / `Update` / `Delete` / `DeleteByKeys` 与批量更新、批量删除、批量 ID 存在性每次重新拼接 SQL、重建命令，代价是每次操作多一次 SQL 拼接。`Insert` / `BatchInsert` 的语句里没有这个条件，照旧走缓存。
 - 构件里只能写裸列名。`sqlBuilder.ToSqlName` 生成不带表别名的 `"TenantId"`，而框架自己生成的条件是带别名的 `"T0"."TenantId"`。单表没问题，语句里 join 了同样带 `TenantId` 列的表就可能被判成歧义列，需要和示例一配合，关联表用 `Prop(...)` 手写条件。
 - 这个构件必须在 SQL 生成之前注册。同一 key 重复注册不覆盖，测试里换实现要换 key。
 - 委托是在建表元数据那段代码里引用的，`TableDefinition` 一旦被 `TableInfoProvider` 缓存，后续取到的都是同一份对象；给已缓存的 `TableView` 再改定义不会自动重建，赋值要放在第一次查询之前。

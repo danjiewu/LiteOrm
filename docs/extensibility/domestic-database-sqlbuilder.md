@@ -6,7 +6,7 @@ LiteOrm 已经为这些数据库提供了开箱即用的 SqlBuilder 实现，你
 
 ## 1. 开箱即用的国产 / 兼容数据库支持
 
-LiteOrm 已内置达梦、人大金仓、GaussDB / openGauss、OceanBase、TiDB、GreatDB 六个国产 / 兼容数据库的 SqlBuilder，可直接通过数据源名或连接类型注册使用。各构建器及其兼容基类、典型驱动、自动匹配关键字的清单见[数据库差异与兼容性说明](../reference/database-compatibility.md#国产兼容数据库)。
+LiteOrm 已内置达梦、人大金仓、GaussDB / openGauss、OceanBase、TiDB、GreatDB 六个国产 / 兼容数据库的 SqlBuilder，可直接通过数据源名或连接类型注册使用。各构建器及其兼容基类、典型驱动、自动匹配关键字的清单见[数据库差异与兼容性说明](../reference/database-compatibility.md#国产-兼容数据库)。
 
 这些构建器遵循「继承最接近的基础方言 + 仅覆盖差异点」的设计原则：在大部分场景下，国产数据库的 SQL 行为已与对应基础方言（Oracle / PostgreSQL / MySQL）保持一致，构建器内部可能只覆盖少数方法甚至为零。
 
@@ -57,7 +57,6 @@ using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
-
 
 namespace YourProject.SqlBuilder
 {

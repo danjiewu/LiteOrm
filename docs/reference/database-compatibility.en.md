@@ -131,7 +131,7 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 | Database | Concat Method |
 |----------|--------------|
 | SQL Server | `+` operator |
-| PostgreSQL / SQLite / Oracle / Dameng | `||` operator |
+| PostgreSQL / SQLite / Oracle / Dameng | `\|\|` operator |
 | MySQL / OceanBase / TiDB / GreatDB | `CONCAT(...)` function (base default) |
 
 ### 2.5 String Constant Inlining
@@ -150,7 +150,7 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 | `Char` | `CHAR` | `CHR` | `CHR` | — |
 | `Ceiling` | `CEILING` | `CEIL` | `CEIL` | — |
 | `Truncate` | `TRUNCATE(x,0)` | `TRUNC` | `TRUNC` | `ROUND(x,0,1)` |
-| `Concat` | `CONCAT` | `||` | — | — |
+| `Concat` | `CONCAT` | `\|\|` | — | — |
 | `Log` | `LOG` (natural) | `LN` | `LN` | — |
 | `Log10` | `LOG10` | `LOG(10,x)` | `LOG` | — |
 | `Atan2` | `ATAN2` | — | — | `ATN2` |

@@ -354,7 +354,7 @@ Console.WriteLine(server.IpAddress); // 192.168.1.100
 
 ### 6.3 Overriding for a Specific Database
 
-If one database stores IPs as `VARBINARY`, you need to do **two** things: register a `byte[] ↔ IPAddress` converter, **and** make that database resolve the `IPAddress` column to the `Binary` DbValueType (see [2.2 Read Direction](#22-read-direction-database-value--net-value): otherwise the framework still calls `GetString` per the `String` type, mismatching the binary data).
+If one database stores IPs as `VARBINARY`, you need to do **two** things: register a `byte[] ↔ IPAddress` converter, **and** make that database resolve the `IPAddress` column to the `Binary` DbValueType (see [2.2 Read Direction](#22-read-direction-database-value-net-value): otherwise the framework still calls `GetString` per the `String` type, mismatching the binary data).
 
 ```csharp
 // 1) Register byte[] ↔ IPAddress converter on that dialect (overrides the base)

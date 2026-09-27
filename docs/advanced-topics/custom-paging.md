@@ -15,85 +15,85 @@
 以下是 `Oracle11gBuilder` 的完整实现，它继承自 `OracleBuilder` 并覆盖了分页逻辑：
 
 ```csharp
-public class Oracle11gBuilder : OracleBuilder 
+public class Oracle11gBuilder : OracleBuilder
 {
-    /// <summary> 
-    /// 获取 <see cref="Oracle11gBuilder"/> 的单例实例，适用于 Oracle 11g 及以上版本。 
-    /// </summary> 
-    public readonly static new Oracle11gBuilder Instance = new Oracle11gBuilder(); 
-    
-    /// <summary> 
-    /// 将结构化的 SQL 片段组装成最终的 SELECT 语句 (Oracle 实现)。 
-    /// 使用 ROW_NUMBER() OVER(...) 双层嵌套子查询实现分页，兼容所有 Oracle 版本。 
-    /// </summary> 
-    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent) 
+    /// <summary>
+    /// 获取 <see cref="Oracle11gBuilder"/> 的单例实例，适用于 Oracle 11g 及以上版本。
+    /// </summary>
+    public readonly static new Oracle11gBuilder Instance = new Oracle11gBuilder();
+
+    /// <summary>
+    /// 将结构化的 SQL 片段组装成最终的 SELECT 语句 (Oracle 实现)。
+    /// 使用 ROW_NUMBER() OVER(...) 双层嵌套子查询实现分页，兼容所有 Oracle 版本。
+    /// </summary>
+    public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
-        bool hasPaging = subSelect.Take > 0; 
+        bool hasPaging = subSelect.Take > 0;
 
-        if (hasPaging) 
+        if (hasPaging)
         {
-            // 外层：过滤 ROW_NUMBER() 范围 
-            result.Append("SELECT * FROM (\n"); 
+            // 外层：过滤 ROW_NUMBER() 范围
+            result.Append("SELECT * FROM (\n");
         }
 
-        // 内层：实际数据查询 
-        result.Append("SELECT "); 
-        result.Append(subSelect.Select.AsSpan()); 
+        // 内层：实际数据查询
+        result.Append("SELECT ");
+        result.Append(subSelect.Select.AsSpan());
 
-        if (hasPaging) 
+        if (hasPaging)
         {
-            // 内层：计算 ROW_NUMBER()，ORDER BY 移至 OVER 子句 
-            result.Append(",ROW_NUMBER() OVER (ORDER BY "); 
-            if (subSelect.OrderBy.Length > 0) 
-                result.Append(subSelect.OrderBy.AsSpan()); 
-            else 
-                result.Append('1'); 
-            result.Append(") AS \"RN__\""); 
+            // 内层：计算 ROW_NUMBER()，ORDER BY 移至 OVER 子句
+            result.Append(",ROW_NUMBER() OVER (ORDER BY ");
+            if (subSelect.OrderBy.Length > 0)
+                result.Append(subSelect.OrderBy.AsSpan());
+            else
+                result.Append('1');
+            result.Append(") AS \"RN__\"");
         }
 
-        if (subSelect.From.Length > 0) 
+        if (subSelect.From.Length > 0)
         {
-            result.Append(" \nFROM "); 
-            result.Append(subSelect.From.AsSpan()); 
+            result.Append(" \nFROM ");
+            result.Append(subSelect.From.AsSpan());
         }
 
-        if (subSelect.Where.Length > 0) 
+        if (subSelect.Where.Length > 0)
         {
-            result.Append(" \nWHERE "); 
-            result.Append(subSelect.Where.AsSpan()); 
+            result.Append(" \nWHERE ");
+            result.Append(subSelect.Where.AsSpan());
         }
 
-        if (subSelect.GroupBy.Length > 0) 
+        if (subSelect.GroupBy.Length > 0)
         {
-            result.Append(" \nGROUP BY "); 
-            result.Append(subSelect.GroupBy.AsSpan()); 
+            result.Append(" \nGROUP BY ");
+            result.Append(subSelect.GroupBy.AsSpan());
         }
 
-        if (subSelect.Having.Length > 0) 
+        if (subSelect.Having.Length > 0)
         {
-            result.Append(" \nHAVING "); 
-            result.Append(subSelect.Having.AsSpan()); 
+            result.Append(" \nHAVING ");
+            result.Append(subSelect.Having.AsSpan());
         }
 
-        if (hasPaging) 
+        if (hasPaging)
         {
-            // 关闭内层子查询，提供别名供外层层引用 
-            result.Append("\n) \"__T\"\n"); 
-            // 按 ROW_NUMBER() 范围过滤（1-based，skip 条之后，共取 take 条） 
-            result.Append("WHERE \"RN__\" > "); 
-            result.Append(subSelect.Skip.ToString()); 
-            result.Append(" AND \"RN__\" <= "); 
-            result.Append((subSelect.Skip + subSelect.Take).ToString()); 
+            // 关闭内层子查询，提供别名供外层层引用
+            result.Append("\n) \"__T\"\n");
+            // 按 ROW_NUMBER() 范围过滤（1-based，skip 条之后，共取 take 条）
+            result.Append("WHERE \"RN__\" > ");
+            result.Append(subSelect.Skip.ToString());
+            result.Append(" AND \"RN__\" <= ");
+            result.Append((subSelect.Skip + subSelect.Take).ToString());
         }
-        else 
+        else
         {
-            if (subSelect.OrderBy.Length > 0) 
+            if (subSelect.OrderBy.Length > 0)
             {
-                result.Append(" \nORDER BY "); 
-                result.Append(subSelect.OrderBy.AsSpan()); 
+                result.Append(" \nORDER BY ");
+                result.Append(subSelect.OrderBy.AsSpan());
             }
         }
-    } 
+    }
 }
 ```
 
@@ -145,7 +145,7 @@ var host = Host.CreateDefaultBuilder(args)
     {
         // 按数据源名称注册
         options.RegisterSqlBuilder("OracleDataSource", Oracle11gBuilder.Instance);
-        
+
         // 或者按连接类型注册（全局替换）
         options.RegisterSqlBuilder(typeof(OracleConnection), Oracle11gBuilder.Instance);
     })
@@ -236,9 +236,9 @@ builder.Host.RegisterLiteOrm(options =>
 ### 4.1 无分页查询
 
 ```sql
-SELECT "T0"."ID", "T0"."USERNAME", "T0"."AGE", "T0"."CREATETIME" 
-FROM "USERS" "T0" 
-WHERE "T0"."AGE" >= :0 
+SELECT "T0"."ID", "T0"."USERNAME", "T0"."AGE", "T0"."CREATETIME"
+FROM "USERS" "T0"
+WHERE "T0"."AGE" >= :0
 ORDER BY "T0"."ID"
 ```
 
@@ -247,8 +247,8 @@ ORDER BY "T0"."ID"
 ```sql
 SELECT * FROM (
 SELECT "T0"."ID", "T0"."USERNAME", "T0"."AGE", "T0"."CREATETIME",ROW_NUMBER() OVER (ORDER BY "T0"."ID") AS "RN__"
-FROM "USERS" "T0" 
-WHERE "T0"."AGE" >= :0 
+FROM "USERS" "T0"
+WHERE "T0"."AGE" >= :0
 ) "__T"
 WHERE "__T"."RN__" > 10 AND "__T"."RN__" <= 30
 ```
@@ -266,7 +266,7 @@ WHERE "__T"."RN__" > 10 AND "__T"."RN__" <= 30
 ## 5. 性能优化建议
 
 1. **索引优化**：确保 ORDER BY 字段上有适当的索引
-2. **减少数据传输**：只选择必要的列，避免 SELECT *
+2. **减少数据传输**：只选择必要的列，避免 `SELECT *`
 3. **合理设置分页大小**：根据实际需求调整 Take 值
 4. **使用绑定参数**：避免 SQL 注入并提高性能
 
@@ -286,7 +286,7 @@ WHERE "__T"."RN__" > 10 AND "__T"."RN__" <= 30
 public class SqlServer2008Builder : SqlServerBuilder
 {
     public readonly static new SqlServer2008Builder Instance = new SqlServer2008Builder();
-    
+
     public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // 实现 TOP + ROW_NUMBER() 分页
@@ -301,7 +301,7 @@ public class SqlServer2008Builder : SqlServerBuilder
 public class CustomPostgreSqlBuilder : PostgreSqlBuilder
 {
     public readonly static new CustomPostgreSqlBuilder Instance = new CustomPostgreSqlBuilder();
-    
+
     public override void BuildSelectSql(ref SqlValueStringBuilder subSelect, ref ValueStringBuilder result, int indent)
     {
         // 实现自定义分页逻辑

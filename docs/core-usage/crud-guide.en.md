@@ -392,4 +392,3 @@ Suitable for "insert new batch of data while deleting old data" sync migration s
 - [Transactions](../di/transactions.en.md)
 - [Performance Optimization](../advanced-topics/performance.en.md)
 
-

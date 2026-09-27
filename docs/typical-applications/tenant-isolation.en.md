@@ -237,7 +237,7 @@ The value is resolved at SQL-generation time, so every query re-reads `TenantCon
 
 **Cost and limits**:
 
-- A table with a fixed filter does not reuse the prepared-command cache: it rebuilds its SQL and command on every operation, at the cost of one extra SQL composition per call. Tables without a fixed filter keep using the cache.
+- Statements that carry the fixed filter do not reuse the prepared-command cache: `GetObject` / `ExistsKey` / `Update` / `Delete` / `DeleteByKeys`, plus bulk update, bulk delete and bulk ID existence, rebuild their SQL and command every time, at the cost of one extra SQL composition per call. The `Insert` / `BatchInsert` statements have no such condition and keep using the cache.
 - The fragment can only write bare column names. `sqlBuilder.ToSqlName` produces an unqualified `"TenantId"`, whereas framework-generated conditions are qualified (`"T0"."TenantId"`). That is fine for single-table statements, but as soon as the statement joins another table with a `TenantId` column the name can be rejected as ambiguous, so pair it with example 1 and write association conditions with `Prop(...)`.
 - The fragment must be registered before SQL generation happens. Registering the same key twice does not overwrite, so a test that needs a different implementation must use a different key.
 - The delegate is referenced from the metadata setup code, and once `TableInfoProvider` has cached a `TableDefinition` every later lookup returns the same object; an already-cached `TableView` is not rebuilt when the definition changes, so the assignment must precede the first query.

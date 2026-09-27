@@ -119,7 +119,7 @@ namespace LiteOrm
         public virtual EnumerableResult<T> GetObject(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            var getObjectCommand = GetPreparedCommand("GetObject", MakeGetObjectSql);
+            var getObjectCommand = GetPreparedCommand("GetObject", MakeGetObjectSql, useCache: !HasConstFilter && !HasColumnExpressionExpr);
             for (int i = 0; i < TableDefinition.Keys.Count; i++)
             {
                 var key = TableDefinition.Keys[i];
@@ -171,7 +171,8 @@ namespace LiteOrm
         public virtual ValueResult<bool> ExistsKey(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            var objectExistsCommand = GetPreparedCommand("ExistsKey", MakeObjectExistsSql);
+            // 只取常量 1，不含计算列；仅固定筛选影响缓存
+            var objectExistsCommand = GetPreparedCommand("ExistsKey", MakeObjectExistsSql, useCache: !HasConstFilter);
             for (int i = 0; i < TableDefinition.Keys.Count; i++)
             {
                 var key = TableDefinition.Keys[i];

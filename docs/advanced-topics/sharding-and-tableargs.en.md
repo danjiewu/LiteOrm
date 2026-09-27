@@ -146,7 +146,7 @@ This is still **TableArgs routing**. The only difference is that the placeholder
 2. All shards share the same table structure.
 3. You want to keep using the same dynamic routing APIs: `IArged`, `tableArgs`, `WithArgs(...)`, and `Expr.From<T>(...)`.
 
-> **Important**: `{0}.Orders` depends on provider support for cross-database or cross-schema access on the current connection.  
+> **Important**: `{0}.Orders` depends on provider support for cross-database or cross-schema access on the current connection.<br/>
 > If each shard requires a completely different connection string, prefer the `DataSource` approach below instead of pushing the database name into `TableArgs`.
 
 ## 4. Multi-Dimensional Sharding
@@ -214,7 +214,7 @@ var results = await salesViewDAO
 
 So when the same sharding dimensions apply across the whole query chain, you usually only need to specify the arguments once on the main table.
 
-> **Security note**: explicit `TableArgs` on a `TableExpr` override the inherited shard arguments currently stored in `SqlBuildContext`.  
+> **Security note**: explicit `TableArgs` on a `TableExpr` override the inherited shard arguments currently stored in `SqlBuildContext`.<br/>
 > If your upper scope relies on those arguments to enforce tenant, shard, or data-range boundaries, a lower-level `TableExpr` override can bypass that boundary. Use this carefully to avoid out-of-scope data access.
 
 ### 5.4 Batch Query Multiple Shards
@@ -447,7 +447,7 @@ This pattern is especially useful when:
 - the routing rule depends on the current user, tenant, request header, or business context;
 - the table shape stays the same, but the connection must switch dynamically inside the DAO layer.
 
-> **Boundary**: this is a **DAO-layer** dynamic database-routing pattern.  
+> **Boundary**: this is a **DAO-layer** dynamic database-routing pattern.<br/>
 > If you are using the generic `EntityService<T>` / `IEntityService<T>` flow, you will usually wrap it with a custom service or factory that chooses the appropriate DAO first.
 
 ### 8.3 Combine `DataSource` with `TableArgs`

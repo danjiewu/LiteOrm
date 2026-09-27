@@ -41,6 +41,7 @@
 > 以下是最精简的配置示例，只包含必填字段。你可以直接复制使用，替换其中的连接字符串即可。
 
 **SQL Server：**
+
 ```json
 {
   "LiteOrm": {
@@ -57,6 +58,7 @@
 ```
 
 **MySQL：**
+
 ```json
 {
   "LiteOrm": {
@@ -73,6 +75,7 @@
 ```
 
 **PostgreSQL：**
+
 ```json
 {
   "LiteOrm": {
@@ -89,6 +92,7 @@
 ```
 
 **SQLite（推荐新手）：**
+
 ```json
 {
   "LiteOrm": {

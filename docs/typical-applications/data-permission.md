@@ -236,7 +236,7 @@ WHERE ([T0].[Id] = @0) AND ([T0].[OwnerId] = @1)
 -- @0 = 12345, @1 = 1001
 ```
 
-管理员不产生片段，SQL 与不带权限规则的语句完全一致；但只要表定义声明了 `ConstFilter`，该表就不复用预定义命令缓存，这一点与当前用户是谁无关。
+管理员不产生片段，SQL 与不带权限规则的语句完全一致；但只要表定义声明了 `ConstFilter`，含该条件的语句就不复用预定义命令缓存，这一点与当前用户是谁无关。
 
 要点：
 
@@ -244,7 +244,7 @@ WHERE ([T0].[Id] = @0) AND ([T0].[OwnerId] = @1)
 - 列引用用 `Prop(...)` 构造 `PropertyExpr`，交给 `ExprSqlConverter.ToSql` 渲染，列名自动带上当前表别名（如 `[T0].[OwnerId]`）。与具体类型（如 `user.Id`）比较走已实现的运算符重载，等价参数化，无需手写 `Value(...)`，也无需维护 `context.OutputParams` 下标。
 - 构件返回的 SQL 走参数化，值不拼进文本；管理员返回 `null`，片段被忽略。
 - `ConstFilter` 不只约束主表：本表作为 `JOIN` 的右表或 `EXISTS` 子查询的目标表时，其 `ConstFilter` 仍会叠加生效，范围条件随关联路径一起带上。
-- 声明了 `ConstFilter` 的表不复用预定义命令缓存，每次操作重新拼接 SQL；两种方式的性能与 NativeAOT 差异详见[多租户隔离](./tenant-isolation.md)示例三。
+- 含 `ConstFilter` 的语句（`GetObject` / `ExistsKey` / `Update` / `Delete` 与批量读写、批量 ID 存在性）不复用预定义命令缓存，每次重新拼接 SQL；`Insert` / `BatchInsert` 的语句里没有这个条件，照旧走缓存。两种方式的性能与 NativeAOT 差异详见[多租户隔离](./tenant-isolation.md)示例三。
 
 ## 两种方式怎么选
 

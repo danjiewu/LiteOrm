@@ -543,7 +543,7 @@ services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
 | 运算符  | 说明                           | 返回类型      |
 | ---- | ---------------------------- | --------- |
 | `&`  | AND（左或右为 null 时返回另一侧，适合动态累加） | `AndExpr` |
-| `|`  | OR （左或右为 null 时返回另一侧，适合动态累加） | `OrExpr`  |
+| `\|`  | OR （左或右为 null 时返回另一侧，适合动态累加） | `OrExpr`  |
 | `!`  | NOT                          | `NotExpr` |
 
 补充说明：

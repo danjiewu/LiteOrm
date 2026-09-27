@@ -285,17 +285,18 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 表是否声明了运行时可变、因而不宜缓存命令的元素：固定筛选条件（<see cref="TableDefinition.ConstFilter"/>）
-        /// 或计算列表达式（<see cref="ColumnDefinition.ExpressionExpr"/>）。
+        /// 表是否声明了固定筛选条件（<see cref="TableDefinition.ConstFilter"/>）：含该条件的语句，其 SQL 随元数据变化，命令不宜缓存。
         /// </summary>
         /// <remarks>
-        /// 两者都来自元数据、运行时可被替换，声明了任一者的表既不复用上下文缓存的命令，也不把新建的命令写入缓存：
-        /// 缓存会把首次生成的 SQL 固化下来；而若把这类命令占用缓存槽位，运行时切换元数据（例如先无筛选、后设置筛选）
-        /// 时同一槽位会同时承载两种内容，反过来污染常规命令的缓存。此时每次调用都新建命令，用完即释放，
-        /// 缓存里始终只有常规命令。
+        /// 只看本表定义；关联表（<see cref="JoinedTable"/>）的条件由目标表定义在视图构造时派生，不计入。
         /// </remarks>
-        private bool HasRuntimeVaryingSql => TableDefinition.ConstFilter is not null
-            || TableDefinition.Columns.Any(column => column.ExpressionExpr is not null);
+        protected bool HasConstFilter => TableDefinition.ConstFilter is not null;
+
+        /// <summary>
+        /// 表是否声明了表达式形式的计算列（<see cref="ColumnDefinition.ExpressionExpr"/>）：SELECT 字段列表的 SQL 随之变化，命令不宜缓存。
+        /// </summary>
+        /// <remarks>字符串形式的 <see cref="ColumnDefinition.Expression"/> 来自特性、取值随类型固定，不计入。</remarks>
+        protected bool HasColumnExpressionExpr => TableDefinition.Columns.Any(column => column.ExpressionExpr is not null);
 
         /// <summary>
         /// 获取缓存复用的命令代理：未命中时按当前元数据装配一次底层命令，之后每次调用都新建代理包装同一条命令。
@@ -342,15 +343,16 @@ namespace LiteOrm
         /// <param name="methodName">方法名称</param>
         /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
         /// <param name="configureCommand">用于配置 DbCommandProxy 的操作</param>
-        /// <returns>
-        /// 与方法名称关联的数据库命令代理实例。包装上下文缓存命令时为可复用代理，释放它不影响缓存；
-        /// 表声明了固定筛选条件或计算列表达式时每次调用都新建命令，此时代理拥有底层命令，调用方使用完毕后须释放。
-        /// </returns>
-        protected DbCommandProxy GetPreparedCommand(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand = null)
+        /// <param name="useCache">
+        /// 是否取用上下文缓存的命令。SQL 会随元数据变化的语句（见 <see cref="HasConstFilter"/>、<see cref="HasColumnExpressionExpr"/>）
+        /// 传 false：每次都新建命令，既不读缓存也不写缓存。
+        /// </param>
+        /// <returns>与方法名称关联的命令代理。<paramref name="useCache"/> 为 false 时代理拥有底层命令，调用方用完须释放。</returns>
+        protected DbCommandProxy GetPreparedCommand(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand = null, bool useCache = true)
         {
             if (TableArgs != null && Table.Columns.Count > 0) methodName += String.Join("_", TableArgs);
             var daoContext = GetDaoContext();
-            if (HasRuntimeVaryingSql)
+            if (!useCache)
             {
                 var command = MakeNamedParamCommand(sqlFunc());
                 configureCommand?.Invoke(command);
@@ -361,21 +363,35 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 获取预定义的 DbCommand。保留 <c>useCache</c> 之前的签名：等价于
+        /// <see cref="GetPreparedCommand(string, Func{PreparedSql}, Action{DbCommandProxy}?, bool)"/> 取用缓存中的命令。
+        /// </summary>
+        /// <remarks>
+        /// <paramref name="configureCommand"/> 不设默认值，否则两参调用会与带 <c>useCache</c> 的重载二义。
+        /// </remarks>
+        /// <param name="methodName">方法名称</param>
+        /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
+        /// <param name="configureCommand">用于配置 DbCommandProxy 的操作</param>
+        /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
+        protected DbCommandProxy GetPreparedCommand(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand)
+        {
+            return GetPreparedCommand(methodName, sqlFunc, configureCommand, true);
+        }
+
+        /// <summary>
         /// 异步获取预定义的 DbCommand。
         /// </summary>
         /// <param name="methodName">方法名称</param>
         /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
         /// <param name="configureCommand">用于配置 DbCommandProxy 的操作</param>
+        /// <param name="useCache">是否取用上下文缓存的命令，语义同 <see cref="GetPreparedCommand(string, Func{PreparedSql}, Action{DbCommandProxy}?, bool)"/>。</param>
         /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>
-        /// 与方法名称关联的数据库命令代理实例。包装上下文缓存命令时为可复用代理，释放它不影响缓存；
-        /// 表声明了固定筛选条件或计算列表达式时每次调用都新建命令，此时代理拥有底层命令，调用方使用完毕后须释放。
-        /// </returns>
-        protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand = null, CancellationToken cancellationToken = default)
+        /// <returns>与方法名称关联的命令代理。<paramref name="useCache"/> 为 false 时代理拥有底层命令，调用方用完须释放。</returns>
+        protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand = null, bool useCache = true, CancellationToken cancellationToken = default)
         {
             if (TableArgs != null && Table.Columns.Count > 0) methodName += String.Join("_", TableArgs);
             var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
-            if (HasRuntimeVaryingSql)
+            if (!useCache)
             {
                 var command = await MakeNamedParamCommandAsync(sqlFunc(), cancellationToken).ConfigureAwait(false);
                 configureCommand?.Invoke(command);
@@ -385,7 +401,24 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 异步获取预定义的 DbCommand。
+        /// 异步获取预定义的 DbCommand。保留 <c>useCache</c> 之前的签名：等价于
+        /// <see cref="GetPreparedCommandAsync(string, Func{PreparedSql}, Action{DbCommandProxy}?, bool, CancellationToken)"/> 取用缓存中的命令。
+        /// </summary>
+        /// <remarks>
+        /// 两个可选参数都不设默认值，否则三参调用会与带 <c>useCache</c> 的重载二义。
+        /// </remarks>
+        /// <param name="methodName">方法名称</param>
+        /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
+        /// <param name="configureCommand">用于配置 DbCommandProxy 的操作</param>
+        /// <param name="cancellationToken">取消令牌</param>
+        /// <returns>与方法名称关联的已缓存或新建的数据库命令代理实例。</returns>
+        protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand, CancellationToken cancellationToken)
+        {
+            return await GetPreparedCommandAsync(methodName, sqlFunc, configureCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// 异步获取预定义的 DbCommand，等价于带 <c>useCache</c> 的重载取用缓存中的命令。
         /// </summary>
         /// <param name="methodName">方法名称</param>
         /// <param name="sqlFunc">生成 PreparedSql 的方法</param>
@@ -394,7 +427,7 @@ namespace LiteOrm
 
         protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, CancellationToken cancellationToken = default)
         {
-            return await GetPreparedCommandAsync(methodName, sqlFunc, null, cancellationToken).ConfigureAwait(false);
+            return await GetPreparedCommandAsync(methodName, sqlFunc, null, true, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>

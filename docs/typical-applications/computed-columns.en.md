@@ -91,7 +91,7 @@ only fixed SQL expressions (property references, constants, functions, arithmeti
 
 The reason is that a computed column can appear in `SELECT`, `WHERE`, `ORDER BY` or `JOIN ON`, while the parameter list is managed by the caller outside the expression; appending a parameter from inside would scramble placeholder numbering.
 
-So the rate can only go into the SQL as an inline literal. That means a level change changes the SQL text, which also invalidates the command cache — precisely the boundary of this approach.
+So the rate can only go into the SQL as an inline literal. A level change changes the SQL text, and statements that reference this computed column do not use the command cache: they recompose the statement on every call. That is the boundary of this approach.
 
 It brings two things you have to handle yourself:
 
@@ -100,7 +100,7 @@ It brings two things you have to handle yourself:
 
 ### Level changes and the command cache
 
-`DiscountAmount`'s SQL varies by level, and LiteOrm caches commands by SQL text, so different levels naturally land in different cache entries and never cross-use. What to note is that **a level stays fixed for a long time**: one cache entry per level is an acceptable cost. If the rule became "one rate per order", that low-cardinality benefit disappears, and the rate should instead be persisted as a physical column with the computed column reduced to `{Amount} * {DiscountRate}`.
+`DiscountAmount`'s SQL varies by level, and statements whose `SELECT` field list references a computed column (`GetObject`) do not use the command cache: they recompose for the current level on every call, so a level change takes effect immediately and SQL from a previous level is never cross-used. The cost is one extra SQL composition per query for such statements, which is acceptable while a level is a low-cardinality dimension; if the rule became "one rate per order", the rate should instead be persisted as a physical column with the computed column reduced to `{Amount} * {DiscountRate}`.
 
 ### Where it is used
 

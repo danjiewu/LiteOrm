@@ -174,7 +174,7 @@ ExprValidator (抽象基类)
 
 ```csharp
 // Minimum：允许基本查询条件（12 种类型）
-// Value, Property, Unary, ValueSet, LogicBinary, And, Or, Not, 
+// Value, Property, Unary, ValueSet, LogicBinary, And, Or, Not,
 // Where, OrderBy, OrderByItem, Section 等
 // 禁止：SelectItem, From, Table, Function, Update, Delete
 
@@ -282,7 +282,7 @@ GenericSqlExpr.Register("CustomCheck", (context, arg) =>
 });
 
 // 在查询中使用
-var expr = Prop("IsActive") == true 
+var expr = Prop("IsActive") == true
     & new GenericSqlExpr("CustomCheck") { Arg = "someValue" };
 var users = await userService.SearchAsync(expr);
 ```

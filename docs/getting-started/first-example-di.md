@@ -200,7 +200,7 @@ var page = await userService.SearchAsync(
 
 ### 8.1 在 Program.cs 中手动验证
 
-下面的示例展示了一个更接近日常项目接入方式的完整流程。  
+下面的示例展示了一个更接近日常项目接入方式的完整流程。<br/>
 日常项目里，你既可以注入自定义的 `IUserService`，也可以直接注入泛型接口 `IEntityServiceAsync<User>` 与 `IEntityViewServiceAsync<User>`。
 
 > **建议**：将以下代码放在 `Program.cs` 中 `app.Run()` 之前，用于快速验证 LiteOrm 是否正常工作。
@@ -312,7 +312,7 @@ public class UsersController : ControllerBase
 }
 ```
 
-如果你能顺利跑通这段代码，说明 LiteOrm 的基础接入已经完成。  
+如果你能顺利跑通这段代码，说明 LiteOrm 的基础接入已经完成。<br/>
 推荐做法是：业务层稳定后再逐步把泛型服务收敛到自定义 `IUserService` 中，方便承载事务、审计和组合业务逻辑。
 
 当实体较多时，还可以使用[泛型 Controller 或动态 Controller 生成](../extensibility/generic-controller.md)来减少重复代码。

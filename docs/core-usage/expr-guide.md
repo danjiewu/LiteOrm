@@ -125,7 +125,7 @@ var expr = ExistsRelated<DepartmentView>(
 );
 ```
 
-`ExistsRelated` 会根据 `ForeignType` / `TableJoin` 等元数据自动补关联条件。  
+`ExistsRelated` 会根据 `ForeignType` / `TableJoin` 等元数据自动补关联条件。<br/>
 详细匹配逻辑请看[关联查询](./associations.md)。
 
 ## 3. 动态拼装 Expr

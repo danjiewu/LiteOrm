@@ -356,7 +356,7 @@ Console.WriteLine(server.IpAddress); // 192.168.1.100
 
 ### 6.3 某数据库需要覆盖
 
-若某个数据库改用 `VARBINARY` 存 IP，需要同时做两件事：**注册 `byte[] ↔ IPAddress` 转换器**，并**让该数据库把 `IPAddress` 列解析为 `Binary` 的 DbValueType**（见 [2.2 读取原理](#22-读取方向数据库值--net-值)：否则框架读取时仍按 `String` 调用 `GetString`，与二进制数据不符）。
+若某个数据库改用 `VARBINARY` 存 IP，需要同时做两件事：**注册 `byte[] ↔ IPAddress` 转换器**，并**让该数据库把 `IPAddress` 列解析为 `Binary` 的 DbValueType**（见 [2.2 读取方向](#22-读取方向数据库值-net-值)：否则框架读取时仍按 `String` 调用 `GetString`，与二进制数据不符）。
 
 ```csharp
 // 1) 注册 byte[] ↔ IPAddress 转换器到该方言（覆盖基类）

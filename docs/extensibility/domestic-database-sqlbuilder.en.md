@@ -8,7 +8,7 @@ LiteOrm already provides out-of-the-box SqlBuilder implementations for these dat
 
 ## 1. Out-of-the-Box Domestic / Compatible Database Support
 
-LiteOrm ships with SqlBuilders for six domestic / compatible databases (Dameng, KingbaseES, GaussDB / openGauss, OceanBase, TiDB, GreatDB), which can be registered directly by data source name or connection type. For the list of each builder, its compatible base class, typical driver, and auto-matched keywords, see [Database Differences and Compatibility](../reference/database-compatibility.en.md#domestic--compatible-databases).
+LiteOrm ships with SqlBuilders for six domestic / compatible databases (Dameng, KingbaseES, GaussDB / openGauss, OceanBase, TiDB, GreatDB), which can be registered directly by data source name or connection type. For the list of each builder, its compatible base class, typical driver, and auto-matched keywords, see [Database Differences and Compatibility](../reference/database-compatibility.en.md#domestic-compatible-databases).
 
 These builders follow the design principle of "inherit from the closest base dialect + override only the differences": in most scenarios the SQL behavior of a domestic database already matches its base dialect (Oracle / PostgreSQL / MySQL), so a builder may override only a few methods or none at all.
 
@@ -59,7 +59,6 @@ using LiteOrm.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
-
 
 namespace YourProject.SqlBuilder
 {

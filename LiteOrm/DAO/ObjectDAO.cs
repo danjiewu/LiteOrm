@@ -459,7 +459,7 @@ namespace LiteOrm
         public virtual bool Insert(T t)
         {
             if (t is null) throw new ArgumentNullException("t");
-            using var insertCommand = GetPreparedCommand("Insert", MakeInsertSql, ConfigureInsertCommand);
+            using var insertCommand = GetPreparedCommand("Insert", MakeInsertSql, ConfigureInsertCommand, useCache: true);
             var columns = InsertableColumns;
             int count = columns.Length;
             var parameters = insertCommand.Parameters;
@@ -535,7 +535,7 @@ namespace LiteOrm
                         batch.Add(item);
                         if (batch.Count == batchSize)
                         {
-                            batchCommand ??= GetPreparedCommand("BatchInsert" + batchSize, () => MakeBatchInsertSql(batchSize));
+                            batchCommand ??= GetPreparedCommand("BatchInsert" + batchSize, () => MakeBatchInsertSql(batchSize), useCache: true);
                             SetBatchInsertParameterValues(insertableColumns, batch, batchCommand);
 
                             if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
@@ -598,7 +598,7 @@ namespace LiteOrm
         /// <exception cref="ArgumentNullException">当 <paramref name="t"/> 为 null 时抛出。</exception>
         public virtual bool Update(T t, object? timestamp = null)
         {
-            using var updateCommand = GetPreparedCommand(timestamp == null ? "Update" : "UpdateWithTimestamp", () => MakeUpdateSql(timestamp != null));
+            using var updateCommand = GetPreparedCommand(timestamp == null ? "Update" : "UpdateWithTimestamp", () => MakeUpdateSql(timestamp != null), useCache: !HasConstFilter);
             var updatableColumns = UpdatableColumns;
             var keys = TableDefinition.Keys;
             int updatableCount = updatableColumns.Length;
@@ -652,7 +652,7 @@ namespace LiteOrm
                     batch.Add(item);
                     if (batch.Count == batchSize)
                     {
-                        batchCommand ??= GetPreparedCommand("BatchUpdate" + batchSize, () => MakeBatchUpdateSql(batchSize));
+                        batchCommand ??= GetPreparedCommand("BatchUpdate" + batchSize, () => MakeBatchUpdateSql(batchSize), useCache: !HasConstFilter);
                         SetBatchUpdateParameterValues(updatableColumns, keyColumns, batch, batchCommand);
                         batchCommand.ExecuteNonQuery();
                         batch.Clear();
@@ -699,7 +699,7 @@ namespace LiteOrm
             if (batchSize == 0) batchSize = 1;
 
             var batch = new List<T>(batchSize);
-            using var command = GetPreparedCommand("BatchIDExists" + batchSize, () => MakeBatchIDExistsSql(batchSize));
+            using var command = GetPreparedCommand("BatchIDExists" + batchSize, () => MakeBatchIDExistsSql(batchSize), useCache: !HasConstFilter);
 
             foreach (var item in list)
             {
@@ -845,7 +845,7 @@ namespace LiteOrm
         public virtual bool DeleteByKeys(params object[] keys)
         {
             ThrowExceptionIfWrongKeys(keys);
-            using var deleteCommand = GetPreparedCommand("Delete", MakeDeleteSql);
+            using var deleteCommand = GetPreparedCommand("Delete", MakeDeleteSql, useCache: !HasConstFilter);
             var parameters = deleteCommand.Parameters;
             var keyColumns = Table.Keys;
 
@@ -894,7 +894,7 @@ namespace LiteOrm
                     batch.Add(keyValues);
                     if (batch.Count == batchSize)
                     {
-                        batchCommand ??= GetPreparedCommand("BatchDelete" + batchSize, () => MakeBatchDeleteSql(batchSize));
+                        batchCommand ??= GetPreparedCommand("BatchDelete" + batchSize, () => MakeBatchDeleteSql(batchSize), useCache: !HasConstFilter);
                         SetBatchDeleteByKeysParameterValues(keyColumns, batch, batchCommand);
                         batchCommand.ExecuteNonQuery();
                         batch.Clear();
@@ -926,7 +926,7 @@ namespace LiteOrm
         public async virtual Task<bool> InsertAsync(T t, CancellationToken cancellationToken = default)
         {
             if (t is null) throw new ArgumentNullException("t");
-            using var insertCommand = await GetPreparedCommandAsync("Insert", MakeInsertSql, ConfigureInsertCommand, cancellationToken).ConfigureAwait(false);
+            using var insertCommand = await GetPreparedCommandAsync("Insert", MakeInsertSql, ConfigureInsertCommand, useCache: true, cancellationToken: cancellationToken).ConfigureAwait(false);
             var columns = InsertableColumns;
             int count = columns.Length;
             var parameters = insertCommand.Parameters;
@@ -1022,7 +1022,7 @@ namespace LiteOrm
                         batch.Add(item);
                         if (batch.Count == batchSize)
                         {
-                            batchCommand ??= await GetPreparedCommandAsync("BatchInsert" + batchSize, () => MakeBatchInsertSql(batchSize), cancellationToken).ConfigureAwait(false);
+                            batchCommand ??= await GetPreparedCommandAsync("BatchInsert" + batchSize, () => MakeBatchInsertSql(batchSize), useCache: true, cancellationToken: cancellationToken).ConfigureAwait(false);
                             SetBatchInsertParameterValues(insertableColumns, batch, batchCommand);
 
                             if (IdentityColumn is not null && SqlBuilder.SupportBatchInsertWithIdentity)
@@ -1081,7 +1081,7 @@ namespace LiteOrm
         /// <returns>表示异步操作的任务，如果更新成功则返回 true。</returns>
         public async virtual Task<bool> UpdateAsync(T t, object? timestamp = null, CancellationToken cancellationToken = default)
         {
-            using var updateCommand = await GetPreparedCommandAsync(timestamp == null ? "Update" : "UpdateWithTimestamp", () => MakeUpdateSql(timestamp != null), cancellationToken).ConfigureAwait(false);
+            using var updateCommand = await GetPreparedCommandAsync(timestamp == null ? "Update" : "UpdateWithTimestamp", () => MakeUpdateSql(timestamp != null), useCache: !HasConstFilter, cancellationToken: cancellationToken).ConfigureAwait(false);
             var updatableColumns = UpdatableColumns;
             var keys = TableDefinition.Keys;
             int updatableCount = updatableColumns.Length;
@@ -1137,7 +1137,7 @@ namespace LiteOrm
                     batch.Add(t);
                     if (batch.Count == batchSize)
                     {
-                        batchCommand ??= await GetPreparedCommandAsync("BatchUpdate" + batchSize, () => MakeBatchUpdateSql(batchSize), cancellationToken).ConfigureAwait(false);
+                        batchCommand ??= await GetPreparedCommandAsync("BatchUpdate" + batchSize, () => MakeBatchUpdateSql(batchSize), useCache: !HasConstFilter, cancellationToken: cancellationToken).ConfigureAwait(false);
                         SetBatchUpdateParameterValues(updatableColumns, keyColumns, batch, batchCommand);
                         await batchCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                         batch.Clear();
@@ -1183,7 +1183,7 @@ namespace LiteOrm
             if (batchSize == 0) batchSize = 1;
 
             var batch = new List<T>(batchSize);
-            using var command = await GetPreparedCommandAsync("BatchIDExists" + batchSize, () => MakeBatchIDExistsSql(batchSize), cancellationToken).ConfigureAwait(false);
+            using var command = await GetPreparedCommandAsync("BatchIDExists" + batchSize, () => MakeBatchIDExistsSql(batchSize), useCache: !HasConstFilter, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             foreach (var item in list)
             {
@@ -1310,7 +1310,7 @@ namespace LiteOrm
         public async virtual Task<bool> DeleteByKeysAsync(object[] keys, CancellationToken cancellationToken = default)
         {
             ThrowExceptionIfWrongKeys(keys);
-            using var deleteCommand = await GetPreparedCommandAsync("Delete", MakeDeleteSql, cancellationToken).ConfigureAwait(false);
+            using var deleteCommand = await GetPreparedCommandAsync("Delete", MakeDeleteSql, useCache: !HasConstFilter, cancellationToken: cancellationToken).ConfigureAwait(false);
             var parameters = deleteCommand.Parameters;
             var keyColumns = Table.Keys;
 
@@ -1388,7 +1388,7 @@ namespace LiteOrm
                     batch.Add(keyValues);
                     if (batch.Count == batchSize)
                     {
-                        batchCommand ??= await GetPreparedCommandAsync("BatchDelete" + batchSize, () => MakeBatchDeleteSql(batchSize), cancellationToken).ConfigureAwait(false);
+                        batchCommand ??= await GetPreparedCommandAsync("BatchDelete" + batchSize, () => MakeBatchDeleteSql(batchSize), useCache: !HasConstFilter, cancellationToken: cancellationToken).ConfigureAwait(false);
                         SetBatchDeleteByKeysParameterValues(keyColumns, batch, batchCommand);
                         await batchCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
                         batch.Clear();

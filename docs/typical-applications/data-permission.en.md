@@ -236,7 +236,7 @@ WHERE ([T0].[Id] = @0) AND ([T0].[OwnerId] = @1)
 -- @0 = 12345, @1 = 1001
 ```
 
-Admins produce no fragment, so the SQL is identical to the no-rule statement; but once a table definition declares `ConstFilter`, that table no longer reuses the predefined-command cache — regardless of who the current user is.
+Admins produce no fragment, so the SQL is identical to the no-rule statement; but once a table definition declares `ConstFilter`, statements that carry that condition no longer reuse the predefined-command cache — regardless of who the current user is.
 
 Notes:
 
@@ -244,7 +244,7 @@ Notes:
 - Column references are built as `PropertyExpr` with `Prop(...)` and rendered by `ExprSqlConverter.ToSql`; columns pick up the current table alias automatically (e.g. `[T0].[OwnerId]`). Comparing against a concrete value (e.g. `user.Id`) uses the built-in operator overload, which parameterizes the value, so no explicit `Value(...)` or `context.OutputParams` index bookkeeping is needed.
 - The generated SQL is parameterized; values never land in the text. An admin returns `null`, so the fragment is ignored.
 - `ConstFilter` does not only constrain the driving table: when this table is the joined (right) table of a `JOIN` or the target table of an `EXISTS` subquery, its `ConstFilter` is still applied, so the scope rides along every association path.
-- A table that declares `ConstFilter` no longer reuses the predefined-command cache; every operation re-assembles its SQL. For the performance cost and the NativeAOT difference between the two ways, see example 3 of [Tenant Isolation](./tenant-isolation.en.md).
+- Statements that carry `ConstFilter` (`GetObject` / `ExistsKey` / `Update` / `Delete`, plus bulk read/write and bulk ID existence) do not reuse the predefined-command cache; each one re-assembles its SQL. The `Insert` / `BatchInsert` statements have no such condition and keep using the cache. For the performance cost and the NativeAOT difference between the two ways, see example 3 of [Tenant Isolation](./tenant-isolation.en.md).
 
 ## Choosing between the two
 
