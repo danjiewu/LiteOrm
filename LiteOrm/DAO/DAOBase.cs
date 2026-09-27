@@ -285,15 +285,17 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 表是否声明了固定筛选条件（<see cref="TableDefinition.ConstFilter"/>）。
+        /// 表是否声明了运行时可变、因而不宜缓存命令的元素：固定筛选条件（<see cref="TableDefinition.ConstFilter"/>）
+        /// 或计算列表达式（<see cref="ColumnDefinition.ExpressionExpr"/>）。
         /// </summary>
         /// <remarks>
-        /// 声明了固定筛选条件的表既不复用上下文缓存的命令，也不把新建的命令写入缓存：
-        /// 固定筛选条件来自元数据、运行时可被替换，缓存会把首次生成的 SQL 固化下来；
-        /// 而若把这类命令占用缓存槽位，运行时切换固定筛选条件（例如先无筛选、后设置筛选）时同一槽位会同时承载两种内容，
-        /// 反过来污染常规（无固定筛选）命令的缓存。此时每次调用都新建命令，用完即释放，缓存里始终只有常规命令。
+        /// 两者都来自元数据、运行时可被替换，声明了任一者的表既不复用上下文缓存的命令，也不把新建的命令写入缓存：
+        /// 缓存会把首次生成的 SQL 固化下来；而若把这类命令占用缓存槽位，运行时切换元数据（例如先无筛选、后设置筛选）
+        /// 时同一槽位会同时承载两种内容，反过来污染常规命令的缓存。此时每次调用都新建命令，用完即释放，
+        /// 缓存里始终只有常规命令。
         /// </remarks>
-        private bool HasConstFilter => TableDefinition.ConstFilter is not null;
+        private bool HasRuntimeVaryingSql => TableDefinition.ConstFilter is not null
+            || TableDefinition.Columns.Any(column => column.ExpressionExpr is not null);
 
         /// <summary>
         /// 获取缓存复用的命令代理：未命中时按当前元数据装配一次底层命令，之后每次调用都新建代理包装同一条命令。
@@ -342,13 +344,13 @@ namespace LiteOrm
         /// <param name="configureCommand">用于配置 DbCommandProxy 的操作</param>
         /// <returns>
         /// 与方法名称关联的数据库命令代理实例。包装上下文缓存命令时为可复用代理，释放它不影响缓存；
-        /// 表声明了固定筛选条件时每次调用都新建命令，此时代理拥有底层命令，调用方使用完毕后须释放。
+        /// 表声明了固定筛选条件或计算列表达式时每次调用都新建命令，此时代理拥有底层命令，调用方使用完毕后须释放。
         /// </returns>
         protected DbCommandProxy GetPreparedCommand(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand = null)
         {
             if (TableArgs != null && Table.Columns.Count > 0) methodName += String.Join("_", TableArgs);
             var daoContext = GetDaoContext();
-            if (HasConstFilter)
+            if (HasRuntimeVaryingSql)
             {
                 var command = MakeNamedParamCommand(sqlFunc());
                 configureCommand?.Invoke(command);
@@ -367,13 +369,13 @@ namespace LiteOrm
         /// <param name="cancellationToken">取消令牌</param>
         /// <returns>
         /// 与方法名称关联的数据库命令代理实例。包装上下文缓存命令时为可复用代理，释放它不影响缓存；
-        /// 表声明了固定筛选条件时每次调用都新建命令，此时代理拥有底层命令，调用方使用完毕后须释放。
+        /// 表声明了固定筛选条件或计算列表达式时每次调用都新建命令，此时代理拥有底层命令，调用方使用完毕后须释放。
         /// </returns>
         protected async Task<DbCommandProxy> GetPreparedCommandAsync(string methodName, Func<PreparedSql> sqlFunc, Action<DbCommandProxy>? configureCommand = null, CancellationToken cancellationToken = default)
         {
             if (TableArgs != null && Table.Columns.Count > 0) methodName += String.Join("_", TableArgs);
             var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
-            if (HasConstFilter)
+            if (HasRuntimeVaryingSql)
             {
                 var command = await MakeNamedParamCommandAsync(sqlFunc(), cancellationToken).ConfigureAwait(false);
                 configureCommand?.Invoke(command);
