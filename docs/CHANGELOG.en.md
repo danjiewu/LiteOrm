@@ -1,5 +1,19 @@
 # Changelog
 
+## v8.1.10 (2026-09-27)
+
+### New Features
+
+- **Computed columns can be referenced in a nested fashion** (`LiteOrm.Common`): a `{Property}` placeholder in a computed column's string expression may now point at another computed column or a foreign column (`[ForeignColumn]`) on the same entity, not just a physical column. It is expanded recursively into a nested expression, each level wrapped in its own parentheses.
+
+- **Added the `SqlTable.View` property** (`LiteOrm.Common`): table and view definitions can now reach each other, with `TableDefinition.View` returning the view that owns it and `TableView.View` returning the view itself.
+
+### Enhancements
+
+- **Entities with `SyncTable = Never` are no longer touched at initialization** (`LiteOrm.DependencyInjection`): they are excluded from the startup sync, so no table is created and no table metadata is preloaded, and their invalid metadata configuration can no longer abort the whole sync pass.
+
+***
+
 ## v8.1.9 (2026-09-22)
 
 ### Breaking changes

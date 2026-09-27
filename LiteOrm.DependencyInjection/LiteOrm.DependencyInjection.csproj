@@ -3,11 +3,11 @@
 	<PropertyGroup>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<RootNamespace>LiteOrm.DependencyInjection</RootNamespace>
-		<AssemblyVersion>8.1.9.0</AssemblyVersion>
-		<FileVersion>8.1.9.0</FileVersion>
+		<AssemblyVersion>8.1.10.0</AssemblyVersion>
+		<FileVersion>8.1.10.0</FileVersion>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-		<VersionPrefix>8.1.9</VersionPrefix>
+		<VersionPrefix>8.1.10</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm.DependencyInjection</Title>
 		<Authors>danjiewu</Authors>
@@ -19,10 +19,9 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
-8.1.9:
-- 新增服务鉴权：[ServicePermission] 的匿名与角色限制在 ServiceInvokeInterceptor 中生效，用户主体取自注入的 IUserContext，LiteOrmOptions.RegisterUserContext 提供泛型 / 实例 / 工厂注册。
-- 破坏性变更：[Intercept] 改用 Autofac 内置 InterceptAttribute，移除 LiteOrm.Common 自带的 InterceptAttribute。
-- 同步 LiteOrm.Common 8.1.9 / LiteOrm 8.1.9。
+8.1.10:
+- SyncTable = Never 的实体在启动同步时不参与建表，也不预加载表信息。
+- 同步 LiteOrm.Common 8.1.10 / LiteOrm 8.1.10。
     </PackageReleaseNotes>
 	</PropertyGroup>
 	<PropertyGroup>
