@@ -62,7 +62,7 @@ The `Constant` property of `ColumnAttribute`, used to declare fixed filter condi
 
 ## `GenericSqlExpr`
 
-A delegate-based dynamic SQL expression (`sealed class GenericSqlExpr : LogicExpr`) that lets you inject custom SQL generation logic without building a full Expr tree. Register a callback delegate via `GenericSqlExpr.Register` and reference it with `Expr.Sql(key, arg)`. Located in the `LiteOrm.Common` namespace.
+A delegate-based dynamic SQL expression (`sealed class GenericSqlExpr : LogicExpr`) that lets you inject custom SQL generation logic without building a full Expr tree. Register a callback delegate via `GenericSqlExpr.Register` and reference it with `Expr.Sql(key, arg)`. It implements an implicit conversion to `ValueTypeExpr`, so once wrapped as a value expression it can be used directly in value positions such as SELECT columns, function arguments, and computed columns; when it takes part in operators or extension method chains, call `AsValue()` explicitly. Located in the `LiteOrm.Common` namespace.
 
 ## `ExprVisitor`
 

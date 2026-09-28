@@ -268,6 +268,8 @@ public sealed class GenericSqlExpr : LogicExpr
 }
 ```
 
+`GenericSqlExpr` 还实现了到 `ValueTypeExpr` 的隐式转换，动态片段可直接用在 SELECT 列、函数参数、计算列等值位置；参与运算符或扩展方法链时仍要显式调用 `AsValue()`。
+
 ### 5.2 注册机制
 
 ```csharp

@@ -268,6 +268,8 @@ public sealed class GenericSqlExpr : LogicExpr
 }
 ```
 
+`GenericSqlExpr` also implements an implicit conversion to `ValueTypeExpr`, so the dynamic fragment can be used directly in value positions such as SELECT columns, function arguments, and computed columns; when it takes part in operators or extension method chains, call `AsValue()` explicitly.
+
 ### 5.2 Registration Mechanism
 
 ```csharp

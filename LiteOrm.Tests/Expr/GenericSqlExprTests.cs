@@ -62,5 +62,58 @@ namespace LiteOrm.Common.UnitTests
 
             Assert.Equal(expr, clone);
         }
+
+        [Fact]
+        public void ImplicitConversion_AssignsToValueTypeExpr_WrapsInValueExpr()
+        {
+            var key = Guid.NewGuid().ToString("N");
+            GenericSqlExpr.Register(key, (_, _) => "sql");
+
+            ValueTypeExpr value = Expr.Sql(key);
+
+            var wrapper = Assert.IsType<ValueExpr>(value);
+            var inner = Assert.IsType<GenericSqlExpr>(wrapper.Value);
+            Assert.Equal(key, inner.Key);
+        }
+
+        [Fact]
+        public void ImplicitConversion_MatchesAsValue()
+        {
+            var key = Guid.NewGuid().ToString("N");
+            GenericSqlExpr.Register(key, (_, arg) => $"X{arg}");
+
+            var expr = Expr.Sql(key, 9);
+
+            ValueTypeExpr converted = expr;
+
+            Assert.Equal(expr.AsValue(), converted);
+        }
+
+        [Fact]
+        public void ImplicitConversion_NullSource_ProducesNullValueExpr()
+        {
+            GenericSqlExpr? expr = null;
+
+            ValueTypeExpr value = expr!;
+
+            var wrapper = Assert.IsType<ValueExpr>(value);
+            Assert.Null(wrapper.Value);
+        }
+
+        [Fact]
+        public void ImplicitConversion_InSelectItem_RendersRegisteredSql()
+        {
+            var key = Guid.NewGuid().ToString("N");
+            GenericSqlExpr.Register(key, (_, _) => "RAW_SQL_FRAGMENT");
+
+            var item = new SelectItemExpr(Expr.Sql(key), "Alias");
+
+            Assert.IsType<ValueExpr>(item.Value);
+
+            var prepared = item.ToPreparedSql(new SqlBuildContext(SqlBuilder.Instance));
+
+            Assert.Contains("RAW_SQL_FRAGMENT", prepared.Sql);
+            Assert.Contains("Alias", prepared.Sql);
+        }
     }
 }

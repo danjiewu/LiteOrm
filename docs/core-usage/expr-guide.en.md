@@ -279,7 +279,7 @@ In day-to-day query code, the most common ones are usually:
 | `Expr.Case(cases, elseExpr)` | CASE expression | `Expr.Case(... )` |
 | `Expr.Now()` | Current timestamp | `Expr.Now()` |
 | `Expr.Today()` | Current date | `Expr.Today()` |
-| `Expr.Sql(key, arg)` | Dynamic SQL fragment | `Expr.Sql("CurrentUserFilter")` |
+| `Expr.Sql(key, arg)` | Dynamic SQL fragment; the result implicitly converts to `ValueTypeExpr` | `Expr.Sql("CurrentUserFilter")` |
 | `Expr.Query<T>(expression)` | Convert IQueryable Lambda to Expr | `Expr.Query<User>(...)` |
 | `Expr.Query<T, TResult>(expression)` | Convert IQueryable Lambda with scalar result to Expr | `Expr.Query<User, int>(...)` |
 
@@ -421,7 +421,11 @@ var query = From<User>()
 
 var update = Update<User>()
     .Set((Prop("Age"), Prop("Age") + 1)); // (PropertyExpr, ValueTypeExpr) -> SetItem
+
+var item = new SelectItemExpr(Sql("UserLevelDiscount"), "DiscountAmount"); // GenericSqlExpr -> ValueTypeExpr
 ```
+
+`GenericSqlExpr` also implements an implicit conversion to `ValueTypeExpr`, so the result of `Expr.Sql(...)` can be used directly in value positions such as SELECT columns, function arguments, `Expr.If(...)`, and a computed column's `ExpressionExpr`. Operators and extension method chains are not covered: `Sql(...) + 1`, `Sql(...).As("x")`, and `Sql(...).Asc()` all need `AsValue()` first.
 
 These are mainly about reducing ceremony so `OrderBy(...)`, `Set(...)`, and similar APIs stay concise.
 

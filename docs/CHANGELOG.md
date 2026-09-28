@@ -14,6 +14,8 @@
 
 - **命令缓存改为逐语句判定**（`LiteOrm`）：此前表上声明固定筛选条件或计算列就整体放弃命令缓存，现由 `GetPreparedCommand(Async)` 新增的 `useCache` 参数按语句决定，`Insert` / `BatchInsert` 恢复复用缓存；原签名的重载一并保留，既有调用无需改动。
 
+- **`GenericSqlExpr` 支持隐式转换为 `ValueTypeExpr`**（`LiteOrm.Common`）：`Expr.Sql(key, arg)` 的结果可直接用于 SELECT 列、函数参数、计算列等值位置，不必再手工调用 `AsValue()`；参与运算符或扩展方法链时仍需显式包装。
+
 ***
 
 ## v8.1.9 (2026-09-22)

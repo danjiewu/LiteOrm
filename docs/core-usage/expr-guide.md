@@ -275,7 +275,7 @@ var query = From<User>()
 | `Expr.Case(cases, elseExpr)` | CASE 表达式 | `Expr.Case(... )` |
 | `Expr.Now()` | 当前时间戳 | `Expr.Now()` |
 | `Expr.Today()` | 当前日期 | `Expr.Today()` |
-| `Expr.Sql(key, arg)` | 动态 SQL 片段 | `Expr.Sql("CurrentUserFilter")` |
+| `Expr.Sql(key, arg)` | 动态 SQL 片段，结果可隐式转换为 `ValueTypeExpr` | `Expr.Sql("CurrentUserFilter")` |
 | `Expr.Query<T>(expression)` | IQueryable Lambda 转 Expr | `Expr.Query<User>(...)` |
 | `Expr.Query<T, TResult>(expression)` | 带返回值的 IQueryable Lambda 转 Expr | `Expr.Query<User, int>(...)` |
 
@@ -417,7 +417,11 @@ var query = From<User>()
 
 var update = Update<User>()
     .Set((Prop("Age"), Prop("Age") + 1)); // (PropertyExpr, ValueTypeExpr) -> SetItem
+
+var item = new SelectItemExpr(Sql("UserLevelDiscount"), "DiscountAmount"); // GenericSqlExpr -> ValueTypeExpr
 ```
+
+`GenericSqlExpr` 同样实现了到 `ValueTypeExpr` 的隐式转换，`Expr.Sql(...)` 的结果可以直接用在 SELECT 列、函数参数、`Expr.If(...)` 与计算列的 `ExpressionExpr` 等值位置。运算符与扩展方法链不在此列，`Sql(...) + 1`、`Sql(...).As("x")`、`Sql(...).Asc()` 都要先调用 `AsValue()`。
 
 这类转换的价值在于减少样板代码，让 `OrderBy(...)`、`Set(...)` 等 API 更接近自然写法。
 

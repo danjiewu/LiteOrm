@@ -34,6 +34,13 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 将动态 SQL 表达式隐式转换为值类型表达式，使其可直接用于 SELECT 列、函数参数、计算列等值位置。
+        /// 语义与 <see cref="ExprExtensions.AsValue(Expr?)"/> 一致，内部包装为 <see cref="ValueExpr"/>。
+        /// </summary>
+        /// <param name="expr">要转换的动态 SQL 表达式。</param>
+        public static implicit operator ValueTypeExpr(GenericSqlExpr? expr) => new ValueExpr(expr);
+
+        /// <summary>
         /// 生成该 SQL 所需委托的内部参数。
         /// </summary>
         public object? Arg { get; set; }

@@ -62,7 +62,7 @@ LiteOrm 的表达式对象模型，用来描述 SQL 结构，可用于动态拼�
 
 ## `GenericSqlExpr`
 
-基于委托的动态 SQL 表达式（`sealed class GenericSqlExpr : LogicExpr`），允许在不构建完整 Expr 树的情况下注入自定义 SQL 生成逻辑。通过 `GenericSqlExpr.Register` 注册回调委托，使用时以 `Expr.Sql(key, arg)` 引用。位于 `LiteOrm.Common` 命名空间。
+基于委托的动态 SQL 表达式（`sealed class GenericSqlExpr : LogicExpr`），允许在不构建完整 Expr 树的情况下注入自定义 SQL 生成逻辑。通过 `GenericSqlExpr.Register` 注册回调委托，使用时以 `Expr.Sql(key, arg)` 引用。它实现了到 `ValueTypeExpr` 的隐式转换，包装成值表达式后可直接用于 SELECT 列、函数参数、计算列等值位置；参与运算符或扩展方法链时仍需显式调用 `AsValue()`。位于 `LiteOrm.Common` 命名空间。
 
 ## `ExprVisitor`
 

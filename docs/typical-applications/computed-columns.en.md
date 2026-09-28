@@ -52,10 +52,10 @@ public class Order
 ```csharp
 var table = TableInfoProvider.Instance.GetTableDefinition(typeof(Order))!;
 table.Columns.First(c => c.Name == "DiscountAmount").ExpressionExpr =
-    Expr.Sql("UserLevelDiscount").AsValue();
+    Expr.Sql("UserLevelDiscount");
 ```
 
-`GenericSqlExpr` derives from `LogicExpr` rather than `ValueTypeExpr`, so assigning it to `ExpressionExpr` goes through `AsValue()`, which wraps it as a value expression.
+`GenericSqlExpr` derives from `LogicExpr`, and it also implements an implicit conversion to `ValueTypeExpr`, so assigning it to `ExpressionExpr` wraps it as a value expression without calling `AsValue()` by hand. When it takes part in arithmetic, comparison operators, or extension method chains, call `AsValue()` explicitly.
 
 With both `DiscountAmount` and `Payable` as computed columns, the DDL keeps only physical columns:
 

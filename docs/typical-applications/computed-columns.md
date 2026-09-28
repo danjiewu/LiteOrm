@@ -52,10 +52,10 @@ public class Order
 ```csharp
 var table = TableInfoProvider.Instance.GetTableDefinition(typeof(Order))!;
 table.Columns.First(c => c.Name == "DiscountAmount").ExpressionExpr =
-    Expr.Sql("UserLevelDiscount").AsValue();
+    Expr.Sql("UserLevelDiscount");
 ```
 
-`GenericSqlExpr` 继承自 `LogicExpr` 而不是 `ValueTypeExpr`，赋值给 `ExpressionExpr` 要经过 `AsValue()`，它会把该表达式包成一个值表达式。
+`GenericSqlExpr` 继承自 `LogicExpr`，同时实现了到 `ValueTypeExpr` 的隐式转换，赋值给 `ExpressionExpr` 会直接包成值表达式，无需手工调用 `AsValue()`。参与算术、比较运算符或扩展方法链时仍然要显式调用 `AsValue()`。
 
 `DiscountAmount` 与 `Payable` 都落成计算列之后，建表只留下物理列：
 
