@@ -1,16 +1,14 @@
 # Computed Columns in Practice
 
-A computed column creates no physical column and takes no part in inserts/updates; query-time `SELECT` and conditions both render through its expression. Its value is centralizing a derived value in one place, with no redundant column to keep in sync.
+A computed column creates no physical column and takes no part in inserts/updates; query-time `SELECT` and conditions both render through its expression.
 
-A computed column is declared by `Expression` (string form) or by `ExpressionExpr` (Expr tree form) at runtime; `ColumnMode.Computed` is no longer required, and the mode is inferred from the property's accessibility: a writable property gets `Read | Computed` (the expression value is selected and read back), a read-only property gets `Computed` (query conditions only). Whether it takes part in `SELECT` is decided by the `Read` bit alone: to keep a writable computed column for query conditions only, declare `ColumnMode = ColumnMode.Computed` explicitly.
+Declaration: `Expression` (string form) or `ExpressionExpr` (Expr tree form) at runtime. Without an explicit `ColumnMode` it is inferred from the property's accessibility: a writable property gets `Read | Computed` (selected and read back), a read-only property gets `Computed` (query conditions only).
 
-Three real requirements follow: a discount computed from the signed-in user's level, a product on-sale flag, and a cross-table display name. Each comes with the SQL it actually generates (SQLite dialect), plus the limits of the approach.
+Three scenarios follow: a discount by user level, a product on-sale flag, a cross-table display name. The SQL shown is what actually renders (SQLite dialect).
 
 ## Requirement 1: a discount computed from the signed-in user's level
 
-The business rule is "line total → discount by membership level → payable". The rate varies with the signed-in user, yet it cannot be passed down as a parameter: the membership level belongs to runtime context, while a persisted order has to remember the payable amount calculated at the time.
-
-The rate table lives in code and is looked up by level. The level is not a SQL parameter but a literal spliced into the expression, and the whole fragment is wrapped in `GenericSqlExpr`:
+The rule is "line total → discount by membership level → payable". The rate varies with the signed-in user and cannot be a SQL parameter: the level is runtime context, while a persisted order has to remember the payable amount calculated at the time. The rate becomes a literal spliced into the expression, wrapped in `GenericSqlExpr`:
 
 ```csharp
 using LiteOrm.Common;
@@ -59,9 +57,9 @@ table.Columns.First(c => c.Name == "DiscountAmount").ExpressionExpr =
     Expr.Sql("UserLevelDiscount");
 ```
 
-`GenericSqlExpr` derives from `LogicExpr`, and it also implements an implicit conversion to `ValueTypeExpr`, so assigning it to `ExpressionExpr` wraps it as a value expression without calling `AsValue()` by hand. When it takes part in arithmetic, comparison operators, or extension method chains, call `AsValue()` explicitly.
+Assigning `Expr.Sql(...)` to `ExpressionExpr` wraps it as a value expression through the implicit conversion, so `AsValue()` is not needed; operator or extension-method chains still require it explicitly.
 
-With both `DiscountAmount` and `Payable` as computed columns, the DDL keeps only physical columns:
+The DDL keeps only physical columns:
 
 ```sql
 CREATE TABLE "Orders" (
@@ -70,7 +68,7 @@ CREATE TABLE "Orders" (
 )
 ```
 
-The same query renders a different expression per level, and `{DiscountAmount}` inside `Payable` expands that whole fragment:
+The same query renders a different expression per level, and `{DiscountAmount}` expands in full:
 
 ```sql
 -- Silver (2%)
@@ -82,33 +80,24 @@ The same query renders a different expression per level, and `{DiscountAmount}` 
 ("T0"."Amount" - ("T0"."Amount" * 0.05))
 ```
 
-Executing an order with `Amount = 1000` under Gold reads back `DiscountAmount=50`, `Payable=950`, matching what the database computes directly.
+Executing an order with `Amount = 1000` under Gold reads back `DiscountAmount=50`, `Payable=950`.
 
-### Why the rate cannot be parameterized
+### Three hard constraints
 
-A computed column has one hard constraint: **the expression must produce no parameters at all**. If `OutputParams` grows while rendering, it throws `NotSupportedException` outright:
+- **The expression must not produce parameters**: if `OutputParams` grows while rendering, it throws `NotSupportedException`, so the rate can only be an inline literal; a level change changes the SQL text, and statements referencing it do not use the command cache, recomposing on every call. If the rule became one rate per order, persist the rate as a physical column and leave the computed column as `{Amount} * {DiscountRate}`.
+- **The fragment must not be empty**: a `GenericSqlExpr` callback returning `null` renders `()`, a syntax error; a level with no discount should return the literal `0` (rendered `(0)`).
+- **String constants need their own quoting**: `context.SqlBuilder.TryAppendSqlLiteral` escapes for you but returns `false` on a backslash or control character, in which case fall back to numeric or a fixed safe form.
+
+The thrown message:
 
 ```
 ColumnDefinition.ExpressionExpr for column 'DiscountAmount' produced 1 parameter(s);
 only fixed SQL expressions (property references, constants, functions, arithmetic) are allowed for computed columns.
 ```
 
-The reason is that a computed column can appear in `SELECT`, `WHERE`, `ORDER BY` or `JOIN ON`, while the parameter list is managed by the caller outside the expression; appending a parameter from inside would scramble placeholder numbering.
-
-So the rate can only go into the SQL as an inline literal. A level change changes the SQL text, and statements that reference this computed column do not use the command cache: they recompose the statement on every call. That is the boundary of this approach.
-
-It brings two things you have to handle yourself:
-
-- **The fragment must not be empty.** When the `GenericSqlExpr` callback returns `null`, the render is `()` and the SQL is a syntax error. A level with no discount should return the literal `0` (rendered `(0)`), not `null`.
-- **String constants need their own quoting.** `context.SqlBuilder.TryAppendSqlLiteral` handles escaping, but it returns `false` on a backslash or control character, in which case you must fall back to numeric or a fixed safe form.
-
-### Level changes and the command cache
-
-`DiscountAmount`'s SQL varies by level, and statements whose `SELECT` field list references a computed column (`GetObject`) do not use the command cache: they recompose for the current level on every call, so a level change takes effect immediately and SQL from a previous level is never cross-used. The cost is one extra SQL composition per query for such statements, which is acceptable while a level is a low-cardinality dimension; if the rule became "one rate per order", the rate should instead be persisted as a physical column with the computed column reduced to `{Amount} * {DiscountRate}`.
-
 ### Where it is used
 
-`DiscountAmount` and `Payable` are ordinary computed columns, referenceable from `SELECT`, `WHERE` and `ORDER BY` alike:
+`DiscountAmount` and `Payable` are ordinary computed columns, directly referenceable from `SELECT`, `WHERE` and `ORDER BY`:
 
 ```csharp
 var bigOrders = await viewService.SearchAsync(
@@ -125,12 +114,12 @@ WHERE ("T0"."Amount" - ("T0"."Amount" * 0.05)) >= @0
 
 Two things to watch:
 
-- Expressions are inlined in place. Once `{DiscountAmount}` expands into `Payable`, `Amount` appears twice in one SQL, and deeper levels keep doubling. Around three levels is a reasonable limit.
-- There is no cycle detection. `A` referencing `B` while `B` references `A` recurses until the stack overflows, so that has to be prevented by hand.
+- Expressions are inlined in place: once `{DiscountAmount}` expands into `Payable`, `Amount` appears twice in one SQL, and deeper levels keep doubling. Around three levels is a reasonable limit.
+- There is no cycle detection: `A` referencing `B` while `B` references `A` recurses until the stack overflows, so that has to be prevented by hand.
 
 ## Requirement 2: a product on-sale flag
 
-"Can this be sold" is a combination of three conditions: online, in stock, not taken down. That judgement is needed by the list page, the search page and every export endpoint, and scattered copies drift apart sooner or later.
+"Can this be sold" combines three conditions: online, in stock, not taken down, and the list page, search page and export endpoints all need the same judgement.
 
 ```csharp
 [Table("Products")]
@@ -145,14 +134,13 @@ public class Product
     [Column("IsOnline")]
     public bool IsOnline { get; set; }
 
-    // Query conditions only: declare Computed with no Read bit, so it stays out of SELECT
-    [Column("OnSale", Expression = "CASE WHEN {IsOnline} = 1 AND {Stock} > 0 THEN 1 ELSE 0 END",
-        ColumnMode = ColumnMode.Computed)]
+    // Query conditions only: a read-only property infers Computed (no Read bit), so it stays out of SELECT
+    [Column("OnSale", Expression = "CASE WHEN {IsOnline} = 1 AND {Stock} > 0 THEN 1 ELSE 0 END")]
     public bool OnSale => IsOnline && Stock > 0;
 }
 ```
 
-Once normalized into a `bool` flag, a caller's check is one condition:
+A caller's check is one condition:
 
 ```csharp
 var onSale = await viewService.SearchAsync(p => p.OnSale, cancellationToken: ct);
@@ -162,9 +150,9 @@ var onSale = await viewService.SearchAsync(p => p.OnSale, cancellationToken: ct)
 WHERE (CASE WHEN "T0"."IsOnline" = 1 AND "T0"."Stock" > 0 THEN 1 ELSE 0 END) = 1
 ```
 
-`OnSale` serves conditions only, so the declaration sets `ColumnMode = ColumnMode.Computed` without the `Read` bit: it stays out of `SELECT` and takes part only in `WHERE` and `ORDER BY` through its expression, saving a pointless read. The property is read-only (`=> IsOnline && Stock > 0`), computed on the C# side, and states the same rule as `Expression`; keeping the two in step is up to you. A read-only property already infers `Computed`, so the explicit declaration is there to state the intent rather than to make it work. Whether `OnSale` is typed `int` or `bool` does not affect how the expression is written or what the SQL looks like; `bool` fits the meaning better, and `p => p.OnSale` can go straight into a condition.
+`OnSale` serves conditions only: the property is read-only, so the inferred mode is `Computed` without a `Read` bit and it stays out of `SELECT`, taking part only in `WHERE` and `ORDER BY` through its expression. Make it writable and it would infer `Read | Computed`; only then does keeping it query-only require `ColumnMode = ColumnMode.Computed` explicitly. The property body and `Expression` must state the same rule. Whether `OnSale` is typed `int` or `bool` does not affect the SQL, and `bool` fits the meaning better.
 
-Constants inside the expression must be inlined, so the `1` in `{IsOnline} = 1` is a literal and cannot be parameterized. Building the same judgement in the Expr tree accepts a `bool` constant directly and renders identically:
+Constants must be inlined, so the `1` in `{IsOnline} = 1` cannot be parameterized. The same judgement in the Expr tree takes a `bool` constant directly and renders identically:
 
 ```csharp
 table.Columns.First(c => c.Name == "OnSale").ExpressionExpr =
@@ -172,11 +160,11 @@ table.Columns.First(c => c.Name == "OnSale").ExpressionExpr =
             Expr.Const(true), Expr.Const(false));
 ```
 
-One thing to note: the expression must not produce parameters, so interpolating a runtime switch (say "force off-sale right now") throws `NotSupportedException`. That kind of logic belongs in `WHERE` with `Expr.Value(...)`, not in a computed column.
+Splicing in a runtime switch (say "force off-sale right now") throws `NotSupportedException`; that logic belongs in `WHERE` with `Expr.Value(...)`.
 
 ## Requirement 3: a cross-table display name
 
-A list page wants a combination name such as "East-Acme-C001 / SO-20260927-01" that reads at a glance. The customer's short name and the order number live in two tables, and persisting a redundant column on the order table means tracking every upstream change.
+A list page wants a combination name such as "East-Acme-C001 / SO-20260927-01", but the parts live in two tables and persisting a redundant column means tracking every upstream change.
 
 Start with a display name on the customer table (`Region`, `Name`, `Code` concatenated, itself a computed column):
 
@@ -201,7 +189,7 @@ public class Customer
 }
 ```
 
-The order view needs three additions: the foreign key column, a `[ForeignColumn]` exposing the customer display name as a property, and the computed column that references it.
+The order view needs three additions: the foreign key column, a `[ForeignColumn]` exposing the customer display name on this table, and the computed column that references it.
 
 ```csharp
 [Table("SalesOrders")]
@@ -225,13 +213,13 @@ public class SaleOrderView
 }
 ```
 
-`{CustomerName}` is a `[ForeignColumn]` whose target `Label` is itself a computed column on the customer table, so both levels expand together, with the associated table's columns qualified by its own alias:
+`{CustomerName}` targets a `Label` that is itself a computed column on the customer table, so both levels expand together, with the associated table's columns qualified by its own alias:
 
 ```sql
 (("Customer"."Region" || '-' || "Customer"."Name" || '-' || "Customer"."Code") || '/' || "T0"."OrderNo")
 ```
 
-`CustomerLabel` is that full expression in `SELECT`, `WHERE` and `ORDER BY`, and a query carries the `LEFT JOIN` along:
+`CustomerLabel` is that full expression in `SELECT`, `WHERE` and `ORDER BY`, and the `LEFT JOIN` comes along automatically:
 
 ```sql
 SELECT (("Customer"."Region" || '-' || "Customer"."Name" || '-' || "Customer"."Code") || '/' || "T0"."OrderNo") AS "CustomerLabel"
@@ -242,16 +230,16 @@ WHERE (("Customer"."Region" || '-' || "Customer"."Name" || '-' || "Customer"."Co
 
 Points that tend to trip people up:
 
-- The entity needs `[Table("...")]`. `[TableJoin]` alone does not make a type a table, and `GetTableDefinition` returns null.
-- The association declaration must be complete: `[TableJoin]` (or `[ForeignType]`) builds the JOIN and `[ForeignColumn]` attaches the external column to a property. Miss one and the name does not exist.
-- Placeholders resolve by property name, case-insensitively, so `{CustomerName}` hits the association property on this table.
-- A mistyped placeholder raises nothing; it is emitted as a qualified column name as written (`"T0"."CustomerLable"`), and the database only complains at execution time.
-- On a left join without a match the whole chain yields nothing. Wrap the expression in `COALESCE` for a fallback, for example `Expression = "COALESCE({CustomerName}, 'unknown') || '/' || {OrderNo}"`.
+- The entity needs `[Table("...")]`: `[TableJoin]` alone does not make a type a table, and `GetTableDefinition` returns null.
+- The association declaration must be complete: `[TableJoin]` (or `[ForeignType]`) builds the JOIN and `[ForeignColumn]` attaches the external column to a property; miss one and the name does not exist.
+- A mistyped placeholder raises nothing: it is emitted as a qualified column name as written (`"T0"."CustomerLable"`), and the database only complains at execution time.
+- A `[ForeignColumn]` property must be writable to enter `SELECT`: a read-only property has no setter, so a read-back cannot fill it and the value comes from the property body instead.
+- A left join without a match yields nothing for the whole chain: wrap the expression in `COALESCE` for a fallback, for example `Expression = "COALESCE({CustomerName}, 'unknown') || '/' || {OrderNo}"`.
 
 ## When not to reach for it
 
-- **Hot filtering/join that relies on an index**: a computed column expands to an expression in `WHERE` and cannot reuse a plain column index. On high-volume filtering or joining by that field, persist a physical column and index it instead.
-- **Dialect-specific string/function logic**: an expression can embed raw dialect SQL (the `||` above is SQLite / PostgreSQL; MySQL uses `CONCAT(...)`), and that fragment must be reworked when the database changes. Prefer the Expr tree's `Concat` for string concatenation, since it renders per dialect.
+- **Hot filtering/joining that relies on an index**: the computed column expands to an expression in `WHERE` and cannot reuse a plain column index; on high-volume filtering or joining by that field, persist a physical column and index it.
+- **Dialect-specific string/function logic**: an expression can embed raw dialect SQL (the `||` above is SQLite / PostgreSQL; MySQL uses `CONCAT(...)`); prefer the Expr tree's `Concat` for string concatenation, since it renders per dialect.
 - **Dynamic fragments**: an expression accepts no runtime parameters, so a value-carrying concatenation throws `NotSupportedException`.
 
 ## Related links
