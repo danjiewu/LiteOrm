@@ -1,5 +1,13 @@
 # 变更日志 (Changelog)
 
+## v8.1.11 (2026-09-29)
+
+### 改进
+
+- **`ExprString` 与 `RawSql` 移入 `LiteOrm.Common`**（`LiteOrm.Common`）：两者原在 `LiteOrm` 包中，现随表达式基础设施一并下移。命名空间仍为 `LiteOrm.Common`，引用方的 `using` 与调用方式无需改动。
+
+***
+
 ## v8.1.10 (2026-09-27)
 
 ### 破坏性变更

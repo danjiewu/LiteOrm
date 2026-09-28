@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.1.11 (2026-09-29)
+
+### Enhancements
+
+- **`ExprString` and `RawSql` moved into `LiteOrm.Common`** (`LiteOrm.Common`): both previously lived in the `LiteOrm` package and now move down alongside the expression infrastructure. The namespace is still `LiteOrm.Common`, so consuming code needs no change to its `using` directives or call sites.
+
+***
+
 ## v8.1.10 (2026-09-27)
 
 ### Breaking changes
