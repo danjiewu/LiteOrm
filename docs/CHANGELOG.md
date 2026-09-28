@@ -4,23 +4,21 @@
 
 ### 破坏性变更
 
-- **计算列不再自动可读，`ColumnMode` 默认值改为 `None`**（`LiteOrm.Common`）：`ColumnModeExt.CanRead` 只认 `Read` 位，`Computed` 不再隐含可读；`ColumnAttribute.ColumnMode` 默认值由 `Full` 改为 `None`（未指定），由表信息提供器按属性读写可访问性推导，设置 `Expression` / `ExpressionExpr` 的列按属性可写性推导（可写属性 `Read | Computed`，只读属性 `Computed`）。原先只写 `ColumnMode.Computed` 又想读出结果的计算列，需补上 `Read`；只想用于查询条件的保持 `Computed` 不变。源生成路径（NativeAOT）同步调整。
-
-- **关联列是否进 `SELECT` 改看属性是否可写**（`LiteOrm.Common`）：`ForeignColumn` 不再沿外键链取目标列定义判定可读性，改由属性有无 setter 决定，可写才进 `SELECT`。只读关联列不进 `SELECT`，值由属性体自行计算；目标列是不可读的计算列不影响本列取值。
+- **显式定义 `Computed` 时不再自动带 `Read`**（`LiteOrm.Common`）：只写 `Computed` 的计算列不进 `SELECT`，只用于查询条件。
 
 ### 新特性
 
-- **计算列支持嵌套引用**（`LiteOrm.Common`）：计算列字符串表达式里的 `{属性名}` 占位符除物理列外，还可指向同一实体上的其他计算列或关联列（`[ForeignColumn]`），渲染时递归展开为嵌套表达式，每层自带括号。
+- **计算列支持嵌套引用**（`LiteOrm.Common`）：`{属性名}` 占位符可指向同一实体上的其他计算列或关联列（`[ForeignColumn]`），渲染时递归展开为嵌套表达式，每层自带括号。
 
-- **新增 `SqlTable.View` 属性**（`LiteOrm.Common`）：表定义与视图定义可互相反向获取，`TableDefinition.View` 返回其所属视图，`TableView.View` 返回视图自身。
+- **新增 `SqlTable.View` 属性**（`LiteOrm.Common`）：表定义与视图定义可互相反向获取。
 
 ### 改进
 
-- **`SyncTable = Never` 的实体初始化时不再触碰**（`LiteOrm.DependencyInjection`）：启动同步时排除这些类型，既不建表也不预加载表信息，其非法元数据配置不会再中断整批同步。
+- **`SyncTable = Never` 的实体初始化时不再触碰**（`LiteOrm.DependencyInjection`）：不建表也不预加载表信息，其非法元数据配置不会再中断整批同步。
 
-- **命令缓存改为逐语句判定**（`LiteOrm`）：此前表上声明固定筛选条件或计算列就整体放弃命令缓存，现由 `GetPreparedCommand(Async)` 新增的 `useCache` 参数按语句决定，`Insert` / `BatchInsert` 恢复复用缓存；原签名的重载一并保留，既有调用无需改动。
+- **命令缓存改为逐语句判定**（`LiteOrm`）：`GetPreparedCommand(Async)` 新增 `useCache` 参数，`Insert` / `BatchInsert` 恢复复用缓存，原签名重载保留。
 
-- **`GenericSqlExpr` 支持隐式转换为 `ValueTypeExpr`**（`LiteOrm.Common`）：`Expr.Sql(key, arg)` 的结果可直接用于 SELECT 列、函数参数、计算列等值位置，不必再手工调用 `AsValue()`；参与运算符或扩展方法链时仍需显式包装。
+- **`GenericSqlExpr` 支持隐式转换为 `ValueTypeExpr`**（`LiteOrm.Common`）：`Expr.Sql(...)` 的结果可直接用于值位置，不必再手工调用 `AsValue()`。
 
 ***
 

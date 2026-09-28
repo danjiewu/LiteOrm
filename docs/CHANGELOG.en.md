@@ -4,23 +4,21 @@
 
 ### Breaking changes
 
-- **Computed columns are no longer readable by default, and `ColumnMode` now defaults to `None`** (`LiteOrm.Common`): `ColumnModeExt.CanRead` honours the `Read` bit only, so `Computed` no longer implies readability. `ColumnAttribute.ColumnMode` defaults to `None` (unspecified) and the table info provider infers it from the property's readability/writability; a column that sets `Expression` / `ExpressionExpr` is inferred from the property's writability (a writable property gets `Read | Computed`, a read-only property gets `Computed`). Computed columns that declared `ColumnMode.Computed` alone and still need the value read out must add `Read`; those meant for query conditions only keep `Computed` as is. The source-generated path (NativeAOT) matches.
-
-- **Foreign columns now enter `SELECT` based on property writability** (`LiteOrm.Common`): a `ForeignColumn` no longer walks the foreign-key chain to the target column's definition to decide readability; the property having a setter decides it, and only a writable property is selected. A read-only association column stays out of `SELECT` and the property body computes the value, and a target that is an unreadable computed column no longer affects the value.
+- **Declaring `Computed` no longer implies `Read`** (`LiteOrm.Common`): a computed column declared with `Computed` alone stays out of `SELECT` and serves query conditions only.
 
 ### New Features
 
-- **Computed columns can be referenced in a nested fashion** (`LiteOrm.Common`): a `{Property}` placeholder in a computed column's string expression may now point at another computed column or a foreign column (`[ForeignColumn]`) on the same entity, not just a physical column. It is expanded recursively into a nested expression, each level wrapped in its own parentheses.
+- **Computed columns can be referenced in a nested fashion** (`LiteOrm.Common`): a `{Property}` placeholder may point at another computed column or a foreign column (`[ForeignColumn]`) on the same entity, expanded recursively into a nested expression with each level in its own parentheses.
 
-- **Added the `SqlTable.View` property** (`LiteOrm.Common`): table and view definitions can now reach each other, with `TableDefinition.View` returning the view that owns it and `TableView.View` returning the view itself.
+- **Added the `SqlTable.View` property** (`LiteOrm.Common`): table and view definitions can now reach each other.
 
 ### Enhancements
 
-- **Entities with `SyncTable = Never` are no longer touched at initialization** (`LiteOrm.DependencyInjection`): they are excluded from the startup sync, so no table is created and no table metadata is preloaded, and their invalid metadata configuration can no longer abort the whole sync pass.
+- **Entities with `SyncTable = Never` are no longer touched at initialization** (`LiteOrm.DependencyInjection`): no table is created and no table metadata is preloaded, so their invalid metadata configuration can no longer abort the whole sync pass.
 
-- **Command caching is now decided per statement** (`LiteOrm`): a table declaring a fixed filter or a computed column used to give up the command cache as a whole; the new `useCache` parameter on `GetPreparedCommand(Async)` now decides per statement, so `Insert` / `BatchInsert` reuse the cache again. The previous overload signatures are kept, so existing callers need no change.
+- **Command caching is now decided per statement** (`LiteOrm`): the new `useCache` parameter on `GetPreparedCommand(Async)` lets `Insert` / `BatchInsert` reuse the cache again, with the previous overloads kept.
 
-- **`GenericSqlExpr` supports an implicit conversion to `ValueTypeExpr`** (`LiteOrm.Common`): the result of `Expr.Sql(key, arg)` can be used directly in value positions such as SELECT columns, function arguments and computed columns, with no manual `AsValue()` call; operator and extension-method chains still need explicit wrapping.
+- **`GenericSqlExpr` supports an implicit conversion to `ValueTypeExpr`** (`LiteOrm.Common`): the result of `Expr.Sql(...)` can be used directly in value positions, with no manual `AsValue()` call.
 
 ***
 
