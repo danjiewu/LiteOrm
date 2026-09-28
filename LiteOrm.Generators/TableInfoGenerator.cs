@@ -539,8 +539,15 @@ namespace LiteOrm.Generators
                 }
                 else
                     rawMode = 0;
-                // 计算列位与读写掩码正交，需单独保留
+                // 计算列位与读写掩码正交，需单独保留；Read 位只按声明值生效，计算列不自动可读
                 info.ColumnMode = ((rawMode & modeMask) | (rawMode & computedBit)).ToString();
+            }
+            else if (!string.IsNullOrEmpty(info.Expression))
+            {
+                // 未显式声明列模式且设置了表达式：视为计算列，
+                // 可写属性推导为 Read | Computed（9，按表达式取值并回填），只读属性推导为 Computed（8）
+                const int readBit = 1; // ColumnMode.Read
+                info.ColumnMode = (info.CanWrite ? (readBit | computedBit) : computedBit).ToString();
             }
             else
                 info.ColumnMode = modeMask.ToString();
@@ -552,6 +559,7 @@ namespace LiteOrm.Generators
         /// 计算默认列操作模式，与运行时 <c>AttributeTableInfoProvider</c> 保持一致：
         /// <c>Full &amp; ((CanRead ? Write : None) | (CanWrite ? Read : None))</c>。
         /// Write = Insert|Update = 6，Read = 1；可读可写属性默认即为 Full(7)。
+        /// 未显式声明列模式且设置了表达式时不用本方法，改按计算列推导（可写 9 = Read | Computed，只读 8 = Computed）。
         /// </summary>
         private static int ComputeDefaultColumnMode(bool canRead, bool canWrite)
         {

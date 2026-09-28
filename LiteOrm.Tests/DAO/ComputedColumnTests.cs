@@ -13,7 +13,7 @@ namespace LiteOrm.Tests
     {
         public ComputedColumnTests(DatabaseFixture fixture) : base(fixture)
         {
-            // FullName 计算列采用动态注册：声明时仅标记 ColumnMode.Computed。
+            // FullName 计算列采用动态注册：声明时标记 Read | Computed（计算列不自动可读）。
             // 运行时通过全局单例 TableInfoProvider.Instance 设置 ExpressionExpr。
             // 使用 .Concat() 链（ValueSet，由 BuildConcatSql 按方言生成 ||），
             // 空格用 Expr.Const(" ") 直接输出 SQL 字符串字面量，不再生成参数。
@@ -117,12 +117,13 @@ namespace LiteOrm.Tests
             [Column("LastName", AllowNull = true)]
             public string? LastName { get; set; }
 
-            [Column("FullName", ColumnMode = ColumnMode.Computed)]
+            [Column("FullName", ColumnMode = ColumnMode.Read | ColumnMode.Computed)]
             public string? FullName { get; set; }
         }
 
         /// <summary>
-        /// 用于测试字符串形式 Expression 的计算列。Total 列通过 ColumnMode.Computed 标记为计算列。
+        /// 用于测试字符串形式 Expression 的计算列。Total 列只声明 Expression，未显式声明 ColumnMode，
+        /// 由表信息提供器自动推导为 Read | Computed。
         /// 并在特性中直接设置 Expression = "{Price} * {Quantity}"，{属性名} 占位符在渲染时替换为限定列名。
         /// </summary>
         [Table("ComputedExprModels")]
@@ -137,7 +138,7 @@ namespace LiteOrm.Tests
             [Column("Quantity")]
             public int Quantity { get; set; }
 
-            [Column("Total", Expression = "{Price} * {Quantity}", ColumnMode = ColumnMode.Computed)]
+            [Column("Total", Expression = "{Price} * {Quantity}")]
             public decimal Total { get; set; }
         }
 

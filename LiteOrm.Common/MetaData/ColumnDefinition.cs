@@ -94,6 +94,11 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 是否为计算列（非实际列）：显式声明 <see cref="ColumnMode.Computed"/> 或设置了 <see cref="Expression"/> / <see cref="ExpressionExpr"/>。
+        /// <para>
+        /// 计算列不生成物理列、不参与插入/更新，但不等同于可读：是否参与 SELECT 由
+        /// <see cref="ColumnMode"/> 的 <see cref="ColumnMode.Read"/> 位单独决定，仅有
+        /// <see cref="ColumnMode.Computed"/> 的计算列只用于查询条件。
+        /// </para>
         /// </summary>
         public bool IsComputed => Mode.IsComputed() || !string.IsNullOrEmpty(Expression) || ExpressionExpr is not null;
 
@@ -117,7 +122,8 @@ namespace LiteOrm.Common
         /// </summary>
         public object? Constant { get; set; }
         /// <summary>
-        /// 获取或设置列映射模式。
+        /// 获取或设置列映射模式。是否参与 SELECT 只取决于 <see cref="ColumnMode.Read"/> 位；
+        /// <see cref="ColumnMode.Computed"/> 只表示不生成物理列、不参与插入/更新。
         /// </summary>
         public ColumnMode Mode { get; set; }
 

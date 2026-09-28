@@ -277,7 +277,7 @@ namespace LiteOrm.Common.UnitTests
         [Theory]
         [InlineData(1, true)]
         [InlineData(0, false)]
-        [InlineData(8, true)]   // ColumnMode.Computed：按表达式读取，视为可读
+        [InlineData(8, false)]  // ColumnMode.Computed：计算列不自动可读，读出需显式 Read
         [InlineData(9, true)]
         [InlineData(-1, true)]
         [InlineData(int.MaxValue, true)]
@@ -307,9 +307,15 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
-        public void CanRead_Computed_ReturnsTrue()
+        public void CanRead_Computed_ReturnsFalse()
         {
-            Assert.True(ColumnMode.Computed.CanRead());
+            Assert.False(ColumnMode.Computed.CanRead());
+        }
+
+        [Fact]
+        public void CanRead_ComputedWithRead_ReturnsTrue()
+        {
+            Assert.True((ColumnMode.Computed | ColumnMode.Read).CanRead());
         }
 
         [Theory]

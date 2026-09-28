@@ -40,6 +40,10 @@ namespace LiteOrm.Common
         /// 计算列（非实际列）：不生成物理列、不参与插入/更新；
         /// 查询时按 <see cref="ColumnDefinition.Expression"/> 以表达式返回结果，
         /// 查询条件中引用该属性时同样按表达式生成。
+        /// <para>
+        /// 该位与读写位正交，本身不代表可读：只有同时带有 <see cref="Read"/>（如 <c>Read | Computed</c>）
+        /// 的列才会出现在 SELECT 中，仅有 <see cref="Computed"/> 的列只参与查询条件、结果不回填。
+        /// </para>
         /// </summary>
         Computed = 8
     }

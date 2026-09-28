@@ -14,7 +14,7 @@ namespace LiteOrm.Common
         /// </summary>
         public ColumnAttribute()
         {
-            ColumnMode = ColumnMode.Full;
+            ColumnMode = ColumnMode.None;
             AllowNull = true;
         }
 
@@ -109,8 +109,14 @@ namespace LiteOrm.Common
         /// 设置后该列不生成物理列、不参与插入/更新；查询 SELECT 时以表达式返回结果，
         /// 查询条件中引用该属性时同样按表达式生成。表达式内用 <c>{属性名}</c> 引用同一实体的其他属性
         /// （如 <c>{FirstName} || ' ' || {LastName}</c>），占位符会按列名（含必要的引号与表限定）渲染；
-        /// 也可直接书写数据库方言的原始 SQL 片段。建议同时设置 <see cref="ColumnMode"/> 为
-        /// <see cref="ColumnMode.Computed"/>。
+        /// 也可直接书写数据库方言的原始 SQL 片段。
+        /// <para>
+        /// 设置本属性即视为计算列，无需再写 <see cref="ColumnMode.Computed"/>：未显式声明
+        /// <see cref="ColumnMode"/> 时按属性可访问性推导，可写属性得到 <see cref="ColumnMode.Read"/> |
+        /// <see cref="ColumnMode.Computed"/>（查询时按表达式取值并回填），只读属性得到
+        /// <see cref="ColumnMode.Computed"/>（只用于查询条件，不回填）。想让可写属性也只参与查询条件，
+        /// 显式声明 <see cref="ColumnMode"/> = <see cref="ColumnMode.Computed"/> 即可。
+        /// </para>
         /// </summary>
         public string? Expression { get; set; }
 
@@ -130,7 +136,13 @@ namespace LiteOrm.Common
         public object? Constant { get; set; }
 
         /// <summary>
-        /// 获取或设置列映射模式。
+        /// 获取或设置列映射模式。默认 <see cref="ColumnMode.None"/>，表示未指定，
+        /// 由表信息提供器按属性的读写可访问性推导（可读可写属性推导为 <see cref="ColumnMode.Full"/>）。
+        /// <para>
+        /// 显式声明时不参与推导，且 <see cref="ColumnMode.Read"/> 只按声明值生效：
+        /// 含 <see cref="ColumnMode.Computed"/> 而不含 <see cref="ColumnMode.Read"/> 的列（如仅写
+        /// <c>Computed</c>）不参与 SELECT，只用于查询条件。
+        /// </para>
         /// </summary>
         public ColumnMode ColumnMode { get; set; }
 

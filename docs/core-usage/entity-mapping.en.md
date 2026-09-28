@@ -110,7 +110,7 @@ public class User
     public string? LastName { get; set; }
 
     // Computed column (string form): no physical column; SELECT returns (FirstName || ' ' || LastName), WHERE renders the expression too
-    [Column("FullName", Expression = "{FirstName} || ' ' || {LastName}", ColumnMode = ColumnMode.Computed)]
+    [Column("FullName", Expression = "{FirstName} || ' ' || {LastName}")]
     public string? FullName { get; set; }
 }
 ```
@@ -130,8 +130,8 @@ public class Order
     [Column("Quantity")]
     public int Quantity { get; set; }
 
-    // Computed column (Expr tree form): declared as Computed, expression set dynamically
-    [Column("Total", ColumnMode = ColumnMode.Computed)]
+    // Computed column (Expr tree form): the expression is attached at runtime, so the declaration marks it as computed; the Read bit is required to read it back
+    [Column("Total", ColumnMode = ColumnMode.Read | ColumnMode.Computed)]
     public decimal Total { get; set; }
 }
 
@@ -142,10 +142,10 @@ table.Columns.First(c => c.Name == "Total").ExpressionExpr = Expr.Prop("Price") 
 ```
 
 - **No physical column**: skipped by `CREATE TABLE` / `ALTER TABLE ADD COLUMN`, and not written on insert/update.
-- **Expression result**: the default SELECT renders `({expr}) AS "PropertyName"` and the read result is mapped back to the property.
+- **Expression result**: a computed column carrying the `Read` bit renders `({expr}) AS "PropertyName"` in SELECT and the read result is mapped back to the property; a computed column with `Computed` but no `Read` stays out of SELECT and serves query conditions only.
 - **Query conditions**: `SearchAsync(u => u.FullName == "John Smith")` produces `WHERE ("FirstName" || ' ' || "LastName") = @0`.
 - **Placeholders can nest**: `{property}` may point at a physical column, at another computed column on the same entity, or at an association column (`[ForeignColumn]`); rendering unfolds them recursively into nested expressions, each level in its own parentheses. There is no cycle detection. See [Computed Columns in Practice](../typical-applications/computed-columns.en.md) for the patterns and caveats.
-- Setting `Expression` / `ExpressionExpr` alone (without `ColumnMode.Computed`) is also treated as a computed column; declaring `ColumnMode = ColumnMode.Computed` is recommended.
+- Setting `Expression` / `ExpressionExpr` alone (without `ColumnMode.Computed`) is also treated as a computed column, and the mode is inferred from the property's accessibility: a writable property gets `Read | Computed` (the SELECT returns the expression result and reads it back), a read-only property gets `Computed` (query conditions only). To keep a writable computed column for query conditions only, declare `ColumnMode = ColumnMode.Computed` explicitly.
 - The string form is dialect-specific (the example uses SQLite/PostgreSQL `||`; MySQL uses `CONCAT(...)`); the Expr tree form renders automatically per dialect.
 - When both forms are set, the Expr tree form takes precedence; only fixed SQL (no parameters) is allowed. `Expr.Const(100)` works; regular string constants like `Expr.Const(" ")` are inlined as `' '` (single quotes escaped via `''`); strings with backslash or control characters are parameterized and throw; `Expr.Value("str")` is always parameterized and throws.
 
@@ -187,7 +187,7 @@ priceCol.DbType = DbValueType.Decimal;
 | `DbType` | `DbValueType` | Column value type; `Default` infers from property type. |
 | `Expression` | `string` | Computed column expression (string form); supports `{PropertyName}` placeholders. |
 | `DefaultValue` | `string` | Column default value (SQL fragment). |
-| `ColumnMode` | `ColumnMode` | Column operation mode (`Read`/`Insert`/`Update`/`Full`/`Computed`); default `Full`. |
+| `ColumnMode` | `ColumnMode` | Column operation mode (`Read`/`Insert`/`Update`/`Full`/`Computed`); default `None`, meaning unspecified and inferred from the property's readability/writability. |
 | `IdentityExpression` | `string` | Identity column expression (e.g., Oracle sequence name). |
 | `IdentityStart` | `long` | Auto-increment start value; default 1. |
 | `IdentityIncreasement` | `int` | Auto-increment step; default 1. |

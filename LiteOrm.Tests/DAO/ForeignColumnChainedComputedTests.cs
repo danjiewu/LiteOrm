@@ -68,6 +68,28 @@ namespace LiteOrm.Tests
         }
 
         /// <summary>
+        /// Select 列表判定：外键列是否进 SELECT 只取决于属性能否回填（有无 setter），与目标列（链顶列）定义无关。
+        /// 中间表的只读计算列不进 SELECT（属性体自行求值），上层引用它的可写外键列照样进 SELECT。
+        /// </summary>
+        [Fact]
+        public void SelectColumns_ForeignColumnDecidedByPropertyWritability()
+        {
+            var provider = new AttributeTableInfoProvider();
+
+            // 中间表：可写外键列进 SELECT；只读计算列不进，值由属性实现自行计算
+            var midView = provider.GetTableView(typeof(ChainedForeignDept))!;
+            string[] midSelected = midView.SelectColumns.Select(c => c.PropertyName).ToArray();
+            Assert.Contains(nameof(ChainedForeignDept.CityLabel), midSelected);
+            Assert.DoesNotContain(nameof(ChainedForeignDept.DeptCityLabel), midSelected);
+
+            // 上层视图：链顶是只读计算列，可写外键列仍进 SELECT，取值由表达式内联渲染
+            var view = provider.GetTableView(typeof(ChainedForeignUserView))!;
+            string[] selected = view.SelectColumns.Select(c => c.PropertyName).ToArray();
+            Assert.Contains(nameof(ChainedForeignUserView.DeptCityLabel), selected);
+            Assert.Contains(nameof(ChainedForeignUserView.DeptFullLabel), selected);
+        }
+
+        /// <summary>
         /// SQL 渲染：链式引用同样展开为终点表的计算列表达式，表达式内的列引用以**终点表别名**限定，
         /// 中间表别名与被引用计算列的列名都不应出现。
         /// </summary>
@@ -306,19 +328,21 @@ namespace LiteOrm.Tests
         }
 
         /// <summary>
-        /// SELECT 列表渲染：中间表视图与上层视图各自以属性名回填别名。
+        /// SELECT 列表渲染：可写外键列进列表并按属性名回填别名；只读计算列不进列表，值由属性体自行计算。
         /// </summary>
         [Fact]
         public void Sql_ComputedColumnReferencingForeignColumnInSelectListKeepsPropertyAlias()
         {
             var provider = new AttributeTableInfoProvider();
 
-            // 中间表视图：本表列以主表别名限定，计算列名即属性名，无需 AS
+            // 中间表视图：本表列以主表别名限定，可写外键列按表达式输出并回填属性名
             string midSelect = RenderSelectList(provider.GetTableView(typeof(ChainedForeignDept))!);
             Assert.Contains("(\"City\".\"Name\" || '-' || \"City\".\"Code\") AS \"CityLabel\"", midSelect);
-            Assert.Contains($"((\"City\".\"Name\" || '-' || \"City\".\"Code\") || '-' || \"{Constants.DefaultTableAlias}\".\"Name\")", midSelect);
+            Assert.Contains($"\"{Constants.DefaultTableAlias}\".\"Name\"", midSelect);
+            // 只读计算列不进 SELECT，取值靠属性实现自行计算
+            Assert.DoesNotContain("\"DeptCityLabel\"", midSelect);
 
-            // 上层视图：本表列以中间表别名限定，别名回填为视图属性名
+            // 上层视图：链顶是只读计算列，可写外键列照样进列表并回填视图属性名
             string viewSelect = RenderSelectList(provider.GetTableView(typeof(ChainedForeignUserView))!);
             Assert.Contains("((\"City\".\"Name\" || '-' || \"City\".\"Code\") || '-' || \"Dept\".\"Name\") AS \"DeptFullLabel\"", viewSelect);
         }
@@ -526,7 +550,7 @@ namespace LiteOrm.Tests
         [Column("Code", AllowNull = true)]
         public string? Code { get; set; }
 
-        [Column("Label", Expression = "{Name} || '-' || {Code}", ColumnMode = ColumnMode.Computed)]
+        [Column("Label", Expression = "{Name} || '-' || {Code}")]
         public string? Label { get; set; }
     }
 
@@ -549,7 +573,7 @@ namespace LiteOrm.Tests
         [ForeignColumn("City", Property = nameof(ForeignComputedCity.Label))]
         public string? CityLabel { get; set; }
 
-        [Column(Expression = "{CityLabel} || '-' || {Name}", ColumnMode = ColumnMode.Computed)]
+        [Column(Expression = "{CityLabel} || '-' || {Name}")]
         public string? DeptCityLabel => CityLabel + "-" + Name;
     }
 

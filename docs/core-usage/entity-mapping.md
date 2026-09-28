@@ -126,7 +126,7 @@ public class User
     public string? LastName { get; set; }
 
     // 计算列（字符串形式）：不生成物理列，SELECT 返回 (FirstName || ' ' || LastName)，WHERE 中也按表达式生成
-    [Column("FullName", Expression = "{FirstName} || ' ' || {LastName}", ColumnMode = ColumnMode.Computed)]
+    [Column("FullName", Expression = "{FirstName} || ' ' || {LastName}")]
     public string? FullName { get; set; }
 }
 ```
@@ -146,8 +146,8 @@ public class Order
     [Column("Quantity")]
     public int Quantity { get; set; }
 
-    // 计算列（Expr 树形式）：声明为 Computed，表达式动态设置
-    [Column("Total", ColumnMode = ColumnMode.Computed)]
+    // 计算列（Expr 树形式）：表达式在运行时挂上，声明时标出计算列；要读出结果，Read 位不能省
+    [Column("Total", ColumnMode = ColumnMode.Read | ColumnMode.Computed)]
     public decimal Total { get; set; }
 }
 
@@ -158,10 +158,10 @@ table.Columns.First(c => c.Name == "Total").ExpressionExpr = Expr.Prop("Price") 
 ```
 
 - **不生成物理列**：`CREATE TABLE` / `ALTER TABLE ADD COLUMN` 均跳过该列，插入/更新也不写入。
-- **表达式返回结果**：默认 SELECT 渲染为 `({expr}) AS "PropertyName"`，读取结果回填到属性。
+- **表达式返回结果**：带 `Read` 位的计算列在 SELECT 中渲染为 `({expr}) AS "PropertyName"`，读取结果回填到属性；只有 `Computed` 而没有 `Read` 的计算列不进 SELECT，只用于查询条件。
 - **生成查询条件**：`SearchAsync(u => u.FullName == "张三 李四")` 会生成 `WHERE ("FirstName" || ' ' || "LastName") = @0`。
 - **占位符可嵌套引用**：`{属性名}` 既能指向物理列，也能指向同一实体上的其他计算列或关联列（`[ForeignColumn]`），渲染时递归展开为嵌套表达式，每层自带括号；框架不检测环形引用。写法与注意事项见[计算列的实际应用](../typical-applications/computed-columns.md)。
-- 设了 `Expression` / `ExpressionExpr` 即使未写 `ColumnMode.Computed`，也会自动视为计算列；建议显式声明 `ColumnMode = ColumnMode.Computed`。
+- 设了 `Expression` / `ExpressionExpr` 即使未写 `ColumnMode.Computed`，也会自动视为计算列，列模式按属性可访问性推导：可写属性得 `Read | Computed`（SELECT 返回表达式结果并回填），只读属性得 `Computed`（只用于查询条件）；要让可写属性的计算列也只参与查询条件，显式声明 `ColumnMode = ColumnMode.Computed`。
 - 字符串形式按数据库方言书写（示例为 SQLite/PostgreSQL 的 `||`，MySQL 用 `CONCAT(...)`）；Expr 树形式自动按方言渲染。
 - Expr 树形式同时设置时优先于字符串形式；仅允许固定 SQL（不生成参数）。`Expr.Const(100)` 可用；`Expr.Const(" ")` 等常规字符串常量以 `' '` 形式内联（单引号以 `''` 转义），含反斜杠或控制字符的字符串仍会参数化并抛异常；`Expr.Value("str")` 始终参数化，会抛异常。
 
@@ -203,7 +203,7 @@ priceCol.DbType = DbValueType.Decimal;
 | `DbType` | `DbValueType` | 列的取值类型，`Default` 表示按属性类型自动推断。 |
 | `Expression` | `string` | 计算列表达式（字符串形式），支持 `{属性名}` 占位符。 |
 | `DefaultValue` | `string` | 列的默认值（SQL 片段）。 |
-| `ColumnMode` | `ColumnMode` | 列操作模式（`Read`/`Insert`/`Update`/`Full`/`Computed`），默认 `Full`。 |
+| `ColumnMode` | `ColumnMode` | 列操作模式（`Read`/`Insert`/`Update`/`Full`/`Computed`），默认 `None` 表示未指定，由属性读写可访问性推导。 |
 | `IdentityExpression` | `string` | 标识列表达式（如 Oracle 序列名）。 |
 | `IdentityStart` | `long` | 自增起始值，默认 1。 |
 | `IdentityIncreasement` | `int` | 自增步长，默认 1。 |

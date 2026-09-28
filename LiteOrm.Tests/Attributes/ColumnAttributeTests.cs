@@ -79,7 +79,7 @@ namespace LiteOrm.Common.UnitTests
             // Assert
             Assert.Equal("UserId", attribute.ColumnName);
             Assert.True(attribute.IsColumn);
-            Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
+            Assert.Equal(ColumnMode.None, attribute.ColumnMode);
             Assert.Equal(DbValueType.Default, attribute.DbType);
             Assert.True(attribute.AllowNull);
         }
@@ -175,7 +175,7 @@ namespace LiteOrm.Common.UnitTests
             var attribute = new ColumnAttribute(columnName);
 
             // Assert
-            Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
+            Assert.Equal(ColumnMode.None, attribute.ColumnMode);
             Assert.Equal(DbValueType.Default, attribute.DbType);
             Assert.True(attribute.AllowNull);
             Assert.False(attribute.IsPrimaryKey);
@@ -203,7 +203,7 @@ namespace LiteOrm.Common.UnitTests
 
             // 断言
             Assert.True(attribute.IsColumn);
-            Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
+            Assert.Equal(ColumnMode.None, attribute.ColumnMode);
             Assert.Equal(DbValueType.Default, attribute.DbType);
             Assert.True(attribute.AllowNull);
         }
@@ -223,7 +223,7 @@ namespace LiteOrm.Common.UnitTests
 
             // 断言
             Assert.False(attribute.IsColumn);
-            Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
+            Assert.Equal(ColumnMode.None, attribute.ColumnMode);
             Assert.Equal(DbValueType.Default, attribute.DbType);
             Assert.True(attribute.AllowNull);
         }
@@ -241,7 +241,7 @@ namespace LiteOrm.Common.UnitTests
 
             // Assert
             Assert.NotNull(attribute);
-            Assert.Equal(ColumnMode.Full, attribute.ColumnMode);
+            Assert.Equal(ColumnMode.None, attribute.ColumnMode);
             Assert.Equal(DbValueType.Default, attribute.DbType);
             Assert.True(attribute.AllowNull);
             Assert.True(attribute.IsColumn);

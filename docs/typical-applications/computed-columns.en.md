@@ -1,6 +1,8 @@
 # Computed Columns in Practice
 
-A computed column (`ColumnMode.Computed`) creates no physical column and takes no part in inserts/updates; query-time `SELECT` and conditions both render through its expression. Its value is centralizing a derived value in one place, with no redundant column to keep in sync.
+A computed column creates no physical column and takes no part in inserts/updates; query-time `SELECT` and conditions both render through its expression. Its value is centralizing a derived value in one place, with no redundant column to keep in sync.
+
+A computed column is declared by `Expression` (string form) or by `ExpressionExpr` (Expr tree form) at runtime; `ColumnMode.Computed` is no longer required, and the mode is inferred from the property's accessibility: a writable property gets `Read | Computed` (the expression value is selected and read back), a read-only property gets `Computed` (query conditions only). Whether it takes part in `SELECT` is decided by the `Read` bit alone: to keep a writable computed column for query conditions only, declare `ColumnMode = ColumnMode.Computed` explicitly.
 
 Three real requirements follow: a discount computed from the signed-in user's level, a product on-sale flag, and a cross-table display name. Each comes with the SQL it actually generates (SQLite dialect), plus the limits of the approach.
 
@@ -41,10 +43,12 @@ public class Order
     [Column("Amount")]
     public decimal Amount { get; set; }
 
-    [Column("DiscountAmount", ColumnMode = ColumnMode.Computed)]
+    // The expression is attached at startup, so the column is marked as computed at declaration; the Read bit is required to read it back
+    [Column("DiscountAmount", ColumnMode = ColumnMode.Read | ColumnMode.Computed)]
     public decimal DiscountAmount { get; set; }
 
-    [Column("Payable", Expression = "{Amount} - {DiscountAmount}", ColumnMode = ColumnMode.Computed)]
+    // Declaring Expression alone is enough; a writable property is inferred as Read | Computed
+    [Column("Payable", Expression = "{Amount} - {DiscountAmount}")]
     public decimal Payable { get; set; }
 }
 ```
@@ -141,9 +145,10 @@ public class Product
     [Column("IsOnline")]
     public bool IsOnline { get; set; }
 
+    // Query conditions only: declare Computed with no Read bit, so it stays out of SELECT
     [Column("OnSale", Expression = "CASE WHEN {IsOnline} = 1 AND {Stock} > 0 THEN 1 ELSE 0 END",
         ColumnMode = ColumnMode.Computed)]
-    public bool OnSale { get; set; }
+    public bool OnSale => IsOnline && Stock > 0;
 }
 ```
 
@@ -157,7 +162,7 @@ var onSale = await viewService.SearchAsync(p => p.OnSale, cancellationToken: ct)
 WHERE (CASE WHEN "T0"."IsOnline" = 1 AND "T0"."Stock" > 0 THEN 1 ELSE 0 END) = 1
 ```
 
-Whether `OnSale` is typed `int` or `bool` only affects the C# read-back; how the expression is written and what the SQL looks like are decided by the expression itself. `bool` fits the meaning better, and `p => p.OnSale` can go straight into a condition.
+`OnSale` serves conditions only, so the declaration sets `ColumnMode = ColumnMode.Computed` without the `Read` bit: it stays out of `SELECT` and takes part only in `WHERE` and `ORDER BY` through its expression, saving a pointless read. The property is read-only (`=> IsOnline && Stock > 0`), computed on the C# side, and states the same rule as `Expression`; keeping the two in step is up to you. A read-only property already infers `Computed`, so the explicit declaration is there to state the intent rather than to make it work. Whether `OnSale` is typed `int` or `bool` does not affect how the expression is written or what the SQL looks like; `bool` fits the meaning better, and `p => p.OnSale` can go straight into a condition.
 
 Constants inside the expression must be inlined, so the `1` in `{IsOnline} = 1` is a literal and cannot be parameterized. Building the same judgement in the Expr tree accepts a `bool` constant directly and renders identically:
 
@@ -191,7 +196,7 @@ public class Customer
     [Column("Code", AllowNull = true)]
     public string? Code { get; set; }
 
-    [Column("Label", Expression = "{Region} || '-' || {Name} || '-' || {Code}", ColumnMode = ColumnMode.Computed)]
+    [Column("Label", Expression = "{Region} || '-' || {Name} || '-' || {Code}")]
     public string? Label { get; set; }
 }
 ```
@@ -215,7 +220,7 @@ public class SaleOrderView
     [ForeignColumn("Customer", Property = nameof(Customer.Label))]
     public string? CustomerName { get; set; }
 
-    [Column("OrderCustomerLabel", Expression = "{CustomerName} || '/' || {OrderNo}", ColumnMode = ColumnMode.Computed)]
+    [Column("OrderCustomerLabel", Expression = "{CustomerName} || '/' || {OrderNo}")]
     public string? CustomerLabel { get; set; }
 }
 ```

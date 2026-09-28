@@ -18,6 +18,8 @@ This way, when querying `UserView`, LiteOrm can automatically generate JOIN base
 
 `ForeignColumn` supports declaring its own column-level converter: `[ForeignColumn(typeof(Department), Property = "Name", ConverterType = typeof(SomeValueConverter))]`. When reading, **it prefers its own `ConverterType` and otherwise falls back to the target column's converter**. `ConverterType` works like `ColumnAttribute.ConverterType` (provide a type implementing `IDbValueConverter`).
 
+Whether a foreign column takes part in `SELECT` depends only on whether the property is writable: only a writable property needs a read-back. Written as a read-only property (`=> ...`) it stays out of `SELECT` and the property body computes the value. This is unrelated to the target column's own definition, so a target that is an unreadable computed column does not affect the value here (and `ForeignColumnAttribute` has no mode parameter to declare otherwise).
+
 ## Service Definition
 
 ### Same Entity and View Type

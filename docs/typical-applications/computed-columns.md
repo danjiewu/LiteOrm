@@ -1,6 +1,8 @@
 # 计算列的实际应用
 
-计算列（`ColumnMode.Computed`）不生成物理列、不参与插入/更新，查询时 `SELECT` 与条件引用都按表达式返回结果。价值在于把派生值收敛到一处定义，不用多落冗余列，也不用在 C# 侧重复同一条计算。
+计算列不生成物理列、不参与插入/更新，查询时 `SELECT` 与条件引用都按表达式返回结果。价值在于把派生值收敛到一处定义，不用多落冗余列，也不用在 C# 侧重复同一条计算。
+
+计算列由 `Expression`（字符串形式）或运行时的 `ExpressionExpr`（Expr 树形式）声明，不必再写 `ColumnMode.Computed`：未显式声明列模式时按属性可访问性推导，可写属性得到 `Read | Computed`（查询时按表达式取值并回填），只读属性得到 `Computed`（只用于查询条件）。是否参与 `SELECT` 由 `Read` 位单独决定，想让可写属性的计算列只用于查询条件、不读出，显式声明 `ColumnMode = ColumnMode.Computed` 即可。
 
 下面用三个实际需求走一遍：按用户等级算折扣、商品上架状态位、跨表展示名。每段都附上真实生成的 SQL（SQLite 方言），并说明这套写法的边界。
 
@@ -41,10 +43,12 @@ public class Order
     [Column("Amount")]
     public decimal Amount { get; set; }
 
-    [Column("DiscountAmount", ColumnMode = ColumnMode.Computed)]
+    // 表达式在启动时动态挂上，声明时就得标出计算列；要读出结果，Read 位不能省
+    [Column("DiscountAmount", ColumnMode = ColumnMode.Read | ColumnMode.Computed)]
     public decimal DiscountAmount { get; set; }
 
-    [Column("Payable", Expression = "{Amount} - {DiscountAmount}", ColumnMode = ColumnMode.Computed)]
+    // 只声明 Expression 即为计算列，可写属性默认推导为 Read | Computed
+    [Column("Payable", Expression = "{Amount} - {DiscountAmount}")]
     public decimal Payable { get; set; }
 }
 ```
@@ -141,9 +145,10 @@ public class Product
     [Column("IsOnline")]
     public bool IsOnline { get; set; }
 
+    // 只用于查询条件：显式标出 Computed 而不给 Read，不进 SELECT
     [Column("OnSale", Expression = "CASE WHEN {IsOnline} = 1 AND {Stock} > 0 THEN 1 ELSE 0 END",
         ColumnMode = ColumnMode.Computed)]
-    public bool OnSale { get; set; }
+    public bool OnSale => IsOnline && Stock > 0;
 }
 ```
 
@@ -157,7 +162,7 @@ var onSale = await viewService.SearchAsync(p => p.OnSale, cancellationToken: ct)
 WHERE (CASE WHEN "T0"."IsOnline" = 1 AND "T0"."Stock" > 0 THEN 1 ELSE 0 END) = 1
 ```
 
-`OnSale` 属性类型是 `int` 还是 `bool` 只影响 C# 侧的回填，表达式怎么写、SQL 长什么样都由表达式本身决定。写成 `bool` 更贴合语义，`p => p.OnSale` 可以直接进条件。
+`OnSale` 只用于条件，声明时显式写 `ColumnMode = ColumnMode.Computed`，不带 `Read` 位，所以不进 `SELECT`，只在 `WHERE`、`ORDER BY` 里按表达式参与，省掉一次没必要的取值。属性写成只读的 `=> IsOnline && Stock > 0`，C# 侧自己就能算，与 `Expression` 是同一条规则，保持一致由人保证。只读属性本来就推导为 `Computed`，这里的显式声明是把意图写明，省得读代码的人再去推一遍。属性类型是 `int` 还是 `bool` 都不影响表达式怎么写、SQL 长什么样，写成 `bool` 更贴合语义，`p => p.OnSale` 可以直接进条件。
 
 表达式里的常量必须内联，所以 `{IsOnline} = 1` 的 `1` 要直接写字面量，不能参数化。同一个判断用 Expr 树写条件时可以直接用 `bool` 常量，渲染结果一致：
 
@@ -191,7 +196,7 @@ public class Customer
     [Column("Code", AllowNull = true)]
     public string? Code { get; set; }
 
-    [Column("Label", Expression = "{Region} || '-' || {Name} || '-' || {Code}", ColumnMode = ColumnMode.Computed)]
+    [Column("Label", Expression = "{Region} || '-' || {Name} || '-' || {Code}")]
     public string? Label { get; set; }
 }
 ```
@@ -215,7 +220,7 @@ public class SaleOrderView
     [ForeignColumn("Customer", Property = nameof(Customer.Label))]
     public string? CustomerName { get; set; }
 
-    [Column("OrderCustomerLabel", Expression = "{CustomerName} || '/' || {OrderNo}", ColumnMode = ColumnMode.Computed)]
+    [Column("OrderCustomerLabel", Expression = "{CustomerName} || '/' || {OrderNo}")]
     public string? CustomerLabel { get; set; }
 }
 ```
@@ -241,6 +246,7 @@ WHERE (("Customer"."Region" || '-' || "Customer"."Name" || '-' || "Customer"."Co
 - 关联声明要齐全：`[TableJoin]`（或 `[ForeignType]`）建 JOIN，`[ForeignColumn]` 把外部列挂到本表属性，缺一个名字就不存在。
 - 占位符按属性名查找，忽略大小写，`{CustomerName}` 命中的是本表的那个关联列属性。
 - 占位符写错不报错，会原样输出限定列名（如 `"T0"."CustomerLable"`），数据库执行时才提示列不存在。
+- `[ForeignColumn]` 的属性必须可写才会进 `SELECT`。可写才有回填需求，只读属性（`=> ...`）没有 setter，读回来也填不进去，所以直接不进列表，值靠属性体自己算；`CustomerName` 写成 `{ get; set; }` 才拿得到客户表的拼接结果。
 - 左联接未命中时整条链取不到值。要兜底就在表达式里套一层 `COALESCE`，比如 `Expression = "COALESCE({CustomerName}, '未知客户') || '/' || {OrderNo}"`。
 
 ## 何时不适合

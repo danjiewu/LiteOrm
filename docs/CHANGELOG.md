@@ -2,6 +2,12 @@
 
 ## v8.1.10 (2026-09-27)
 
+### 破坏性变更
+
+- **计算列不再自动可读，`ColumnMode` 默认值改为 `None`**（`LiteOrm.Common`）：`ColumnModeExt.CanRead` 只认 `Read` 位，`Computed` 不再隐含可读；`ColumnAttribute.ColumnMode` 默认值由 `Full` 改为 `None`（未指定），由表信息提供器按属性读写可访问性推导，设置 `Expression` / `ExpressionExpr` 的列按属性可写性推导（可写属性 `Read | Computed`，只读属性 `Computed`）。原先只写 `ColumnMode.Computed` 又想读出结果的计算列，需补上 `Read`；只想用于查询条件的保持 `Computed` 不变。源生成路径（NativeAOT）同步调整。
+
+- **关联列是否进 `SELECT` 改看属性是否可写**（`LiteOrm.Common`）：`ForeignColumn` 不再沿外键链取目标列定义判定可读性，改由属性有无 setter 决定，可写才进 `SELECT`。只读关联列不进 `SELECT`，值由属性体自行计算；目标列是不可读的计算列不影响本列取值。
+
 ### 新特性
 
 - **计算列支持嵌套引用**（`LiteOrm.Common`）：计算列字符串表达式里的 `{属性名}` 占位符除物理列外，还可指向同一实体上的其他计算列或关联列（`[ForeignColumn]`），渲染时递归展开为嵌套表达式，每层自带括号。

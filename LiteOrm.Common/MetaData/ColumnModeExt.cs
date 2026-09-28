@@ -29,13 +29,15 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 检查列模式是否允许读取操作。
-        /// 计算列（<see cref="ColumnMode.Computed"/>）按表达式读取，视为可读。
+        /// 计算列（<see cref="ColumnMode.Computed"/>）不会自动可读，必须显式带有
+        /// <see cref="ColumnMode.Read"/> 才参与 SELECT；只有 <see cref="ColumnMode.Computed"/>
+        /// 的列仅用于查询条件，读取结果不回填。
         /// </summary>
         /// <param name="mode">列操作模式</param>
         /// <returns>如果允许读取则返回true，否则返回false</returns>
         public static bool CanRead(this ColumnMode mode)
         {
-            return (mode & ColumnMode.Read) == ColumnMode.Read || (mode & ColumnMode.Computed) == ColumnMode.Computed;
+            return (mode & ColumnMode.Read) == ColumnMode.Read;
         }
 
         /// <summary>

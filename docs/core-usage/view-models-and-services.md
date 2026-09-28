@@ -18,6 +18,8 @@ public class UserView : User
 
 `ForeignColumn` 支持声明自己的列级转换器：`[ForeignColumn(typeof(Department), Property = "Name", ConverterType = typeof(SomeValueConverter))]`。读取时**优先使用自身声明的 `ConverterType`，否则回退目标列的转换器**；`ConverterType` 用法与 `ColumnAttribute.ConverterType` 一致（提供实现 `IDbValueConverter` 的转换器类型）。
 
+外键列是否进 `SELECT` 只看属性可不可写：可写才有回填需求，读回来才有人接。写成只读属性（`=> ...`）时该列不进 `SELECT`，值由属性体自行计算。这条判定与目标列自身的定义无关，目标列是不可读的计算列也不影响本列取值（`ForeignColumnAttribute` 没有列模式参数，本来也没法在关联列上单独声明）。
+
 ## Service 定义
 
 ### 实体类型与视图类型相同

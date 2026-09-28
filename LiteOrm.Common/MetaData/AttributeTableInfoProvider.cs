@@ -139,7 +139,21 @@ namespace LiteOrm
                     column.IdentityStart = columnAttribute.IdentityStart;
                     column.IdentityIncreasement = columnAttribute.IdentityIncreasement;
                     ColumnMode accessMask = (property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None);
-                    column.Mode = (columnAttribute.ColumnMode & accessMask) | (columnAttribute.ColumnMode & ColumnMode.Computed);
+                    if (columnAttribute.ColumnMode == ColumnMode.None)
+                    {
+                        // 未显式声明列模式：按属性的读写可访问性推导；
+                        // 设置表达式即视为计算列，可写属性推导为 Read | Computed（按表达式取值并回填），
+                        // 只读属性推导为 Computed（只用于查询条件，不回填）。
+                        column.Mode = String.IsNullOrEmpty(columnAttribute.Expression)
+                            ? ColumnMode.Full & accessMask
+                            : (property.CanWrite ? ColumnMode.Read | ColumnMode.Computed : ColumnMode.Computed);
+                    }
+                    else
+                    {
+                        // 显式声明：与可访问性求交，计算列位与读写位正交需单独保留；
+                        // Read 位只按声明值生效，计算列不自动可读。
+                        column.Mode = (columnAttribute.ColumnMode & accessMask) | (columnAttribute.ColumnMode & ColumnMode.Computed);
+                    }
                     column.ForeignTables = foreignTables;
                     column.DbValueConverter = CreateDbValueConverter(columnAttribute.ConverterType, property);
                     return column;

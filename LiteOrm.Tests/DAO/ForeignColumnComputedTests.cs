@@ -264,7 +264,7 @@ namespace LiteOrm.Tests
         [Column("Code", AllowNull = true)]
         public string? Code { get; set; }
 
-        [Column("DisplayName", Expression = "{Name} || '-' || {Code}", ColumnMode = ColumnMode.Computed)]
+        [Column("DisplayName", Expression = "{Name} || '-' || {Code}")]
         public string? DisplayName { get; set; }
     }
 

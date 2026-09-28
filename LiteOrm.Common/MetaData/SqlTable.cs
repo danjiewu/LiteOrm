@@ -80,6 +80,10 @@ namespace LiteOrm.Common
         /// <summary>
         /// 查询时需要读取的列，即 <see cref="ColumnMode"/> 允许读取的列。
         /// 结果按列在 <see cref="Columns"/> 中的顺序排列，与执行 SELECT 时的列顺序一致。
+        /// <para>
+        /// 外键列（<see cref="ForeignColumn"/>）以属性是否可写为准：可写才进 SELECT，可读性不再取决于
+        /// 目标列（链顶列）的定义，因此目标列是不可读的计算列也不影响本列取值。
+        /// </para>
         /// </summary>
         public ReadOnlyCollection<SqlColumn> SelectColumns
         {
@@ -89,10 +93,9 @@ namespace LiteOrm.Common
                 {
                     field = new ReadOnlyCollection<SqlColumn>(Columns.Where(col =>
                     {
-                        SqlColumn column = col;
-                        while (column is ForeignColumn foreignColumn) column = foreignColumn.TargetColumn!.Column;
-                        if (column is ColumnDefinition columnDefinition)
-                            return columnDefinition.Mode.CanRead();
+                        // 外键列：只有可写属性才有回填需求，是否进 SELECT 与目标列定义无关
+                        if (col is ForeignColumn foreignColumn) return foreignColumn.Property.CanWrite;
+                        if (col is ColumnDefinition columnDefinition) return columnDefinition.Mode.CanRead();
                         return true;
                     }).ToList());
                 }
