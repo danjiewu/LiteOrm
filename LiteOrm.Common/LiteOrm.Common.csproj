@@ -18,12 +18,6 @@
     <PackageReleaseNotes>
       8.1.11:
       - ExprString 与 RawSql 由 LiteOrm 移入本包，命名空间不变，引用方无需改动。
-      8.1.10:
-      - 扩展计算列：字符串表达式的 {属性} 占位符支持嵌套引用其他计算列与关联列，递归展开为嵌套表达式。
-      - SqlTable 新增 View 属性，表定义与视图定义互相可反向获取。
-      - GenericSqlExpr 支持隐式转换为 ValueTypeExpr，Expr.Sql 的结果可直接用于值位置。
-      - 计算列不再自动可读：CanRead 只认 Read 位；ColumnMode 默认改为 None 按属性可访问性推导，设置 Expression 的计算列可写属性为 Read | Computed、只读属性为 Computed。
-      - 关联列是否进 SELECT 改看属性是否可写，不再沿外键链取目标列定义判定。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
