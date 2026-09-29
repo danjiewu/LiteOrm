@@ -210,6 +210,8 @@ At startup (first access to `SqlBuilder` triggers static initialization), the fr
 - **Lambda queries**: indexers and `GetValue<T>()` can query JSON fields directly — see [Lambda Query Guide](../core-usage/lambda-guide.en.md#7-jsonnode-queries).
 - **Expr expressions**: functions such as `JsonExtract`, `JsonValue`, `JsonQuery`, `JsonContains`, `JsonObject`, `JsonArray`, `IsJson` are supported — see [Expression Extension](../extensibility/expression-extension.en.md#9-json-function-extensions).
 
+> When a custom class carries the JSON instead of `JsonNode`, [JSON Columns for Objects and Field-Level Queries](../typical-applications/json-column-mapping.en.md) walks through registering the read/write converters, mapping class fields to JSON functions, and filtering by field.
+
 ## 4. Column-Level Converters
 
 When a **specific column** needs a special type (e.g., enums, custom value objects), the column-level converter is the simplest approach — it has the highest priority and affects only that column.

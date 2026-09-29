@@ -47,6 +47,7 @@ namespace LiteOrm.Common
         private static readonly ConcurrentDictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>> _typeMethodHandlers = new ConcurrentDictionary<(Type type, string name), Func<MethodCallExpression, LambdaExprConverter, Expr>>();
         private static readonly ConcurrentDictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>> _memberNameHandlers = new ConcurrentDictionary<string, Func<MemberExpression, LambdaExprConverter, Expr>>(StringComparer.OrdinalIgnoreCase);
         private static readonly ConcurrentDictionary<(Type type, string name), Func<MemberExpression, LambdaExprConverter, Expr>> _typeMemberHandlers = new ConcurrentDictionary<(Type type, string name), Func<MemberExpression, LambdaExprConverter, Expr>>();
+        private static readonly ConcurrentDictionary<Type, Func<MemberExpression, LambdaExprConverter, Expr>> _typeFallbackMemberHandlers = new ConcurrentDictionary<Type, Func<MemberExpression, LambdaExprConverter, Expr>>();
 
 
         /// <summary>
@@ -107,12 +108,23 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 注册特定类型的成员转换逻辑。
+        /// 注册特定类型的成员（属性/字段）转换逻辑。
         /// </summary>
-        public static void RegisterMemberHandler(Type type, string memberName, Func<MemberExpression, LambdaExprConverter, Expr>? handler = null)
+        /// <param name="type">目标类型。</param>
+        /// <param name="memberName">成员名称。若不指定，则注册为该类型的成员兜底处理器，在解析时对该类型的所有成员生效。</param>
+        /// <param name="handler">处理逻辑，若为 null 则使用默认处理器。</param>
+        /// <remarks>
+        /// 不指定 <paramref name="memberName"/> 时只登记一条类型级兜底，不会在注册时枚举该类型的属性与字段；
+        /// 解析成员访问时，显式指定的成员注册（按类型或按成员名）优先于类型级兜底。
+        /// </remarks>
+        public static void RegisterMemberHandler([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type type, string? memberName = null, Func<MemberExpression, LambdaExprConverter, Expr>? handler = null)
         {
-            if (String.IsNullOrEmpty(memberName)) throw new ArgumentNullException(nameof(memberName));
-            _typeMemberHandlers[(type, memberName)] = handler ?? DefaultMemberHandler;
+            if (memberName != null && memberName.Length == 0) throw new ArgumentNullException(nameof(memberName));
+            handler ??= DefaultMemberHandler;
+            if (memberName == null)
+                _typeFallbackMemberHandlers[type] = handler;
+            else
+                _typeMemberHandlers[(type, memberName)] = handler;
         }
 
         /// <summary>
@@ -596,7 +608,11 @@ namespace LiteOrm.Common
             if (_memberNameHandlers.TryGetValue(node.Member.Name, out var nameMemberHandler))
                 if (nameMemberHandler != null) return nameMemberHandler(node, this);
 
-            // 4. 兜底使用默认成员处理器，将成员访问转换为 FunctionExpr
+            // 4. 匹配类型级兜底处理器，对未单独注册的成员生效
+            if (node.Member.DeclaringType != null && _typeFallbackMemberHandlers.TryGetValue(node.Member.DeclaringType, out var fallbackMemberHandler))
+                if (fallbackMemberHandler != null) return fallbackMemberHandler(node, this);
+
+            // 5. 兜底使用默认成员处理器，将成员访问转换为 FunctionExpr
             return DefaultMemberHandler(node, this);
         }
 
@@ -1243,7 +1259,7 @@ namespace LiteOrm.Common
             /// <returns></returns>
             protected override Expression VisitMember(MemberExpression node)
             {
-                if (_typeMemberHandlers.TryGetValue((node.Member.DeclaringType!, node.Member.Name), out _) || _memberNameHandlers.TryGetValue(node.Member.Name, out _))
+                if (_typeMemberHandlers.TryGetValue((node.Member.DeclaringType!, node.Member.Name), out _) || _memberNameHandlers.TryGetValue(node.Member.Name, out _) || _typeFallbackMemberHandlers.ContainsKey(node.Member.DeclaringType!))
                 {
                     _result = false;
                     return node; // 直接返回原节点，避免继续访问子表达式影响结果

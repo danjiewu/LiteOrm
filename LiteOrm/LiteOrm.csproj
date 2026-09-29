@@ -19,6 +19,7 @@
 <PackageReleaseNotes>
 8.1.11:
 - 同步 LiteOrm.Common 8.1.11：ExprString 与 RawSql 移入 LiteOrm.Common，命名空间不变。
+- MySqlBuilder 覆盖 GetSqlTypeName，修正 MySQL 的 CAST 类型名（SIGNED / CHAR 等）。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

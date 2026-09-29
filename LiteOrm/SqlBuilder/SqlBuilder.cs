@@ -541,7 +541,9 @@ namespace LiteOrm
         }
 
         /// <summary>
-        /// 将 <see cref="DbValueType"/> 转换为通用的 SQL 类型名称，用于 CAST 表达式等。
+        /// 将 <see cref="DbValueType"/> 转换为 CAST 表达式可用的 SQL 类型名称。
+        /// 仅由 CAST 函数处理器调用，生成 DDL 列类型请使用 <see cref="GetSqlTypeDefinition(ColumnDefinition)"/>。
+        /// 各方言可覆盖以提供自身接受的类型名（如 MySQL 只接受 SIGNED / CHAR / DECIMAL 等）。
         /// </summary>
         public virtual string GetSqlTypeName(DbValueType dbValueType)
         {

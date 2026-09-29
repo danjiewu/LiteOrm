@@ -81,9 +81,14 @@ LambdaExprConverter.RegisterMemberHandler("Length", handler);
 
 // 注册特定类型的成员处理器
 LambdaExprConverter.RegisterMemberHandler(typeof(User), "Age", handler);
+
+// 仅挂默认处理器（memberName 为 null 时登记为该类型的成员兜底）
+LambdaExprConverter.RegisterMemberHandler(typeof(User));
 ```
 
 这里的 `"Length"` 同样只是示例成员名；如果是自己定义的成员，优先使用 `nameof(SomeType.SomeProperty)` 更稳妥。
+
+只给类型时不扫描成员，而是登记一条类型级兜底，在解析到该类型的成员访问时才接管（与 `RegisterMethodHandler(typeof(SomeType))` 的批量注册对称）。要让整类成员走同一个自定义处理器，用命名参数只传 `handler`：`RegisterMemberHandler(typeof(User), handler: MyHandler)`，处理器里可以读 `node.Member.Name` 区分成员。按成员名统一映射的典型用法是把 POCO 的每个属性映射成同名的 JSON 路径，写法见[对象的 JSON 列存储与字段查询](../typical-applications/json-column-mapping.md#需求二按对象里的字段过滤)。显式指定成员的注册（按类型或按成员名）优先于类型级兜底，两者先后顺序无关，要改写某个成员单独注册它即可。
 
 ## 3. SqlBuilder 方法
 

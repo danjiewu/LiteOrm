@@ -2,9 +2,17 @@
 
 ## v8.1.11 (2026-09-29)
 
+### New Features
+
+- **`RegisterMemberHandler` can now register by type** (`LiteOrm.Common`): the new `RegisterMemberHandler(Type type, string? memberName = null, handler)` overload installs a member fallback for the type when `memberName` is null; an explicitly registered member takes precedence.
+
 ### Enhancements
 
-- **`ExprString` and `RawSql` moved into `LiteOrm.Common`** (`LiteOrm.Common`): both previously lived in the `LiteOrm` package and now move down alongside the expression infrastructure. The namespace is still `LiteOrm.Common`, so consuming code needs no change to its `using` directives or call sites.
+- **`ExprString` and `RawSql` moved into `LiteOrm.Common`** (`LiteOrm.Common`): moved down alongside the expression infrastructure; the namespace is unchanged, so consuming code needs no change.
+
+### Fixes
+
+- **Corrected `CAST` type names on MySQL** (`LiteOrm`): `MySqlBuilder` now overrides `GetSqlTypeName`, rendering integers as `SIGNED` / `UNSIGNED` and strings or Guids as `CHAR`. OceanBase, TiDB and GreatDB are fixed along with it.
 
 ***
 

@@ -75,6 +75,7 @@
 |[软删除与历史数据](./typical-applications/soft-delete-and-archive.md)|[Soft Deletes and Historical Data](./typical-applications/soft-delete-and-archive.en.md)|固定切片读路径、软删除写入、唯一约束与归档|
 |[审计与变更追踪](./typical-applications/audit-and-change-tracking.md)|[Audit and Change Tracking](./typical-applications/audit-and-change-tracking.en.md)|实体事件、字段 diff、审计落库的事务边界与调用日志|
 |[敏感字段加密与脱敏](./typical-applications/sensitive-data-protection.md)|[Sensitive Data Protection](./typical-applications/sensitive-data-protection.en.md)|列密文存储、自定义类型全局注册、盲索引与密钥管理|
+|[对象的 JSON 列存储与字段查询](./typical-applications/json-column-mapping.md)|[JSON Columns for Objects and Field-Level Queries](./typical-applications/json-column-mapping.en.md)|整段 JSON 落列、转换器注册、字段映射为 JSON 函数与按字段查询|
 |[计算列的实际应用](./typical-applications/computed-columns.md)|[Computed Columns in Practice](./typical-applications/computed-columns.en.md)|用户等级折扣、上架状态位、跨表展示名三个需求实例与生成 SQL|
 |[并发控制与读写分离](./typical-applications/concurrency-and-read-write-splitting.md)|[Concurrency and Read/Write Splitting](./typical-applications/concurrency-and-read-write-splitting.en.md)|时间戳乐观并发、事务边界、只读副本与读写一致性|
 
@@ -109,5 +110,5 @@
 4. 使用 `LiteOrm.DependencyInjection` 集成（Autofac、AOP）：先阅读[配置参考](./reference/configuration-reference.md)，再了解"DI扩展"中的事务、日志与服务鉴权等特性。
 5. 涉及分表、性能或数据库方言差异：继续阅读"高级特性篇"。
 6. 需要扩展框架能力：查阅"扩展开发篇"。
-7. 落地具体业务场景（多租户隔离、数据权限、软删除与归档、审计、敏感字段加密、并发与读写分离）：查阅"应用场景"，每个场景都有需求描述与可直接抄的代码。
+7. 落地具体业务场景（多租户隔离、数据权限、软删除与归档、审计、敏感字段加密、对象 JSON 列存储、并发与读写分离）：查阅"应用场景"，每个场景都有需求描述与可直接抄的代码。
 8. 需要快速确认配置项、接口名或术语：直接查阅"参考篇"。

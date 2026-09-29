@@ -3,11 +3,11 @@
 	<PropertyGroup>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<RootNamespace>LiteOrm.DependencyInjection</RootNamespace>
-		<AssemblyVersion>8.1.10.0</AssemblyVersion>
-		<FileVersion>8.1.10.0</FileVersion>
+		<AssemblyVersion>8.1.11.0</AssemblyVersion>
+		<FileVersion>8.1.11.0</FileVersion>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-		<VersionPrefix>8.1.10</VersionPrefix>
+		<VersionPrefix>8.1.11</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm.DependencyInjection</Title>
 		<Authors>danjiewu</Authors>
@@ -19,9 +19,8 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
-8.1.10:
-- SyncTable = Never 的实体在启动同步时不参与建表，也不预加载表信息。
-- 同步 LiteOrm.Common 8.1.10 / LiteOrm 8.1.10。
+8.1.11:
+- 同步 LiteOrm.Common 8.1.11 / LiteOrm 8.1.11。
     </PackageReleaseNotes>
 	</PropertyGroup>
 	<PropertyGroup>

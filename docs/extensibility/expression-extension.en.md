@@ -78,9 +78,14 @@ LambdaExprConverter.RegisterMemberHandler("Length", handler);
 
 // Register type-specific member handler
 LambdaExprConverter.RegisterMemberHandler(typeof(User), "Age", handler);
+
+// Attach the default handler as a type-level fallback (when memberName is null)
+LambdaExprConverter.RegisterMemberHandler(typeof(User));
 ```
 
 `"Length"` is also just an example member name. For your own members, prefer `nameof(SomeType.SomeProperty)` when possible.
+
+Passing only the type does not enumerate members; it installs a type-level fallback that takes over when a member access on that type is resolved (symmetric with the batch registration of `RegisterMethodHandler(typeof(SomeType))`). To send every member of a class through one custom handler, pass `handler` by name: `RegisterMemberHandler(typeof(User), handler: MyHandler)`, reading `node.Member.Name` inside to tell members apart. The typical use is mapping every property of a POCO to a JSON path of the same name, shown in [JSON Columns for Objects and Field-Level Queries](../typical-applications/json-column-mapping.en.md#requirement-2-filter-by-a-field-inside-the-object). An explicitly registered member (by type or by member name) takes precedence over the type-level fallback regardless of order, so to rewrite a single member just register it on its own.
 
 ## 3. SqlBuilder Methods
 

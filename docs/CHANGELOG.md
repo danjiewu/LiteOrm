@@ -2,9 +2,17 @@
 
 ## v8.1.11 (2026-09-29)
 
+### 新特性
+
+- **`RegisterMemberHandler` 支持按类型注册**（`LiteOrm.Common`）：新增 `RegisterMemberHandler(Type type, string? memberName = null, handler)` 重载，`memberName` 传 null 时按类型登记成员兜底，显式指定成员的注册优先。
+
 ### 改进
 
-- **`ExprString` 与 `RawSql` 移入 `LiteOrm.Common`**（`LiteOrm.Common`）：两者原在 `LiteOrm` 包中，现随表达式基础设施一并下移。命名空间仍为 `LiteOrm.Common`，引用方的 `using` 与调用方式无需改动。
+- **`ExprString` 与 `RawSql` 移入 `LiteOrm.Common`**（`LiteOrm.Common`）：随表达式基础设施一并下移，命名空间不变，引用方无需改动。
+
+### 修复
+
+- **修正 MySQL 的 `CAST` 类型名**（`LiteOrm`）：`MySqlBuilder` 覆盖 `GetSqlTypeName`，整型渲染为 `SIGNED` / `UNSIGNED`、字符串与 Guid 渲染为 `CHAR`。OceanBase、TiDB、GreatDB 一并修正。
 
 ***
 

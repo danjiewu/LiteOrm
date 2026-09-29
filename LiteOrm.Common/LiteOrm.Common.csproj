@@ -18,6 +18,7 @@
     <PackageReleaseNotes>
       8.1.11:
       - ExprString 与 RawSql 由 LiteOrm 移入本包，命名空间不变，引用方无需改动。
+      - RegisterMemberHandler 新增按类型注册的重载，memberName 传 null 时登记为该类型的成员兜底，解析时接管，显式成员注册优先。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

@@ -169,6 +169,34 @@ namespace LiteOrm
         protected override string GetAutoIncrementSql(ColumnDefinition column) => "AUTO_INCREMENT";
 
         /// <summary>
+        /// 将 <see cref="DbValueType"/> 转换为 CAST 表达式接受的 MySQL 类型名。
+        /// MySQL 的 <c>CAST</c> 只接受 <c>SIGNED</c> / <c>UNSIGNED</c> / <c>CHAR</c> / <c>DECIMAL</c> /
+        /// <c>DOUBLE</c> / <c>DATE</c> / <c>DATETIME</c> / <c>TIME</c> / <c>JSON</c> 等固定类型名，
+        /// 不接受 <c>INT</c> / <c>BIGINT</c> / <c>VARCHAR</c> / <c>BIT</c>，故此处不复用基类的通用类型名映射。
+        /// </summary>
+        public override string GetSqlTypeName(DbValueType dbValueType)
+        {
+            // 带数组掩码的取值类型先剥离掩码再按标量映射
+            return dbValueType.StripArray() switch
+            {
+                DbValueType.Int16 or DbValueType.Int32 or DbValueType.Int64 => "SIGNED",
+                DbValueType.UInt16 or DbValueType.UInt32 or DbValueType.UInt64 => "UNSIGNED",
+                DbValueType.Byte or DbValueType.SByte => "UNSIGNED",
+                DbValueType.Boolean => "UNSIGNED",
+                DbValueType.Decimal or DbValueType.Currency or DbValueType.VarNumeric => "DECIMAL",
+                DbValueType.Double => "DOUBLE",
+                DbValueType.Single => "FLOAT",
+                DbValueType.String or DbValueType.AnsiString or DbValueType.AnsiStringFixedLength
+                    or DbValueType.StringFixedLength or DbValueType.Guid or DbValueType.Xml
+                    or DbValueType.Json or DbValueType.Jsonb => "CHAR",
+                DbValueType.Date => "DATE",
+                DbValueType.DateTime or DbValueType.DateTime2 => "DATETIME",
+                DbValueType.Time => "TIME",
+                _ => "CHAR"
+            };
+        }
+
+        /// <summary>
         /// 获取 MySQL 列类型。JSON/JSONB 列映射为 MySQL 原生 JSON 类型。
         /// </summary>
         protected override string GetSqlTypeDefinition(ColumnDefinition column)

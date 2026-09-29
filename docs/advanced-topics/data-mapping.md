@@ -212,6 +212,8 @@ SqlBuilder.Instance.RegisterDbValueConverter<SqlBuilder, TDbType, TValueType>(
 - **Lambda 查询**：支持索引器和 `GetValue<T>()` 直接查询 JSON 字段，详见 [Lambda 查询指南](../core-usage/lambda-guide.md#7-jsonnode-查询)。
 - **Expr 表达式**：支持 `JsonExtract`、`JsonValue`、`JsonQuery`、`JsonContains`、`JsonObject`、`JsonArray`、`IsJson` 等函数，详见 [表达式扩展](../extensibility/expression-extension.md#9-json-函数扩展)。
 
+> 用自定义类承载 JSON 而不是 `JsonNode` 时，注册读写转换器、把类字段映射为 JSON 函数、按字段过滤的完整走法见[对象的 JSON 列存储与字段查询](../typical-applications/json-column-mapping.md)。
+
 ## 4. 列级转换器
 
 当某**个别列**需要特殊类型（如枚举、自定义值对象）时，用列级转换器最简单——它优先级最高，只影响这一列。

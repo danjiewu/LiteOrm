@@ -282,6 +282,91 @@ namespace LiteOrm.Tests
             Assert.Equal(30, ve.Value);
         }
 
+        private class BatchSettings
+        {
+            public string? Channel { get; set; }
+
+            public int Level { get; set; }
+
+            public string? Tag;
+        }
+
+        private class BatchSettingsHolder
+        {
+            public BatchSettings? Settings { get; set; }
+        }
+
+        [Fact]
+        public void MemberAccess_BatchRegisteredTypeMemberHandler_AppliesToAllPropertiesAndFields()
+        {
+            // 只给类型即登记类型级兜底，解析时对该类型的所有成员生效，处理器里用 node.Member.Name 拼路径
+            LambdaExprConverter.RegisterMemberHandler(typeof(BatchSettings), null, (node, converter) =>
+                new FunctionExpr("JsonValue", converter.Convert(node.Expression!).AsValue(), Expr.Const("$." + node.Member.Name)));
+
+            Expression<Func<BatchSettingsHolder, bool>> propertyExpr = e => e.Settings!.Channel == "APP";
+            var propertyLogic = Assert.IsType<LogicBinaryExpr>(LambdaExprConverter.ToLogicExpr(propertyExpr));
+            var propertyFunc = Assert.IsType<FunctionExpr>(propertyLogic.Left);
+            Assert.Equal("JsonValue", propertyFunc.FunctionName);
+            var path = Assert.IsType<ValueExpr>(propertyFunc.Args[1]);
+            Assert.True(path.IsConst);
+            Assert.Equal("$.Channel", path.Value);
+
+            // 字段同样被类型级兜底覆盖
+            Expression<Func<BatchSettingsHolder, bool>> fieldExpr = e => e.Settings!.Tag == "vip";
+            var fieldLogic = Assert.IsType<LogicBinaryExpr>(LambdaExprConverter.ToLogicExpr(fieldExpr));
+            var fieldFunc = Assert.IsType<FunctionExpr>(fieldLogic.Left);
+            Assert.Equal("$.Tag", Assert.IsType<ValueExpr>(fieldFunc.Args[1]).Value);
+        }
+
+        private class ExplicitMemberSettings
+        {
+            public string? Channel { get; set; }
+
+            public string? Tag { get; set; }
+        }
+
+        private class ExplicitMemberSettingsHolder
+        {
+            public ExplicitMemberSettings? Settings { get; set; }
+        }
+
+        [Fact]
+        public void MemberAccess_ExplicitMemberRegistration_TakesPrecedenceOverTypeFallback()
+        {
+            // 类型级兜底注册在前，显式指定成员的注册优先命中
+            LambdaExprConverter.RegisterMemberHandler(typeof(ExplicitMemberSettings), null,
+                (node, converter) => new FunctionExpr("Fallback", Expr.Const("$." + node.Member.Name)));
+            LambdaExprConverter.RegisterMemberHandler(typeof(ExplicitMemberSettings), "Channel",
+                (node, converter) => new FunctionExpr("Explicit"));
+
+            Expression<Func<ExplicitMemberSettingsHolder, string?>> channelExpr = e => e.Settings!.Channel;
+            var channelFunc = Assert.IsType<FunctionExpr>(LambdaExprConverter.ToValueExpr(channelExpr));
+            Assert.Equal("Explicit", channelFunc.FunctionName);
+
+            Expression<Func<ExplicitMemberSettingsHolder, string?>> tagExpr = e => e.Settings!.Tag;
+            var tagFunc = Assert.IsType<FunctionExpr>(LambdaExprConverter.ToValueExpr(tagExpr));
+            Assert.Equal("Fallback", tagFunc.FunctionName);
+        }
+
+        [Fact]
+        public void MemberAccess_BatchRegisteredTypeMemberHandler_DisablesLocalEvaluation()
+        {
+            // 未注册时闭包对象上的成员在本地求值；登记类型级兜底后按兜底处理器保留为函数表达式
+            LambdaExprConverter.RegisterMemberHandler(typeof(BatchSettings));
+
+            var settings = new BatchSettings { Channel = "APP", Tag = "vip" };
+            Expression<Func<TestUser, string?>> expr = u => settings.Channel;
+            var result = LambdaExprConverter.ToValueExpr(expr);
+            var func = Assert.IsType<FunctionExpr>(result);
+            Assert.Equal("Channel", func.FunctionName);
+        }
+
+        [Fact]
+        public void RegisterMemberHandler_EmptyMemberName_Throws()
+        {
+            Assert.Throws<ArgumentNullException>(() => LambdaExprConverter.RegisterMemberHandler(typeof(BatchSettings), ""));
+        }
+
         #endregion
 
         #region 方法调用 (MethodCallExpression)
