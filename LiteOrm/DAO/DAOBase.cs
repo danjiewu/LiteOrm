@@ -358,7 +358,6 @@ namespace LiteOrm
                 configureCommand?.Invoke(command);
                 return command;
             }
-            daoContext.EnsureTable(ObjectType, TableArgs);
             return GetOrAddPreparedCommand(daoContext, (ObjectType, methodName), sqlFunc, configureCommand);
         }
 
