@@ -314,8 +314,18 @@ namespace LiteOrm
                     // 检查连接是否仍然有效
                     if (context.IsValid)
                     {
-                        context.EnsureConnectionOpen();
-                        return context;
+                        // 打开失败必须销毁上下文以归还信号量许可，否则许可泄漏会使连接池在数据库恢复后仍不可用
+                        try
+                        {
+                            context.EnsureConnectionOpen();
+                            return context;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogWarning(ex, "Pool '{PoolName}': failed to open pooled connection, disposing (ContextId: {ContextId}).", Name, context.Id);
+                            context.Dispose();
+                            throw;
+                        }
                     }
 
                     // 无效则销毁，这会通对应的信号量释放计数
@@ -326,8 +336,17 @@ namespace LiteOrm
 
             // 池为空，创建新连接
             var newContext = CreateNewContext();
-            newContext.EnsureConnectionOpen();
-            return newContext;
+            try
+            {
+                newContext.EnsureConnectionOpen();
+                return newContext;
+            }
+            catch (Exception ex)
+            {               
+                _logger?.LogWarning(ex, "Pool '{PoolName}': failed to open new connection, disposing (ContextId: {ContextId}).", Name, newContext.Id);
+                newContext.Dispose();
+                throw;
+            }
         }
 
         /// <summary>
@@ -359,15 +378,34 @@ namespace LiteOrm
 
             if (contextToUse != null)
             {
-                await contextToUse.EnsureConnectionOpenAsync().ConfigureAwait(false);
-                return contextToUse;
+                // 打开失败必须销毁上下文以归还信号量许可，否则许可泄漏会使连接池在数据库恢复后仍不可用
+                try
+                {
+                    await contextToUse.EnsureConnectionOpenAsync().ConfigureAwait(false);
+                    return contextToUse;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Pool '{PoolName}': failed to open pooled connection, disposing (ContextId: {ContextId}).", Name, contextToUse.Id);
+                    await contextToUse.DisposeAsync().ConfigureAwait(false);
+                    throw;
+                }
             }
 
 
             // 池为空，创建新连接
             var newContext = CreateNewContext();
-            await newContext.EnsureConnectionOpenAsync().ConfigureAwait(false);
-            return newContext;
+            try
+            {
+                await newContext.EnsureConnectionOpenAsync().ConfigureAwait(false);
+                return newContext;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Pool '{PoolName}': failed to open new connection, disposing (ContextId: {ContextId}).", Name, newContext.Id);
+                await newContext.DisposeAsync().ConfigureAwait(false);
+                throw;
+            }
         }
 
 
