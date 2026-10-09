@@ -14,6 +14,8 @@
 
 - **Corrected `CAST` type names on MySQL** (`LiteOrm`): `MySqlBuilder` now overrides `GetSqlTypeName`, rendering integers as `SIGNED` / `UNSIGNED` and strings or Guids as `CHAR`. OceanBase, TiDB and GreatDB are fixed along with it.
 
+- **Fixed a bug where the connection was not released when the database open failed** (`LiteOrm`): `DAOContextPool.PeekContext(Async)` left the context undisposed on a failed open, the context is now released on failure.
+
 ***
 
 ## v8.1.10 (2026-09-27)

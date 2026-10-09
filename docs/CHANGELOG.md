@@ -14,6 +14,8 @@
 
 - **修正 MySQL 的 `CAST` 类型名**（`LiteOrm`）：`MySqlBuilder` 覆盖 `GetSqlTypeName`，整型渲染为 `SIGNED` / `UNSIGNED`、字符串与 Guid 渲染为 `CHAR`。OceanBase、TiDB、GreatDB 一并修正。
 
+- **修复数据库打开失败时连接未释放的 bug**（`LiteOrm`）：`DAOContextPool.PeekContext(Async)` 打开连接失败时未释放上下文，现改为失败即释放。
+
 ***
 
 ## v8.1.10 (2026-09-27)
