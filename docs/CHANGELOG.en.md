@@ -474,8 +474,6 @@ This release introduces several breaking changes. See the [8.1 Upgrade Guide](./
 
 ### New Features
 
-- Added CodeGen project (`c862ffd`)
-
 - Added `StringExprConverter` with `Parse`/`ParsePagedQuery` methods by entity type (`b4d422f`)
 
 ### Fixed

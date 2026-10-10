@@ -472,8 +472,6 @@
 
 ### 新特性
 
-- 新增 CodeGen 项目 (`c862ffd`)
-
 - 新增 `StringExprConverter` 按实体类型的 `Parse`/`ParsePagedQuery` 方法 (`b4d422f`)
 
 ### 修复

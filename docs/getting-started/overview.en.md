@@ -96,7 +96,6 @@ LiteOrm uses a modular design that clearly separates core functionality, common 
 │   ├── Models/              # Test models
 │   └── Service/             # Service tests
 ├── LiteOrm.Benchmark/       # Performance benchmark
-├── LiteOrm.CodeGen/         # Code generation CLI (entities / SELECT queries)
 └── docs/                    # Documentation
     ├── getting-started/  # Getting started (overview, installation)
     ├── core-usage/       # Core usage

@@ -94,7 +94,6 @@ LiteOrm 采用模块化设计，核心功能由 `LiteOrm.Common` 与 `LiteOrm`�
 │   ├── Models/              # 测试模型
 │   └── Service/             # 服务测试
 ├── LiteOrm.Benchmark/       # 性能基准测试
-├── LiteOrm.CodeGen/         # 代码生成 CLI（实体 / SELECT 查询生成）
 └── docs/                    # 文档
     ├── getting-started/  # 入门指南（概览、安装）
     ├── core-usage/       # 核心使用

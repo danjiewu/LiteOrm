@@ -322,7 +322,7 @@ MySqlBuilder.Instance.BulkProvider = new MySqlBulkCopyProvider();
 ## 📚 相关资源 / Resources
 
 - [LiteOrm 主仓库 / Main Repository](https://github.com/danjiewu/LiteOrm)
-- [配置与注册文档 / Configuration & Registration Docs](https://github.com/danjiewu/LiteOrm/blob/master/docs/di/01-configuration-and-registration.md)
+- [配置与注册文档 / Configuration & Registration Docs](https://github.com/danjiewu/LiteOrm/blob/master/docs/reference/configuration-reference.md)
 - [8.1 升级指南 / 8.1 Upgrade Guide](https://github.com/danjiewu/LiteOrm/blob/master/docs/upgrade-guides/upgrade-guide-8.1.md)
 - [Demo 项目 / Demo Project](https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo)
 
