@@ -379,6 +379,11 @@ namespace LiteOrm.Generators
             if (TryGetNamedArg(tableAttr.NamedArguments, "SyncTable", out var st) && !st.IsNull)
                 info.SyncTableInt = Convert.ToInt32(st.Value);
 
+            // AutoGenerateColumns：控制未标注 [Column] 的属性是否自动映射为列，默认 true。
+            bool autoGenerateColumns = true;
+            if (TryGetNamedArg(tableAttr.NamedArguments, "AutoGenerateColumns", out var agc) && !agc.IsNull && agc.Value is bool autoGenerateColumnsValue)
+                autoGenerateColumns = autoGenerateColumnsValue;
+
             // 收集列
             foreach (var prop in GetAllInstanceProperties(type))
             {
@@ -406,7 +411,10 @@ namespace LiteOrm.Generators
                 }
                 else
                 {
-                    // 无 ColumnAttribute 的属性：根据类型推断。
+                    // 无 ColumnAttribute 的属性：受 [Table(AutoGenerateColumns = false)] 控制，关闭时一律跳过。
+                    if (!autoGenerateColumns)
+                        continue;
+
                     // 复杂类型（数组/集合 → null、Json/Jsonb/自定义类 → "Object"）不自动生成列元信息，
                     // 必须显式加 [Column] 特性（可含 DbType）才会生成列。
                     var dbType = InferDbTypeFull(prop.Type);

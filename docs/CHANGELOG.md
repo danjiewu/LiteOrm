@@ -1,5 +1,13 @@
 # 变更日志 (Changelog)
 
+## v8.1.12 (2026-10-12)
+
+### 新特性
+
+- **`[Table]` 新增 `AutoGenerateColumns`**（`LiteOrm.Common`）：默认 `true`，未标注 `[Column]` 的标量属性自动映射为列；设为 `false` 时只有显式标注 `[Column]` 的属性才映射为列，`[Column(false)]` 与 `[ForeignColumn]` 的语义不变。运行时（`AttributeTableInfoProvider`）与 AOT 源生成器（`TableInfoGenerator`）行为一致。
+
+***
+
 ## v8.1.11 (2026-09-29)
 
 ### 新特性

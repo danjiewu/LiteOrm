@@ -53,5 +53,16 @@ namespace LiteOrm.Common
         /// 设为 <see cref="SyncTableMode.Never"/> 或 <see cref="SyncTableMode.Always"/> 时将覆盖数据源配置，优先级高于 <see cref="DataSourceConfig.SyncTable"/>。
         /// </summary>
         public SyncTableMode SyncTable { get; set; }
+
+        /// <summary>
+        /// 获取或设置一个值，该值指示是否自动为未标注 <see cref="ColumnAttribute"/> 的属性生成列定义。
+        /// 默认为 <c>true</c>：未标注 <see cref="ColumnAttribute"/> 的属性中，已知标量类型（数值、<see cref="string"/>、
+        /// <see cref="byte"/> 数组、<see cref="Guid"/>、日期时间、枚举等）以及 <see cref="DbValueType.Json"/> /
+        /// <see cref="DbValueType.Jsonb"/> 映射类型自动映射为列，数组、集合与自定义类等复杂类型不生成列。
+        /// 设为 <c>false</c> 时只有显式标注 <see cref="ColumnAttribute"/>（且未通过 <see cref="ColumnAttribute.IsColumn"/>
+        /// 排除）的属性才映射为列，未标注的属性一律忽略；标注 <see cref="ForeignColumnAttribute"/> 的属性仍作为外键列参与关联查询。
+        /// 该标记同时作用于运行时表信息提供器与源生成器。
+        /// </summary>
+        public bool AutoGenerateColumns { get; set; } = true;
     }
 }

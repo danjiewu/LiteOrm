@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.1.12 (2026-10-12)
+
+### New Features
+
+- **`AutoGenerateColumns` added to `[Table]`** (`LiteOrm.Common`): defaults to `true`, auto-mapping unmarked scalar properties as columns; when set to `false`, only properties explicitly marked with `[Column]` are mapped as columns, while `[Column(false)]` and `[ForeignColumn]` keep their meaning. The runtime (`AttributeTableInfoProvider`) and the AOT source generator (`TableInfoGenerator`) behave identically.
+
+***
+
 ## v8.1.11 (2026-09-29)
 
 ### New Features

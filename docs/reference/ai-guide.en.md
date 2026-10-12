@@ -163,6 +163,7 @@ public class UserView : User
 | `Name` | Database table name, supports placeholder for sharding. |
 | `DataSource` | Specifies the data source for the current entity. |
 | `SyncTable` | Entity-level table-structure sync mode, enum `SyncTableMode` (`Default` / `Never` / `Always`), defaults to `Default`. `Never`/`Always` overrides the data-source-level `SyncTable` config. |
+| `AutoGenerateColumns` | Whether to auto-generate columns for properties without a `[Column]`, defaults to `true`. When set to `false`, only properties explicitly marked with `[Column]` are mapped as columns and unmarked ones are ignored; `[ForeignColumn]` is unaffected. |
 
 ```csharp
 [Table("Logs", SyncTable = SyncTableMode.Always)] // Always auto-create, even when the data source has SyncTable=false

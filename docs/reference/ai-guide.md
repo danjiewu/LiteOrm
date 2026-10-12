@@ -163,6 +163,7 @@ public class UserView : User
 | `Name` | 数据库表名，支持占位符分表。 |
 | `DataSource` | 指定当前实体所属数据源。 |
 | `SyncTable` | 实体级表结构同步模式，枚举 `SyncTableMode`（`Default` / `Never` / `Always`），默认 `Default`。`Never`/`Always` 覆盖数据源级 `SyncTable` 配置。 |
+| `AutoGenerateColumns` | 是否为未标注 `[Column]` 的属性自动生成列，默认 `true`。设为 `false` 时只有显式标注 `[Column]` 的属性才映射为列，未标注的一律忽略，`[ForeignColumn]` 不受影响。 |
 
 ```csharp
 [Table("Logs", SyncTable = SyncTableMode.Always)] // 始终自动建表，即使数据源 SyncTable=false

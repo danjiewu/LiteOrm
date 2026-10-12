@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.1.11.0</AssemblyVersion>
-		<FileVersion>8.1.11.0</FileVersion>
+		<AssemblyVersion>8.1.12.0</AssemblyVersion>
+		<FileVersion>8.1.12.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.1.11</VersionPrefix>
+		<VersionPrefix>8.1.12</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -17,10 +17,8 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
-8.1.11:
-- 同步 LiteOrm.Common 8.1.11：ExprString 与 RawSql 移入 LiteOrm.Common，命名空间不变。
-- MySqlBuilder 覆盖 GetSqlTypeName，修正 MySQL 的 CAST 类型名（SIGNED / CHAR 等）。
-- 修复数据库打开失败时连接未释放的 bug。
+8.1.12:
+- 同步 LiteOrm.Common 8.1.12：TableAttribute 新增 AutoGenerateColumns 属性，可整体关闭未标注 [Column] 属性的自动映射。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

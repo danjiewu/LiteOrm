@@ -87,11 +87,12 @@ namespace LiteOrm
             if (String.IsNullOrEmpty(tableName)) tableName = objectType.Name;
 
             List<ColumnDefinition> columns = new List<ColumnDefinition>();
+            bool autoGenerateColumns = tableAttribute.AutoGenerateColumns;
 
             var properties = objectType.GetProperties(BindingFlags.Public | BindingFlags.Instance).ToList().SortProperty() ?? new List<PropertyInfo>();
             foreach (PropertyInfo property in properties)
             {
-                ColumnDefinition? column = GenerateColumnDefinition(property);
+                ColumnDefinition? column = GenerateColumnDefinition(property, autoGenerateColumns);
                 if (column is not null)
                 {
                     columns.Add(column);
@@ -106,7 +107,7 @@ namespace LiteOrm
             };
         }
 
-        private ColumnDefinition? GenerateColumnDefinition(PropertyInfo property)
+        private ColumnDefinition? GenerateColumnDefinition(PropertyInfo property, bool autoGenerateColumns)
         {
             if (property.GetIndexParameters().Length != 0) return null;
             ForeignTable[] foreignTables = GetForeignTables(property);
@@ -161,7 +162,11 @@ namespace LiteOrm
             }
             else
             {
-                // 未标注 [Column] 的属性：复杂类型（数组/集合 → Array 掩码、自定义类 → Object）
+                // 未标注 [Column] 的属性：受 TableAttribute.AutoGenerateColumns 控制。
+                // 该标记为 false 时一律不生成列，只有显式标注 [Column] 的属性才映射为列。
+                if (!autoGenerateColumns) return null;
+
+                // 复杂类型（数组/集合 → Array 掩码、自定义类 → Object）
                 // 不自动生成列元信息，必须手动加 [Column] 特性才会作为列；仅已知标量类型（数值、string、byte[]、Guid、日期等）及 Json/Jsonb 映射类型自动映射为列。
                 DbValueType inferred = DbValueTypeMap.InferFromPropertyType(property.PropertyType);
                 if (inferred.HasArray() || inferred is DbValueType.Object)

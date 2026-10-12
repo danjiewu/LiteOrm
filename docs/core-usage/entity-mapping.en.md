@@ -40,6 +40,7 @@ public class User
 | `Name` | Database table name, supports placeholder for sharding. |
 | `DataSource` | Specifies the data source for the current entity. |
 | `SyncTable` | Entity-level table-structure sync mode, enum `SyncTableMode` (`Default` / `Never` / `Always`), defaults to `Default`. When set to `Never` or `Always`, it overrides the data-source-level `SyncTable` config. |
+| `AutoGenerateColumns` | Whether to auto-generate columns for properties without a `[Column]`, defaults to `true`. When set to `false`, only properties explicitly marked with `[Column]` are mapped as columns, and unmarked ones are ignored. |
 
 ## `[Column]` Attribute
 
@@ -53,6 +54,24 @@ public class User
 > `DbType` is of the `DbValueType` enum type, defaulting to `DbValueType.Default` (meaning "not specified — inferred from the property type").
 
 > **Complex types require an explicit `[Column]`**: properties of complex types — arrays/collections and custom classes (mapped as `Object`) — are **no longer auto-recognized as table columns** when they lack a `[Column]`. You must mark them explicitly with `[Column]` (specifying `DbType = Array` as appropriate) to persist them. Known scalars (numerics, `string`/`char`, `byte[]` → `Binary`, `Guid`, dates, enums → `Int32`) and `Json`/`Jsonb` mapped types are still auto-mapped as columns. The runtime (`AttributeTableInfoProvider`) and the AOT source generator (`TableInfoGenerator`) behave consistently.
+
+> **Explicit columns only**: with `[Table(AutoGenerateColumns = false)]`, properties without a `[Column]` are left out of the table definition entirely, so only explicitly declared properties become columns. Display-only, computed, or cached properties therefore never reach the SQL, and table-structure sync will not create physical columns for them.
+
+```csharp
+[Table("Users", AutoGenerateColumns = false)]
+public class User
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+
+    [Column("Name")]
+    public string Name { get; set; } = string.Empty;
+
+    public string DisplayLabel { get; set; } = string.Empty;   // no [Column], not mapped as a column
+}
+```
+
+`[Column(false)]` still marks a property as not mapped, and `[ForeignColumn]` properties are unaffected by this switch, still joining as foreign columns.
 
 ### Array Columns (PostgreSQL)
 

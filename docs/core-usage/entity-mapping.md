@@ -40,6 +40,7 @@ public class User
 | `Name` | 数据库表名，支持占位符分表。 |
 | `DataSource` | 指定当前实体所属数据源。 |
 | `SyncTable` | 实体级表结构同步模式，枚举 `SyncTableMode`（`Default` / `Never` / `Always`），默认 `Default`。设为 `Never` 或 `Always` 时将覆盖数据源级别的 `SyncTable` 配置。 |
+| `AutoGenerateColumns` | 是否为未标注 `[Column]` 的属性自动生成列，默认 `true`。设为 `false` 时只有显式标注 `[Column]` 的属性才映射为列，未标注的一律忽略。 |
 
 ## `[Column]` 特性
 
@@ -53,6 +54,24 @@ public class User
 > `DbType` 的类型为 `DbValueType` 枚举，默认 `DbValueType.Default`（表示未显式指定、按属性类型自动推断）。
 
 > **复杂类型需显式 `[Column]`**：数组/集合、以及自定义类（映射为 `Object`）等复杂类型的属性，若未标注 `[Column]` **不再被自动识别为表列**，必须显式 `[Column]`（并按其场景指定 `DbType = Array` 等）才会持久化。已知标量（数值、`string`/`char`、`byte[]`→`Binary`、`Guid`、日期、枚举→`Int32`）以及 `Json`/`Jsonb` 映射类型仍会自动映射为列。该规则在运行时（`AttributeTableInfoProvider`）与 AOT 源生成器（`TableInfoGenerator`）中保持行为一致。
+
+> **只认显式列**：`[Table(AutoGenerateColumns = false)]` 关掉自动映射后，未标注 `[Column]` 的属性一律不进表定义，只有显式声明的属性才作为列。实体上用于展示、计算或缓存的属性因此不会带进 SQL，也不会被表结构同步建成物理列。
+
+```csharp
+[Table("Users", AutoGenerateColumns = false)]
+public class User
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public int Id { get; set; }
+
+    [Column("Name")]
+    public string Name { get; set; } = string.Empty;
+
+    public string DisplayLabel { get; set; } = string.Empty;   // 未标注 [Column]，不映射为列
+}
+```
+
+`[Column(false)]` 仍表示该属性不映射为列，`[ForeignColumn]` 属性也不受该开关影响，依旧作为外键列参与关联查询。
 
 ### 数组列（PostgreSQL）
 
