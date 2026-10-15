@@ -19,6 +19,7 @@
 <PackageReleaseNotes>
 8.1.12:
 - 同步 LiteOrm.Common 8.1.12：TableAttribute 新增 AutoGenerateColumns 属性，可整体关闭未标注 [Column] 属性的自动映射。
+- 同步 LiteOrm.Common 8.1.12：修复单表 UPDATE/DELETE 中关联子查询相关引用无法解析的 bug，相关引用改用目标表名限定，不再渲染默认别名 T0。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

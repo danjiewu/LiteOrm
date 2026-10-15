@@ -6,6 +6,10 @@
 
 - **`[Table]` 新增 `AutoGenerateColumns`**（`LiteOrm.Common`）：默认 `true`，未标注 `[Column]` 的标量属性自动映射为列；设为 `false` 时只有显式标注 `[Column]` 的属性才映射为列，`[Column(false)]` 与 `[ForeignColumn]` 的语义不变。运行时（`AttributeTableInfoProvider`）与 AOT 源生成器（`TableInfoGenerator`）行为一致。
 
+### 修复
+
+- **修复单表 UPDATE / DELETE 中关联子查询相关引用无法解析的 bug**（`LiteOrm.Common`）：Lambda 条件经 `Expr.Exists` 等嵌套 Lambda 引用外层参数时，相关引用改用目标表名限定，不再渲染单表语句中不存在的默认别名 `T0`。
+
 ***
 
 ## v8.1.11 (2026-09-29)

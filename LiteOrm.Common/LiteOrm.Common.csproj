@@ -18,6 +18,7 @@
     <PackageReleaseNotes>
       8.1.12:
       - TableAttribute 新增 AutoGenerateColumns 属性（默认 true）：设为 false 时未标注 [Column] 的属性不再映射为列，[Column(false)] 与 [ForeignColumn] 语义不变，运行时与 AOT 源生成器行为一致。
+      - 修复单表 UPDATE/DELETE 中关联子查询相关引用无法解析的 bug：嵌套 Lambda（如 Expr.Exists）对外层参数的相关引用改用目标表名限定，不再渲染单表语句中不存在的默认别名 T0。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

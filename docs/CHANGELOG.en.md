@@ -6,6 +6,10 @@
 
 - **`AutoGenerateColumns` added to `[Table]`** (`LiteOrm.Common`): defaults to `true`, auto-mapping unmarked scalar properties as columns; when set to `false`, only properties explicitly marked with `[Column]` are mapped as columns, while `[Column(false)]` and `[ForeignColumn]` keep their meaning. The runtime (`AttributeTableInfoProvider`) and the AOT source generator (`TableInfoGenerator`) behave identically.
 
+### Fixes
+
+- **Fixed unresolved correlated references in subqueries of single-table UPDATE / DELETE statements** (`LiteOrm.Common`): references to the outer parameter from nested Lambdas such as `Expr.Exists` are now qualified by the target table name, rather than the default alias `T0`, which does not exist in single-table statements.
+
 ***
 
 ## v8.1.11 (2026-09-29)
