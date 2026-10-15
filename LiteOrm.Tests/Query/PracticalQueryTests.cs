@@ -295,6 +295,74 @@ namespace LiteOrm.Tests
             Assert.Equal(20, unchanged.Age);
         }
 
+        [Fact]
+        public async Task UpdateExpr_LambdaWithExistsCondition_ShouldUpdateMatchingRows()
+        {
+            var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+            var ct = TestContext.Current.CancellationToken;
+
+            var dept = new TestDepartment { Name = "LambdaExistsDept" };
+            await deptService.InsertAsync(dept, ct);
+
+            var user1 = new TestUser { Name = "LambdaExists1", Age = 20, DeptId = dept.Id, CreateTime = DateTime.Now };
+            var user2 = new TestUser { Name = "LambdaExists2", Age = 20, DeptId = 0, CreateTime = DateTime.Now };
+            await service.InsertAsync(user1, ct);
+            await service.InsertAsync(user2, ct);
+
+            // WHERE 条件使用 Expr.Exists 关联子查询，仅更新部门存在的用户
+            var updateResult = await service.UpdateAllAsync(
+                u => new TestUser { Age = 30 },
+                u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId),
+                cancellationToken: ct);
+
+            Assert.Equal(1, updateResult);
+
+            var updatedUser = (await objectViewDAO.Search(Expr.Prop("Name") == "LambdaExists1").ToListAsync(ct)).FirstOrDefault();
+            Assert.NotNull(updatedUser);
+            Assert.Equal(30, updatedUser.Age);
+
+            var unchangedUser = (await objectViewDAO.Search(Expr.Prop("Name") == "LambdaExists2").ToListAsync(ct)).FirstOrDefault();
+            Assert.NotNull(unchangedUser);
+            Assert.Equal(20, unchangedUser.Age);
+        }
+
+        [Fact]
+        public async Task UpdateExpr_LambdaWithExistsConditionAndSubqueryFilter_ShouldUpdateMatchingRows()
+        {
+            var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var objectViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUser>>();
+            var ct = TestContext.Current.CancellationToken;
+
+            var itDept = new TestDepartment { Name = "LambdaExistsFilter_IT" };
+            var hrDept = new TestDepartment { Name = "LambdaExistsFilter_HR" };
+            await deptService.InsertAsync(itDept, ct);
+            await deptService.InsertAsync(hrDept, ct);
+
+            var user1 = new TestUser { Name = "LambdaExistsFilter1", Age = 20, DeptId = itDept.Id, CreateTime = DateTime.Now };
+            var user2 = new TestUser { Name = "LambdaExistsFilter2", Age = 20, DeptId = hrDept.Id, CreateTime = DateTime.Now };
+            await service.InsertAsync(user1, ct);
+            await service.InsertAsync(user2, ct);
+
+            // EXISTS 子查询内附带部门名称条件，仅 IT 部门的用户被更新
+            var updateResult = await service.UpdateAllAsync(
+                u => new TestUser { Age = 40 },
+                u => Expr.Exists<TestDepartment>(d => d.Id == u.DeptId && d.Name == "LambdaExistsFilter_IT"),
+                cancellationToken: ct);
+
+            Assert.Equal(1, updateResult);
+
+            var updatedUser = (await objectViewDAO.Search(Expr.Prop("Name") == "LambdaExistsFilter1").ToListAsync(ct)).FirstOrDefault();
+            Assert.NotNull(updatedUser);
+            Assert.Equal(40, updatedUser.Age);
+
+            var unchangedUser = (await objectViewDAO.Search(Expr.Prop("Name") == "LambdaExistsFilter2").ToListAsync(ct)).FirstOrDefault();
+            Assert.NotNull(unchangedUser);
+            Assert.Equal(20, unchangedUser.Age);
+        }
+
         #endregion
 
         #region CommonTableExpr 实际数据库查询测试

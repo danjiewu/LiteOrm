@@ -282,7 +282,7 @@ namespace LiteOrm.Common
         /// <param name="expr">要设置别名的值类型表达式。</param>
         /// <param name="name">别名名称。</param>
         /// <returns>带有别名的选择项表达式。</returns>
-        public static SelectItemExpr As(this ValueTypeExpr expr, string name) => new SelectItemExpr(expr, name);
+        public static SelectItemExpr As(this ValueTypeExpr expr, string? name) => new SelectItemExpr(expr, name);
 
         /// <summary>
         /// 为Table表达式设置别名。
@@ -290,7 +290,7 @@ namespace LiteOrm.Common
         /// <param name="tableExpr">Table表达式</param>
         /// <param name="alias">别名</param>
         /// <returns>带有别名的Table表达式</returns>
-        public static TableExpr As(this TableExpr tableExpr, string alias)
+        public static TableExpr As(this TableExpr tableExpr, string? alias)
         {
             tableExpr.Alias = alias;
             return tableExpr;
@@ -302,7 +302,7 @@ namespace LiteOrm.Common
         /// <param name="selectExpr">Select表达式</param>
         /// <param name="alias">别名</param>
         /// <returns>带有别名的Select表达式</returns>
-        public static SelectExpr As(this SelectExpr selectExpr, string alias)
+        public static SelectExpr As(this SelectExpr selectExpr, string? alias)
         {
             selectExpr.Alias = alias;
             return selectExpr;

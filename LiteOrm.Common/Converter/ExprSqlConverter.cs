@@ -271,18 +271,18 @@ namespace LiteOrm.Common
             {
                 var tableDef = TableInfoProvider.Instance.GetTableDefinition(expr.Type);
                 if (tableDef == null) throw new InvalidOperationException($"Table definition not found for type {expr.Type}");
-                string tableName = context.SqlBuilder.ToSqlName(context.FormatTableName(tableDef.Name!));
-                sb.Append(tableName);
+                string tableName = context.FormatTableName(tableDef.Name!);
+                sb.Append(context.SqlBuilder.ToSqlName(tableName));
                 context.AddTableAlias(tableName, tableDef);
             }
             else
             {
                 var tableView = TableInfoProvider.Instance.GetTableView(expr.Type);
                 if (tableView == null) throw new InvalidOperationException($"Table view not found for type {expr.Type}");
-                string tableName = context.SqlBuilder.ToSqlName(context.FormatTableName(tableView.Definition.Name!));
+                string tableName = context.FormatTableName(tableView.Definition.Name!);
                 bool isMain = context.Depth == 0 && context.DefaultTableAliasName is null;
                 string aliasName = expr.Alias ?? (isMain ? Constants.DefaultTableAlias : NextAlias(context));
-                sb.Append(tableName);
+                sb.Append(context.SqlBuilder.ToSqlName(tableName));
                 sb.Append(" ");
                 sb.Append(context.SqlBuilder.ToSqlName(aliasName));
                 context.AddTableAlias(aliasName, tableView);

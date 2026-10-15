@@ -244,7 +244,7 @@ namespace LiteOrm.Common
             LambdaExprConverter updateConverter = new LambdaExprConverter(updateExpression);
             var updateExpr = Expr.Update<T>();
             if (whereExpression != null)
-            {               
+            {
                 var lambdaConvert = new LambdaExprConverter(whereExpression);
                 updateExpr.Where(lambdaConvert.ToLogicExpr());
                 if (updateExpr.Table is { } table)
@@ -259,6 +259,17 @@ namespace LiteOrm.Common
                     updateExpr.Set(assignment.Member.Name, updateConverter.Convert(assignment.Expression).AsValue());
                 }
             }
+            //特殊处理Update表达式中属性的TableAlias，替换为实际表名，避免在生成SQL时出现默认别名T0
+            if (updateExpr.Table is { } table2)
+            {
+                string? tableName = TableInfoProvider.Instance.GetTableDefinition(table2.Type!)?.Name;
+                if (tableName != null)
+                {
+                    if (table2.TableArgs?.Length > 0) tableName = string.Format(tableName, table2.TableArgs);
+                    ExprVisitor.Visit(expr => { if (expr is PropertyExpr propertyExpr && propertyExpr.TableAlias == Constants.DefaultTableAlias) { propertyExpr.TableAlias = tableName; } }, updateExpr);
+                }
+            }
+
             return updateExpr;
         }
 
