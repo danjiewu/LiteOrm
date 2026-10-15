@@ -111,7 +111,7 @@ var adults = await viewDao.Search(Expr.Prop("Age") > 18).ToListAsync();
 - `AddDataSource<TConnection>(name, connectionString, @default, syncTable, sqlBuilder, poolSize, maxPoolSize, paramCountLimit, keepAliveDuration)`：提供程序类型取 `TConnection`，连接池参数与建表同步在**这一次调用里配齐**，上下文不提供任何后置设置方法。
 - 需要显式构造配置时用 `AddDataSource(DataSourceConfig config, bool @default = false)`；`DataSourceConfig.ProviderType` / `SqlBuilderType` 是可赋值的 `Type?`（代码里只能赋 `Type`；`appsettings.json` 的 `Provider` / `SqlBuilder` 字符串键在加载时解析为 `Type`，失败抛 `TypeLoadException`）。
 - API 面很窄：`AddDataSource` / `CreateSession` / `DataSources` / `DefaultDataSourceName` / `GetDataSource` / `Dispose`，日志工厂由构造函数注入。
-- **建池时机**：首次 `CreateSession()` 按当前数据源配置一次建好全部连接池，此后 `AddDataSource` 抛 `InvalidOperationException`——所有 `AddDataSource` 必须排在首次 `CreateSession()` 之前。
+- **建池时机**：首次 `CreateSession()` 按当前数据源配置一次建好全部连接池，此后 `AddDataSource` 抛 `InvalidOperationException`：所有 `AddDataSource` 必须排在首次 `CreateSession()` 之前。
 - `Dispose()` 只销毁连接池工厂，不改 `SessionManager.Current`，因此不影响同进程内的 DI 线路。
 - 需要 AOP（`[Transaction]` / `[ServicePermission]` / `[ServiceLog]`）时必须改用 `RegisterLiteOrm()`；`LiteOrmContext` 与 `AddLiteOrm()` 都不提供 AOP。
 
@@ -638,7 +638,7 @@ var table = dataViewDao.Search(
 >
 > `ExprString` 不支持把 `SelectExpr.With(name)` / `CommonTableExpr` 这种 CTE 表达式自动展开成 `WITH` SQL。需要 CTE 时，请使用 `Expr` / `SelectExpr` 结构化构建；如果必须走 `ExprString`，请手动写完整 `WITH ... SELECT ...` SQL。
 
-#### RawSql —— 插入原始 SQL 片段
+#### RawSql：插入原始 SQL 片段
 
 `RawSql` 是独立的 `readonly struct`（**不**继承 `Expr`），作为 `ExprString` 的辅助入口存在。在插值字符串中插入 `RawSql` 时，其内容会**原样拼入 SQL**，不参数化、不做语法处理、不替换 `[ ]` 占位符。专用于**不适合参数化的动态值**；纯静态的 SQL 文本直接写在 `ExprString` 字面量中即可，无需使用 `RawSql`：
 

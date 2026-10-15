@@ -199,7 +199,7 @@ graph TD
 
 DAO层是LiteOrm的核心，提供了直接的数据访问操作。它包括多个实现类，针对不同的数据访问场景。
 
-**主要组件：**
+主要组件：
 
 - **DAOBase**：所有DAO的抽象基类，提供通用操作
 - **ObjectDAO**：对象化数据访问，处理实体对象的CRUD
@@ -209,7 +209,7 @@ DAO层是LiteOrm的核心，提供了直接的数据访问操作。它包括多�
 - **DbCommandProxy**：数据库命令代理，封装了IDbCommand，提供参数处理和执行功能
 - **AutoLockDataReader**：自动锁定的数据读取器，确保数据读取过程中的线程安全
 
-**核心功能：**
+核心功能：
 - 实体对象的增删改查
 - 批量操作支持
 - 表达式查询
@@ -222,12 +222,12 @@ DAO层是LiteOrm的核心，提供了直接的数据访问操作。它包括多�
 
 Service层封装了业务逻辑，提供了更高级的操作接口。它基于DAO层构建，增加了事务管理和业务规则。
 
-**主要组件：**
+主要组件：
 
 - **EntityService**：实体服务，提供完整的CRUD操作
 - **EntityViewService**：视图服务，专注于查询操作
 
-**核心功能：**
+核心功能：
 - 完整的CRUD操作
 - 批量操作
 - 事务支持
@@ -238,7 +238,7 @@ Service层封装了业务逻辑，提供了更高级的操作接口。它基于D
 
 表达式系统是LiteOrm的特色功能，提供了强大的查询构建能力。它覆盖三类常见查询入口：Lambda表达式、Expr对象，以及仅供 DAO 使用的 ExprString。
 
-**主要组件：**
+主要组件：
 
 - **Expr**：表达式基类
 - **LogicExpr**：逻辑表达式
@@ -247,7 +247,7 @@ Service层封装了业务逻辑，提供了更高级的操作接口。它基于D
 - **UpdateExpr**：更新表达式
 - **DeleteExpr**：删除表达式
 
-**核心功能：**
+核心功能：
 - 构建复杂查询条件
 - 支持各种运算符
 - 支持子查询
@@ -258,7 +258,7 @@ Service层封装了业务逻辑，提供了更高级的操作接口。它基于D
 
 SQL构建器负责根据表达式生成针对不同数据库的优化SQL语句。它支持多种数据库类型，提供了数据库特定的语法和函数支持。
 
-**主要组件：**
+主要组件：
 
 - **SqlBuilder**：SQL构建器基类
 - **SqlServerBuilder**：SQL Server专用构建器
@@ -275,7 +275,7 @@ SQL构建器负责根据表达式生成针对不同数据库的优化SQL语句�
 
 > 注：国产/兼容数据库 Builder 均继承自主流数据库 Builder，仅在需要时覆盖差异点。
 
-**核心功能：**
+核心功能：
 - 生成数据库特定的SQL语句
 - 处理参数化查询
 - 支持分页
@@ -286,7 +286,7 @@ SQL构建器负责根据表达式生成针对不同数据库的优化SQL语句�
 
 元数据管理负责处理实体类型与数据库表之间的映射关系。它通过特性系统构建元数据，为DAO和SQL构建器提供必要的信息。
 
-**主要组件：**
+主要组件：
 
 - **TableInfoProvider**：表信息提供者
 - **SqlTable**：表信息
@@ -294,7 +294,7 @@ SQL构建器负责根据表达式生成针对不同数据库的优化SQL语句�
 - **TableDefinition**：表定义
 - **ColumnDefinition**：列定义
 
-**核心功能：**
+核心功能：
 - 构建实体类型的元数据
 - 处理表和列的映射
 - 管理主键和外键关系
@@ -304,7 +304,7 @@ SQL构建器负责根据表达式生成针对不同数据库的优化SQL语句�
 
 LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要事务的方法。事务管理由SessionManager负责，确保多个操作在同一事务中执行。
 
-**核心功能：**
+核心功能：
 - 声明式事务
 - 事务嵌套
 - 事务回滚
@@ -316,7 +316,7 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 
 #### DAOBase
 
-**功能**：所有DAO的抽象基类，提供通用操作方法
+所有DAO的抽象基类，提供通用操作方法。
 
 **主要方法**：
 - `GetPreparedCommand()`：获取预定义命令（默认复用上下文缓存的命令，语句里含固定筛选条件或计算列表达式时传 `useCache: false`，每次新建）
@@ -326,11 +326,9 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 - `Execute()`：执行非查询SQL
 - `Query<TResult>()`：执行查询并返回结果集
 
-**使用场景**：作为DAO的基类，提供通用功能
-
 #### ObjectDAO<T>
 
-**功能**：处理实体对象的CRUD操作
+处理实体对象的CRUD操作。
 
 **主要方法**：
 - `Insert()`：插入实体
@@ -342,11 +340,9 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 - `BatchUpdate()`：批量更新
 - `BatchDelete()`：批量删除
 
-**使用场景**：直接操作实体对象，执行CRUD操作
-
 #### DbCommandProxy
 
-**功能**：数据库命令代理，封装了DbCommand，提供参数处理和执行功能，结合AutoLockDataReader实现事务、异步锁管理。
+数据库命令代理，封装了DbCommand，提供参数处理和执行功能，结合AutoLockDataReader实现事务、异步锁管理。
 
 **主要方法**：
 - `CreateParameter()`：创建数据库参数
@@ -354,11 +350,9 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 - `ExecuteReader()`：执行查询并返回数据读取器
 - `ExecuteScalar()`：执行查询并返回单个值
 
-**使用场景**：封装数据库命令，处理参数和执行操作
-
 #### AutoLockDataReader
 
-**功能**：自动锁定的数据读取器，确保数据读取过程中的线程安全
+自动锁定的数据读取器，确保数据读取过程中的线程安全。
 
 **主要方法**：
 - `Read()`：读取下一条记录
@@ -366,13 +360,11 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 - `GetInt32()/GetString()/等`：获取指定类型的值
 - `Dispose()`：释放资源
 
-**使用场景**：安全地读取数据库查询结果
-
 ### 8.2 服务层核心 API
 
 #### EntityService<T, TView>
 
-**功能**：提供实体的完整业务操作
+提供实体的完整业务操作。
 
 **主要方法**：
 - `Insert()`：插入实体
@@ -385,11 +377,9 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 - `SearchOne()`：查询单个实体
 - `SearchAsync()`：异步查询
 
-**使用场景**：在业务逻辑层使用，提供完整的实体操作
-
 #### EntityViewService<TView>
 
-**功能**：专注于查询操作的服务
+专注于查询操作的服务。
 
 **主要方法**：
 - `Search()`：查询实体
@@ -397,13 +387,11 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 - `SearchAsync()`：异步查询
 - `Count()`：统计记录数
 
-**使用场景**：仅需要查询功能的场景
-
 ### 8.3 表达式系统核心 API
 
 #### Expr
 
-**功能**：表达式基类，提供查询构建能力
+表达式基类，提供查询构建能力。
 
 **主要方法**：
 - `Prop()`：创建属性表达式
@@ -411,24 +399,20 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 - `From<T>()`：创建从表开始的查询
 - `ToPreparedSql()`：转换为带参数的SQL语句
 
-**使用场景**：构建复杂的查询条件
-
 #### LogicExpr
 
-**功能**：逻辑表达式，用于构建WHERE条件
+逻辑表达式，用于构建WHERE条件。
 
 **主要操作符**：
 - `&`：AND操作
 - `|`：OR操作
 - `!`：NOT操作
 
-**使用场景**：构建复杂的逻辑条件
-
 ### 8.4 SQL构建器核心 API
 
 #### SqlBuilder
 
-**功能**：SQL构建器基类，提供SQL生成功能
+SQL构建器基类，提供SQL生成功能。
 
 **主要方法**：
 - `ToSqlName()`：转换为SQL名称
@@ -438,20 +422,18 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 - `BuildSelectSql()`：构建SELECT语句
 - `BuildFunctionSql()`：构建函数SQL语句
 
-> **说明**：有列上下文的场景优先使用列级扩展（`ColumnDefinitionExtensions`）——写入方向 `GetToDbValue(target)`（从实体取值）/ `ToDbValue(value)`（裸值），读取方向 `SetFromDbValue(target, dbValue)`（写入实体）/ `FromDbValue(dbValue)`（裸值）。列级转换器（`SqlColumn.DbValueConverter`）优先于注册转换器。
+> **说明**：有列上下文的场景优先使用列级扩展（`ColumnDefinitionExtensions`），写入方向 `GetToDbValue(target)`（从实体取值）/ `ToDbValue(value)`（裸值），读取方向 `SetFromDbValue(target, dbValue)`（写入实体）/ `FromDbValue(dbValue)`（裸值）。列级转换器（`SqlColumn.DbValueConverter`）优先于注册转换器。
 
 **相关基类/接口**：
 - `SqlBuilder`（基类）：`ToDbValue()` / `FromDbValue()` 虚方法统一委托 `LiteOrm.Common.DbConverterHelper` 分发
 - `IDbConverter`：写入方向统一入口 `ToDbValue(object?, DbValueType?)`
 - `ISqlBuilder.SupportsNativeArrays`：指示数据库是否原生支持数组列（PostgreSQL/金仓/GaussDB），为 `false` 时数组列以 JSON 字符串存储
 
-**使用场景**：生成数据库特定的SQL语句
-
 ### 8.5 元数据核心 API
 
 #### SqlTable
 
-**功能**：表示数据库表的元数据
+表示数据库表的元数据。
 
 **主要属性**：
 - `Name`：表名
@@ -459,17 +441,13 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 - `Keys`：主键列
 - `Definition`：表定义
 
-**使用场景**：提供表的元数据信息
-
 #### TableInfoProvider
 
-**功能**：提供表信息的提供者
+提供表信息的提供者。
 
 **主要方法**：
 - `GetTableDefinition(Type objectType)`：获取对象类型对应的表定义（返回 `TableDefinition`）
 - `GetTableView(Type objectType)`：获取指定类型的视图信息（返回 `TableView`）
-
-**使用场景**：构建和管理表的元数据
 
 > 注：`GetColumn(string)` 定义在 `SqlTable` 上，不在 `TableInfoProvider` 上。
 
@@ -479,7 +457,7 @@ LiteOrm提供了声明式事务管理，通过`[Transaction]`属性标记需要�
 
 ### 误区一：LiteOrm 只是一个"简化版 EF Core"
 
-LiteOrm 不是 EF Core 的简化版，而是一个独立设计的 ORM 框架。它的设计哲学是"给你足够的抽象，但不隐藏 SQL"。你可以随时查看生成的 SQL、直接执行原生 SQL、自定义 SQL 构建器，这在 EF Core 中往往比较困难。
+LiteOrm 是独立设计的 ORM 框架，跟 EF Core 没有继承关系。它的设计哲学是"给你足够的抽象，但不隐藏 SQL"。你可以随时查看生成的 SQL、直接执行原生 SQL、自定义 SQL 构建器，这在 EF Core 中往往比较困难。
 
 ### 误区二：必须定义 Service 才能使用
 

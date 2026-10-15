@@ -18,8 +18,8 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - `AddLiteOrm()`（纯 MS DI，基础库内置，无 AOP）
 - `RegisterSqlBuilder(...)`
 - `SqlBuilder.BulkProvider`（批量插入提供程序）
-- `[AutoRegister]`（`Lifetime` / `Policy` / `Enabled` / `Key` / `AutoActivate`）—— 标记需要自动注册到 DI 容器的类或接口
-- `[assembly: LiteOrmCodeGen]`（`LiteOrmCodeGenAttribute`）—— 显式启用源生成；开启 AOT 构建时自动启用
+- `[AutoRegister]`（`Lifetime` / `Policy` / `Enabled` / `Key` / `AutoActivate`）：标记需要自动注册到 DI 容器的类或接口
+- `[assembly: LiteOrmCodeGen]`（`LiteOrmCodeGenAttribute`）：显式启用源生成；开启 AOT 构建时自动启用
 - 数据源配置、连接池配置、只读副本配置
 
 对应文档：
@@ -31,8 +31,8 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 ### 手动构造（不使用 DI 宿主）
 
 - `LiteOrmContext`：`new LiteOrmContext(ILoggerFactory? loggerFactory = null)` 起链
-  - `AddDataSource<TConnection>(name, connectionString, @default, syncTable, sqlBuilder, poolSize, maxPoolSize, paramCountLimit, keepAliveDuration)` —— 连接池参数与建表同步在此一次设定；提供程序类型取 `TConnection`
-  - `AddDataSource(DataSourceConfig config, bool @default = false)` —— 在代码里直接构造 `DataSourceConfig` 时使用
+  - `AddDataSource<TConnection>(name, connectionString, @default, syncTable, sqlBuilder, poolSize, maxPoolSize, paramCountLimit, keepAliveDuration)`：连接池参数与建表同步在此一次设定；提供程序类型取 `TConnection`
+  - `AddDataSource(DataSourceConfig config, bool @default = false)`：在代码里直接构造 `DataSourceConfig` 时使用
   - `CreateSession()` → `SessionManager`（同时绑定为 `SessionManager.Current`）
   - `GetDataSource(name)` / `DataSources` / `DefaultDataSourceName`
   - `Dispose()`
@@ -108,11 +108,11 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 ### 服务层（实体服务）
 
-- `IEntityService<T>` / `IEntityServiceAsync<T>` —— 实体增删改查、批量操作与 `UpdateOrInsert` 的服务契约
-- `IEntityViewService<T>` / `IEntityViewServiceAsync<T>` —— 只读视图服务契约
-- `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>` —— 上述契约的默认实现
-- `IEntityServiceEvent<T>` —— 插入 / 更新 / 删除 / `UpdateOrInsert` / `DeleteID` / `DeleteAll` / `UpdateAll` 前后的回调（Before 返回 false 可取消；批量方法逐条触发单条事件）
-- `EntityOperation<T>` / `OpDef` —— 事件参数中携带的实体与操作类型
+- `IEntityService<T>` / `IEntityServiceAsync<T>`：实体增删改查、批量操作与 `UpdateOrInsert` 的服务契约
+- `IEntityViewService<T>` / `IEntityViewServiceAsync<T>`：只读视图服务契约
+- `EntityService<T>` / `EntityService<T, TView>` / `EntityViewService<T>`：上述契约的默认实现
+- `IEntityServiceEvent<T>`：插入 / 更新 / 删除 / `UpdateOrInsert` / `DeleteID` / `DeleteAll` / `UpdateAll` 前后的回调（Before 返回 false 可取消；批量方法逐条触发单条事件）
+- `EntityOperation<T>` / `OpDef`：事件参数中携带的实体与操作类型
 
 对应文档：
 
@@ -171,6 +171,43 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - [权限过滤](../advanced-topics/permission-filtering.md)
 - [日志与诊断](../di/logging.md)
 - [远程服务调用](../advanced-topics/remote-service.md)
+
+## 源码索引
+
+想改框架代码或确认某个行为的实现位置，按这张表找文件。
+
+| 想找什么 | 去哪个文件 |
+|:---|:---|
+| 连接 / 事务 / 命令缓存 | `LiteOrm/DAOContext/DAOContext.cs` |
+| 连接池与只读副本 | `LiteOrm/DAOContext/DAOContextPool.cs` |
+| 数据源到连接池 | `LiteOrm/DAOContext/DAOContextPoolFactory.cs` |
+| 会话与连接绑定 | `LiteOrm/SessionManager/SessionManager.cs` |
+| DAO 基类与命令装配 | `LiteOrm/DAO/DAOBase.cs` |
+| 写 DAO | `LiteOrm/DAO/ObjectDAO.cs` |
+| 读 DAO | `LiteOrm/DAO/ObjectViewDAO.cs` |
+| 结果包装 | `LiteOrm/DAO/ResultTypes.cs` |
+| 命令代理 | `LiteOrm/DbAccess/DbCommandProxy.cs` |
+| 读取器持锁 | `LiteOrm/DbAccess/AutoLockDataReader.cs` |
+| 行到对象映射 | `LiteOrm/Converter/DataReaderConverter.cs` |
+| 业务服务与事件 | `LiteOrm/Service/EntityService.cs` |
+| 无 DI 手动入口 | `LiteOrm/Classes/LiteOrmContext.cs` |
+| MS DI 注册 | `LiteOrm/Register/LiteOrmServiceExtensions.cs` |
+| 表达式 → SQL | `LiteOrm.Common/Converter/ExprSqlConverter.cs` |
+| 表达式模型 | `LiteOrm.Common/Expr/Expr.cs` |
+| 元数据模型 | `LiteOrm.Common/MetaData/TableDefinition.cs` |
+| 特性 → 元数据 | `LiteOrm.Common/MetaData/AttributeTableInfoProvider.cs` |
+| SQL 方言基类 | `LiteOrm/SqlBuilder/SqlBuilder.cs` |
+
+## 扩展点速查
+
+| 想改什么 | 从哪儿下手 |
+|:---|:---|
+| 加一种数据库方言 | 继承 `SqlBuilder`，注册 `SqlBuilderType`（见 [自定义 SqlBuilder](../extensibility/custom-sqlbuilder.md)） |
+| 换值转换方式 | 实现 `IDbValueConverter` 并全局注册，列级可用 `ConverterType`（见 [数据映射与值转换](../advanced-topics/data-mapping.md)） |
+| 加自定义表达式 | 扩展 `Expr` 子类，加 `ExprType`，在 `ExprSqlConverter` 里补分发 |
+| 换元数据来源 | `TableInfoProvider.Set(factory)` |
+| 写前后加钩子 | 实现 `IEntityServiceEvent<T>` 并注册到容器（见 [审计与变更追踪](../typical-applications/audit-and-change-tracking.md)） |
+| AOT 下预注册映射 | `DataReaderConverter.RegisterMapper<T>()`，通常由源生成器产码（见 [AOT 支持](../advanced-topics/aot.md)） |
 
 ## 相关链接
 

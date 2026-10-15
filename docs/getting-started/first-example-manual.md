@@ -209,7 +209,7 @@ catch
 
 **原因**：在还没有创建任何会话时就访问 `SessionManager.Current`，或沿用旧版 API 却漏调 `SessionManager.SetCurrent(...)`。
 
-**解决方法**：先调 `CreateSession()` 再访问静态入口。更稳妥的做法始终是把 `CreateSession()` 的返回值显式传给 DAO 构造函数（`new ObjectDAO<User>(session)`）——`SessionManager.Current` 只指向最近一次创建的会话，多会话并存时不要依赖它。
+**解决方法**：先调 `CreateSession()` 再访问静态入口。更稳妥的做法始终是把 `CreateSession()` 的返回值显式传给 DAO 构造函数（`new ObjectDAO<User>(session)`）。`SessionManager.Current` 只指向最近一次创建的会话，多会话并存时不要依赖它。
 
 ## 运行验证清单
 

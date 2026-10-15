@@ -107,7 +107,7 @@ So you can safely reuse the same CTE expression multiple times, or reuse the sam
 
 Recursive CTEs are used for hierarchical / tree-structured data (org charts, category trees, path finding, etc.). LiteOrm decides whether to emit the `RECURSIVE` keyword based on the database's `ExplicitRecursive` property.
 
-### Writing a recursive CTE
+#### Writing a recursive CTE
 
 To write a recursive CTE, reference the CTE's own alias within its definition. Create an alias-only `CommonTableExpr` for the self-reference:
 
@@ -139,7 +139,7 @@ var query = cteDef.With("CategoryTree")
     .Select(Prop("Id"), Prop("Name"), Prop("Level"));
 ```
 
-### SQL generation behaviour
+#### SQL generation behaviour
 
 Whether the `RECURSIVE` keyword is appended after `WITH` depends solely on the target database's `SqlBuilder.ExplicitRecursive` property:
 

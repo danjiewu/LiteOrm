@@ -2,7 +2,7 @@
 
 本文介绍 LiteOrm 的运行环境、数据库支持，以及两种安装方式：仅使用基础库（`LiteOrm`）与使用框架集成包（`LiteOrm.DependencyInjection`）。
 
-> **新手提示**：如果你只是想快速体验 LiteOrm，建议使用 SQLite 作为数据库——它不需要安装任何数据库服务，开箱即用。需要宿主级集成（Autofac、AOP）时再引入 `LiteOrm.DependencyInjection`。
+> **新手提示**：如果你只是想快速体验 LiteOrm，建议使用 SQLite 作为数据库，它不需要安装任何数据库服务，开箱即用。需要宿主级集成（Autofac、AOP）时再引入 `LiteOrm.DependencyInjection`。
 
 ## 环境要求
 

@@ -2,7 +2,7 @@
 
 本文汇总 LiteOrm 完整配置项、默认值、注册方式和使用建议，适合作为接入与排障时的速查页。使用 `LiteOrm.DependencyInjection` 时，配置通过 `appsettings.json` 声明，启动时由 `RegisterLiteOrm()` 自动完成 DI 绑定、DAO 注册和方言解析；仅使用基础库时，可通过 `LoadConfiguration` 或 `AddLiteOrm()` 读取同一份配置。
 
-> **新手提示**：如果你是第一次配置，建议从最简单的配置开始——只配置一个数据源，使用 SQLite 作为数据库。初次使用时只需配置 `Name`、`ConnectionString`、`Provider` 三个必填项，其余使用默认值。等跑通基本流程后，再逐步添加多数据源、读写分离等高级配置。
+> **新手提示**：如果你是第一次配置，建议从最简单的配置开始，只配置一个数据源，使用 SQLite 作为数据库。初次使用时只需配置 `Name`、`ConnectionString`、`Provider` 三个必填项，其余使用默认值。等跑通基本流程后，再逐步添加多数据源、读写分离等高级配置。
 
 ## 完整配置示例
 

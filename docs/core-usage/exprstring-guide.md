@@ -14,7 +14,7 @@
 | 类型安全 | 运行时，无编译期列名/类型校验 |
 | SQL 注入防护 | 普通值自动转为命名参数；`Expr` 对象走 `Expr` 自身的参数化通道 |
 
-`ExprString` 不会替代结构化的 `Expr` / `SelectExpr`，而是作为「已经确定要手写一段 SQL」时的低门槛入口——既不用脱离 LiteOrm 的参数化机制，又能直接复用已构造好的 `Expr` 条件。
+`ExprString` 不会替代结构化的 `Expr` / `SelectExpr`，而是作为「已经确定要手写一段 SQL」时的低门槛入口，既不用脱离 LiteOrm 的参数化机制，又能直接复用已构造好的 `Expr` 条件。
 
 ## 2. 基本工作原理
 
@@ -63,7 +63,7 @@ var users = await userViewDAO.Search(
 ).ToListAsync();
 ```
 
-建议优先把条件构造成 `Expr`（例如上面的 `Prop("UserName").Contains(keyword)`），而不是把列名/值都写死在字符串里——这样列名仍走 `Expr` 的引用符规则，值仍走参数化。
+建议优先把条件构造成 `Expr`（例如上面的 `Prop("UserName").Contains(keyword)`），而不是把列名/值都写死在字符串里，这样列名仍走 `Expr` 的引用符规则，值仍走参数化。
 
 ### 3.3 完整 SQL（isFull: true）
 
@@ -112,7 +112,7 @@ var result = await dataViewDAO.Search(
 ).GetResultAsync();
 ```
 
-如果用 `Expr.Prop(...)` 构造列引用，则无需关心引用符——`Expr` 会通过 `SqlBuilder.ToSqlName` 自动处理。
+如果用 `Expr.Prop(...)` 构造列引用，则无需关心引用符，`Expr` 会通过 `SqlBuilder.ToSqlName` 自动处理。
 
 ## 6. 排序与分页
 
@@ -260,7 +260,7 @@ var result = await dataViewDAO.Search(
 
 | 规则 | 说明 |
 |------|------|
-| 不参与 ExprValidator 验证 | `RawSql` 不是 `Expr`，不会被 `ExprValidator.CreateQueryOnly()` 等验证器扫描——它只在受信任的服务端 DAO 代码中使用 |
+| 不参与 ExprValidator 验证 | `RawSql` 不是 `Expr`，不会被 `ExprValidator.CreateQueryOnly()` 等验证器扫描，它只在受信任的服务端 DAO 代码中使用 |
 | 不支持 JSON 序列化往返 | `RawSql` 不是 `Expr`，无法通过 `ExprJsonConverter` 序列化/反序列化，前端 Expr JSON 中不能携带原始 SQL |
 | 纯静态内容不要用 RawSql | 写死的 SQL 片段直接写在 `ExprString` 字面量中即可，包成 `RawSql` 反而掩盖真实意图 |
 | 优先用 Expr | 简单列名用 `Expr.Prop`（自带名称校验和引用符包裹）；凡是能用 `Expr.Func`/`Expr.Sql`（预注册的 `GenericSqlExpr`）表达的，不要用 `RawSql` |
@@ -295,7 +295,7 @@ var result = await dataViewDAO.Search(
 ## 10. 边界与注意事项
 
 - **顺序敏感**：`ExprString` 按插值项出现顺序消费 `Expr`，参数编号也是按顺序递增。这跟完整 `SelectExpr` 的「按结构遍历」不同，复杂查询中表别名可能无法按作用域自动匹配。
-- **主表别名**：`ExprString` 创建时已在上下文注册主表及别名 `T0`。直接在插值项里再插入主表 `FromExpr` 可能造成主表别名重复分配错误——可给该 `FromExpr` 预先设定别名 `T0`，或改用 `{From}` 占位符。
+- **主表别名**：`ExprString` 创建时已在上下文注册主表及别名 `T0`。直接在插值项里再插入主表 `FromExpr` 可能造成主表别名重复分配错误：可给该 `FromExpr` 预先设定别名 `T0`，或改用 `{From}` 占位符。
 - **SelectExpr 早于 FromExpr**：`ExprString` 中若 `SelectExpr` 出现在 `FromExpr` 之前，未显式指定表别名的列可能不能正确绑定默认表（主查询已通过预建默认主表上下文规避，但子查询仍需注意）。建议在多表复杂查询中预先给 `FromExpr` / `PropertyExpr` 设好别名。
 - **不支持自动展开 `CommonTableExpr`**：`ExprString` 不会把 `CommonTableExpr` 翻译成 `WITH` 子句。需要 CTE 时直接写完整 `WITH ... SELECT ...`，或用 `SelectExpr.With(name)` 构造 CTE 块再走结构化通道。
 

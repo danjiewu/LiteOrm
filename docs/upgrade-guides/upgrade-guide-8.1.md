@@ -137,7 +137,7 @@ MySqlBuilder.Instance.BulkProvider = new MySqlBulkCopyProvider();
 
 ### 新特性
 
-#### 基础库新增 `AddLiteOrm()` —— 纯 MS DI 注册（无 Autofac）
+#### 基础库新增 `AddLiteOrm()`：纯 MS DI 注册（无 Autofac）
 
 不引入 `LiteOrm.DependencyInjection` / Autofac 时，可直接在 `IServiceCollection` 上注册核心服务：
 

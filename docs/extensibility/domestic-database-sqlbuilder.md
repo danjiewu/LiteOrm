@@ -10,7 +10,7 @@ LiteOrm 已内置达梦、人大金仓、GaussDB / openGauss、OceanBase、TiDB�
 
 这些构建器遵循「继承最接近的基础方言 + 仅覆盖差异点」的设计原则：在大部分场景下，国产数据库的 SQL 行为已与对应基础方言（Oracle / PostgreSQL / MySQL）保持一致，构建器内部可能只覆盖少数方法甚至为零。
 
-> 即使默认实现与基础方言完全一致，仍建议通过 `RegisterSqlBuilder` 显式注册到对应的数据源名，**不要依赖关键字自动识别**——后者只是兜底机制，驱动版本变化可能导致关键字不再命中。
+> 即使默认实现与基础方言完全一致，仍建议通过 `RegisterSqlBuilder` 显式注册到对应的数据源名，**不要依赖关键字自动识别**，后者只是兜底机制，驱动版本变化可能导致关键字不再命中。
 
 ## 2. 选择基类的策略
 
@@ -90,9 +90,9 @@ namespace YourProject.SqlBuilder
 
 **实现要点：**
 
-1. **继承 `OracleBuilder` 而不是 `SqlBuilder`**：这样我们可以复用 Oracle 的所有 SQL 生成逻辑（`MERGE INTO` 批量更新、`MINUS` 翻译、`RETURNING INTO` 标识值返回等），只覆盖差异点。
+1. **继承 `OracleBuilder` 而不是 `SqlBuilder`**：这样能复用 Oracle 的所有 SQL 生成逻辑（`MERGE INTO` 批量更新、`MINUS` 翻译、`RETURNING INTO` 标识值返回等），只覆盖差异点。
 2. **提供 `public static readonly new XxxBuilder Instance`**：所有内置构建器都遵循单例模式，工厂返回的就是这个单例。
-3. **只覆盖 `GetAutoIncrementSql(ColumnDefinition)`**：这是与 Oracle 的唯一显著差异。
+3. **只覆盖 `GetAutoIncrementSql(ColumnDefinition)`**：这是与 Oracle 的唯一实质差异。
 4. **使用 `protected override` 而不是 `public override`**：因为基类的 `GetAutoIncrementSql(ColumnDefinition)` 就是 `protected virtual`，保持访问级别一致。
 
 ### 3.3 注册自定义 SqlBuilder
@@ -182,7 +182,7 @@ SqlBuilderFactory.Instance.RegisterSqlBuilder("Dameng", DamengBuilder.Instance);
 - 即便你的驱动 FullName 不包含任何被识别的关键字（例如某个私有达梦驱动叫 `Acme.Db.Connection`），只要在启动时调用了 `RegisterSqlBuilder(typeof(AcmeConnection), DamengBuilder.Instance)`，工厂就会正确返回你的构建器。
 - 第 3 层关键字识别只是 LiteOrm 内置方言的兜底机制，第三方不应依赖它，更不能修改它。
 
-> **结论**：永远通过 `RegisterSqlBuilder(...)` 显式注册，**不要依赖关键字自动识别**——后者在驱动版本变更时可能失效。
+> **结论**：永远通过 `RegisterSqlBuilder(...)` 显式注册，**不要依赖关键字自动识别**，后者在驱动版本变更时可能失效。
 
 ### 3.4 为子类写单元测试
 
@@ -215,7 +215,7 @@ private class DamengIdentityModel
 
 除了覆盖 `virtual` 方法外，LiteOrm 还提供了一种更轻量的扩展点：**函数处理器（FunctionSqlHandler）**。它允许你为某个具体函数名（如 `DATE_FORMAT`、`SYSDATE`）注册翻译逻辑，而无需新建子类或覆盖方法。详见 [表达式扩展](./expression-extension.md)。
 
-本节重点说明**继承链查找机制**——这是自定义子类与父类函数处理器协同工作的关键。
+本节重点说明**继承链查找机制**，这是自定义子类与父类函数处理器协同工作的关键。
 
 ### 4.1 查找顺序
 
@@ -234,12 +234,12 @@ private class DamengIdentityModel
 **核心结论**：
 
 - **子类自己注册的处理器优先级最高**。
-- **父类注册的处理器也会生效**，优先级在子类注册的之后——子类没注册时自动 fallback 到父类。
+- **父类注册的处理器也会生效**，优先级在子类注册的之后：子类没注册时自动 fallback 到父类。
 - 全部未命中才走默认函数映射表（如 `IndexOf→CHARINDEX`、`Now→CURRENT_TIMESTAMP`）。
 
 ### 4.2 实践意义
 
-这意味着你可以**继承现有的内置构建器，只追加自己的函数处理器，而无需重新注册父类已有的处理器**：
+于是可以走一条更省事的路：继承现有的内置构建器，只追加自己的函数处理器，父类已有的处理器不用重新注册。
 
 ```csharp
 using LiteOrm;
@@ -393,7 +393,7 @@ options.RegisterSqlBuilder("Kingbase", MyKingbaseESBuilder.Instance);
 
 ### Q6：我可以修改 `SqlBuilderFactory.cs` 源码添加自己的关键字吗？
 
-**A：** 不建议。第三方修改 LiteOrm 源码会带来维护负担（升级时需要重新合并冲突），且并非必要——通过 `RegisterSqlBuilder(...)` 注册到字典的构建器**总是优先于**关键字识别命中。如果你需要支持某个不被识别的驱动，直接在启动时显式注册即可：
+**A：** 不建议。第三方修改 LiteOrm 源码会带来维护负担（升级时需要重新合并冲突），且并非必要，通过 `RegisterSqlBuilder(...)` 注册到字典的构建器**总是优先于**关键字识别命中。如果你需要支持某个不被识别的驱动，直接在启动时显式注册即可：
 
 ```csharp
 options.RegisterSqlBuilder(typeof(YourCustomConnection), YourBuilder.Instance);

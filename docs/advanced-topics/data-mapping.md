@@ -112,7 +112,7 @@ graph TD
 ```
 
 要点：
-- **读取方法由列的 DbValueType 决定**（第一步）：框架先把列解析为 `DbValueType`（由**该数据库 Builder 的 `GetDbValueType(属性类型)`** 给出），再映射为 `DbType` 并据此选择类型化读取方法——`String→GetString`、`Binary→GetBytes`、`Int32→GetInt32`…进而决定送入转换器的原始值类型。因此**列的 DbValueType 必须与列实际存储类型一致，否则会调错 Get 方法**（场景见 [6.3 VARBINARY 示例](#63-某数据库需要覆盖)）。
+- **读取方法由列的 DbValueType 决定**（第一步）：框架先把列解析为 `DbValueType`（由**该数据库 Builder 的 `GetDbValueType(属性类型)`** 给出），再映射为 `DbType` 并据此选择类型化读取方法：`String→GetString`、`Binary→GetBytes`、`Int32→GetInt32`…进而决定送入转换器的原始值类型。因此**列的 DbValueType 必须与列实际存储类型一致，否则会调错 Get 方法**（场景见 [6.3 VARBINARY 示例](#63-某数据库需要覆盖)）。
 - **空值独立于转换器处理**：可空类型/引用类型得 `null`，非可空值类型得该类型的零值（`default`）。转换委托本身不处理 null。
 - **转换器的输入类型**（`TDbType`）必须与第一步选定的 Get 方法返回类型对齐（如 `Binary→byte[]`、`String→string`），这样读到原始值后能直接命中强类型委托、避免运行时桥接。
 
@@ -157,11 +157,11 @@ graph TD
 
 ### 2.5 注册目标与作用域（RegisterDbValueConverter）
 
-`RegisterDbValueConverter` 是扩展方法，**它按泛型参数 `T` 声明的 SqlBuilder 类型进行注册，与传入的实例无关**（实例只用于调用，真正的落点是 `T` 对应的那张注册表）。因此用哪个实例调用不影响结果，关键是 `T` 选谁：
+`RegisterDbValueConverter` 是扩展方法，**它按泛型参数 `T` 声明的 SqlBuilder 类型进行注册，与传入的实例无关**（实例只用于调用，落点是 `T` 对应的那张注册表）。因此用哪个实例调用不影响结果，关键是 `T` 选谁：
 
 | 用 `T` 指定 | 注册到 | 作用域 |
 |------------|--------|--------|
-| `SqlBuilder`（基类） | SqlBuilder 基类注册表 | **所有数据库的保底**——任何方言沿继承链都能命中，除非方言自带了同 key 的覆盖 |
+| `SqlBuilder`（基类） | SqlBuilder 基类注册表 | **所有数据库的保底**，任何方言沿继承链都能命中，除非方言自带了同 key 的覆盖 |
 | 某方言子类（`MySqlBuilder` 等） | 该方言独立注册表 | 仅该方言生效，会覆盖基类对同 key 的注册 |
 
 所以，要让一个自定义转换器对所有数据库生效，**只需注册一次到基类**：
@@ -216,7 +216,7 @@ SqlBuilder.Instance.RegisterDbValueConverter<SqlBuilder, TDbType, TValueType>(
 
 ## 4. 列级转换器
 
-当某**个别列**需要特殊类型（如枚举、自定义值对象）时，用列级转换器最简单——它优先级最高，只影响这一列。
+当某**个别列**需要特殊类型（如枚举、自定义值对象）时，用列级转换器最简单，它优先级最高，只影响这一列。
 
 ### 4.1 两种指定方式
 
@@ -255,7 +255,7 @@ Mapper 把数据库返回的行逐列填充到实体对象，它决定"读方向
 > 也就是说，**一个实体只能缓存一份读取委托，这份委托由它第一次被哪个数据源绑定而决定**。因此，当同一个实体被绑定到多个**可动态切换**的数据源（例如按租户 / 分片在 SQLite / MySQL / Oracle 间切换）时，必须满足其一，否则会因复用旧数据源编译出的 mapper 而读错列：
 
 1. **保证各数据源下该实体列的 `DbValueType` 一致**。例如 SQLite 把 `DateTime` 存成文本、MySQL 存成原生 `DATETIME`，若实体先在 SQLite 编译出调用 `GetString` 再解析的 mapper，切到 MySQL 后同一 mapper 拿到的是 `DATETIME` 原始值，强转 / 解析便会失败。想让同一实体跨库稳定，需让列在各库采用相同类型约定；否则建议为不同数据源使用**专属实体**（不同实体各自独立缓存，互不污染）。
-2. **难以保持一致时，手动预注册读取委托**——通过 `DataReaderConverter.RegisterMapper<T>` 在启动期固定该实体的映射规则。缓存命中预注册后，就不再"由某个数据源方言动态编译"，也就从根本上避免了跨源脏缓存：
+2. **难以保持一致时，手动预注册读取委托**：通过 `DataReaderConverter.RegisterMapper<T>` 在启动期固定该实体的映射规则。缓存命中预注册后，就不再"由某个数据源方言动态编译"，也就从根本上避免了跨源脏缓存：
 
 ```csharp
 DataReaderConverter.RegisterMapper<Order>(
@@ -270,7 +270,7 @@ DataReaderConverter.RegisterMapper<Order>(
     });
 ```
 
-> 说明：`AutoLockDataReader` 提供与 `DbDataReader` 一致的类型化读取方法，列序号对应 `GetConverterByTable` 的按表列位置映射（`SelectColumns` 顺序，从 0 开始）。在手动 mapper 里，**读取方法不能仅凭字段声明的 .NET 类型写死**，应在运行时用 `GetFieldType(i)` 探测数据库实际返回的类型，再分支到对应的类型化 Get 方法——正如示例对 `CreateTime` 的处理（返回文本 → `GetString` + 解析；返回原生 DATETIME → `GetDateTime`）；这其实正是框架 JIT 路径在编译期按列 `DbValueType → DbType` 所做的选择。`RegisterMapper<T>` 主要为 NativeAOT 提供无反射的预注册路径，但同样适用于"实体跨数据源动态切换"场景，作为显式、确定性的读取规则。
+> 说明：`AutoLockDataReader` 提供与 `DbDataReader` 一致的类型化读取方法，列序号对应 `GetConverterByTable` 的按表列位置映射（`SelectColumns` 顺序，从 0 开始）。在手动 mapper 里，**读取方法不能仅凭字段声明的 .NET 类型写死**，应在运行时用 `GetFieldType(i)` 探测数据库实际返回的类型，再分支到对应的类型化 Get 方法，正如示例对 `CreateTime` 的处理（返回文本 → `GetString` + 解析；返回原生 DATETIME → `GetDateTime`）；这其实正是框架 JIT 路径在编译期按列 `DbValueType → DbType` 所做的选择。`RegisterMapper<T>` 主要为 NativeAOT 提供无反射的预注册路径，但同样适用于"实体跨数据源动态切换"场景，作为显式、确定性的读取规则。
 
 ## 6. 完整示例：自定义 IP 地址转换器
 
@@ -458,7 +458,7 @@ AOT 性能建议：
 
 ### Q6：自定义转换器注册到基类，会不会影响已有类型的默认行为？
 
-会——如果注册的 key（.NET 值类型, DbValueType）与内置默认转换相同，就会覆盖它们。注册前请确认该 key 未被框架占用；如需针对个别数据库调整，优先注册到该方言类型而非基类。
+会。如果注册的 key（.NET 值类型, DbValueType）与内置默认转换相同，就会覆盖它们。注册前请确认该 key 未被框架占用；如需针对个别数据库调整，优先注册到该方言类型而非基类。
 
 ### Q7：同一个实体在多个数据源间动态切换，为什么读取会报错？
 

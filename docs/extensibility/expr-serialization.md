@@ -501,7 +501,7 @@ LiteOrm 的 `ExprJsonConverter` 主要围绕两种 JSON 形状展开：
 
 ## 4. FunctionExpr 额外说明
 
-`FunctionExpr` 是这页里最容易写错的一类，因为它的简洁模式不是 `$fn`，而是直接使用 `func` 标记，再把函数名作为属性名写出来。
+`FunctionExpr` 是这页里最容易写错的一类，因为它的简洁模式直接使用 `func` 标记，再把函数名作为属性名写出来，前面没有 `$fn` 前缀。
 
 ### 简洁模式
 

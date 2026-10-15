@@ -124,6 +124,30 @@ Important notes here:
 - When the read result structure differs significantly from the write entity structure, use a separate `TView`.
 - When you only need pure query encapsulation, start from `ObjectViewDAO<T>`.
 
+## How DAO splits reads and writes
+
+`DAOBase` does two things: turn "metadata plus expressions" into an executable command, and turn a reader into objects. It has two concrete implementations, one for reads and one for writes.
+
+|  | `ObjectDAO<T>` (write) | `ObjectViewDAO<T>` (read) |
+|:---|:---|:---|
+| Base properties | `IsView = false`, `SingleTable = true` | `IsView = true`, `Table` comes from `GetTableView` |
+| Main methods | `Insert` / `Update` / `Delete` / `UpdateOrInsert` / batch | `GetObject` / `Count` / `Exists*` / `Search` / `SearchAs` |
+| Statement building | `MakeInsertSql` / `MakeUpdateSql` / `MakeDeleteSql` | `MakeGetObjectSql` / `MakeObjectExistsSql` |
+| Command cache | `Insert` / `BatchInsert` always cached | Statements with a constant filter, and `GetObject` with a computed-column `Expr`, are rebuilt each time |
+
+The split exists because the two do genuinely different work. Writing assembles `INSERT`, `UPDATE`, `DELETE` and handles identity columns and timestamps. Reading assembles complex `SELECT` with JOIN and fills one object from multiple tables. Put both in a single class and every method ends up with runtime checks for "operation not supported here".
+
+Results are wrapped in lazy objects (`ResultTypes.cs`): the base is `CommandResult<T>`, `EnumerableResult<T>` is consumed with `ToList()` and `FirstOrDefault()`, and `ValueResult<T>` with `GetResult()`. When a result object is disposed it looks at where the command came from: cached commands are left alone, ones created for this call are released.
+
+## What Service adds on top of DAO
+
+`EntityService<T, TView>` (`EntityService.cs:58`) adds business semantics above DAO:
+
+- It resolves one `ObjectDAO<T>` during construction.
+- It raises `IEntityServiceEvent<T>` before and after every write; if any Before hook returns `false`, the operation is cancelled.
+- The subscriber collection is lazy (`:76`), so constructing the service does not touch the container. Resolution happens at the first notification.
+- If the entity implements `IArged`, operations are grouped by `TableArgs` automatically and routed to the matching shard.
+
 ## Related Links
 
 - [Back to docs hub](../README.md)

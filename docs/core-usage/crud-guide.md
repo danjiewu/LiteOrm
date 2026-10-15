@@ -2,6 +2,8 @@
 
 本文聚焦 LiteOrm 的写入、更新、删除和批量操作。查询能力请统一参考 [查询总览](./query-overview.md)。
 
+读这篇前先记住一件事：写操作在 `ObjectDAO<T>` 上，读操作在 `ObjectViewDAO<T>` 上，两个类不通用。下面所有示例都从写 DAO 出发。
+
 ## 1. 插入
 
 ### 单条插入
@@ -384,6 +386,36 @@ await service.BatchAsync(ops);
 - 高频写入场景优先考虑批量接口。
 - 需要显式控制 SQL 结构时，可使用 `Expr.Update<T>()` 和 DAO。
 - 跨多表业务操作建议放到 Service 中并配合事务。
+
+## 8. 一次写入内部走了哪些路
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as 调用方
+    participant O as ObjectDAO#lt;T#gt;
+    participant X as SqlBuilder
+    participant D as DAOContext
+    participant N as 数据源
+
+    C->>O: Insert(entity) / Update / Delete
+    O->>O: MakeInsertSql（含 ConstFilter 注入）
+    O->>O: GetPreparedCommand(useCache)
+    O->>X: ToParamName / ToSqlName / ToDbType
+    X-->>O: 方言化 SQL 与参数名
+    O->>D: 绑定 Param 值（DbWriteConverter）
+    D->>N: DbCommandProxy.ExecuteNonQuery（获取作用域、挂事务）
+    N-->>D: 受影响行数
+    D-->>C: bool / int
+```
+
+1. 造写语句。 `MakeInsertSql` / `MakeUpdateSql` / `MakeDeleteSql` 用 `ValueStringBuilder` 拼装，顺手注入固定切片条件。
+2. 取命令。 `Insert` 和 `BatchInsert` 恒用缓存命令；带固定切片条件的更新、删除与主键路径每次新建，免得把缓存里的可复用命令搞脏。
+3. 绑参数。 `SetupCommand` 生成 `DbParameter`，按 `DbValueType` 定 `DbType`，该转值的转值。
+4. 执行。 `DbCommandProxy.ExecuteNonQuery` 获取上下文作用域，挂上当前事务。
+5. 返回。 单条给 `bool`，条件批量给受影响行数 `int`。
+
+读写分工上，`ObjectDAO<T>` 只管写，`ObjectViewDAO<T>` 只管读，两者都继承 `DAOBase`；详见 [视图模型与服务定义](./view-models-and-services.md#dao-的读写分工)。
 
 ## 相关链接
 

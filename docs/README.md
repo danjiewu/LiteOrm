@@ -8,7 +8,7 @@
 
 |中文|English|说明|
 |-|-|-|
-|[概览](./getting-started/overview.md)|[Overview](./getting-started/overview.en.md)|框架介绍、项目组成与适用场景|
+|[概览](./getting-started/overview.md)|[Overview](./getting-started/overview.en.md)|框架介绍、项目组成、分层结构与适用场景|
 |[安装](./getting-started/installation.md)|[Installation](./getting-started/installation.en.md)|环境要求与安装（基础库 / DI 扩展双场景）|
 |[第一个完整示例（仅基础库）](./getting-started/first-example.md)|[First Example (Base Only)](./getting-started/first-example.en.md)|不依赖 DI 扩展的最小可运行示例|
 |[第一个完整示例（手动构造，无 DI）](./getting-started/first-example-manual.md)|[First Example (Manual, No DI)](./getting-started/first-example-manual.en.md)|用 `LiteOrmContext` 手动创建上下文，完全不使用 DI 容器|
@@ -84,7 +84,7 @@
 |中文|English|说明|
 |-|-|-|
 |[配置参考](./reference/configuration-reference.md)|[Config Reference](./reference/configuration-reference.en.md)|配置项说明|
-|[API索引](./reference/api-index.md)|[API Index](./reference/api-index.en.md)|API 快速索引|
+|[API索引](./reference/api-index.md)|[API Index](./reference/api-index.en.md)|API 快速索引、源码索引与扩展点|
 |[术语表](./reference/glossary.md)|[Glossary](./reference/glossary.en.md)|术语解释|
 |[AI指南](./reference/ai-guide.md)|[AI Guide](./reference/ai-guide.en.md)|AI 辅助开发|
 |[示例索引](./reference/example-index.md)|[Example Index](./reference/example-index.en.md)|示例代码索引|

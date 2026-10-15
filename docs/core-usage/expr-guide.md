@@ -20,7 +20,7 @@ var constValue = Const("Enabled"); // 直接内嵌
 - `Prop(name)`：创建属性表达式
 - `Prop(alias, name)`：创建带表别名的属性表达式
 - `Value(obj)`：按参数传递，适合运行时值
-- `Const(obj)`：直接内嵌到 SQL，适合真正的常量
+- `Const(obj)`：直接内嵌到 SQL，适合写死不变的常量
 
 ### 1.2 比较、字符串与集合
 
@@ -208,6 +208,14 @@ var query = From<User>()
 | 逻辑表达式 | `LogicExpr` | 能出现在 WHERE / HAVING / EXISTS 条件里的布尔表达式 |
 | SQL 片段 | `SqlSegment` | `FROM / SELECT / WHERE / ORDER BY` 这一类链式 SQL 节点 |
 
+表达式走到 SQL，中间一共三段：`Expr` → `SqlSegment` → `PreparedSql`。全程不反射，拼接字符串也用池化缓冲。
+
+举个具体的。你写 `Expr.Prop("Age") > 18`，拿到手的是一条带占位符的 SQL，外加一个值为 18 的参数，18 不会以字面量形式出现在 SQL 文本里。注入就是从这一步被掐掉的。
+
+出口是 `ExprSqlConverter`：`Expr.ToSql(SqlBuildContext)`（`ExprSqlConverter.cs:128`）按表达式类型分发，该补括号的地方补上；`Expr.ToPreparedSql(SqlBuildContext)`（`:306`）把 SQL 文本和参数列表打包成 `PreparedSql`。
+
+`ValueStringBuilder` 是框架自己写的字符串构建器，`ref struct`，从 `ArrayPool<char>` 租缓冲，用完还回去。`SqlValueStringBuilder` 按 SELECT、FROM、WHERE 这些子句各持有几个。省 GC 主要靠这里。
+
 ### 5.1 ValueTypeExpr 体系
 
 - `ValueExpr`：值或参数
@@ -391,7 +399,7 @@ var constExpr = Prop("Status") == Const(1); // 常量内嵌
 
 ### 7.5 与 `null` 比较
 
-`ValueTypeExpr` 是引用类型，`null` 可以直接作为 `operator ==` / `!=` 的右操作数传入，因此 `Prop("DeletedTime") == null` 是合法的——它会构造出一个右操作数为 `null` 引用的 `LogicBinaryExpr`。
+`ValueTypeExpr` 是引用类型，`null` 可以直接作为 `operator ==` / `!=` 的右操作数传入，因此 `Prop("DeletedTime") == null` 是合法的，它会构造出一个右操作数为 `null` 引用的 `LogicBinaryExpr`。
 
 SQL 转换层对 `Equal`/`NotEqual` 与 `null` 的组合做了特殊处理：当某一侧为 `null` 引用，或是 `ValueExpr` 且其 `Value` 为 `null` 时，会输出 `IS NULL` / `IS NOT NULL`，而不会输出 `= NULL`（后者在 SQL 中恒为假）。因此下面三种写法在生成结果上等价：
 

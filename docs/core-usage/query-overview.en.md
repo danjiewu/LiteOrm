@@ -2,6 +2,8 @@
 
 LiteOrm supports three query styles: **Lambda**, **`Expr`**, and **`ExprString`**. They all ultimately produce parameterized SQL, but differ in positioning and applicable scenarios.
 
+You only need C# and a simple `SELECT` to follow along. None of the three is better in the abstract, they just fit different situations: Lambda when conditions are hard-coded, `Expr` when conditions come from a frontend or a config file, `ExprString` when you want direct control over a piece of SQL.
+
 This article is the overview and entry point for query capabilities. Full usage of each style is covered in:
 
 - [Lambda Guide](./lambda-guide.en.md)
@@ -198,7 +200,45 @@ If `TResult` is an entity type registered in `TableInfoProvider` (e.g. using `Se
 
 Switch to the DAO only for raw SQL projection (`ExprString`); Lambda projection is now supported directly on the Service (see [Lambda Guide](./lambda-guide.en.md#6-projection-queries-searchas-searchoneas)).
 
-## 4. Related links
+## 4. What happens during one query
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Caller
+    participant V as ObjectViewDAO#lt;T#gt;
+    participant X as ExprSqlConverter
+    participant S as SessionManager
+    participant P as DAOContextPool
+    participant D as DAOContext
+    participant M as DataReaderConverter
+
+    C->>V: Search(expr)
+    V->>V: ToSelectExpr(expr)
+    V->>X: expr.ToPreparedSql(SqlBuildContext)
+    X-->>V: PreparedSql(SQL, Param[])
+    V->>S: GetDaoContext(source, readOnly=true)
+    S->>P: PeekContext(readOnly)
+    P-->>S: DAOContext (reused or new)
+    S-->>V: DAOContext
+    V->>D: PreparedCommands hit?
+    alt Hit
+        D-->>V: Reuse cached command (new proxy)
+    else Miss
+        V->>D: SetupCommand assembly + write to cache
+    end
+    V->>D: ExecuteReader() → AutoLockDataReader (holds lock)
+    D-->>M: Read row by row
+    M-->>C: EnumerableResult#lt;T#gt; lazily yields mapped objects
+```
+
+1. Expression to SQL. `Search(expr)` first completes the SELECT list through `ToSelectExpr`, then produces a `PreparedSql` via `ToPreparedSql`.
+2. Take a connection. The read-only pool is used by default; if the session is inside a transaction, the primary is forced (`SessionManager.cs:533`).
+3. Command cache. Lookup is by `(ObjectType, methodName)`. `Insert` and `BatchInsert` always use the cache, while statements carrying a constant filter and `GetObject` calls with computed-column `Expr` build a new command each time.
+4. Execute and hold the lock. `ExecuteReader` returns an `AutoLockDataReader`, and the lock is held until the results are fully read.
+5. Lazy evaluation. An `EnumerableResult<T>` comes back and the real execution happens at `ToList()` or `FirstOrDefault()`. It saves memory and lets you keep composing conditions before evaluation; the cost is that the connection stays checked out longer, so dispose the result object promptly.
+
+## 5. Related links
 
 - [CRUD Guide](./crud-guide.en.md)
 - [Lambda Guide](./lambda-guide.en.md)

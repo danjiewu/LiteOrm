@@ -229,7 +229,7 @@ builder.Host.RegisterLiteOrm(options =>
 });
 ```
 
-注册完成后，业务层的查询写法与 §3.2 完全一致——分页差异只在 `SqlBuilder` 中吸收。
+注册完成后，业务层的查询写法与 §3.2 完全一致，分页差异只在 `SqlBuilder` 中吸收。
 
 ## 4. 生成的 SQL 示例
 

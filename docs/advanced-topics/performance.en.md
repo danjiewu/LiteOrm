@@ -34,6 +34,37 @@ This guide covers performance optimization techniques for LiteOrm.
 - **Medium concurrency**: PoolSize=16, MaxPoolSize=100
 - **High concurrency**: PoolSize=50, MaxPoolSize=500
 
+### 1.3 How the pool and the session work together
+
+Those parameters ultimately act on four objects, and all four manage the same question: where does a connection come from, who uses it, and where does it go afterwards.
+
+- **`DAOContext`** (`DAOContext.cs:22`) wraps one `DbConnection`. It owns when the connection opens, how timeouts are counted, how transactions start and commit, and where the command cache lives. A `SemaphoreSlim(1,1)` guarantees only one thread uses that connection at a time. After repeated failures past a threshold it is marked invalid and never reused.
+- **`DAOContextPool`** (`DAOContextPool.cs:48`) manages the pool per data source. `PeekContext` takes one, reusing from the pool when possible and creating otherwise; `ReturnContext` gives it back after `Reset` rolls back any uncommitted transaction, and evicts the oldest entry when the pool is full. With read-only replicas configured, an incrementing index spreads load across them.
+- **`DAOContextPoolFactory`** (`DAOContextPoolFactory.cs:46`) is the single entry point for pools. It builds every pool from the data source configuration at construction time; duplicate names throw immediately.
+- **`SessionManager`** (`SessionManager.cs:40`) is the session. It remembers the connections used per data source under keys `{name}:RW` and `{name}:RO` (`:538`, `:550`), so one session always talks to the same database over the same connection. Transactions are owned here too.
+
+```mermaid
+flowchart LR
+    S["SessionManager.GetDaoContext"] --> K{"Session cache hit?"}
+    K -->|Yes and valid| R["Reuse directly"]
+    K -->|Invalid| X["Remove and destroy"]
+    X --> P
+    K -->|No| P["DAOContextPool.PeekContext"]
+    P --> V{"Valid connection in pool?"}
+    V -->|Yes| R
+    V -->|No| N["CreateNewContext (new DbConnection)"]
+    R --> U["ReturnContext when done"]
+    N --> U
+    U --> RS["Reset rolls back leftover transaction"]
+    RS --> G{"Still valid and pool not full?"}
+    G -->|Yes| EQ["Return to pool for reuse"]
+    G -->|No| DIS["Destroy directly"]
+```
+
+Three mechanisms work in sequence: the session-level cache reuses one connection per data source within a session, pool-level reuse moves connections between sessions, and aging plus invalidation keeps broken connections from leaking out.
+
+One thing is easy to miss: `MaxPoolSize` is only a ceiling. What actually decides whether the pool fills up is when result objects are disposed. Queries are lazily evaluated by default, so an undisposed result keeps its connection checked out.
+
 ## 2. Parameterized Queries
 
 LiteOrm uses parameterized queries by default, which prevents SQL injection and improves query plan cache hit rates.
@@ -522,6 +553,22 @@ Each ORM's six dimensions — **batch time / batch memory / batch GC** (4 operat
 - `JoinQuery @10000`: EFCore `158,733µs` is actually **slower** than SqlSugar's `174,890µs`… but only by 10%. Memory is also close (`94,250KB` vs `91,661KB`). On large result sets EF Core has no structural edge.
 - Single-row `Get`: LiteOrm `240.3ms` (cumulative) essentially ties Dapper's `234.9ms`. LiteOrm memory `3.67MB` beats Dapper's `6.08MB`; GC `0 / 0` beats Dapper's `500 / 0`. This is the only single-row cell where LiteOrm leads Dapper on two dimensions at once.
 - Single-row Insert / Update / Upsert: LiteOrm cumulative time is in the `3,640–3,830ms` band; Dapper is 0.5–3.8% faster — much narrower than the batch gap. The reason: per-call "fixed round-trip cost" dominates every ORM in single-row mode. Writing the same 1000 rows one at a time costs `3,640.6ms` cumulatively, while a single batch insert of 1000 rows takes only `22,698µs` (about 22.7ms), roughly 160× less: the number of round trips drops from 1000 to 1.
+
+## 11. Trade-offs and what they cost
+
+The techniques above rest on a fixed set of internal trade-offs. Each one has a cost, so keep them in mind while tuning.
+
+| Decision | What it does | Cost / boundary |
+|:---|:---|:---|
+| Metadata cache | `TableInfoProvider` singleton caches `TableDefinition` / `TableView` | Runtime metadata changes must happen before the first query |
+| Command cache | Caches the `DbCommand` instance keyed by `(Type, methodName)` | The key does not include SQL text, so statements whose SQL varies must pass `useCache=false` |
+| Hand-written pool | Named per data source, with read-only replica round-robin | Aging, invalidation and return semantics are all managed manually |
+| Context lock | `SemaphoreSlim(1,1)` exclusive access plus `AutoLockDataReader` extending the hold | One connection is serial, and long result sets occupy it |
+| Lazy results | `EnumerableResult` / `ValueResult` defer execution | Evaluation point and command scope must be released together |
+| Dual init paths | `LiteOrmContext` (no DI) / `AddLiteOrm` (MS DI) / `RegisterLiteOrm` (Autofac) | The paths are independent, so one must be chosen explicitly |
+| Constant slice | `Column.Constant` → `TableDefinition.ConstFilter` | Slices on joined tables can only be derived through `AliasConstFilter` |
+
+The command cache row is stated per statement: constant-filter statements are `GetObject`, `ExistsKey`, `Update`, `Delete`, `DeleteByKeys`, plus batch update, batch delete and batch ID existence checks. `Insert` and `BatchInsert` always use the cache. The constant-slice mechanism itself is covered in [Permission Filtering and User Scopes](./permission-filtering.en.md).
 
 ## Related Links
 

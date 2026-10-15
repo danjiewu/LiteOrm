@@ -324,6 +324,23 @@ public class Log : IArged
 - 需要关联查询的字段，优先用视图模型承载，不要污染基础实体。
 - 涉及跨数据库或旧数据库兼容时，尽量提前确认对应方言行为。
 
+## 元数据是怎么解析的
+
+框架怎么知道 `User` 类对应 `t_user` 表、`Name` 属性对应 `name` 列？靠元数据。整个框架里，表结构信息只在这一处解析、这一处缓存，别的地方都来这儿取。解析一次就够，是因为表结构在程序运行期间不会变；要是每次查询都重新读一遍特性，光反射的开销就足以把性能优势吃干净。
+
+`TableInfoProvider` 是全局单例（`TableInfoProvider.cs:10`），只有两个入口：
+
+- `GetTableDefinition(Type)` 拿表定义，写操作和单表查询用它；
+- `GetTableView(Type)` 在表定义之上再叠一层关联表，做 JOIN 查询用它。
+
+默认实现 `AttributeTableInfoProvider` 读特性：`[Table]` 和 `[Column]` 建列模型，`[TableJoin]`、`[ForeignColumn]`、`[ForeignType]` 建关联关系。
+
+`BuildConstFilter`（`AttributeTableInfoProvider.cs:486`）把所有列上的 `ColumnAttribute.Constant` 收成一个条件，存进 `TableDefinition.ConstFilter`。这就是文档里常说的"固定切片"，后面会自动加到 WHERE、JOIN ON、UPDATE、DELETE 上。完整机制见 [权限过滤与用户范围](../advanced-topics/permission-filtering.md)。
+
+类型链：`SqlObject` → `SqlTable` → `TableDefinition` 和 `TableView`；列那边是 `SqlColumn` → `ColumnDefinition` 和 `ForeignColumn`。
+
+运行期改元数据（比如动态设 `ExpressionExpr`）见 [动态修改列定义](#动态修改列定义)。
+
 ## 相关链接
 
 - [返回目录](../README.md)

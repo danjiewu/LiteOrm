@@ -17,7 +17,7 @@ LiteOrm 的 SQL 注入防护采用**多层纵深防御**策略：
 
 ---
 
-## 2. 参数化 SQL —— 核心防线
+## 2. 参数化 SQL：核心防线
 
 ### 2.1 参数传递机制
 
@@ -99,7 +99,7 @@ var results = await viewService.SearchAsync(u => u.UserName == null);
 
 ---
 
-## 3. ExprString —— 插值字符串安全解析
+## 3. ExprString：插值字符串安全解析
 
 ### 3.1 设计原理
 
@@ -151,11 +151,11 @@ dao.Search($"WHERE {Prop("UserName")} LIKE {'%' + keyword + '%'} AND {Prop("Age"
 
 - **字面量字符串**（`AppendLiteral`）是开发者硬编码的 SQL 关键词和结构，**不可由用户控制**
 - **格式化项中的普通值**（非 Expr、非 RawSql）**自动参数化**，无需手动处理
-- **`RawSql`** 绕过参数化机制，专用于不适合参数化的动态值（如 `LIMIT` 行数、`ASC`/`DESC` 排序方向、动态列名）；内联动态值时**调用方必须先校验**——数值类用范围校验（如非负整数），字符串/token 类用白名单校验；纯静态文本直接写字面量即可。它不被 `ExprValidator` 扫描，也不支持 Expr JSON 序列化往返
+- **`RawSql`** 绕过参数化机制，专用于不适合参数化的动态值（如 `LIMIT` 行数、`ASC`/`DESC` 排序方向、动态列名）；内联动态值时**调用方必须先校验**：数值类用范围校验（如非负整数），字符串/token 类用白名单校验；纯静态文本直接写字面量即可。它不被 `ExprValidator` 扫描，也不支持 Expr JSON 序列化往返
 
 ---
 
-## 4. ExprValidator —— 表达式验证器
+## 4. ExprValidator：表达式验证器
 
 ### 4.1 架构设计
 
@@ -251,7 +251,7 @@ if (!ExprVisitor.Validate(validator, expr))
 
 ---
 
-## 5. GenericSqlExpr —— 自定义 SQL 片段
+## 5. GenericSqlExpr：自定义 SQL 片段
 
 ### 5.1 设计目的
 

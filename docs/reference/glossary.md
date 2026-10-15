@@ -18,7 +18,7 @@ LiteOrm 的表达式对象模型，用来描述 SQL 结构，可用于动态拼�
 
 ## `RawSql`
 
-`ExprString` 的辅助标记类型（独立 `readonly struct`，不继承 `Expr`），专用于在插值字符串中原样插入**不适合参数化的动态值**，典型场景：`LIMIT`/`OFFSET` 的整数值、`ASC`/`DESC` 排序方向、动态列名等。其内容**绕过参数化机制**，内联动态值时调用方必须先校验——数值类用范围校验（如非负整数），字符串/token 类用白名单校验；纯静态的 SQL 文本直接写在 `ExprString` 字面量中即可，无需使用 `RawSql`；不被 `ExprValidator` 扫描，也不支持 Expr JSON 序列化往返。需要运行时参数化的可复用片段请改用 `GenericSqlExpr`。
+`ExprString` 的辅助标记类型（独立 `readonly struct`，不继承 `Expr`），专用于在插值字符串中原样插入**不适合参数化的动态值**，典型场景：`LIMIT`/`OFFSET` 的整数值、`ASC`/`DESC` 排序方向、动态列名等。其内容**绕过参数化机制**，内联动态值时调用方必须先校验：数值类用范围校验（如非负整数），字符串/token 类用白名单校验；纯静态的 SQL 文本直接写在 `ExprString` 字面量中即可，无需使用 `RawSql`；不被 `ExprValidator` 扫描，也不支持 Expr JSON 序列化往返。需要运行时参数化的可复用片段请改用 `GenericSqlExpr`。
 
 ## `ObjectDAO<T>`
 

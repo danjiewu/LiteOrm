@@ -2,6 +2,8 @@
 
 This page explains how LiteOrm models relationships with `ForeignType`, `TableJoin`, `ForeignColumn`, and `AutoExpand`.
 
+Two terms to settle first: `ForeignType` goes on a single foreign key column, `TableJoin` goes on the class. Both declare a relationship, and the only difference is where you write it. If you cannot decide which one to use, check whether the foreign key is a single column.
+
 ## 1. Core Concepts
 
 - `ForeignType`: property-level relationship metadata, best for a single foreign key column

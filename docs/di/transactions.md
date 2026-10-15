@@ -298,9 +298,27 @@ public async Task<bool> RenameUserAsync(int id, string newName)
 - 需要防止并发覆盖时增加 `timestamp` 校验。
 - 对“先查再改”的关键写操作，通常两者一起使用更稳妥。
 
+## 5. 事务是怎么落到连接上的
+
+```mermaid
+flowchart LR
+    A["SessionManager.BeginTransaction"] --> B["遍历会话缓存的 DAOContext"]
+    B --> C{"只读连接？"}
+    C -->|是| D["跳过"]
+    C -->|否| E["context.BeginTransaction(isolation)"]
+    E --> F["后续 GetDaoContext 取到的连接"]
+    F --> G["若未入事务则自动开启"]
+    G --> H["Commit / Rollback 遍历全部上下文"]
+```
+
+事务由会话统一开、统一提交。走 DI 那条线时，`[Transaction]` 特性由 `ServiceInvokeInterceptor` 织进去，效果一样。
+
+事务为什么交给会话而不是单条连接？因为一次业务操作可能碰好几个库。`BeginTransaction` 会把这次会话已经拿到的连接挨个开上事务，只读连接跳过；后面新取到的连接如果不在事务里，自动补开。这样跨库的边界才对得齐。
+
 ## 相关链接
 
 - [返回目录](../README.md)
 - [关联查询](../core-usage/associations.md)
 - [分表分库](../advanced-topics/sharding-and-tableargs.md)
+- [性能优化](../advanced-topics/performance.md#1-连接池配置)
 - [性能优化](../advanced-topics/performance.md)

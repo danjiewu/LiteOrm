@@ -150,7 +150,7 @@ That keeps plaintext passwords out of logs.
 
 > `CancellationToken` is excluded by default even without `[Log(false)]`.
 
-## 4.2 On entity properties: keep fields out of object logs
+### 4.2 On entity properties: keep fields out of object logs
 
 `ObjectBase` implements `ILogable`. When LiteOrm logs an entity object, it prefers `ToLog()`, and `ObjectBase.ToLog()` respects `LogAttribute` on properties.
 

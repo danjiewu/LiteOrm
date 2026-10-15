@@ -201,7 +201,7 @@ graph TD
 
 The DAO layer is the core of LiteOrm, providing direct data access operations. It includes multiple implementation classes for different data access scenarios.
 
-**Main Components:**
+Main Components:
 
 - **DAOBase**: Abstract base class for all DAOs, providing common operations
 - **ObjectDAO**: Object-oriented data access, handles CRUD for entity objects
@@ -211,7 +211,7 @@ The DAO layer is the core of LiteOrm, providing direct data access operations. I
 - **DbCommandProxy**: Database command proxy, encapsulates IDbCommand, provides parameter processing and execution functionality
 - **AutoLockDataReader**: Auto-locking data reader, ensures thread safety during data reading
 
-**Core Features:**
+Core Features:
 - CRUD operations for entity objects
 - Batch operation support
 - Expression queries
@@ -224,12 +224,12 @@ The DAO layer is the core of LiteOrm, providing direct data access operations. I
 
 The Service layer encapsulates business logic and provides higher-level operation interfaces. It is built on top of the DAO layer, adding transaction management and business rules.
 
-**Main Components:**
+Main Components:
 
 - **EntityService**: Entity service, provides complete CRUD operations
 - **EntityViewService**: View service, focused on query operations
 
-**Core Features:**
+Core Features:
 - Complete CRUD operations
 - Batch operations
 - Transaction support
@@ -240,7 +240,7 @@ The Service layer encapsulates business logic and provides higher-level operatio
 
 The expression system is a distinctive feature of LiteOrm, providing powerful query building capabilities. It covers three common query entry styles: Lambda expressions, Expr objects, and DAO-only ExprString.
 
-**Main Components:**
+Main Components:
 
 - **Expr**: Base expression class
 - **LogicExpr**: Logical expression
@@ -249,7 +249,7 @@ The expression system is a distinctive feature of LiteOrm, providing powerful qu
 - **UpdateExpr**: Update expression
 - **DeleteExpr**: Delete expression
 
-**Core Features:**
+Core Features:
 - Build complex query conditions
 - Support various operators
 - Support subqueries
@@ -260,7 +260,7 @@ The expression system is a distinctive feature of LiteOrm, providing powerful qu
 
 The SQL Builder is responsible for generating optimized SQL statements for different databases based on expressions. It supports multiple database types and provides database-specific syntax and function support.
 
-**Main Components:**
+Main Components:
 
 - **SqlBuilder**: Base SQL builder class
 - **SqlServerBuilder**: SQL Server specific builder
@@ -277,7 +277,7 @@ The SQL Builder is responsible for generating optimized SQL statements for diffe
 
 > Note: Domestic/compatible database builders all inherit from mainstream database builders, overriding only where differences exist.
 
-**Core Features:**
+Core Features:
 - Generate database-specific SQL statements
 - Handle parameterized queries
 - Support pagination
@@ -288,7 +288,7 @@ The SQL Builder is responsible for generating optimized SQL statements for diffe
 
 Metadata management handles the mapping between entity types and database tables. It builds metadata through the attribute system, providing necessary information for DAO and SQL Builder.
 
-**Main Components:**
+Main Components:
 
 - **TableInfoProvider**: Table information provider
 - **SqlTable**: Table information
@@ -296,7 +296,7 @@ Metadata management handles the mapping between entity types and database tables
 - **TableDefinition**: Table definition
 - **ColumnDefinition**: Column definition
 
-**Core Features:**
+Core Features:
 - Build metadata for entity types
 - Handle table and column mapping
 - Manage primary key and foreign key relationships
@@ -306,7 +306,7 @@ Metadata management handles the mapping between entity types and database tables
 
 LiteOrm provides declarative transaction management through the `[Transaction]` attribute to mark methods requiring transactions. Transaction management is handled by SessionManager, ensuring multiple operations execute within the same transaction.
 
-**Core Features:**
+Core Features:
 - Declarative transactions
 - Transaction nesting
 - Transaction rollback
@@ -318,7 +318,7 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 
 #### DAOBase
 
-**Function**: Abstract base class for all DAOs, providing common operation methods
+Abstract base class for all DAOs, providing common operation methods.
 
 **Main Methods**:
 - `GetPreparedCommand()`: Get a prepared command (reuses the context command cache by default; pass `useCache: false` for a statement that contains a fixed filter or a computed-column expression, and it builds a one-off command)
@@ -328,11 +328,9 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 - `Execute()`: Execute non-query SQL
 - `Query<TResult>()`: Execute query and return result set
 
-**Use Case**: As base class for DAOs, providing common functionality
-
 #### ObjectDAO<T>
 
-**Function**: Handles CRUD operations for entity objects
+Handles CRUD operations for entity objects.
 
 **Main Methods**:
 - `Insert()`: Insert entity
@@ -344,11 +342,9 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 - `BatchUpdate()`: Batch update
 - `BatchDelete()`: Batch delete
 
-**Use Case**: Directly operate entity objects, execute CRUD operations
-
 #### DbCommandProxy
 
-**Function**: Database command proxy, encapsulates DbCommand, provides parameter processing and execution functionality, combined with AutoLockDataReader to implement transactions and async lock management.
+Database command proxy, encapsulates DbCommand, provides parameter processing and execution functionality, combined with AutoLockDataReader to implement transactions and async lock management.
 
 **Main Methods**:
 - `CreateParameter()`: Create database parameter
@@ -356,11 +352,9 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 - `ExecuteReader()`: Execute query and return data reader
 - `ExecuteScalar()`: Execute query and return single value
 
-**Use Case**: Encapsulate database commands, handle parameter and execution operations
-
 #### AutoLockDataReader
 
-**Function**: Auto-locking data reader, ensures thread safety during data reading
+Auto-locking data reader, ensures thread safety during data reading.
 
 **Main Methods**:
 - `Read()`: Read next record
@@ -368,13 +362,11 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 - `GetInt32()/GetString()/etc.`: Get specific type values
 - `Dispose()`: Release resources
 
-**Use Case**: Safely read database query results
-
 ### 8.2 Service Layer Core API
 
 #### EntityService<T, TView>
 
-**Function**: Provides complete business operations for entities
+Provides complete business operations for entities.
 
 **Main Methods**:
 - `Insert()`: Insert entity
@@ -387,11 +379,9 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 - `SearchOne()`: Query single entity
 - `SearchAsync()`: Async query
 
-**Use Case**: Use in business logic layer, providing complete entity operations
-
 #### EntityViewService<TView>
 
-**Function**: Service focused on query operations
+Service focused on query operations.
 
 **Main Methods**:
 - `Search()`: Query entities
@@ -399,13 +389,11 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 - `SearchAsync()`: Async query
 - `Count()`: Count records
 
-**Use Case**: Scenarios requiring only query functionality
-
 ### 8.3 Expression System Core API
 
 #### Expr
 
-**Function**: Base expression class, provides query building capability
+Base expression class, provides query building capability.
 
 **Main Methods**:
 - `Prop()`: Create property expression
@@ -413,24 +401,20 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 - `From<T>()`: Create query starting from table
 - `ToPreparedSql()`: Convert to parameterized SQL statement
 
-**Use Case**: Build complex query conditions
-
 #### LogicExpr
 
-**Function**: Logical expression, used to build WHERE conditions
+Logical expression, used to build WHERE conditions.
 
 **Main Operators**:
 - `&`: AND operation
 - `|`: OR operation
 - `!`: NOT operation
 
-**Use Case**: Build complex logical conditions
-
 ### 8.4 SQL Builder Core API
 
 #### SqlBuilder
 
-**Function**: Base SQL builder class, provides SQL generation functionality
+Base SQL builder class, provides SQL generation functionality.
 
 **Main Methods**:
 - `ToSqlName()`: Convert to SQL name
@@ -447,13 +431,11 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 - `IDbConverter`: unified write entry point `ToDbValue(object?, DbValueType?)`
 - `ISqlBuilder.SupportsNativeArrays`: indicates whether the database natively supports array columns (PostgreSQL/KingbaseES/GaussDB); when `false`, array columns are stored as JSON strings
 
-**Use Case**: Generate database-specific SQL statements
-
 ### 8.5 Metadata Core API
 
 #### SqlTable
 
-**Function**: Represents metadata of a database table
+Represents metadata of a database table.
 
 **Main Properties**:
 - `Name`: Table name
@@ -461,17 +443,13 @@ LiteOrm provides declarative transaction management through the `[Transaction]` 
 - `Keys`: Primary key columns
 - `Definition`: Table definition
 
-**Use Case**: Provide table metadata information
-
 #### TableInfoProvider
 
-**Function**: Provider of table information
+Provider of table information.
 
 **Main Methods**:
 - `GetTableDefinition(Type objectType)`: Get the table definition for an object type (returns `TableDefinition`)
 - `GetTableView(Type objectType)`: Get the view information for a type (returns `TableView`)
-
-**Use Case**: Build and manage table metadata
 
 > Note: `GetColumn(string)` is defined on `SqlTable`, not on `TableInfoProvider`.
 

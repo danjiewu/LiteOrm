@@ -124,6 +124,30 @@ var summary = await userService.SearchAsAsync<UserSummary>(
 - 读取结果与写入实体结构差异明显时，使用独立 `TView`。
 - 只想做纯查询封装时，优先从 `ObjectViewDAO<T>` 开始。
 
+## DAO 的读写分工
+
+`DAOBase` 干两件事：把"元数据 + 表达式"变成能执行的命令，再把读取器变成对象。它有两个具体实现，读一个写一个。
+
+|  | `ObjectDAO<T>`（写） | `ObjectViewDAO<T>`（读） |
+|:---|:---|:---|
+| 基类属性 | `IsView = false`，`SingleTable = true` | `IsView = true`，`Table` 取 `GetTableView` |
+| 主要方法 | `Insert` / `Update` / `Delete` / `UpdateOrInsert` / 批量 | `GetObject` / `Count` / `Exists*` / `Search` / `SearchAs` |
+| 语句构造 | `MakeInsertSql` / `MakeUpdateSql` / `MakeDeleteSql` | `MakeGetObjectSql` / `MakeObjectExistsSql` |
+| 命令缓存 | `Insert` / `BatchInsert` 恒缓存 | 带固定切片条件的语句、含计算列 `Expr` 的 `GetObject` 每次新建 |
+
+拆成两个类，是因为它们能做的事根本不一样。写要拼 `INSERT`、`UPDATE`、`DELETE`，还要处理自增列和时间戳；读要拼复杂的 `SELECT` 和 JOIN，还要把多表结果填进一个对象。硬塞进同一个类，方法里会到处是"当前操作不支持"的运行时判断。
+
+结果统一包成惰性对象（`ResultTypes.cs`）：基类 `CommandResult<T>`，`EnumerableResult<T>` 用 `ToList()` 和 `FirstOrDefault()` 取，`ValueResult<T>` 用 `GetResult()` 取。结果对象释放时看命令的来路，缓存里的不动，本次新建的才释放。
+
+## Service 在 DAO 之上加了什么
+
+`EntityService<T, TView>`（`EntityService.cs:58`）在 DAO 之上加业务语义：
+
+- 构造时解析出一个 `ObjectDAO<T>`；
+- 每次写操作前后触发 `IEntityServiceEvent<T>`，任何一个 Before 钩子返回 `false`，操作就取消；
+- 订阅者集合是惰性的（`:76`），构造服务时不碰容器，第一次要通知了才解析；
+- 实体实现了 `IArged` 的话，自动按 `TableArgs` 分组，走分表。
+
 ## 相关链接
 
 - [返回目录](../README.md)

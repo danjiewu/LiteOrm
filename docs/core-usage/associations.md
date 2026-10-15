@@ -2,6 +2,8 @@
 
 本文档介绍 LiteOrm 的关联查询能力。
 
+读这篇前先弄清两个词：`ForeignType` 标在单个外键列上，`TableJoin` 标在类上，两者都能建关联，差别只在声明位置。拿不准用哪个时，先看外键是不是只有一列。
+
 - 涵盖 TableJoin（类级）与 ForeignType（属性级）的使用。
 - 说明 ForeignColumn 的取值方式、AutoExpand 的作用与常见实践。
 
@@ -169,7 +171,7 @@ public class SalesRecordView : SalesRecord
 - 注意：AutoExpand 的核心作用是“让下一层关联路径可被继续解析”。<br/>
   实际是否生成更多 JOIN，仍然取决于查询里是否真的引用了这些路径上的字段或条件。
 
-### 2.4.1 AutoExpand 开关对比
+#### 2.4.1 AutoExpand 开关对比
 
 | 场景 | `AutoExpand = false` | `AutoExpand = true` |
 |------|----------------------|---------------------|
@@ -250,7 +252,7 @@ var combinedUsers = await viewService.SearchAsync(
 );
 ```
 
-### 2.7.1 关联字段排序与分页
+#### 2.7.1 关联字段排序与分页
 
 LiteOrm 会先按依赖关系对 `TableView` 中的关联表做拓扑排序，再生成 JOIN。
 当某个关联表依赖另一个关联表时，SQL 中的连接顺序会自动稳定下来，关联字段排序、分页和多级过滤通常不再需要手动调整 JOIN 先后。
@@ -302,7 +304,7 @@ var users2 = await viewService.SearchAsync(expr2);
 1. **正向关联优先**：首先尝试从主表出发的外键关联（如 `Order.UserId -> User.Id`）
 2. **反向关联备选**：若主表上没有到目标类型的正向关联，则尝试从目标表反向推断（如 `User.DeptId -> Department.Id`）
 
-这里的“匹配”不是按属性名字符串硬编码比较，而是按模型元数据里的已声明关联来找：
+这里的“匹配”按模型元数据里已声明的关联来找，不按属性名字符串硬编码比较：
 
 - 先遍历当前作用域主表的关联表 `JoinedTables`
 - 找出已声明 `ForeignType` / `TableJoin` 的 `DefinitionType` 能够接收 `ExistsRelated<T>` 目标类型的关联，也就是**只匹配声明类型本身及其子类**

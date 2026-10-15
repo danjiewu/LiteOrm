@@ -47,13 +47,13 @@ public class User
 
 ## 2. 初始化 LiteOrm
 
-推荐直接使用基础库内置的 `AddLiteOrm()`（纯 MS DI）完成初始化——它会从 `IConfiguration` 的 `LiteOrm` 节点自动加载数据源、注册核心服务，并支持注册自定义服务，无需手动 new 各种底层对象。
+推荐直接使用基础库内置的 `AddLiteOrm()`（纯 MS DI）完成初始化，它会从 `IConfiguration` 的 `LiteOrm` 节点自动加载数据源、注册核心服务，并支持注册自定义服务，无需手动 new 各种底层对象。
 
 > **注意**：8.1 起，`RegisterLiteOrm()` 已从 `LiteOrm` 基础库移至 `LiteOrm.DependencyInjection` 包（命名空间由 `LiteOrm` 改为 `LiteOrm.DependencyInjection`）。如需 Autofac 集成 / AOP，请使用 `LiteOrm.DependencyInjection` 包中的 `RegisterLiteOrm()`；基础库仅提供 `AddLiteOrm()`（纯 MS DI）。
 
 ### 2.1 通过 AddLiteOrm 初始化（推荐）
 
-`AddLiteOrm()` 定义于基础库（`LiteOrm` 命名空间，无需额外安装包），从 `IConfiguration` 的 `LiteOrm` 节点自动加载数据源，并注册 `SessionManager`、DAO、泛型实体服务等核心服务。使用它时无需手动调用 `SessionManager.SetCurrent(...)`——框架在注册 `SessionManager` 时会自动绑定当前作用域实例。
+`AddLiteOrm()` 定义于基础库（`LiteOrm` 命名空间，无需额外安装包），从 `IConfiguration` 的 `LiteOrm` 节点自动加载数据源，并注册 `SessionManager`、DAO、泛型实体服务等核心服务。使用它时无需手动调用 `SessionManager.SetCurrent(...)`，框架在注册 `SessionManager` 时会自动绑定当前作用域实例。
 
 #### 第一步：准备 appsettings.json 配置数据源
 
@@ -117,7 +117,7 @@ var userService = sp.GetRequiredService<EntityService<User>>();
 > **作用域与 SessionManager 的关系**：
 > `SessionManager` 注册为 Scoped，每个 `CreateScope()`（如每个 Web 请求）创建的作用域会获得独立的 `SessionManager` 实例。`AddLiteOrm()` 在注册 `SessionManager` 时已自动绑定 `SessionManager.Current`（解析到当前作用域实例），因此无需手动调用 `SetCurrent` 或编写中间件。
 >
-> 提示：使用 `LiteOrm.DependencyInjection`（Autofac）时同样无需配置——`RegisterLiteOrm()` 自动启用作用域跟踪，会在每个作用域进入/退出时自动更新当前会话。
+> 提示：使用 `LiteOrm.DependencyInjection`（Autofac）时同样无需配置，`RegisterLiteOrm()` 自动启用作用域跟踪，会在每个作用域进入/退出时自动更新当前会话。
 
 应用退出时释放资源：
 
@@ -279,7 +279,7 @@ Console.WriteLine($"Count={count}, Exists={exists}");
 
 **原因**：依赖静态 `SessionManager.Current` 的写法（DAO 不接收会话、由全局静态入口取连接）在尚未创建任何会话时访问会取到 null；旧版 API 漏调 `SessionManager.SetCurrent(...)` 也会如此。
 
-**解决方法**：手动构造时把会话显式传给 DAO——`new ObjectDAO<User>(liteOrm.CreateSession())`。`LiteOrmContext.CreateSession()` 已把新会话绑定到 `Current`，`AddLiteOrm()` / `RegisterLiteOrm()` 则按作用域自动绑定，两者都无需手动调用 `SetCurrent`。但多会话并存时不要依赖静态入口，它只指向最近创建的那一个。
+**解决方法**：手动构造时把会话显式传给 DAO：`new ObjectDAO<User>(liteOrm.CreateSession())`。`LiteOrmContext.CreateSession()` 已把新会话绑定到 `Current`，`AddLiteOrm()` / `RegisterLiteOrm()` 则按作用域自动绑定，两者都无需手动调用 `SetCurrent`。但多会话并存时不要依赖静态入口，它只指向最近创建的那一个。
 
 ### 问题三：`Function 'XXX' is not supported` 异常
 

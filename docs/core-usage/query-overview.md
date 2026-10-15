@@ -2,6 +2,8 @@
 
 LiteOrm 支持三种查询方式：**Lambda**、**`Expr`**、**`ExprString`**。它们最终都会生成参数化 SQL，但定位和适用场景不同。
 
+读这篇只需要会写 C# 和一个简单的 `SELECT`。三种方式没有优劣，只有合不合适：条件写死在代码里用 Lambda，条件来自前端或配置文件用 `Expr`，想直接控制一段 SQL 用 `ExprString`。
+
 本文是查询能力的总览与选型入口。三种方式的完整用法分别见：
 
 - [Lambda 查询指南](./lambda-guide.md)
@@ -133,7 +135,7 @@ var summaries = await viewService.SearchAsAsync<UserSummary>(
 | **注册到 `TableInfoProvider` 的类型** | 按 `SelectColumns` 位置映射 | 是 |
 | **未注册的普通类型** | 取**第一个公开构造函数**，按其参数名匹配列名（不区分大小写） | 否 |
 
-> 关键差别：注册过的类型走「位置映射」——要求 `Select` 列顺序与 `TableInfoProvider` 注册顺序一致；未注册的普通类型 / 匿名类型走「列名匹配」——要求 `Select` 列的别名与构造函数参数名一致。
+> 关键差别：注册过的类型走「位置映射」，要求 `Select` 列顺序与 `TableInfoProvider` 注册顺序一致；未注册的普通类型 / 匿名类型走「列名匹配」，要求 `Select` 列的别名与构造函数参数名一致。
 
 #### 3.2.2 列别名必须与目标成员名对应
 
@@ -178,7 +180,7 @@ var count = await viewService.SearchAsAsync<int>(
 
 #### 3.2.4 注册过的 `TResult` 走位置映射，列顺序要对
 
-如果 `TResult` 是注册到 `TableInfoProvider` 的实体类型（比如直接用 `SearchAs<User>`），按 `SelectColumns` 位置映射——`Select` 列的**顺序**必须与注册的列顺序一致，列名不参与匹配。建议**优先用未注册的投影类型**（DTO / 匿名类型）来避免顺序耦合。
+如果 `TResult` 是注册到 `TableInfoProvider` 的实体类型（比如直接用 `SearchAs<User>`），按 `SelectColumns` 位置映射，`Select` 列的**顺序**必须与注册的列顺序一致，列名不参与匹配。建议**优先用未注册的投影类型**（DTO / 匿名类型）来避免顺序耦合。
 
 #### 3.2.5 `TResult` 必须可实例化
 
@@ -197,7 +199,45 @@ var count = await viewService.SearchAsAsync<int>(
 
 需要原生 SQL 投影（`ExprString`）时切到 DAO；Lambda 投影在 Service 已直接支持（见 [Lambda 查询指南](./lambda-guide.md#6-投影查询searchas-searchoneas)）。
 
-## 4. 相关链接
+## 4. 一次查询内部走了哪些路
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as 调用方
+    participant V as ObjectViewDAO#lt;T#gt;
+    participant X as ExprSqlConverter
+    participant S as SessionManager
+    participant P as DAOContextPool
+    participant D as DAOContext
+    participant M as DataReaderConverter
+
+    C->>V: Search(expr)
+    V->>V: ToSelectExpr(expr)
+    V->>X: expr.ToPreparedSql(SqlBuildContext)
+    X-->>V: PreparedSql(SQL, Param[])
+    V->>S: GetDaoContext(source, readOnly=true)
+    S->>P: PeekContext(readOnly)
+    P-->>S: DAOContext（复用或新建）
+    S-->>V: DAOContext
+    V->>D: PreparedCommands 命中？
+    alt 命中
+        D-->>V: 复用缓存命令（新建代理）
+    else 未命中
+        V->>D: SetupCommand 装配 + 写入缓存
+    end
+    V->>D: ExecuteReader() → AutoLockDataReader（持锁）
+    D-->>M: 逐行读取
+    M-->>C: EnumerableResult#lt;T#gt; 惰性产出行映射对象
+```
+
+1. 表达式转 SQL。 `Search(expr)` 先经 `ToSelectExpr` 补全 SELECT 列表，再 `ToPreparedSql` 产出 `PreparedSql`。
+2. 取连接。 默认走只读池；会话在事务里，则强制回主库（`SessionManager.cs:533`）。
+3. 命令缓存。 按 `(ObjectType, methodName)` 命中即复用；`Insert` 与 `BatchInsert` 恒走缓存，带固定切片条件的语句和含计算列 `Expr` 的 `GetObject` 每次新建。
+4. 执行并持锁。 `ExecuteReader` 返回 `AutoLockDataReader`，锁一直拿到结果读完。
+5. 惰性求值。 返回 `EnumerableResult<T>`，真正执行在 `ToList()` 或 `FirstOrDefault()`。省内存，也允许在求值前接着拼条件；代价是连接占用时间被拉长，记得及时释放结果对象。
+
+## 5. 相关链接
 
 - [增删改查](./crud-guide.md)
 - [Lambda 查询指南](./lambda-guide.md)

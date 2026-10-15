@@ -2,6 +2,8 @@
 
 This page focuses on LiteOrm's write operations: insert, update, delete, upsert, and batching. For query capabilities, please refer to the [Query Overview](./query-overview.en.md).
 
+One thing to remember before reading: writes live on `ObjectDAO<T>`, reads live on `ObjectViewDAO<T>`, and the two are not interchangeable. Every example below starts from the write DAO.
+
 ## 1. Insert
 
 ### Single Insert
@@ -382,6 +384,36 @@ Suitable for "insert new batch of data while deleting old data" sync migration s
 - Prioritize batch interfaces for high-frequency write scenarios.
 - When you need explicit control over SQL structure, use `Expr.Update<T>()` and DAO.
 - Cross-table business operations should be placed in Service layer with transaction coordination.
+
+## 8. What happens during one write
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Caller
+    participant O as ObjectDAO#lt;T#gt;
+    participant X as SqlBuilder
+    participant D as DAOContext
+    participant N as Data source
+
+    C->>O: Insert(entity) / Update / Delete
+    O->>O: MakeInsertSql (with ConstFilter injected)
+    O->>O: GetPreparedCommand(useCache)
+    O->>X: ToParamName / ToSqlName / ToDbType
+    X-->>O: Dialect SQL and parameter names
+    O->>D: Bind Param values (DbWriteConverter)
+    D->>N: DbCommandProxy.ExecuteNonQuery (acquire scope, attach transaction)
+    N-->>D: Affected rows
+    D-->>C: bool / int
+```
+
+1. Build the write statement. `MakeInsertSql` / `MakeUpdateSql` / `MakeDeleteSql` assemble with `ValueStringBuilder` and inject the constant filter condition along the way.
+2. Take a command. `Insert` and `BatchInsert` always use a cached command; updates, deletes and key-path operations that carry a constant filter build a new one each time, so the reusable commands in the cache stay clean.
+3. Bind parameters. `SetupCommand` creates `DbParameter` objects, resolves `DbType` from `DbValueType`, and converts values where needed.
+4. Execute. `DbCommandProxy.ExecuteNonQuery` acquires the context scope and attaches the current transaction.
+5. Return. Single-row operations return `bool`; conditional batch operations return affected rows as `int`.
+
+On the read/write split: `ObjectDAO<T>` writes only and `ObjectViewDAO<T>` reads only, both inheriting `DAOBase`. See [View Models and Services](./view-models-and-services.en.md#how-dao-splits-reads-and-writes).
 
 ## Related Links
 

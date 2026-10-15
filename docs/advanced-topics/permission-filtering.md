@@ -11,7 +11,7 @@
 
 多租户按隔离层次拆出的四种落地写法（构造 `Expr`、`TableArgs` 分表、`ConstFilter` 切片、重写 `DataSource` 分库）见[多租户隔离](../typical-applications/tenant-isolation.md)。
 
-在实际项目里，一条查询通常不是只有“权限条件”这一项，而是会同时叠加：
+在实际项目里，一条查询通常同时叠加下面几项：
 
 - 业务条件
 - 软删除条件（例如 `IsDeleted == false`）
@@ -220,7 +220,7 @@ var filter = BuildBusinessFilter(request)
 
 ### 5.1 只在前端做权限控制
 
-前端可以隐藏按钮，但不能作为最终授权依据。真正的权限边界必须在后端。
+前端可以隐藏按钮，但不能作为最终授权依据。权限边界要落在后端。
 
 ### 5.2 只限制列表，不限制详情和删除
 

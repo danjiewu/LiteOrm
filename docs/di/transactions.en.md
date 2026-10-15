@@ -298,8 +298,25 @@ Recommendation:
 - Add `timestamp` checks when you need protection against concurrent overwrites.
 - For important read-then-write flows, using both together is usually the safest choice.
 
+## 5. How a transaction reaches the connections
+
+```mermaid
+flowchart LR
+    A["SessionManager.BeginTransaction"] --> B["Walk the DAOContext instances cached in the session"]
+    B --> C{"Read-only connection?"}
+    C -->|Yes| D["Skip"]
+    C -->|No| E["context.BeginTransaction(isolation)"]
+    E --> F["Connections taken by later GetDaoContext calls"]
+    F --> G["Open automatically if not yet enlisted"]
+    G --> H["Commit / Rollback walks every context"]
+```
+
+Transactions are opened and committed centrally by the session. On the DI path the `[Transaction]` attribute is woven in by `ServiceInvokeInterceptor`, with the same result.
+
+Why does the session own the transaction rather than a single connection? Because one business operation may touch several databases. `BeginTransaction` opens a transaction on every connection the session already holds, skipping read-only ones, and connections taken later are enlisted automatically if they are not yet in the transaction. That is what keeps cross-database boundaries aligned.
+
 ## Related Links
 
 - [Associations](../core-usage/associations.en.md)
 - [Sharding and Table Routing](../advanced-topics/sharding-and-tableargs.en.md)
-- [Performance Optimization](../advanced-topics/performance.en.md)
+- [Performance Optimization](../advanced-topics/performance.en.md#1-connection-pool-configuration)

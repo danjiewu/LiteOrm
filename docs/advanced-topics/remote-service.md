@@ -1,6 +1,6 @@
 # 远程服务（LiteOrm.Remote）
 
-LiteOrm 提供完整的远程服务调用方案，让业务代码在「本地调用」和「远程调用」之间无缝切换——**接口定义不变、调用写法不变**，只需更换注册方式即可将数据访问层从应用进程中物理剥离。
+LiteOrm 提供完整的远程服务调用方案，让业务代码在「本地调用」和「远程调用」之间无缝切换，**接口定义不变、调用写法不变**，只需更换注册方式即可将数据访问层从应用进程中物理剥离。
 
 ## 一、概述
 
@@ -38,7 +38,7 @@ graph TB
 | **安全隔离**   | 前端层只能通过受控的服务接口访问数据，所有查询经过 ExprValidator 验证            |
 | **多端复用**   | Web、桌面、移动端共享同一套服务接口，后端逻辑统一维护                          |
 | **独立部署**   | 前端层和后端层可独立扩容、独立更新，互不影响                                |
-| **接口不变**   | 业务代码无需改动——`userService.InsertAsync(user)` 本地与远程写法完全一致 |
+| **接口不变**   | 业务代码无需改动，`userService.InsertAsync(user)` 本地与远程写法完全一致 |
 
 > **对比传统方案**：传统方案中，如果 Web 前端和桌面客户端都需要访问数据库，要么各自维护一套数据访问代码（重复且易出错），要么通过 REST API 手动封装（需额外编写 Controller 和 DTO 映射）。LiteOrm.Remote 让服务接口定义本身就成为 API 协议，无需额外封装层。
 
@@ -105,7 +105,7 @@ builder.Services.AddLiteOrmRemote(opts =>
 var host = builder.Build();
 ```
 
-### 2.4 调用——与本地服务完全一致
+### 2.4 调用：与本地服务完全一致
 
 ```csharp
 using var scope = host.Services.CreateScope();
@@ -350,7 +350,7 @@ var user = await factory.DemoUserService.GetByUserNameAsync("alice");
 
 ## 五、身份认证
 
-LiteOrm.Remote 使用 **`ICredentialsResolver`** **+** **`IRemoteAuthenticationHandler`** 双端协作的票据机制标识用户身份，替代传统的 SessionID/Connect 流程。客户端通过 `ICredentialsResolver` 获取身份票据，每次 `InvokeAsync` 时将票据写入 HTTP 请求头；服务端通过 `IRemoteAuthenticationHandler` 在 SignIn 端点签发票据，由 ASP.NET Core 认证中间件在 Invoke 端点恢复 `HttpContext.User`。框架不提供登出（SignOut）端点与接口方法——票据过期与清除由调用方自行处理。
+LiteOrm.Remote 使用 **`ICredentialsResolver`** **+** **`IRemoteAuthenticationHandler`** 双端协作的票据机制标识用户身份，替代传统的 SessionID/Connect 流程。客户端通过 `ICredentialsResolver` 获取身份票据，每次 `InvokeAsync` 时将票据写入 HTTP 请求头；服务端通过 `IRemoteAuthenticationHandler` 在 SignIn 端点签发票据，由 ASP.NET Core 认证中间件在 Invoke 端点恢复 `HttpContext.User`。框架不提供登出（SignOut）端点与接口方法，票据过期与清除由调用方自行处理。
 
 支持两种授权模式：
 
@@ -397,7 +397,7 @@ sequenceDiagram
 
 ### 5.2 服务端实现 `IRemoteAuthenticationHandler`
 
-服务端通过 `IRemoteAuthenticationHandler` 处理登录。框架不自动注册 handler，调用方需手动注册——通常使用内置的 `IdentityRemoteAuthenticationHandler<TUser>`，也可直接实现接口自定义认证流程。
+服务端通过 `IRemoteAuthenticationHandler` 处理登录。框架不自动注册 handler，调用方需手动注册，通常使用内置的 `IdentityRemoteAuthenticationHandler<TUser>`，也可直接实现接口自定义认证流程。
 
 ```csharp
 public interface IRemoteAuthenticationHandler
@@ -780,7 +780,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 
 服务端根据请求中的 `ServiceName` 找到对应的 `Type`，客户端负责生成 `ServiceName`。理解这一节有助于自定义服务名和处理同名类型冲突。
 
-### 6.1 `TypeResolverHelper` —— 类型名 ↔ 类型双向解析
+### 6.1 `TypeResolverHelper`：类型名 ↔ 类型双向解析
 
 `LiteOrm.Common.TypeResolverHelper` 是公共工具类，提供类型名与 `Type` 的双向转换。
 
@@ -796,7 +796,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 
 > **泛型类型名**：泛型类型应使用 CLR 名称格式 `Foo`1\`（含反引号 arity 后缀），避免与同名的非泛型类型冲突。
 
-### 6.2 `ITypeNameResolver` —— 服务端类型解析器
+### 6.2 `ITypeNameResolver`：服务端类型解析器
 
 服务端通过 `ITypeNameResolver` 将请求中的 `ServiceName` 解析为实际服务接口类型。
 
@@ -835,7 +835,7 @@ builder.Services.AddRemoteServer(options =>
 
 > 由于远程调用的**引用语义丢失**（参数在服务端是反序列化的新实例），服务端对参数的修改不会自动反映回客户端。`[ArgumentOut]` 系列特性用于声明需要回写的参数，由框架在服务端提取回写值、客户端应用回写值。
 
-### 7.1 `[IdentityOut]` —— 自增主键回写
+### 7.1 `[IdentityOut]`：自增主键回写
 
 `IEntityServiceAsync<T>` 的 `InsertAsync` / `BatchInsertAsync` 已默认标注 `[IdentityOut]`，调用后 Id 自动回写：
 
@@ -852,7 +852,7 @@ foreach (var o in orders)
 
 > **依赖**：`IdentityOutAttribute` 通过 `TableInfoProvider.Instance` 解析 Identity 列，客户端与服务端均需注册（`LiteOrm` 主库的 `LiteOrmCoreInitializer` 会自动初始化）。
 
-### 7.2 `[CopyableOut]` —— 整体回写
+### 7.2 `[CopyableOut]`：整体回写
 
 适用于实现了 `ICopyable` 接口的参数类型。服务端直接返回参数对象本身，客户端通过 `ICopyable.CopyFrom` 整体复制到原始对象。
 
@@ -1074,7 +1074,7 @@ opts.Transport = new MyTransport();
 
 | 特点                | 说明                                                                        |
 | ----------------- | ------------------------------------------------------------------------- |
-| **零侵入**           | 业务代码无需任何改动——本地调用与远程调用写法完全一致，只需切换注册方式                                      |
+| **零侵入**           | 业务代码无需任何改动，本地调用与远程调用写法完全一致，只需切换注册方式                                      |
 | **接口即契约**         | 服务接口定义本身就是 API 协议，无需额外编写 Controller、DTO 映射或 OpenAPI 文档                    |
 | **Identity 自动回写** | `[IdentityOut]` 特性自动处理自增主键回写，批量插入也支持集合模式回写                                |
 | **灵活的传输层**        | 内置 HTTP 传输，可通过继承 `JsonRemoteServiceTransport` 快速实现 named pipe、gRPC 等自定义传输 |

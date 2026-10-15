@@ -20,7 +20,7 @@ public interface IEntityServiceAsync<T> : IEntityServiceAsync
 }
 ```
 
-这意味着你在业务里直接复用 `EntityService` / `EntityViewService` 时，通常已经具备基础服务日志。
+在业务里直接复用 `EntityService` / `EntityViewService` 时，通常已经具备基础服务日志。
 
 ## 2. 先把宿主日志接好
 
@@ -62,7 +62,7 @@ builder.Host.RegisterLiteOrm(options =>
 });
 ```
 
-这里的 `options.LoggerFactory` 主要用于 **框架注册与程序集扫描阶段** 的日志输出；真正的服务调用日志仍然走宿主 DI 中的 `ILoggerFactory`。
+这里的 `options.LoggerFactory` 主要用于 **框架注册与程序集扫描阶段** 的日志输出；服务调用日志仍然走宿主 DI 中的 `ILoggerFactory`。
 
 ## 3. `ServiceLog` 的用法
 

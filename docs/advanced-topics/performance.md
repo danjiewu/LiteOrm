@@ -34,6 +34,37 @@
 - **中等并发**：PoolSize=16, MaxPoolSize=100
 - **大并发**：PoolSize=50, MaxPoolSize=500
 
+### 1.3 池与会话怎么配合
+
+上面这几个参数最终作用在四个对象上，它们管的其实是同一件事：连接从哪来、给谁用、用完去哪。
+
+- **`DAOContext`**（`DAOContext.cs:22`）包一条 `DbConnection`。连接何时打开、超时怎么算、事务怎么开和提交、命令缓存放哪，都归它。它用一个 `SemaphoreSlim(1,1)` 保证同一时刻只有一个线程在用这条连接。连续失败到阈值后标记失效，不再复用。
+- **`DAOContextPool`**（`DAOContextPool.cs:48`）按数据源管池子。`PeekContext` 取一条，池里有就复用，没有就新建；`ReturnContext` 还回去，还之前先 `Reset` 掉没提交的事务，池满了淘汰最旧的一条。配了只读副本池的话，用递增索引轮流分摊。
+- **`DAOContextPoolFactory`**（`DAOContextPoolFactory.cs:46`）是池子的唯一入口。构造时按数据源配置一次把池全建好，名字重复直接抛异常。
+- **`SessionManager`**（`SessionManager.cs:40`）是会话。它按数据源记住用过的连接，键是 `{name}:RW` 和 `{name}:RO`（`:538`、`:550`），所以一次会话里访问同一个库，始终是同一条连接。事务也归它管。
+
+```mermaid
+flowchart LR
+    S["SessionManager.GetDaoContext"] --> K{"会话缓存命中？"}
+    K -->|是且有效| R["直接复用"]
+    K -->|无效| X["移除并销毁"]
+    X --> P
+    K -->|否| P["DAOContextPool.PeekContext"]
+    P --> V{"池中有有效连接？"}
+    V -->|是| R
+    V -->|否| N["CreateNewContext（新建 DbConnection）"]
+    R --> U["用毕 ReturnContext"]
+    N --> U
+    U --> RS["Reset 回滚残留事务"]
+    RS --> G{"仍有效且池未满？"}
+    G -->|是| EQ["入池待复用"]
+    G -->|否| DIS["直接销毁"]
+```
+
+三个机制接力：会话级缓存让一次会话里同数据源复用同一连接，池级复用让连接在会话之间流转，老化与失效则保证坏连接不外泄。
+
+有一点容易被忽略：`MaxPoolSize` 只是上限，真正决定池子会不会被打满的是结果对象的释放时机。查询默认惰性求值，结果不释放，连接就不还。
+
 ## 2. 参数化查询
 
 LiteOrm 默认使用参数化查询，防止 SQL 注入的同时提高查询计划缓存命中率。
@@ -161,7 +192,7 @@ await service.BatchDeleteAsync(inserted);
 
 ### 4.3 `IBulkProvider`（高性能批量提供器）
 
-`IBulkProvider` 是 LiteOrm 的高性能批量操作扩展接口（可选依赖），用于大规模插入时显著减少网络往返与数据库负载。
+`IBulkProvider` 是 LiteOrm 的高性能批量操作扩展接口（可选依赖），用于大规模插入时大幅减少网络往返与数据库负载。
 
 - 场景：导入大量数据、ETL、数据同步、冷数据回填。
 - 特点：
@@ -230,7 +261,7 @@ SqlBuilderFactory.Instance.GetSqlBuilder(typeof(MySqlConnection)).BulkProvider =
 这个例子说明了两点：
 
 - `IBulkProvider` 只需实现接口并赋值给 `SqlBuilder.BulkProvider` 即可生效，基础库不做自动注册。
-- 真正的高性能批量写入通常依赖数据库原生能力，而不是 ORM 层循环拼接 SQL。
+- 高性能批量写入通常依赖数据库原生能力，在 ORM 层循环拼接 SQL 达不到同样效果。
 
 在 LiteOrm 中的实现位置（参考）：
 
@@ -517,11 +548,27 @@ LiteOrm 相比其他 ORM 的性能优势，基于 `LiteOrm.Benchmark` 项目跑�
 
 ### 10.7 几个值得点出的事实
 
-- `Insert@10000` LiteOrm 用时 `179,155µs`，相比 EFCore 的 `1,826,182µs` 快 **10.2×**；相比 Dapper 的 `278,958µs` 快 **1.56×**。同场景下 LiteOrm 内存 `16,695KB`，EFCore `316,635KB`，省 **19.0×**。GC 方面 LiteOrm `1,333 / 0 / 0`（G0/G1/G2），EFCore `26,000 / 8,000 / 1,000` —— 触发次数不到 EFCore 的二十分之一。
-- `Upsert@10000` SqlSugar 用时 `6,708,137µs`、内存 `3,413,708KB`、GC `277,000 / 5,000 / 1,000`，三项均严重退化——耗时是 LiteOrm 的 **27.0×**、内存是 **148×**、Gen0 GC 是 **185×**。
-- `JoinQuery@10000` EFCore 用时 `158,733µs`，已被 SqlSugar 的 `174,890µs` 反超，但 EFCore 内存 `94,250KB` 也被 SqlSugar 的 `91,661KB` 反超得不多——大结果集场景下 EF Core 并不天然占优。
-- 单条 `Get` LiteOrm `240.3ms`（累计）与 Dapper `234.9ms` 几乎打平；LiteOrm 内存 `3.67MB` 反超 Dapper 的 `6.08MB`，GC `0 / 0` 也优于 Dapper 的 `500 / 0` —— 这是 LiteOrm 在单条场景里对 Dapper 唯一能在两个维度同时领先的格子。
+- `Insert@10000` LiteOrm 用时 `179,155µs`，相比 EFCore 的 `1,826,182µs` 快 **10.2×**；相比 Dapper 的 `278,958µs` 快 **1.56×**。同场景下 LiteOrm 内存 `16,695KB`，EFCore `316,635KB`，省 **19.0×**。GC 方面 LiteOrm `1,333 / 0 / 0`（G0/G1/G2），EFCore `26,000 / 8,000 / 1,000`：触发次数不到 EFCore 的二十分之一。
+- `Upsert@10000` SqlSugar 用时 `6,708,137µs`、内存 `3,413,708KB`、GC `277,000 / 5,000 / 1,000`，三项均严重退化：耗时是 LiteOrm 的 **27.0×**、内存是 **148×**、Gen0 GC 是 **185×**。
+- `JoinQuery@10000` EFCore 用时 `158,733µs`，已被 SqlSugar 的 `174,890µs` 反超，但 EFCore 内存 `94,250KB` 也被 SqlSugar 的 `91,661KB` 反超得不多：大结果集场景下 EF Core 并不天然占优。
+- 单条 `Get` LiteOrm `240.3ms`（累计）与 Dapper `234.9ms` 几乎打平；LiteOrm 内存 `3.67MB` 反超 Dapper 的 `6.08MB`，GC `0 / 0` 也优于 Dapper 的 `500 / 0`：这是 LiteOrm 在单条场景里对 Dapper 唯一能在两个维度同时领先的格子。
 - 单条 Insert/Update/Upsert LiteOrm 累计耗时在 3,640~3,830ms 量级，Dapper 略快 0.5%~3.8%，差距远小于批量场景；原因是单条场景下"每次往返固定成本"主导了所有 ORM。同样写 1000 条，逐条调用累计耗时 `3,640.6ms`，改用一次批量插入只要 `22,698µs`（约 22.7ms），相差约 160 倍，差别就在往返次数从 1000 次压到 1 次。
+
+## 11. 设计取舍与代价
+
+前面那些优化手段，落到框架内部是几条固定的取舍。每条都有代价，用的时候心里要有数。
+
+| 决策 | 做法 | 代价 / 边界 |
+|:---|:---|:---|
+| 元数据缓存 | `TableInfoProvider` 单例缓存 `TableDefinition` / `TableView` | 运行期改元数据必须早于首次查询 |
+| 命令缓存 | 以 `(Type, methodName)` 为键缓存 `DbCommand` 本体 | 键不含 SQL 文本，SQL 随元数据变化的语句必须 `useCache=false` |
+| 连接池自研 | 按数据源命名、支持只读副本轮询 | 老化、失效、归还语义都得自己处理 |
+| 上下文锁 | `SemaphoreSlim(1,1)` 独占 + `AutoLockDataReader` 延长持锁 | 同一条连接串行，长结果集读取会占住连接 |
+| 结果惰性求值 | `EnumerableResult` / `ValueResult` 延迟执行 | 求值时点和命令作用域要成对释放 |
+| 双初始化线路 | `LiteOrmContext`（无 DI）/ `AddLiteOrm`（MS DI）/ `RegisterLiteOrm`（Autofac） | 三条线路互相独立，得显式选一条 |
+| 固定切片 | `Column.Constant` → `TableDefinition.ConstFilter` | 关联表的切片只能由 `AliasConstFilter` 派生 |
+
+命令缓存那一行的口径是按语句算的：带固定筛选条件的是 `GetObject`、`ExistsKey`、`Update`、`Delete`、`DeleteByKeys` 以及批量更新、批量删除、批量 ID 存在性判断；`Insert` 与 `BatchInsert` 恒走缓存。固定切片机制本身见 [权限过滤与用户范围](./permission-filtering.md)。
 
 ## 相关链接
 
