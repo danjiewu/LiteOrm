@@ -161,17 +161,6 @@ namespace LiteOrm
         /// </summary>
         public string[]? TableArgs { get; internal set; }
 
-        /// <summary>
-        /// 创建 SQL 执行上下文，并绑定当前 DAO 使用的 SQL 构建器。
-        /// </summary>
-        /// <param name="initTable">是否在上下文中初始化表信息，默认为 false。对于某些操作（如生成 SQL 语句），可能需要在上下文中包含表信息以正确解析列和别名等细节。</param>
-        /// <returns>SQL 构建上下文实例。</returns>
-        public virtual SqlBuildContext CreateSqlBuildContext(bool initTable = false)
-        {
-            return initTable
-                ? new SqlBuildContext(SqlBuilder, Table, Constants.DefaultTableAlias, TableArgs) { SingleTable = !IsView }
-                : new SqlBuildContext(SqlBuilder) { TableArgs = TableArgs, SingleTable = !IsView };
-        }
 
         private SqlBuildContext? _initSqlBuildContext;
         /// <summary>
@@ -255,6 +244,18 @@ namespace LiteOrm
         #endregion
 
         #region 方法
+
+        /// <summary>
+        /// 创建 SQL 执行上下文，并绑定当前 DAO 使用的 SQL 构建器。
+        /// </summary>
+        /// <param name="initTable">是否在上下文中初始化表信息，默认为 false。对于某些操作（如生成 SQL 语句），可能需要在上下文中包含表信息以正确解析列和别名等细节。</param>
+        /// <returns>SQL 构建上下文实例。</returns>
+        public virtual SqlBuildContext CreateSqlBuildContext(bool initTable = false)
+        {
+            return initTable
+                ? new SqlBuildContext(SqlBuilder, Table, IsView ? Constants.DefaultTableAlias : Table.Name!, TableArgs) { SingleTable = !IsView }
+                : new SqlBuildContext(SqlBuilder) { TableArgs = TableArgs, SingleTable = !IsView };
+        }
 
         /// <summary>
         /// 生成 select 部分的 SQL

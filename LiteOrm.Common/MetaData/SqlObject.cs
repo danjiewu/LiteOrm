@@ -5,18 +5,10 @@
     /// </summary>
     public abstract class SqlObject
     {
-        private string? _name;
         /// <summary>
         /// 获取或设置 SQL 对象的名称。
         /// </summary>
-        public virtual string? Name
-        {
-            get { return _name; }
-            set
-            {
-                _name = value;
-            }
-        }
+        public virtual string? Name { get; set; }
 
         /// <summary>
         /// 确定指定的对象是否等于当前对象。
