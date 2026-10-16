@@ -281,6 +281,7 @@ namespace LiteOrm.Common
             if (whereExpression != null)
             {
                 var lambdaConvert = new LambdaExprConverter(whereExpression);
+                deleteExpr.Where(lambdaConvert.ToLogicExpr());
                 if (deleteExpr.Table is { } table)
                 {
                     table.TableArgs = lambdaConvert.Table?.TableArgs;
@@ -290,8 +291,7 @@ namespace LiteOrm.Common
                         if (table.TableArgs?.Length > 0) tableName = string.Format(tableName, table.TableArgs);
                         ExprVisitor.Visit(expr => { if (expr is PropertyExpr propertyExpr && propertyExpr.TableAlias == Constants.DefaultTableAlias) { propertyExpr.TableAlias = tableName; } }, deleteExpr);
                     }
-                }
-                deleteExpr.Where(lambdaConvert.ToLogicExpr());
+                }                
             }
             return deleteExpr;
         }

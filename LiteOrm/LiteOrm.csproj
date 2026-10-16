@@ -18,11 +18,8 @@
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
 8.1.12:
-- 同步 LiteOrm.Common 8.1.12：Lambda 删除扩展方法 Delete/DeleteAsync 更名为 DeleteAll/DeleteAllAsync（破坏性变更）。
-- 同步 LiteOrm.Common 8.1.12：Expr.Delete 新增 Lambda 条件重载及 Expr.Delete(Type, LogicExpr, params string[]) 重载，Expr.Update 的 WHERE 条件改为可选。
-- 同步 LiteOrm.Common 8.1.12：TableAttribute 新增 AutoGenerateColumns 属性，可整体关闭未标注 [Column] 属性的自动映射。
-- 同步 LiteOrm.Common 8.1.12：修复单表 UPDATE/DELETE 中表别名无法解析的 bug，相关引用及 Lambda 构造的 UpdateExpr/DeleteExpr 属性表别名统一改用目标表名限定，不再渲染默认别名 T0。
-    </PackageReleaseNotes>
+- 同步 LiteOrm.Common 8.1.12
+</PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
