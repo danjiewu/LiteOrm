@@ -338,7 +338,7 @@ namespace LiteOrm.Common
             if (expr is null) return null;
             if (expr is LogicExpr logicExpr) return logicExpr;
             if (expr is ValueExpr ve && ve.Value is LogicExpr logicExpr1) return logicExpr1;
-            if (expr is ValueTypeExpr vte) return vte != 0;
+            if (expr is ValueTypeExpr vte) return vte != Expr.Const(0);
             throw new NotSupportedException($"Expression {expr} of type {expr?.GetType().Name} cannot be converted to LogicExpr.");
         }
 
