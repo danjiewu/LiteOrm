@@ -535,7 +535,7 @@ namespace LiteOrm.Common
         /// <param name="source">DELETE 表达式。</param>
         /// <param name="where">条件表达式。</param>
         /// <returns>包含 WHERE 子句的 DELETE 表达式。</returns>
-        public static DeleteExpr Where(this DeleteExpr source, LogicExpr where)
+        public static DeleteExpr Where(this DeleteExpr source, LogicExpr? where)
         {
             source.Where &= where;
             return source;

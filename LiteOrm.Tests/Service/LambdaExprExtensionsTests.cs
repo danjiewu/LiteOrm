@@ -141,12 +141,24 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void DeleteAll_WithPredicate_ForwardsConvertedExpression()
+        {
+            var service = new Mock<IEntityService<TestEntity>>();
+            service.Setup(s => s.DeleteAll(It.IsAny<LogicExpr>(), It.IsAny<string[]>())).Returns(2);
+
+            var result = service.Object.DeleteAll(x => x.Id > 10, "Users");
+
+            Assert.Equal(2, result);
+            service.Verify(s => s.DeleteAll(It.IsAny<LogicExpr>(), It.Is<string[]>(x => x.Length == 1 && x[0] == "Users")), Times.Once);
+        }
+
+        [Fact]
         public async Task DeleteAsync_WithPredicate_ForwardsConvertedExpression()
         {
             var service = new Mock<IEntityServiceAsync<TestEntity>>();
             service.Setup(s => s.DeleteAllAsync(It.IsAny<LogicExpr>(), It.IsAny<string[]>(), It.IsAny<CancellationToken>())).ReturnsAsync(2);
 
-            var result = await service.Object.DeleteAsync(x => x.Id > 10, new[] { "Users" }, CancellationToken.None);
+            var result = await service.Object.DeleteAllAsync(x => x.Id > 10, new[] { "Users" }, CancellationToken.None);
 
             Assert.Equal(2, result);
             service.Verify(s => s.DeleteAllAsync(It.IsAny<LogicExpr>(), It.Is<string[]>(x => x.Length == 1 && x[0] == "Users"), CancellationToken.None), Times.Once);

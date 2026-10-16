@@ -30,12 +30,12 @@ namespace LiteOrm.Demo.Demos
             await Demo1_DirectFunctionExprAsync(userSvc);
             await Demo2_LambdaToStringInWhereAsync(userSvc);
 
-            await userSvc.DeleteAsync(u => u.UserName != null && u.UserName.StartsWith("DateFormatDemo_"));
+            await userSvc.DeleteAllAsync(u => u.UserName != null && u.UserName.StartsWith("DateFormatDemo_"));
         }
 
         private static async Task PrepareTestDataAsync(IUserService userSvc)
         {
-            await userSvc.DeleteAsync(u => u.UserName != null && u.UserName.StartsWith("DateFormatDemo_"));
+            await userSvc.DeleteAllAsync(u => u.UserName != null && u.UserName.StartsWith("DateFormatDemo_"));
             await userSvc.InsertAsync(new User { UserName = "DateFormatDemo_Alice", Age = 25, CreateTime = new DateTime(2024, 6, 15, 10, 30, 0) });
             await userSvc.InsertAsync(new User { UserName = "DateFormatDemo_Bob",   Age = 30, CreateTime = new DateTime(2024, 12, 25, 8, 0, 0) });
             Console.WriteLine("  测试数据已就绪（Alice=2024-06-15, Bob=2024-12-25）");

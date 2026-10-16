@@ -70,7 +70,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void HasCycle_DeleteExpr_ReturnsFalse()
         {
-            var delete = Expr.Delete<TestUser>()
+            var delete = Expr.Delete(typeof(TestUser))
                 .Where(Expr.Prop("Id") == 1);
 
             Assert.False(CycleDetector.HasCycle(delete));

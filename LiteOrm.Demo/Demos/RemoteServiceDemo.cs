@@ -195,7 +195,7 @@ namespace LiteOrm.Demo.Demos
             Console.WriteLine($"[UpdateAsync] 更新用户：DisplayName={user.DisplayName}");
 
             // 5.8 按条件删除
-            var deletedCount = await userService.DeleteAsync(u => u.UserName == "alice");
+            var deletedCount = await userService.DeleteAllAsync(u => u.UserName == "alice");
             Console.WriteLine($"[DeleteAsync(LogicExpr)] 按条件删除数量：{deletedCount}");
         }
 
@@ -259,7 +259,7 @@ namespace LiteOrm.Demo.Demos
             }
 
             // 6.6 使用 Lambda 条件删除
-            var deletedCount = await orderService.DeleteAsync(o => o.CustomerName == "Customer A");
+            var deletedCount = await orderService.DeleteAllAsync(o => o.CustomerName == "Customer A");
             Console.WriteLine($"[DeleteAsync(LogicExpr)] 删除 Customer A 的订单数量：{deletedCount}");
         }
 

@@ -22,10 +22,10 @@ namespace LiteOrm.Common
         /// <param name="expression">定义删除条件的 Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>受影响的行数。</returns>
-        public static int Delete<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityService<T> entityService, Expression<Func<T, bool>> expression, params string[] tableArgs)
+        public static int DeleteAll<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityService<T> entityService, Expression<Func<T, bool>> expression, params string[] tableArgs)
         {
-            var lambdaConvert = new LambdaExprConverter(expression);
-            return entityService.DeleteAll(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs);
+            var deleteExpr = Expr.Delete<T>(expression);
+            return entityService.DeleteAll(deleteExpr.Where, tableArgs ?? deleteExpr.Table?.TableArgs);
         }
 
         /// <summary>
@@ -149,10 +149,10 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消操作的令牌。</param>
         /// <returns>表示异步删除操作的任务，结果包含受影响的行数。</returns>
-        public static Task<int> DeleteAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
+        public static Task<int> DeleteAllAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityServiceAsync<T> entityService, Expression<Func<T, bool>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
-            var lambdaConvert = new LambdaExprConverter(expression);
-            return entityService.DeleteAllAsync(lambdaConvert.ToLogicExpr(), tableArgs ?? lambdaConvert.Table?.TableArgs, cancellationToken);
+            var deleteExpr = Expr.Delete<T>(expression);
+            return entityService.DeleteAllAsync(deleteExpr.Where, tableArgs ?? deleteExpr.Table?.TableArgs, cancellationToken);
         }
 
         /// <summary>

@@ -191,7 +191,6 @@ namespace LiteOrm.Common
             _parameterExprs[_rootParameter.Name ?? string.Empty] = _tableExpr = Expr.From(objectType).As(_currentAlias);
             _aliasCounter = 1;
         }
-
         private TableExpr _tableExpr;
         /// <summary>
         /// 获取解析后的 TableExpr 对象，代表 Lambda 表达式中根参数对应的表信息。

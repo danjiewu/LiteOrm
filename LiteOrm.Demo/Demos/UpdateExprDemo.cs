@@ -28,12 +28,12 @@ namespace LiteOrm.Demo.Demos
             await Demo6_SubQuerySetAsync(userSvc);
             await Demo7_LambdaUpdateAsync(userSvc);
 
-            await userSvc.DeleteAsync(u => u.UserName != null && u.UserName.StartsWith("UpdateDemo_"));
+            await userSvc.DeleteAllAsync(u => u.UserName != null && u.UserName.StartsWith("UpdateDemo_"));
         }
 
         private static async Task PrepareTestDataAsync(IUserService userSvc)
         {
-            await userSvc.DeleteAsync(u => u.UserName != null && u.UserName.StartsWith("UpdateDemo_"));
+            await userSvc.DeleteAllAsync(u => u.UserName != null && u.UserName.StartsWith("UpdateDemo_"));
             await userSvc.InsertAsync(new User { UserName = "UpdateDemo_Alice", Age = 20, CreateTime = DateTime.Now });
             await userSvc.InsertAsync(new User { UserName = "UpdateDemo_Bob", Age = 30, CreateTime = DateTime.Now });
             await userSvc.InsertAsync(new User { UserName = "UpdateDemo_Carol", Age = 25, CreateTime = DateTime.Now });

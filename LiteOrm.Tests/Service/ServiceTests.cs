@@ -774,7 +774,7 @@ namespace LiteOrm.Tests
             await service.InsertAsync(log2, TestContext.Current.CancellationToken);
 
             // Act - 删除 Amount > 400 且 Event 为 "DeleteEvent" 的日志记录
-            int deleted = await service.DeleteAsync(
+            int deleted = await service.DeleteAllAsync(
                 l => l.Amount > 400 && l.Event == "DeleteEvent",
                 tableArgs: new[] { "202401" },
                 cancellationToken: TestContext.Current.CancellationToken
@@ -886,7 +886,7 @@ namespace LiteOrm.Tests
 
             // Act - 删除所有临时记录（Amount < 100 且 Event 为 "Temp"）
             // 使用 Lambda 中的 TableArgs 赋值方式来指定分表
-            int deleted = await service.DeleteAsync(
+            int deleted = await service.DeleteAllAsync(
                 l => l.TableArgs == new[] { "202403" } && l.Event == "Temp" && l.Amount < 100 && l.UserID == user.Id,
                 cancellationToken: TestContext.Current.CancellationToken
             );
@@ -943,7 +943,7 @@ namespace LiteOrm.Tests
             );
 
             // Act 3 - 删除 2024-04 中的低额日志（Amount < 350）
-            int deletedApr = await service.DeleteAsync(
+            int deletedApr = await service.DeleteAllAsync(
                 l => l.Amount < 350 && l.UserID == user.Id,
                 tableArgs: new[] { "202404" },
                 TestContext.Current.CancellationToken

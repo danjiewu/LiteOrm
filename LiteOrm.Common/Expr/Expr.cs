@@ -237,7 +237,7 @@ namespace LiteOrm.Common
         /// <returns>UPDATE 表达式。</returns>
         /// <exception cref="ArgumentNullException">当 updateExpression 为 null 时抛出。</exception>
         /// <exception cref="ArgumentException">当 updateExpression 不是 MemberInitExpression 时抛出。</exception>
-        public static UpdateExpr Update<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(Expression<Func<T, T>> updateExpression, Expression<Func<T, bool>> whereExpression)
+        public static UpdateExpr Update<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(Expression<Func<T, T>> updateExpression, Expression<Func<T, bool>>? whereExpression)
         {
             if (updateExpression == null) throw new ArgumentNullException(nameof(updateExpression));
             if (updateExpression.Body is not MemberInitExpression memberInitExpression) throw new ArgumentException("updateExpression must be a MemberInitExpression", nameof(updateExpression));
@@ -250,6 +250,13 @@ namespace LiteOrm.Common
                 if (updateExpr.Table is { } table)
                 {
                     table.TableArgs = lambdaConvert.Table?.TableArgs;
+                    //特殊处理Update表达式中属性的TableAlias，替换为实际表名，避免在生成SQL时出现默认别名T0
+                    string? tableName = TableInfoProvider.Instance.GetTableDefinition(table.Type!)?.Name;
+                    if (tableName != null)
+                    {
+                        if (table.TableArgs?.Length > 0) tableName = string.Format(tableName, table.TableArgs);
+                        ExprVisitor.Visit(expr => { if (expr is PropertyExpr propertyExpr && propertyExpr.TableAlias == Constants.DefaultTableAlias) { propertyExpr.TableAlias = tableName; } }, updateExpr);
+                    }
                 }
             }
             foreach (var binding in memberInitExpression.Bindings)
@@ -259,17 +266,6 @@ namespace LiteOrm.Common
                     updateExpr.Set(assignment.Member.Name, updateConverter.Convert(assignment.Expression).AsValue());
                 }
             }
-            //特殊处理Update表达式中属性的TableAlias，替换为实际表名，避免在生成SQL时出现默认别名T0
-            if (updateExpr.Table is { } table2)
-            {
-                string? tableName = TableInfoProvider.Instance.GetTableDefinition(table2.Type!)?.Name;
-                if (tableName != null)
-                {
-                    if (table2.TableArgs?.Length > 0) tableName = string.Format(tableName, table2.TableArgs);
-                    ExprVisitor.Visit(expr => { if (expr is PropertyExpr propertyExpr && propertyExpr.TableAlias == Constants.DefaultTableAlias) { propertyExpr.TableAlias = tableName; } }, updateExpr);
-                }
-            }
-
             return updateExpr;
         }
 
@@ -277,11 +273,27 @@ namespace LiteOrm.Common
         /// 创建指定实体类型的 DELETE 表达式。
         /// </summary>
         /// <typeparam name="T">实体类型。</typeparam>
-        /// <param name="tableArgs">动态表名参数</param>
+        /// <param name="whereExpression">定义 WHERE 条件的 Lambda 表达式（可选）。</param>
         /// <returns>DELETE 表达式。</returns>
-        public static DeleteExpr Delete<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(params string[] tableArgs)
+        public static DeleteExpr Delete<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(Expression<Func<T, bool>>? whereExpression)
         {
-            return Delete(typeof(T), tableArgs);
+            var deleteExpr = Delete(typeof(T));
+            if (whereExpression != null)
+            {
+                var lambdaConvert = new LambdaExprConverter(whereExpression);
+                if (deleteExpr.Table is { } table)
+                {
+                    table.TableArgs = lambdaConvert.Table?.TableArgs;
+                    string? tableName = TableInfoProvider.Instance.GetTableDefinition(table.Type!)?.Name;
+                    if (tableName != null)
+                    {
+                        if (table.TableArgs?.Length > 0) tableName = string.Format(tableName, table.TableArgs);
+                        ExprVisitor.Visit(expr => { if (expr is PropertyExpr propertyExpr && propertyExpr.TableAlias == Constants.DefaultTableAlias) { propertyExpr.TableAlias = tableName; } }, deleteExpr);
+                    }
+                }
+                deleteExpr.Where(lambdaConvert.ToLogicExpr());
+            }
+            return deleteExpr;
         }
 
         /// <summary>
@@ -295,6 +307,22 @@ namespace LiteOrm.Common
             return new DeleteExpr()
             {
                 Table = new TableExpr(objectType) { TableArgs = tableArgs }
+            };
+        }
+
+        /// <summary>
+        /// 创建指定类型的 DELETE 表达式。
+        /// </summary>
+        /// <param name="objectType">实体类型。</param>
+        /// <param name="whereExpr">WHERE 条件表达式（可选）。</param>
+        /// <param name="tableArgs">动态表名参数</param>
+        /// <returns>DELETE 表达式。</returns>
+        public static DeleteExpr Delete([DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] Type objectType, LogicExpr? whereExpr, params string[] tableArgs)
+        {
+            return new DeleteExpr()
+            {
+                Table = new TableExpr(objectType) { TableArgs = tableArgs },
+                Where = whereExpr
             };
         }
 

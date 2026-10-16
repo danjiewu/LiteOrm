@@ -20,7 +20,7 @@ namespace LiteOrm.Demo.Demos
                 ProductName = new string('A', 300),// 故意制造一个异常（ProductName 超过数据库字段长度限制），演示事务回滚
                 Amount = 1
             };
-            await factory.UserService.DeleteAsync(u => u.UserName == newUser.UserName);
+            await factory.UserService.DeleteAllAsync(u => u.UserName == newUser.UserName);
             Console.WriteLine($"现在通过事务注册新用户 {newUser.UserName} 并执行初始化销售...");
 
             try
