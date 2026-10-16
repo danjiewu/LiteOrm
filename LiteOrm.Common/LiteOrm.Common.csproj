@@ -17,8 +17,10 @@
     <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
       8.1.12:
+      - Lambda 删除扩展方法 Delete/DeleteAsync 更名为 DeleteAll/DeleteAllAsync，与 IEntityService.DeleteAll 命名保持一致（破坏性变更）。
+      - Expr.Delete 新增 Lambda 条件重载。
       - TableAttribute 新增 AutoGenerateColumns 属性（默认 true）：设为 false 时未标注 [Column] 的属性不再映射为列，[Column(false)] 与 [ForeignColumn] 语义不变，运行时与 AOT 源生成器行为一致。
-      - 修复单表 UPDATE/DELETE 中关联子查询相关引用无法解析的 bug：嵌套 Lambda（如 Expr.Exists）对外层参数的相关引用改用目标表名限定，不再渲染单表语句中不存在的默认别名 T0。
+      - 修复单表 UPDATE/DELETE 中表别名无法解析的 bug：嵌套 Lambda（如 Expr.Exists）对外层参数的引用及 Lambda 构造 UpdateExpr/DeleteExpr 时的属性表别名统一改用目标表名限定，不再渲染默认别名 T0。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

@@ -1,6 +1,6 @@
 # Changelog
 
-## v8.1.12 (2026-10-12)
+## v8.1.12 (2026-10-16)
 
 ### Breaking changes
 
