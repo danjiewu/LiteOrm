@@ -2,13 +2,23 @@
 
 ## v8.1.12 (2026-10-12)
 
+### Breaking changes
+
+- **Lambda delete extension methods renamed to `DeleteAll` / `DeleteAllAsync`** (`LiteOrm.Common`): `LambdaExprExtensions.Delete` and `DeleteAsync` are renamed to `DeleteAll` and `DeleteAllAsync` respectively, aligning with `IEntityService<T>.DeleteAll(LogicExpr)`.
+
 ### New Features
 
 - **`AutoGenerateColumns` added to `[Table]`** (`LiteOrm.Common`): defaults to `true`, auto-mapping unmarked scalar properties as columns; when set to `false`, only properties explicitly marked with `[Column]` are mapped as columns, while `[Column(false)]` and `[ForeignColumn]` keep their meaning. The runtime (`AttributeTableInfoProvider`) and the AOT source generator (`TableInfoGenerator`) behave identically.
 
+- **`Expr.Delete<T>` now accepts a Lambda condition** (`LiteOrm.Common`): the new `Expr.Delete<T>(Expression<Func<T, bool>>? whereExpression)` overload builds a `DeleteExpr` directly from a Lambda condition; a new `Expr.Delete(Type objectType, LogicExpr? whereExpr, params string[] tableArgs)` overload builds one from a `LogicExpr`.
+
+### Enhancements
+
+- **The WHERE condition on `Expr.Update<T>` is now optional** (`LiteOrm.Common`): the `whereExpression` parameter accepts `null`, so an `UpdateExpr` can be built without a WHERE clause.
+
 ### Fixes
 
-- **Fixed unresolved correlated references in subqueries of single-table UPDATE / DELETE statements** (`LiteOrm.Common`): references to the outer parameter from nested Lambdas such as `Expr.Exists` are now qualified by the target table name, rather than the default alias `T0`, which does not exist in single-table statements.
+- **Fixed unresolved table aliases in single-table UPDATE / DELETE statements** (`LiteOrm.Common`): references to the outer parameter from nested Lambdas such as `Expr.Exists`, as well as property aliases when building `UpdateExpr` / `DeleteExpr` from Lambdas, are now qualified by the target table name (substituted before WHERE conditions and assignments are processed), rather than the default alias `T0`, which does not exist in single-table statements.
 
 ***
 
