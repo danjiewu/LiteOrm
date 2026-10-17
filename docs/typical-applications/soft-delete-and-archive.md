@@ -33,7 +33,7 @@ SELECT * FROM "Customers" "T0" WHERE "T0"."IsDeleted" = 0
 - `Constant` 是编译期常量，只读属性的语义即“此模型看到的数据未删除”，布尔切片内联为字面量，不走参数。
 - 写操作必须走不带 `Constant` 的真实实体，否则连“把 `IsDeleted` 改成 true”的更新都会被自己的条件挡住。
 - 视图上的切片同样作用于统计与导出，前提是这些入口用同一个视图类型。
-- NativeAOT 源生成下特性切片不生成 `ConstFilter`，需运行时赋 `TableDefinition.ConstFilter`，写法见[多租户隔离](./tenant-isolation.md)示例三。
+- NativeAOT 源生成下特性切片不生成 `ConstFilter`，需运行时赋 `TableDefinition.ConstFilter`，写法见[多租户隔离](./tenant-isolation.md)示例三，原因见 [NativeAOT 支持](../advanced-topics/aot.md)。
 
 ## 场景 2：回收站与管理员查看已删除数据
 

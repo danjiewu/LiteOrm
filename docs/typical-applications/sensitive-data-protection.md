@@ -266,12 +266,13 @@ var customer = await customerService.SearchOneAsync(
 
 ## AOT 差异
 
-项目用 NativeAOT 发布时，要保证加密列还能正常工作，注意以下几点：
+项目用 NativeAOT 发布时，加密列要能正常工作，注意以下几点：
 
-- 复杂类型（数组、集合、自定义类）列在 AOT 下必须显式声明 `ConverterType`，否则源生成器会跳过该列的读取映射。方式二里只注册映射和全局转换不够：源生成器读取时按 `reader.GetFieldType(i)` 拿到的实际 CLR 类型推断列的取值类型，自定义类型只会推成 `Object`，`DbValueTypeMap.Set` 改变不了这一点。所以 AOT 下的列要显式写成 `[Column("IdCard", DbType = DbValueType.String, ConverterType = typeof(...))]`。
-- 源生成器读取时统一走非泛型 `DbReadConverter`，输入是 `reader.GetValue(i)`，装箱无法避免；泛型强类型委托只在 JIT 路径生效。这是 AOT 路径映射性能与 JIT 路径有差距的原因之一。
+- 复杂类型（数组、集合、自定义类）列在 AOT 下必须显式声明 `ConverterType`，否则源生成器会跳过该列的读取映射。方式二里只注册映射和全局转换不够：源生成器按 `reader.GetFieldType(i)` 拿到的实际 CLR 类型推断列的取值类型，自定义类型只会推成 `Object`，`DbValueTypeMap.Set` 改变不了这一点。所以 AOT 下的列要显式写成 `[Column("IdCard", DbType = DbValueType.String, ConverterType = typeof(...))]`。
 - 转换器缺少公共无参构造函数时，生成代码在编译期就会报错，比运行时才发现要早。
-- 元数据来源在 AOT 下会切换成源生成的 `ColumnInfo`，见[多租户隔离](./tenant-isolation.md)的示例三，加密列本身不受影响，受影响的只有 `Constant` 切片，替代做法是改用运行时 `GenericSqlExpr` 承载固定条件。
+- 元数据来源在 AOT 下会切换成源生成的 `ColumnInfo`，加密列本身不受影响，受影响的只有 `Constant` 切片，替代做法是改用运行时 `GenericSqlExpr` 承载固定条件。
+
+其余事项（关联元数据、读取装箱、性能预期）见 [NativeAOT 支持](../advanced-topics/aot.md)。
 
 ## 相关链接
 

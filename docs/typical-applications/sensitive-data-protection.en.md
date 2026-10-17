@@ -269,9 +269,10 @@ Notes:
 When the project publishes with NativeAOT, keep the encrypted columns working by watching the following:
 
 - Complex-typed columns (arrays, collections, custom classes) must declare `ConverterType` explicitly under AOT, otherwise the source generator skips the read mapping for that column. In approach 2, registering the mapping and the global conversion alone is not enough: the source generator infers the column's value type from the actual CLR type reported by `reader.GetFieldType(i)`, and a custom type only ever infers as `Object`; `DbValueTypeMap.Set` cannot change that. So an AOT column reads explicitly `[Column("IdCard", DbType = DbValueType.String, ConverterType = typeof(...))]`.
-- The source generator always reads through the non-generic `DbReadConverter` with `reader.GetValue(i)` as input, so boxing is unavoidable. The strongly typed generic delegates only apply on the JIT path. This is one reason AOT mapping performs differently from JIT mapping.
 - A converter without a public parameterless constructor fails at compile time in generated code, which is earlier than discovering it at runtime.
-- The metadata source switches to the generated `ColumnInfo` under AOT, as described in example 3 of [Tenant Isolation](./tenant-isolation.en.md). Encrypted columns are unaffected; only `Constant` slices are, and the replacement is to carry the fixed condition with a runtime `GenericSqlExpr`.
+- The metadata source switches to the generated `ColumnInfo` under AOT. Encrypted columns are unaffected; only `Constant` slices are, and the replacement is to carry the fixed condition with a runtime `GenericSqlExpr`.
+
+For the remaining items — association metadata, read boxing, performance expectations — see [NativeAOT Support](../advanced-topics/aot.en.md).
 
 ## Related links
 

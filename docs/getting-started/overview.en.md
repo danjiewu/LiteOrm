@@ -134,6 +134,8 @@ graph TD
 - ✅ means the project's net8.0 / net10.0 targets are marked `IsAotCompatible` and run under NativeAOT and full trimming.
 - ❌ means it relies on reflection / dynamic proxies and is not declared AOT-compatible: `LiteOrm.DependencyInjection` (Autofac + Castle dynamic proxies), `LiteOrm.Remote` / `LiteOrm.Remote.Server` (dynamic type serialization).
 
+For how the two modes differ in usage and what to watch when migrating, see [NativeAOT Support](../advanced-topics/aot.en.md).
+
 > **How to choose?**
 > - For core ORM capabilities only (mapping, queries, DAO), reference `LiteOrm` (optionally `LiteOrm.Common`) with no DI framework required.
 > - For host-level integration (Autofac, AOP transactions/permissions/logging), reference `LiteOrm.DependencyInjection`.

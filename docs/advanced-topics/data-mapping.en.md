@@ -235,16 +235,16 @@ The mapper fills entity objects column-by-column from returned rows; it decides 
 
 | Path | Trigger | Mechanism | Performance |
 |------|---------|-----------|-------------|
-| **Source generator pre-registration** | entity marked `[Table]` | compile-time generated per-column assignment, registered at startup | highest |
-| **JIT expression-tree compilation** | runtime supports dynamic code | dynamically compiled mapping delegate | highest |
-| **AOT reflection mapping** | NativeAOT (no dynamic code) | reflection assignment | moderate |
+| **Source generator pre-registration** | AOT build + entity marked `[Table]` | compile-time generated per-column assignment, registered at startup | highest |
+| **JIT expression-tree compilation** | non-AOT build | dynamically compiled mapping delegate | highest |
+| **AOT reflection mapping** | types without generated code under NativeAOT | reflection assignment | moderate |
 
 All three behave identically: per column, do an `IsDBNull` check → get that column's converter / typed read → assign to the entity property. They differ only in *how* they execute:
-- **JIT path**: uses typed read methods (`GetInt32`/`GetString`…) to avoid boxing; when a column converter is hit, inlines the strongly-typed delegate into the compiled code; keeps a dual-layer cache (by type and by column schema).
-- **AOT path**: uses a unified `GetValue()` read (returns object), bridges via the non-generic delegate or `ChangeType`, assigns via reflection, and has lower performance; but `[Table]` entities hit the source-generator path with JIT-comparable performance.
-- **Source-generator path**: targets `[Table]` entities, no reflection, no boxing; the recommended option under AOT.
+- **JIT path**: uses typed read methods (`GetInt32`/`GetString`…) to avoid boxing; when a column converter is hit, inlines the strongly-typed delegate into the compiled code.
+- **Source-generator path**: columns without a converter read through a typed method directly and do not box; columns that hit a column-level converter go through `GetValue()` plus a non-generic delegate, so only those box.
+- **AOT reflection path**: uses `GetValue()` plus `SetValue` uniformly, boxing every column, on top of the reflection call overhead.
 
-> Tip: normal runtime code can rely on the JIT path; for NativeAOT builds, mark entities `[Table]` to hit the source-generator implementation for near-JIT performance.
+> Tip: mark entities `[Table]` when publishing to NativeAOT so they hit the source-generator path; projections and anonymous types take the reflection path under AOT. For a full comparison of the two modes, see [NativeAOT Support](./aot.en.md).
 
 ### 5.1 Entity Read Mapping Under Dynamic Data Source Switching
 
@@ -417,19 +417,11 @@ DbConvertHandler<string, IPAddress>? IDbValueConverter<string, IPAddress>.DbRead
 
 ## 7. AOT vs Non-AOT Differences
 
-| Dimension | JIT (Non-AOT) | AOT (NativeAOT) |
-|-----------|---------------|-----------------|
-| Converter registration | identical | identical |
-| Mapping implementation | expression-tree compilation | reflection assignment |
-| Read method | typed read, no boxing | unified `GetValue()` + bridging |
-| Converter invocation | compile-time inlined strong delegate | runtime non-generic delegate |
-| Performance | highest | moderate; `[Table]` entities via source generator are still faster than reflection-only paths, but slower than JIT |
-| Trimming safety | needs `[RequiresDynamicCode]` | fully safe |
+Converter registration and the write-direction rules are identical in both modes; the difference is concentrated in read mapping. JIT uses expression-tree compilation, AOT uses the source generator or reflection, and the boxing and performance gaps are covered by the path table in [Chapter 5](#5-datareader-mapping-read-direction).
 
-AOT performance tips:
-1. Mark entities `[Table]` to hit the source-generator mapping.
-2. Implement both generic and non-generic interfaces; the source-generator path uses the **non-generic** converter delegate (taking `GetValue()` results as input); the generic variant is only consumed by the JIT path.
-3. Prefer known strongly-typed entities over anonymous-type projections.
+To serve both paths with one custom converter, implement both the generic and the non-generic interfaces: the source-generator and AOT reflection paths use the **non-generic** delegate (taking `GetValue()` results as input), while the generic variant is only consumed by the JIT path.
+
+For everything that has to be handled before migrating to NativeAOT — association metadata, constant slices, DI wiring — see the full checklist in [NativeAOT Support](./aot.en.md).
 
 ## 8. FAQ
 
@@ -439,7 +431,7 @@ Check: does the `ConverterType` type implement `IDbValueConverter`; does it have
 
 ### Q2: AOT is much slower than JIT — what can I do?
 
-Mark entities `[Table]` to hit the source-generator pre-registered mapping, whose performance is comparable to JIT.
+First confirm the entities are marked `[Table]` so they hit the source-generator pre-registered mapping, then check that the query results are not going through an anonymous-type projection. For the item-by-item checklist, see the notes in [NativeAOT Support](./aot.en.md).
 
 ### Q3: What happens if I re-register the same key?
 

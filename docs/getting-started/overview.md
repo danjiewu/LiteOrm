@@ -132,6 +132,8 @@ graph TD
 - ✅ 表示该项目的 net8.0 / net10.0 目标已标记 `IsAotCompatible`，可在 NativeAOT 与完全裁剪（Trim）下运行。
 - ❌ 表示依赖反射 / 动态代理特性，未声明 AOT 兼容：`LiteOrm.DependencyInjection`（Autofac + Castle 动态代理）、`LiteOrm.Remote` / `LiteOrm.Remote.Server`（动态类型序列化）。
 
+两种模式的用法差别与迁移注意事项见 [NativeAOT 支持](../advanced-topics/aot.md)。
+
 > **如何选择？**
 > - 仅需要 ORM 核心能力（实体映射、查询、DAO）时，引用 `LiteOrm`（可选 `LiteOrm.Common`），无需引入任何 DI 框架。
 > - 需要宿主级集成（Autofac、AOP 事务/权限/日志）时，引用 `LiteOrm.DependencyInjection`。

@@ -33,7 +33,7 @@ SELECT * FROM "Customers" "T0" WHERE "T0"."IsDeleted" = 0
 - `Constant` is a compile-time value; the read-only property means "rows visible here are never deleted", and a boolean slice is inlined as a literal rather than a parameter.
 - Writes must go through the real entity without `Constant`; otherwise even the update that sets `IsDeleted` to `true` is blocked by the condition.
 - A slice on a view model also applies to counts and exports, provided those entry points use the same view type.
-- Under `TableInfo` source generation (NativeAOT) the attribute slice does not produce a `ConstFilter`; assign `TableDefinition.ConstFilter` at runtime instead, as shown in example 3 of [Tenant Isolation](./tenant-isolation.en.md).
+- Under `TableInfo` source generation (NativeAOT) the attribute slice does not produce a `ConstFilter`; assign `TableDefinition.ConstFilter` at runtime instead, as shown in example 3 of [Tenant Isolation](./tenant-isolation.en.md). The reason is covered in [NativeAOT Support](../advanced-topics/aot.en.md).
 
 ## Scenario 2: recycle bin and admin views of deleted data
 

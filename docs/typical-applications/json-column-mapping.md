@@ -127,7 +127,7 @@ public sealed class OrderSettingsJsonConverter : IDbValueConverter<string, Order
 public OrderSettings? Settings { get; set; }
 ```
 
-列级转换器优先级最高，会盖住全局注册；需要公共无参构造函数，框架解析列元数据时用 `Activator.CreateInstance` 实例化，要注入配置或密钥的组件改用静态初始化或环境变量。AOT 下这类列必须显式写 `ConverterType`，源生成器看到它才会为该列生成读取映射，只靠全局注册不够；完整写法见[敏感字段加密与脱敏](./sensitive-data-protection.md)的方式一。
+列级转换器优先级最高，会盖住全局注册；需要公共无参构造函数，框架解析列元数据时用 `Activator.CreateInstance` 实例化，要注入配置或密钥的组件改用静态初始化或环境变量。AOT 下这类列必须显式写 `ConverterType`，源生成器看到它才会为该列生成读取映射，只靠全局注册不够；完整写法见[敏感字段加密与脱敏](./sensitive-data-protection.md)的方式一，AOT 注意事项见 [NativeAOT 支持](../advanced-topics/aot.md)。
 
 要点：
 

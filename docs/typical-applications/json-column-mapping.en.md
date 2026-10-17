@@ -127,7 +127,7 @@ public sealed class OrderSettingsJsonConverter : IDbValueConverter<string, Order
 public OrderSettings? Settings { get; set; }
 ```
 
-A column-level converter wins over everything else and masks the global registration. It needs a public parameterless constructor: the framework instantiates it with `Activator.CreateInstance` while resolving column metadata, so components that need injected configuration or keys must use static initialization or environment variables instead. Under AOT these columns must declare `ConverterType` explicitly, since the source generator only emits a read mapping for a column when it sees it, and the global registration alone is not enough; see Option 1 in [Sensitive Data Protection](./sensitive-data-protection.en.md) for the full form.
+A column-level converter wins over everything else and masks the global registration. It needs a public parameterless constructor: the framework instantiates it with `Activator.CreateInstance` while resolving column metadata, so components that need injected configuration or keys must use static initialization or environment variables instead. Under AOT these columns must declare `ConverterType` explicitly, since the source generator only emits a read mapping for a column when it sees it, and the global registration alone is not enough; see Option 1 in [Sensitive Data Protection](./sensitive-data-protection.en.md) for the full form, and [NativeAOT Support](../advanced-topics/aot.en.md) for the AOT notes.
 
 Key points:
 

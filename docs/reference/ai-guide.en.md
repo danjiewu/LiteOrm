@@ -121,15 +121,16 @@ Types marked with `[AutoRegister]` are automatically registered into the DI cont
 
 | Build mode | Registration method | Notes |
 | --- | --- | --- |
-| AOT / trim (`PublishAot` / `IsAotCompatible` / `PublishTrimmed` etc. set to `true`) | Compile-time source generator (`LiteOrm.Generators.AutoRegisterGenerator`) | Emits `LiteOrmAutoRegister.g.cs`; a module initializer registers the callback. No reflection, AOT-friendly |
+| AOT / trim (`PublishAot` / `IsAotCompatible` / `PublishTrimmed` etc. set to `true`) | Compile-time source generator (`LiteOrm.Generators.AutoRegisterGenerator`) | Emits registration code; a module initializer hooks it up. No reflection |
 | Non-AOT (default) | Runtime assembly scan | `LiteOrmAutoRegistration.Apply()` reflects over referenced assemblies for `[AutoRegister]` types |
 
-- The `AutoRegisterServices` option (default `true`) only governs auto-registration of **user-defined** services and DAOs: AOT mode applies the source-generated registration code, non-AOT mode scans assemblies at runtime; set to `false` to skip that and register custom services manually.
+- The `AutoRegisterServices` option (default `true`) only governs auto-registration of **user-defined** services and DAOs; the two methods are dispatched automatically via `RuntimeFeature.IsDynamicCodeSupported`. Set to `false` to skip that and register custom services manually.
 - The framework's built-in generic DAOs and services (`ObjectDAO<>` / `ObjectViewDAO<>` / `EntityService<>` / `EntityViewService<>` and their interfaces) are unaffected by this option — they are always registered by `AddLiteOrm()` and remain available even when `AutoRegisterServices` is `false`.
 - The registration scope is controlled by the `Policy` enum `RegisterPolicy` on `[AutoRegister]`: `All` (default — the implementation type itself + interfaces), `Self` (itself only), `Interface` (interfaces only).
-- `AddLiteOrm()`: applies generated code in AOT mode, runtime scan in non-AOT mode (auto-dispatched via `RuntimeFeature.IsDynamicCodeSupported`).
 - `RegisterLiteOrm()`: Autofac assembly-scan registration; automatically applies Castle interceptors from `[InterceptAttribute]`, the `IEntityService` interface family, and types carrying `[Service]` (`IsService=true`) via `ServiceInvokeInterceptor`.
 - Source generation is enabled automatically under an AOT build; to generate it in an ordinary build too (for example, to validate AOT compatibility early), declare `[assembly: LiteOrmCodeGen]` (`LiteOrmCodeGenAttribute`) on the assembly.
+
+For the full checklist under an AOT build — DI wiring, association metadata, constant slices, converter declarations — see [NativeAOT Support](../advanced-topics/aot.en.md).
 
 ## 2. Entity and view definitions
 

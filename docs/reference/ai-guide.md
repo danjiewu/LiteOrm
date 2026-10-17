@@ -121,15 +121,16 @@ var adults = await viewDao.Search(Expr.Prop("Age") > 18).ToListAsync();
 
 | 构建模式 | 注册方式 | 说明 |
 | --- | --- | --- |
-| AOT / 裁剪（`PublishAot` / `IsAotCompatible` / `PublishTrimmed` 等为 `true`） | 编译期源生成器（`LiteOrm.Generators.AutoRegisterGenerator`） | 生成 `LiteOrmAutoRegister.g.cs`，由模块初始化器登记注册回调，无反射、AOT 友好 |
+| AOT / 裁剪（`PublishAot` / `IsAotCompatible` / `PublishTrimmed` 等为 `true`） | 编译期源生成器（`LiteOrm.Generators.AutoRegisterGenerator`） | 生成注册代码，由模块初始化器登记，无反射 |
 | 非 AOT（默认） | 运行时程序集扫描 | `LiteOrmAutoRegistration.Apply()` 反射扫描引用程序集中带 `[AutoRegister]` 的类型 |
 
-- `AutoRegisterServices` 选项（默认 `true`）只控制**用户自定义**服务与 DAO 的自动注册：AOT 模式应用源生成器登记的注册代码，非 AOT 模式扫描程序集运行时注册；设为 `false` 时跳过这部分注册，需手动注册自定义服务。
+- `AutoRegisterServices` 选项（默认 `true`）只控制**用户自定义**服务与 DAO 的自动注册，由 `RuntimeFeature.IsDynamicCodeSupported` 在两种方式间自动分流；设为 `false` 时跳过这部分注册，需手动注册自定义服务。
 - 框架内置的泛型 DAO 与服务（`ObjectDAO<>` / `ObjectViewDAO<>` / `EntityService<>` / `EntityViewService<>` 及其接口）不受该选项影响，由 `AddLiteOrm()` 固定注册，`AutoRegisterServices` 为 `false` 时同样可用。
 - 注册范围由 `[AutoRegister]` 的 `Policy` 枚举 `RegisterPolicy` 控制：`All`（默认，实现类型自身 + 接口）、`Self`（仅自身）、`Interface`（仅接口）。
-- `AddLiteOrm()`：AOT 模式应用生成代码，非 AOT 模式走运行时扫描（由 `RuntimeFeature.IsDynamicCodeSupported` 自动分流）。
 - `RegisterLiteOrm()`：Autofac 程序集扫描注册，并自动应用 `[InterceptAttribute]`、`IEntityService` 系列接口，以及带 `[Service]`（`IsService=true`）特性的类型的 Castle 拦截器（`ServiceInvokeInterceptor`）。
 - 源生成默认在 AOT 构建时自动启用；如需在普通构建里也生成（例如提前验证 AOT 兼容性），在程序集上显式声明 `[assembly: LiteOrmCodeGen]`（`LiteOrmCodeGenAttribute`）。
+
+AOT 构建下的完整注意事项（DI 线路、关联元数据、固定切片、转换器声明）见 [NativeAOT 支持](../advanced-topics/aot.md)。
 
 ## 二、实体与视图定义
 
