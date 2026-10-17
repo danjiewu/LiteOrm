@@ -210,6 +210,7 @@ namespace LiteOrm.Generators
             INamedTypeSymbol ColumnAttribute,
             INamedTypeSymbol? ForeignColumnAttribute,
             INamedTypeSymbol? TableJoinAttribute,
+            INamedTypeSymbol? ForeignTypeAttribute,
             INamedTypeSymbol TableDefinition,
             INamedTypeSymbol ColumnDefinition,
             INamedTypeSymbol TableView,
@@ -237,6 +238,7 @@ namespace LiteOrm.Generators
             var columnAttr = compilation.GetTypeByMetadataName("LiteOrm.Common.ColumnAttribute");
             var foreignColumnAttr = compilation.GetTypeByMetadataName("LiteOrm.Common.ForeignColumnAttribute");
             var tableJoinAttr = compilation.GetTypeByMetadataName("LiteOrm.Common.TableJoinAttribute");
+            var foreignTypeAttr = compilation.GetTypeByMetadataName("LiteOrm.Common.ForeignTypeAttribute");
             var tableDef = compilation.GetTypeByMetadataName("LiteOrm.Common.TableDefinition");
             var colDef = compilation.GetTypeByMetadataName("LiteOrm.Common.ColumnDefinition");
             var tableView = compilation.GetTypeByMetadataName("LiteOrm.Common.TableView");
@@ -263,7 +265,7 @@ namespace LiteOrm.Generators
                 return null;
 
             return new ResolvedSymbols(
-                tableAttr, columnAttr!, foreignColumnAttr, tableJoinAttr, tableDef, colDef, tableView, provider,
+                tableAttr, columnAttr!, foreignColumnAttr, tableJoinAttr, foreignTypeAttr, tableDef, colDef, tableView, provider,
                 drConverter, propExt, sqlColumn, joinedTable, columnRef, foreignTable,
                 dbType, columnMode, commonTableInfoProvider, tableInfo, columnInfo,
                 enumUtil, typeResolverHelper, displayNameAttr, descriptionAttr
@@ -284,7 +286,6 @@ namespace LiteOrm.Generators
             public bool IsView { get; set; } = false;
             public List<ColumnInfo> Columns { get; set; } = new();
             public List<JoinedTableInfo> JoinedTables { get; set; } = new();
-            public List<ForeignColumnInfo> ForeignColumns { get; set; } = new();
         }
 
         internal sealed class ColumnInfo
@@ -311,25 +312,50 @@ namespace LiteOrm.Generators
             public bool CanRead { get; set; }
             public bool CanWrite { get; set; }
             public IPropertySymbol Symbol { get; set; } = null!;
+
+            /// <summary>属性上的 [ForeignType] 关联外表（可多个）。</summary>
+            public List<ForeignTableDesc> ForeignTables { get; } = new();
+
+            /// <summary>非空表示该属性是 [ForeignColumn] 投影列。</summary>
+            public ForeignColumnDesc? Foreign { get; set; }
         }
 
+        /// <summary>
+        /// [ForeignType] 的编译期描述，对应运行时 <c>ForeignTable</c>。
+        /// </summary>
+        internal sealed class ForeignTableDesc
+        {
+            public string? ForeignTypeRef { get; set; }
+            public string? Alias { get; set; }
+            public int JoinType { get; set; } = 1; // TableJoinType.Left
+            public bool AutoExpand { get; set; }
+        }
+
+        /// <summary>
+        /// [ForeignColumn] 的编译期描述，对应运行时 <c>ForeignColumnInfo</c>。
+        /// </summary>
+        internal sealed class ForeignColumnDesc
+        {
+            public string? ForeignTypeRef { get; set; }
+            public string? ForeignAlias { get; set; }
+            public string? Property { get; set; }
+        }
+
+        /// <summary>
+        /// [TableJoin] 的编译期描述，对应运行时 <c>JoinedTableInfo</c>。
+        /// </summary>
         internal sealed class JoinedTableInfo
         {
-            public string TargetTypeName { get; set; } = null!;
-            public string Alias { get; set; } = null!;
-            public string JoinType { get; set; } = "Inner";
+            public string TargetTypeRef { get; set; } = null!;
+            public string? Alias { get; set; }
+            public string? SourceAlias { get; set; }
+            public string? SourceTypeRef { get; set; }
+            public int JoinType { get; set; } = 1; // TableJoinType.Left
             public bool AutoExpand { get; set; }
             public string ForeignKeys { get; set; } = "";
             public string? PrimeKeys { get; set; }
-            public string? Source { get; set; }
         }
 
-        internal sealed class ForeignColumnInfo
-        {
-            public string PropertyName { get; set; } = null!;
-            public string ForeignTable { get; set; } = null!;
-            public string? Property { get; set; }
-        }
 
         // ──────────────────────────────────────────────────────────────
         // 获取类型及基类的所有实例属性（含继承层次）
@@ -421,7 +447,7 @@ namespace LiteOrm.Generators
                     if (dbType is null or "Object")
                         continue;
 
-                    info.Columns.Add(new ColumnInfo
+                    var inferredColumn = new ColumnInfo
                     {
                         PropertyName = prop.Name,
                         ColumnName = prop.Name,
@@ -432,11 +458,115 @@ namespace LiteOrm.Generators
                         Symbol = prop,
                         AllowNull = !prop.Type.IsValueType || (prop.Type is INamedTypeSymbol nts && nts.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T),
                         ColumnMode = ComputeDefaultColumnMode(prop.GetMethod != null, prop.SetMethod != null).ToString()
-                    });
+                    };
+                    CollectForeignTables(prop, symbols, inferredColumn.ForeignTables);
+                    info.Columns.Add(inferredColumn);
                 }
             }
 
+            CollectJoinedTables(type, symbols, info.JoinedTables);
+
             return info;
+        }
+
+        /// <summary>
+        /// 收集类型（含基类链）上的 <c>[TableJoin]</c> 声明，与运行时
+        /// <c>GetCustomAttributes(typeof(TableJoinAttribute), inherit: true)</c> 的语义一致：
+        /// 派生类型上声明的排在前，基类上的排在后。
+        /// </summary>
+        private static void CollectJoinedTables(INamedTypeSymbol type, ResolvedSymbols symbols, List<JoinedTableInfo> target)
+        {
+            if (symbols.TableJoinAttribute == null) return;
+
+            for (var current = type;
+                 current != null && current.SpecialType != SpecialType.System_Object;
+                 current = current.BaseType)
+            {
+                foreach (var attr in current.GetAttributes())
+                {
+                    if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, symbols.TableJoinAttribute)) continue;
+                    var joined = BuildJoinedTableInfo(attr);
+                    if (joined != null) target.Add(joined);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 解析单个 <c>[TableJoin]</c>。两种构造形式：
+        /// <c>(targetType, foreignKeys)</c> 与 <c>(sourceTable, targetType, foreignKeys)</c>，
+        /// 其中 sourceTable 可为表别名字符串或源表类型。
+        /// </summary>
+        private static JoinedTableInfo? BuildJoinedTableInfo(AttributeData attr)
+        {
+            ITypeSymbol? targetType = null;
+            string? foreignKeys = null;
+            string? sourceAlias = null;
+            string? sourceTypeRef = null;
+
+            var args = attr.ConstructorArguments;
+            if (args.Length == 3)
+            {
+                // source 可以是 string（别名）或 Type（源表类型）
+                var sourceArg = args[0];
+                if (sourceArg.Kind == TypedConstantKind.Type && sourceArg.Value is ITypeSymbol sourceType)
+                    sourceTypeRef = RenderTypeRef(sourceType);
+                else if (sourceArg.Value is string aliasName)
+                    sourceAlias = aliasName;
+
+                targetType = args[1].Value as ITypeSymbol;
+                foreignKeys = args[2].Value as string;
+            }
+            else if (args.Length == 2)
+            {
+                targetType = args[0].Value as ITypeSymbol;
+                foreignKeys = args[1].Value as string;
+            }
+
+            if (targetType == null || string.IsNullOrEmpty(foreignKeys)) return null;
+
+            var info = new JoinedTableInfo
+            {
+                TargetTypeRef = RenderTypeRef(targetType),
+                ForeignKeys = foreignKeys!,
+                SourceAlias = sourceAlias,
+                SourceTypeRef = sourceTypeRef
+            };
+
+            if (TryGetNamedArg(attr.NamedArguments, "Alias", out var aliasTc) && !aliasTc.IsNull)
+                info.Alias = aliasTc.Value as string;
+            if (TryGetNamedArg(attr.NamedArguments, "JoinType", out var joinTypeTc) && !joinTypeTc.IsNull && joinTypeTc.Value is int joinType)
+                info.JoinType = joinType;
+            if (TryGetNamedArg(attr.NamedArguments, "AutoExpand", out var autoExpandTc) && autoExpandTc.Value is bool autoExpand)
+                info.AutoExpand = autoExpand;
+            if (TryGetNamedArg(attr.NamedArguments, "PrimeKeys", out var primeKeysTc) && !primeKeysTc.IsNull)
+                info.PrimeKeys = primeKeysTc.Value as string;
+
+            return info;
+        }
+
+        /// <summary>
+        /// 收集属性上的 <c>[ForeignType]</c> 声明（AllowMultiple），用于在构建视图时扩展关联表。
+        /// </summary>
+        private static void CollectForeignTables(IPropertySymbol prop, ResolvedSymbols symbols, List<ForeignTableDesc> target)
+        {
+            if (symbols.ForeignTypeAttribute == null) return;
+
+            foreach (var attr in prop.GetAttributes())
+            {
+                if (!SymbolEqualityComparer.Default.Equals(attr.AttributeClass, symbols.ForeignTypeAttribute)) continue;
+                if (attr.ConstructorArguments.Length != 1 || attr.ConstructorArguments[0].Value is not ITypeSymbol foreignType)
+                    continue;
+
+                var desc = new ForeignTableDesc { ForeignTypeRef = RenderTypeRef(foreignType) };
+                if (TryGetNamedArg(attr.NamedArguments, "Alias", out var aliasTc) && !aliasTc.IsNull)
+                    desc.Alias = aliasTc.Value as string;
+                if (TryGetNamedArg(attr.NamedArguments, "JoinType", out var joinTypeTc) && !joinTypeTc.IsNull && joinTypeTc.Value is int joinType)
+                    desc.JoinType = joinType;
+                if (TryGetNamedArg(attr.NamedArguments, "AutoExpand", out var autoExpandTc) && autoExpandTc.Value is bool autoExpand)
+                    desc.AutoExpand = autoExpand;
+
+                target.Add(desc);
+            }
         }
 
         /// <summary>
@@ -473,6 +603,24 @@ namespace LiteOrm.Generators
             // ConverterType: typeof(X) 形式的命名参数，值为 INamedTypeSymbol
             if (TryGetNamedArg(foreignAttr.NamedArguments, "ConverterType", out var ct) && !ct.IsNull && ct.Value is INamedTypeSymbol converterSymbol)
                 info.ConverterType = converterSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+            // 关联目标：构造参数可以是外部类型（typeof(X)）或 TableJoin 的别名（"Alias"）
+            var foreignDesc = new ForeignColumnDesc();
+            if (foreignAttr.ConstructorArguments.Length == 1)
+            {
+                var foreignArg = foreignAttr.ConstructorArguments[0];
+                if (foreignArg.Kind == TypedConstantKind.Type && foreignArg.Value is ITypeSymbol foreignType)
+                    foreignDesc.ForeignTypeRef = RenderTypeRef(foreignType);
+                else if (foreignArg.Value is string foreignAlias)
+                    foreignDesc.ForeignAlias = foreignAlias;
+            }
+            if (TryGetNamedArg(foreignAttr.NamedArguments, "Property", out var propTc) && !propTc.IsNull)
+                foreignDesc.Property = propTc.Value as string;
+            info.Foreign = foreignDesc;
+
+            // 投影列自身也可以声明 [ForeignType]，与运行时 ForeignColumn.ForeignTables 的取值一致
+            CollectForeignTables(prop, symbols, info.ForeignTables);
+
             return info;
         }
 
@@ -559,6 +707,8 @@ namespace LiteOrm.Generators
             }
             else
                 info.ColumnMode = modeMask.ToString();
+
+            CollectForeignTables(prop, symbols, info.ForeignTables);
 
             return info;
         }
@@ -737,45 +887,127 @@ namespace LiteOrm.Generators
                 sb.AppendLine($"                    (global::LiteOrm.Common.SyncTableMode)({e.SyncTableInt}),");
                 sb.AppendLine("                    new global::LiteOrm.Common.ColumnInfo[]");
                 sb.AppendLine("                    {");
-                for (int i = 0; i < e.Columns.Count; i++)
+                foreach (var c in e.Columns)
                 {
-                    var c = e.Columns[i];
-                    // ForeignColumn 投影列不是真实表列，不写入表元信息
-                    if (c.IsForeign) continue;
-                    int dbTypeInt = -1;
-                    string dbType = c.DbType ?? InferDbType(c.Symbol.Type);
-                    if (!string.IsNullOrEmpty(dbType) && dbType != "Object" && dbType != "Default")
-                        dbTypeInt = GetEnumMemberValue(symbols.DbType, dbType!);
-                    if (dbTypeInt < 0) dbTypeInt = -1;
-
-                    sb.AppendLine("                        new global::LiteOrm.Common.ColumnInfo");
-                    sb.AppendLine("                        {");
-                    sb.AppendLine($"                            PropertyName = \"{EscapeCSharpString(c.PropertyName)}\",");
-                    sb.AppendLine($"                            ColumnName = \"{EscapeCSharpString(c.ColumnName)}\",");
-                    sb.AppendLine($"                            DbType = (global::LiteOrm.Common.DbValueType)({dbTypeInt}),");
-                    sb.AppendLine($"                            Mode = (global::LiteOrm.Common.ColumnMode)({c.ColumnMode}),");
-                    sb.AppendLine($"                            IsPrimaryKey = {c.IsPrimaryKey.ToString().ToLowerInvariant()},");
-                    sb.AppendLine($"                            IsIdentity = {c.IsIdentity.ToString().ToLowerInvariant()},");
-                    sb.AppendLine($"                            IsTimestamp = {c.IsTimestamp.ToString().ToLowerInvariant()},");
-                    sb.AppendLine($"                            IsIndex = {c.IsIndex.ToString().ToLowerInvariant()},");
-                    sb.AppendLine($"                            IsUnique = {c.IsUnique.ToString().ToLowerInvariant()},");
-                    sb.AppendLine($"                            AllowNull = {c.AllowNull.ToString().ToLowerInvariant()},");
-                    sb.AppendLine($"                            Length = {c.Length},");
-                    sb.AppendLine($"                            Expression = {(string.IsNullOrEmpty(c.Expression) ? "null" : $"\"{EscapeCSharpString(c.Expression!)}\"")},");
-                    sb.AppendLine($"                            DefaultValue = {(string.IsNullOrEmpty(c.DefaultValue) ? "null" : $"\"{EscapeCSharpString(c.DefaultValue!)}\"")},");
-                    sb.AppendLine($"                            IdentityExpression = {(string.IsNullOrEmpty(c.IdentityExpression) ? "null" : $"\"{EscapeCSharpString(c.IdentityExpression!)}\"")},");
-                    sb.AppendLine($"                            IdentityStart = {c.IdentityStart}L,");
-                    sb.AppendLine($"                            IdentityIncreasement = {c.IdentityIncreasement},");
-                    if (!string.IsNullOrEmpty(c.ConverterType))
-                        sb.AppendLine($"                            ValueConverter = new {c.ConverterType}()");
-                    sb.AppendLine("                        },");
+                    AppendColumnInfo(sb, c, symbols);
                 }
-                sb.AppendLine("                    }));");
+                sb.AppendLine("                    })");
+
+                // 关联表元数据：为空时不生成初始化器，避免无关联实体产生多余代码
+                if (e.JoinedTables.Count > 0)
+                {
+                    sb.AppendLine("                {");
+                    sb.AppendLine("                    JoinedTables = new global::LiteOrm.Common.JoinedTableInfo[]");
+                    sb.AppendLine("                    {");
+                    foreach (var jt in e.JoinedTables)
+                    {
+                        sb.AppendLine("                        new global::LiteOrm.Common.JoinedTableInfo");
+                        sb.AppendLine("                        {");
+                        sb.AppendLine($"                            TargetType = typeof({jt.TargetTypeRef}),");
+                        sb.AppendLine($"                            Alias = {RenderNullableString(jt.Alias)},");
+                        sb.AppendLine($"                            SourceAlias = {RenderNullableString(jt.SourceAlias)},");
+                        sb.AppendLine($"                            SourceType = {(jt.SourceTypeRef is null ? "null" : $"typeof({jt.SourceTypeRef})")},");
+                        sb.AppendLine($"                            JoinType = (global::LiteOrm.Common.TableJoinType)({jt.JoinType}),");
+                        sb.AppendLine($"                            AutoExpand = {jt.AutoExpand.ToString().ToLowerInvariant()},");
+                        sb.AppendLine($"                            ForeignKeys = \"{EscapeCSharpString(jt.ForeignKeys)}\",");
+                        sb.AppendLine($"                            PrimeKeys = {RenderNullableString(jt.PrimeKeys)}");
+                        sb.AppendLine("                        },");
+                    }
+                    sb.AppendLine("                    }");
+                    sb.AppendLine("                });");
+                }
+                else
+                {
+                    sb.AppendLine("                );");
+                }
             }
             sb.AppendLine("        }");
             sb.AppendLine("    }");
             sb.AppendLine("}");
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// 生成单个 <c>ColumnInfo</c> 的初始化代码，包含关联外表与 [ForeignColumn] 投影列的描述。
+        /// </summary>
+        private static void AppendColumnInfo(StringBuilder sb, ColumnInfo c, ResolvedSymbols symbols)
+        {
+            int dbTypeInt = -1;
+            if (!c.IsForeign)
+            {
+                string dbType = c.DbType ?? InferDbType(c.Symbol.Type);
+                if (!string.IsNullOrEmpty(dbType) && dbType != "Object" && dbType != "Default")
+                    dbTypeInt = GetEnumMemberValue(symbols.DbType, dbType!);
+                if (dbTypeInt < 0) dbTypeInt = -1;
+            }
+
+            sb.AppendLine("                        new global::LiteOrm.Common.ColumnInfo");
+            sb.AppendLine("                        {");
+            sb.AppendLine($"                            PropertyName = \"{EscapeCSharpString(c.PropertyName)}\",");
+            sb.AppendLine($"                            ColumnName = \"{EscapeCSharpString(c.ColumnName)}\",");
+            sb.AppendLine($"                            DbType = (global::LiteOrm.Common.DbValueType)({dbTypeInt}),");
+            sb.AppendLine($"                            Mode = (global::LiteOrm.Common.ColumnMode)({c.ColumnMode}),");
+            sb.AppendLine($"                            IsPrimaryKey = {c.IsPrimaryKey.ToString().ToLowerInvariant()},");
+            sb.AppendLine($"                            IsIdentity = {c.IsIdentity.ToString().ToLowerInvariant()},");
+            sb.AppendLine($"                            IsTimestamp = {c.IsTimestamp.ToString().ToLowerInvariant()},");
+            sb.AppendLine($"                            IsIndex = {c.IsIndex.ToString().ToLowerInvariant()},");
+            sb.AppendLine($"                            IsUnique = {c.IsUnique.ToString().ToLowerInvariant()},");
+            sb.AppendLine($"                            AllowNull = {c.AllowNull.ToString().ToLowerInvariant()},");
+            sb.AppendLine($"                            Length = {c.Length},");
+            sb.AppendLine($"                            Expression = {RenderNullableString(c.Expression)},");
+            sb.AppendLine($"                            DefaultValue = {RenderNullableString(c.DefaultValue)},");
+            sb.AppendLine($"                            IdentityExpression = {RenderNullableString(c.IdentityExpression)},");
+            sb.AppendLine($"                            IdentityStart = {c.IdentityStart}L,");
+            sb.AppendLine($"                            IdentityIncreasement = {c.IdentityIncreasement},");
+            if (!string.IsNullOrEmpty(c.ConverterType))
+                sb.AppendLine($"                            ValueConverter = new {c.ConverterType}(),");
+
+            if (c.ForeignTables.Count > 0)
+            {
+                sb.AppendLine("                            ForeignTables = new global::LiteOrm.Common.ForeignTable[]");
+                sb.AppendLine("                            {");
+                foreach (var ft in c.ForeignTables)
+                {
+                    sb.AppendLine("                                new global::LiteOrm.Common.ForeignTable");
+                    sb.AppendLine("                                {");
+                    sb.AppendLine($"                                    ForeignType = {(ft.ForeignTypeRef is null ? "null" : $"typeof({ft.ForeignTypeRef})")},");
+                    sb.AppendLine($"                                    Alias = {RenderNullableString(ft.Alias)},");
+                    sb.AppendLine($"                                    JoinType = (global::LiteOrm.Common.TableJoinType)({ft.JoinType}),");
+                    sb.AppendLine($"                                    AutoExpand = {ft.AutoExpand.ToString().ToLowerInvariant()}");
+                    sb.AppendLine("                                },");
+                }
+                sb.AppendLine("                            },");
+            }
+
+            if (c.Foreign != null)
+            {
+                sb.AppendLine("                            ForeignColumn = new global::LiteOrm.Common.ForeignColumnInfo");
+                sb.AppendLine("                            {");
+                sb.AppendLine($"                                ForeignType = {(c.Foreign.ForeignTypeRef is null ? "null" : $"typeof({c.Foreign.ForeignTypeRef})")},");
+                sb.AppendLine($"                                ForeignAlias = {RenderNullableString(c.Foreign.ForeignAlias)},");
+                sb.AppendLine($"                                Property = {RenderNullableString(c.Foreign.Property)}");
+                sb.AppendLine("                            },");
+            }
+
+            sb.AppendLine("                        },");
+        }
+
+        /// <summary>
+        /// 将类型符号渲染为 <c>typeof(...)</c> 内部可用的完全限定引用。
+        /// </summary>
+        private static string RenderTypeRef(ITypeSymbol type)
+        {
+            // typeof(...) 不接受可空引用注解，统一去掉
+            return type.WithNullableAnnotation(NullableAnnotation.NotAnnotated)
+                .ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        }
+
+        /// <summary>
+        /// 渲染字符串字面量，null 输出 <c>null</c>。
+        /// </summary>
+        private static string RenderNullableString(string? value)
+        {
+            return value is null ? "null" : $"\"{EscapeCSharpString(value)}\"";
         }
 
         // ──────────────────────────────────────────────────────────────

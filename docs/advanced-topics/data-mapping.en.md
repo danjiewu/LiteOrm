@@ -421,7 +421,7 @@ Converter registration and the write-direction rules are identical in both modes
 
 To serve both paths with one custom converter, implement both the generic and the non-generic interfaces: the source-generator and AOT reflection paths use the **non-generic** delegate (taking `GetValue()` results as input), while the generic variant is only consumed by the JIT path.
 
-For everything that has to be handled before migrating to NativeAOT — association metadata, constant slices, DI wiring — see the full checklist in [NativeAOT Support](./aot.en.md).
+For everything that has to be checked before migrating to NativeAOT — association metadata prerequisites, constant slices, DI wiring — see the full checklist in [NativeAOT Support](./aot.en.md).
 
 ## 8. FAQ
 

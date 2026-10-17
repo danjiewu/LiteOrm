@@ -499,7 +499,13 @@ namespace LiteOrm
             return constFilter;
         }
 
-        private static LogicExpr? AliasConstFilter(LogicExpr? constFilter, string tableAlias)
+        /// <summary>
+        /// 把固定筛选条件中的属性引用统一补上表别名，供关联表（<see cref="JoinedTable.ConstFilter"/>）复用。
+        /// </summary>
+        /// <param name="constFilter">原始固定筛选条件。</param>
+        /// <param name="tableAlias">要补的表别名。</param>
+        /// <returns>补上别名后的副本；<paramref name="constFilter"/> 为 null 时返回 null。</returns>
+        internal static LogicExpr? AliasConstFilter(LogicExpr? constFilter, string tableAlias)
         {
             if (constFilter is null) return null;
             LogicExpr aliasedFilter = (LogicExpr)constFilter.Clone();

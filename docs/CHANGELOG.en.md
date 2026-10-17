@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.1.13 (2026-10-17)
+
+### New Features
+
+- **Association metadata is generated under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `TableInfoGenerator` writes `[TableJoin]`, `[ForeignType]` and `[ForeignColumn]` into `TableInfo.JoinedTables` and `ColumnInfo.ForeignTables` / `ForeignColumn` at compile time, and `CommonTableInfoProvider` assembles the complete `TableView` from them at runtime (joined tables, `Used` marks along the foreign-key chain, projected target columns), so the view structure matches JIT.
+
+***
+
 ## v8.1.12 (2026-10-16)
 
 ### Breaking changes

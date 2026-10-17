@@ -5,6 +5,79 @@ using System.Diagnostics.CodeAnalysis;
 namespace LiteOrm.Common
 {
     /// <summary>
+    /// 源生成器在编译期收集的关联外表列定义（对应 <see cref="ForeignColumnAttribute"/>）。
+    /// 由 <see cref="CommonTableInfoProvider"/> 在构建 <see cref="TableView"/> 时还原为 <see cref="ForeignColumn"/>。
+    /// </summary>
+    public sealed class ForeignColumnInfo
+    {
+        /// <summary>
+        /// 关联的外部实体类型，对应 <c>[ForeignColumn(typeof(X))]</c>；为 null 时按 <see cref="ForeignAlias"/> 匹配。
+        /// </summary>
+        [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
+        public Type? ForeignType { get; set; }
+
+        /// <summary>
+        /// 关联的外部表别名，对应 <c>[ForeignColumn("Alias")]</c>；仅在 <see cref="ForeignType"/> 为 null 时使用。
+        /// </summary>
+        public string? ForeignAlias { get; set; }
+
+        /// <summary>
+        /// 目标表的属性名，对应 <see cref="ForeignColumnAttribute.Property"/>；为空时取本列的同名属性。
+        /// </summary>
+        public string? Property { get; set; }
+    }
+
+    /// <summary>
+    /// 源生成器在编译期收集的关联表定义（对应 <see cref="TableJoinAttribute"/>）。
+    /// 由 <see cref="CommonTableInfoProvider"/> 在构建 <see cref="TableView"/> 时还原为 <see cref="JoinedTable"/>。
+    /// </summary>
+    public sealed class JoinedTableInfo
+    {
+        /// <summary>
+        /// 关联的目标实体类型。
+        /// </summary>
+        [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
+        public Type TargetType { get; set; } = null!;
+
+        /// <summary>
+        /// 关联表别名，为空时取目标类型的类型名。
+        /// </summary>
+        public string? Alias { get; set; }
+
+        /// <summary>
+        /// 外键来自的源表别名，对应 <c>[TableJoin("SourceAlias", ...)]</c>。
+        /// 为 null 且 <see cref="SourceType"/> 也为 null 时表示外键来自主表。
+        /// </summary>
+        public string? SourceAlias { get; set; }
+
+        /// <summary>
+        /// 外键来自的源表类型，对应 <c>[TableJoin(typeof(Source), ...)]</c>。
+        /// </summary>
+        [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
+        public Type? SourceType { get; set; }
+
+        /// <summary>
+        /// 连接类型。
+        /// </summary>
+        public TableJoinType JoinType { get; set; } = TableJoinType.Left;
+
+        /// <summary>
+        /// 是否自动展开该关联表的后续关联路径。
+        /// </summary>
+        public bool AutoExpand { get; set; }
+
+        /// <summary>
+        /// 外键属性名，多个外键以逗号分隔，顺序与目标表参与关联的键一致。
+        /// </summary>
+        public string ForeignKeys { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 目标表参与关联的键属性名，多个以逗号分隔；为空时使用目标表主键。
+        /// </summary>
+        public string? PrimeKeys { get; set; }
+    }
+
+    /// <summary>
     /// 源生成器在编译期收集的列信息，用于动态注册到 <see cref="CommonTableInfoProvider"/>。
     /// </summary>
     public sealed class ColumnInfo
@@ -93,6 +166,18 @@ namespace LiteOrm.Common
         /// 列值转换器实例（由源生成器生成的注册代码直接构造并赋值，AOT 友好）。
         /// </summary>
         public IDbValueConverter? ValueConverter { get; set; }
+
+        /// <summary>
+        /// 该属性关联的外表集合（对应 <see cref="ForeignTypeAttribute"/>，可多个）。
+        /// 用于在构建视图时把外键列扩展到关联表。
+        /// </summary>
+        public IReadOnlyList<ForeignTable>? ForeignTables { get; set; }
+
+        /// <summary>
+        /// 非空表示这是一个 <see cref="ForeignColumnAttribute"/> 投影列（不是真实表列），
+        /// 构建视图时据此生成 <see cref="ForeignColumn"/>。
+        /// </summary>
+        public ForeignColumnInfo? ForeignColumn { get; set; }
     }
 
     /// <summary>
@@ -107,7 +192,7 @@ namespace LiteOrm.Common
         /// <param name="name">表名。</param>
         /// <param name="dataSource">数据源名称，可为空。</param>
         /// <param name="syncTable">表结构同步模式。</param>
-        /// <param name="columns">列信息集合。</param>
+        /// <param name="columns">列信息集合，按实体属性声明顺序排列，可包含 <see cref="ForeignColumnInfo"/> 投影列。</param>
         public TableInfo(
             [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType,
@@ -145,8 +230,15 @@ namespace LiteOrm.Common
         public SyncTableMode SyncTable { get; }
 
         /// <summary>
-        /// 列信息集合。
+        /// 列信息集合。按实体属性声明顺序排列，包含真实表列与 <see cref="ForeignColumnInfo"/> 投影列，
+        /// 以保证构建出的 <c>TableView.Columns</c> 顺序与源生成的读取映射一一对应。
         /// </summary>
         public IReadOnlyList<ColumnInfo> Columns { get; }
+
+        /// <summary>
+        /// 类级关联表定义（对应 <see cref="TableJoinAttribute"/>）。
+        /// 为 null 或空表示该类型没有预声明的关联表。
+        /// </summary>
+        public IReadOnlyList<JoinedTableInfo>? JoinedTables { get; set; }
     }
 }

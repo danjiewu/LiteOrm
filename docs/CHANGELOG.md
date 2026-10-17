@@ -1,5 +1,13 @@
 # 变更日志 (Changelog)
 
+## v8.1.13 (2026-10-17)
+
+### 新特性
+
+- **AOT 下生成关联元数据**（`LiteOrm.Common` / `LiteOrm.Generators`）：`[TableJoin]`、`[ForeignType]`、`[ForeignColumn]` 由 `TableInfoGenerator` 编译期写入 `TableInfo.JoinedTables` 与 `ColumnInfo.ForeignTables` / `ForeignColumn`，运行期 `CommonTableInfoProvider` 据此装配出完整的 `TableView`（关联表、外键链 `Used` 标记、投影列目标列），AOT 与 JIT 的视图结构一致。
+
+***
+
 ## v8.1.12 (2026-10-16)
 
 ### 破坏性变更

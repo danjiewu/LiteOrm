@@ -423,7 +423,7 @@ DbConvertHandler<string, IPAddress>? IDbValueConverter<string, IPAddress>.DbRead
 
 自定义转换器想同时服务两条路径，就同时实现泛型与非泛型接口：源生成器与 AOT 反射路径用**非泛型**委托（输入是 `GetValue()` 的结果），泛型版本只服务 JIT 路径。
 
-迁移到 NativeAOT 前要处理的关联元数据、固定切片、DI 线路等事项，完整清单见 [NativeAOT 支持](./aot.md)。
+迁移到 NativeAOT 前要核对的关联元数据前提、固定切片、DI 线路等事项，完整清单见 [NativeAOT 支持](./aot.md)。
 
 ## 8. 常见问题
 
