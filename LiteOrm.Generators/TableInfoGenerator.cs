@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace LiteOrm.Generators
@@ -305,6 +306,9 @@ namespace LiteOrm.Generators
             public string? Expression { get; set; }
             public string ColumnMode { get; set; } = "7"; // ColumnMode.Full = Read|Update|Insert = 1|2|4 = 7
             public string? DefaultValue { get; set; }
+
+            /// <summary><c>[Column(Constant = ...)]</c> 的值，已渲染成 C# 字面量表达式；null 表示未声明。</summary>
+            public string? Constant { get; set; }
             public string? IdentityExpression { get; set; }
             public long IdentityStart { get; set; } = 1;
             public int IdentityIncreasement { get; set; } = 1;
@@ -658,6 +662,7 @@ namespace LiteOrm.Generators
             }
             if (TryGetNamedArg(colAttr.NamedArguments, "Length", out var len) && len.Value is int iLen) info.Length = iLen;
             if (TryGetNamedArg(colAttr.NamedArguments, "DefaultValue", out var dv) && !dv.IsNull) info.DefaultValue = dv.Value?.ToString();
+            if (TryGetNamedArg(colAttr.NamedArguments, "Constant", out var cst) && !cst.IsNull) info.Constant = RenderConstantLiteral(cst);
             if (TryGetNamedArg(colAttr.NamedArguments, "IdentityExpression", out var ie) && !ie.IsNull) info.IdentityExpression = ie.Value?.ToString();
             if (TryGetNamedArg(colAttr.NamedArguments, "IdentityStart", out var ist) && ist.Value is long lIst) info.IdentityStart = lIst;
             if (TryGetNamedArg(colAttr.NamedArguments, "IdentityIncreasement", out var iic) && iic.Value is int iIic) info.IdentityIncreasement = iIic;
@@ -956,6 +961,8 @@ namespace LiteOrm.Generators
             sb.AppendLine($"                            Length = {c.Length},");
             sb.AppendLine($"                            Expression = {RenderNullableString(c.Expression)},");
             sb.AppendLine($"                            DefaultValue = {RenderNullableString(c.DefaultValue)},");
+            if (!string.IsNullOrEmpty(c.Constant))
+                sb.AppendLine($"                            Constant = {c.Constant},");
             sb.AppendLine($"                            IdentityExpression = {RenderNullableString(c.IdentityExpression)},");
             sb.AppendLine($"                            IdentityStart = {c.IdentityStart}L,");
             sb.AppendLine($"                            IdentityIncreasement = {c.IdentityIncreasement},");
@@ -1008,6 +1015,46 @@ namespace LiteOrm.Generators
         private static string RenderNullableString(string? value)
         {
             return value is null ? "null" : $"\"{EscapeCSharpString(value)}\"";
+        }
+
+        /// <summary>
+        /// 把 <c>[Column(Constant = ...)]</c> 的特性实参渲染成 <c>(object)</c> 装箱后的 C# 字面量表达式。
+        /// 常量与属性类型之间的对齐（字符串枚举名解析、整数转枚举、其余数值转换）仍由运行期的
+        /// <c>AttributeTableInfoProvider.ParseConstant</c> 完成，这里只保证值与声明类型不丢。
+        /// </summary>
+        /// <param name="constant">特性上声明的命名参数值。</param>
+        /// <returns>可直接写进生成代码的表达式；无法表达时返回 null。</returns>
+        private static string? RenderConstantLiteral(TypedConstant constant)
+        {
+            if (constant.IsNull) return null;
+
+            if (constant.Kind == TypedConstantKind.Array)
+            {
+                var items = new List<string>();
+                foreach (var item in constant.Values)
+                {
+                    string? rendered = RenderConstantLiteral(item);
+                    if (rendered is null) return null;
+                    items.Add(rendered);
+                }
+                return $"new object[] {{ {string.Join(", ", items)} }}";
+            }
+
+            if (constant.Kind == TypedConstantKind.Type && constant.Value is ITypeSymbol typeSymbol)
+                return $"(object)typeof({RenderTypeRef(typeSymbol)})";
+
+            object? value = constant.Value;
+            if (value is null) return null;
+
+            // 枚举实参在 TypedConstant 里以底层整型出现，需显式转回枚举类型，避免运行期按整数比较。
+            if (constant.Type is INamedTypeSymbol enumType && enumType.TypeKind == TypeKind.Enum)
+            {
+                object underlying = value is Enum enumValue ? Convert.ChangeType(enumValue, Enum.GetUnderlyingType(enumValue.GetType()))! : value;
+                string enumLiteral = SymbolDisplay.FormatPrimitive(underlying, quoteStrings: true, useHexadecimalNumbers: false);
+                return $"(object)({RenderTypeRef(enumType)}){enumLiteral}";
+            }
+
+            return $"(object){SymbolDisplay.FormatPrimitive(value, quoteStrings: true, useHexadecimalNumbers: false)}";
         }
 
         // ──────────────────────────────────────────────────────────────

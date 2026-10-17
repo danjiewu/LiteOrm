@@ -37,7 +37,7 @@ flowchart TB
 
 四条值得单独说：
 
-- **元数据换了一个 Provider，装的东西一样多。** JIT 下 `AttributeTableInfoProvider` 在首次访问某个实体时读特性，用反射建出列模型，再把 `[TableJoin]` / `[ForeignType]` / `[ForeignColumn]` 建成 `TableView.JoinedTables`。AOT 下这份工作整体前移到编译期：源生成器把这些特性一起写进 `TableInfo`，运行期由 `CommonTableInfoProvider` 装配出结构相同的 `TableDefinition` 与 `TableView`（含 `JoinedTable`、`ForeignColumn`、外键链上的 `Used` 标记）。两边的差别只剩一处：`[Column(Constant = ...)]` 不会收进 `TableDefinition.ConstFilter`，要在启动期自己赋。
+- **元数据换了一个 Provider，装的东西一样多。** JIT 下 `AttributeTableInfoProvider` 在首次访问某个实体时读特性，用反射建出列模型，再把 `[TableJoin]` / `[ForeignType]` / `[ForeignColumn]` 建成 `TableView.JoinedTables`。AOT 下这份工作整体前移到编译期：源生成器把这些特性一起写进 `TableInfo`，运行期由 `CommonTableInfoProvider` 装配出结构相同的 `TableDefinition` 与 `TableView`（含 `JoinedTable`、`ForeignColumn`、外键链上的 `Used` 标记）。`[Column(Constant = ...)]` 也一并落进 `ColumnInfo.Constant`，运行期拼出与 JIT 相同的 `TableDefinition.ConstFilter`。
 - **读取映射有三条路径，快慢取决于有没有生成代码。** 标注 `[Table]` 的实体在 AOT 构建下由源生成器产出静态委托。投影类型和匿名类型没有生成代码，AOT 下退到 `AotMapper` 反射路径。JIT 下所有类型都走表达式树编译。
 - **装箱只发生在确实需要它的地方。** 命中列级转换器的列走 `GetValue()` 加非泛型委托，这一列有装箱。没有转换器的列在生成代码里直接写死类型化读取，不装箱。反射路径统一 `GetValue()` 加 `SetValue`，每列都装箱。
 - **AOP 没有了。** `[Transaction]` / `[ServicePermission]` / `[ServiceLog]` 靠 Castle 动态代理实现，NativeAOT 下不可用。事务可以改用手工事务 API。权限过滤改用运行时 `Expr`。日志改用服务事件。
@@ -83,7 +83,7 @@ flowchart TB
 
 1. **关联链上每一级都要有元数据。** `[ForeignColumn]` 的目标列只在**已注册 `TableInfo`** 的类型里找。目标是另一个程序集的实体、而那个程序集没开源生成时，会报「target column does not exist in joined tables」。两跳以上的链还要在中间那跳标 `AutoExpand = true`，否则下一级关联表不会被展开。
 2. **服务生命周期要用 `Scoped`。** `[AutoRegister]` 默认是 `Singleton`，而 `SessionManager` 与 DAO 都是 `Scoped`。实体服务若按默认注册，会在根容器里再解析出一个会话，事务、连接复用、`SessionManager.Current` 全都对不上号，典型症状是事务里抛异常但数据没回滚，或者报 `database is locked`。实体服务一律写 `[AutoRegister(Lifetime.Scoped)]`。
-3. **特性里的固定切片不生成 `ConstFilter`。** `[Column(Constant = ...)]` 这类写在特性里的固定条件，AOT 下不会收进 `TableDefinition.ConstFilter`。多租户行过滤、软删除切片都要改。启动期给 `TableDefinition.ConstFilter` 赋值，值用 `GenericSqlExpr` 承载。写法见[多租户隔离](../typical-applications/tenant-isolation.md)的示例三。
+3. **`Column.Constant` 的三种写法都可用。** `Constant = RecordState.Enabled`、`Constant = 1`、`Constant = "Enabled"` 都能对齐到枚举属性。AOT 下源生成器把值写进 `ColumnInfo.Constant`，运行期按属性类型解析后并进 `TableDefinition.ConstFilter`，与 JIT 结果一致。运行期仍可直接改 `TableDefinition.ConstFilter` 临时收紧可见范围（例如切换租户），值用 `GenericSqlExpr` 承载。
 4. **复杂类型需显式 `[Column]`。** 数组/集合、自定义类（`Object`）等复杂类型属性，未标注 `[Column]` 时不会被自动识别为表列；需显式 `[Column]`（并按需指定 `DbType = Array`）才会持久化。`Json`/`Jsonb` 映射类型已支持自动生成列。
 5. **列自动映射可整体关闭。** `[Table(AutoGenerateColumns = false)]` 时源生成器只收集显式标注 `[Column]` 的属性，未标注的属性不进表定义，与运行时 `AttributeTableInfoProvider` 行为一致。
 6. **转换器需显式声明或预注册。** 复杂或自定义转换须通过列级 `Column.ConverterType`、`ForeignColumn.ConverterType` 声明，或经 `SqlBuilder.RegisterDbValueConverter` 预注册，只靠全局注册不够，源生成器要看到特性才会为该列生成读取代码。转换器必须有公共无参构造函数，源生成器直接 `new`。要注入配置或密钥的组件改用静态初始化或环境变量。

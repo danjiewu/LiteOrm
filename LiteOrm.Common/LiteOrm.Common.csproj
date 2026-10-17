@@ -18,6 +18,7 @@
     <PackageReleaseNotes>
       8.1.13:
       - AOT 下 [TableJoin]/[ForeignType]/[ForeignColumn] 由 TableInfoGenerator 编译期写入 TableInfo，CommonTableInfoProvider 装配出完整的 TableView（关联表、外键链 Used 标记、投影列目标列），与 JIT 视图结构一致。
+      - AOT 下 [Column(Constant = ...)] 收进 TableDefinition.ConstFilter：ColumnInfo 新增 Constant，源生成器把特性值写入生成的注册代码，CommonTableInfoProvider 按属性类型对齐后拼出 ConstFilter。
       - 破坏性变更：删除 TableRef 抽象类，成员移入 JoinedTable；ColumnRef.Table 类型由 TableRef? 改为 JoinedTable?。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

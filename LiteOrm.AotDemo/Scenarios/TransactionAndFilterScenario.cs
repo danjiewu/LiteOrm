@@ -9,9 +9,9 @@ namespace LiteOrm.AotDemo.Scenarios
     /// 场景五：事务与固定过滤。
     /// <para>
     /// AOT 下没有 Castle 动态代理，<c>[Transaction]</c> 拦截失效，
-    /// 事务改用 <see cref="SessionManagerExtensions.ExecuteInTransaction"/> 显式包起来；
-    /// 固定筛选（<c>Column.Constant</c>）在 AOT 下不会自动收进 <c>ConstFilter</c>，
-    /// 需要启动期给 <c>TableDefinition.ConstFilter</c> 赋值。
+    /// 事务改用 <see cref="SessionManagerExtensions.ExecuteInTransaction"/> 显式包起来。
+    /// 固定筛选（<c>Column.Constant</c>）在 AOT 下同样由源生成器写进 <c>ColumnInfo.Constant</c>，
+    /// 运行期装配成 <c>TableDefinition.ConstFilter</c>；运行期也可以直接改这个属性来临时收紧可见范围。
     /// </para>
     /// </summary>
     public static class TransactionAndFilterScenario
@@ -74,6 +74,28 @@ namespace LiteOrm.AotDemo.Scenarios
             orderTable.ConstFilter = null;
             bool deletedAfterReset = orderService.Delete(target);
             DemoOutput.Pair("清除 ConstFilter 后 Delete(entity) 是否命中", deletedAfterReset);
+
+            DemoOutput.Section("5.4 元数据固定过滤：Column.Constant → ConstFilter");
+            var ticketService = services.GetRequiredService<IAotTicketService>();
+            var ticketTable = TableInfoProvider.Instance.GetTableDefinition(typeof(AotTicket))
+                ?? throw new InvalidOperationException("未找到 AotTicket 的表定义。");
+            DemoOutput.Pair("元数据已生成 ConstFilter", ticketTable.ConstFilter is not null);
+
+            // 每次运行用独立批次前缀，避免历史数据影响计数
+            string batch = $"const-{Guid.NewGuid():N}-";
+            ticketService.BatchInsert(new[]
+            {
+                new AotTicket { Title = batch + "open-a", Status = TicketStatus.Open },
+                new AotTicket { Title = batch + "open-b", Status = TicketStatus.Open },
+                new AotTicket { Title = batch + "closed", Status = TicketStatus.Closed },
+                new AotTicket { Title = batch + "removed", Status = TicketStatus.Open, IsDeleted = true }
+            });
+
+            var batchFilter = Expr.Prop(nameof(AotTicket.Title)).Like(batch + "%");
+            DemoOutput.Pair("写入 4 条（1 条已关闭、1 条已删除）", 4);
+            DemoOutput.Pair("固定过滤后可见数量", ticketService.Count(batchFilter));
+            foreach (var ticket in ticketService.Search(batchFilter))
+                DemoOutput.Line($"{ticket.Title} / Status={ticket.Status} / IsDeleted={ticket.IsDeleted}");
         }
     }
 }

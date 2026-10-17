@@ -488,7 +488,12 @@ namespace LiteOrm
             }
         }
 
-        private static LogicExpr? BuildConstFilter(IEnumerable<ColumnDefinition> columns)
+        /// <summary>
+        /// 按列的固定筛选值（<see cref="ColumnDefinition.Constant"/>）拼出表的固定筛选条件。
+        /// </summary>
+        /// <param name="columns">表定义中的列集合。</param>
+        /// <returns>各列固定筛选条件以 AND 连接的表达式；没有列声明固定值时返回 null。</returns>
+        internal static LogicExpr? BuildConstFilter(IEnumerable<ColumnDefinition> columns)
         {
             LogicExpr? constFilter = null;
             foreach (ColumnDefinition column in columns)
@@ -539,10 +544,16 @@ namespace LiteOrm
             return converter;
         }
 
+        /// <summary>
+        /// 把声明在特性上的常量对齐到属性类型（字符串枚举名、整数转枚举、其余按 <see cref="Convert.ChangeType(object, Type)"/>）。
+        /// </summary>
+        /// <param name="property">常量所属的属性。</param>
+        /// <param name="constant">特性上声明的原始常量值。</param>
+        /// <returns>已对齐到属性类型的常量；<paramref name="constant"/> 为 null 时返回 null。</returns>
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "PropertyInfo.PropertyType is a runtime-known Type whose properties are naturally available; under AOT, properties are preserved via [Table] + source generator.")]
 #endif
-        private static object? ParseConstant(PropertyInfo property, object? constant)
+        internal static object? ParseConstant(PropertyInfo property, object? constant)
         {
             if (constant is null) return null;
 

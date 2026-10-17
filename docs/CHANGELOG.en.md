@@ -10,6 +10,8 @@
 
 - **Association metadata is generated under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `TableInfoGenerator` writes `[TableJoin]`, `[ForeignType]` and `[ForeignColumn]` into `TableInfo.JoinedTables` and `ColumnInfo.ForeignTables` / `ForeignColumn` at compile time, and `CommonTableInfoProvider` assembles the complete `TableView` from them at runtime (joined tables, `Used` marks along the foreign-key chain, projected target columns), so the view structure matches JIT.
 
+- **`[Column(Constant = ...)]` is collected into `TableDefinition.ConstFilter` under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `ColumnInfo` gains `Constant`, `TableInfoGenerator` renders the attribute value as a literal into the generated registration code, and `CommonTableInfoProvider` aligns it to the property type and builds `ConstFilter`, matching JIT.
+
 ***
 
 ## v8.1.12 (2026-10-16)

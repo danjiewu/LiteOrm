@@ -178,6 +178,7 @@ namespace LiteOrm.Common
                     Expression = columnInfo.Expression,
                     Mode = columnInfo.Mode,
                     DefaultValue = columnInfo.DefaultValue,
+                    Constant = AttributeTableInfoProvider.ParseConstant(property, columnInfo.Constant),
                     IdentityExpression = columnInfo.IdentityExpression,
                     IdentityStart = columnInfo.IdentityStart,
                     IdentityIncreasement = columnInfo.IdentityIncreasement
@@ -193,7 +194,8 @@ namespace LiteOrm.Common
             {
                 Name = tableInfo.Name,
                 DataSource = tableInfo.DataSource,
-                SyncTable = tableInfo.SyncTable
+                SyncTable = tableInfo.SyncTable,
+                ConstFilter = AttributeTableInfoProvider.BuildConstFilter(columns)
             };
         }
 

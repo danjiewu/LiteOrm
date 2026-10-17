@@ -148,6 +148,13 @@ namespace LiteOrm.Common
         public string? DefaultValue { get; set; }
 
         /// <summary>
+        /// 列的固定筛选值（对应 <see cref="ColumnAttribute.Constant"/>）。
+        /// 为 null 表示该列不参与固定筛选；非 null 时由 <see cref="CommonTableInfoProvider"/>
+        /// 组装进 <see cref="TableDefinition.ConstFilter"/>。
+        /// </summary>
+        public object? Constant { get; set; }
+
+        /// <summary>
         /// 标识列表达式（如序列名称）。
         /// </summary>
         public string? IdentityExpression { get; set; }
