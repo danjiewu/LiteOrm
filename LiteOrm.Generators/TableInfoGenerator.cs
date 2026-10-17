@@ -1020,7 +1020,7 @@ namespace LiteOrm.Generators
         /// <summary>
         /// 把 <c>[Column(Constant = ...)]</c> 的特性实参渲染成 <c>(object)</c> 装箱后的 C# 字面量表达式。
         /// 常量与属性类型之间的对齐（字符串枚举名解析、整数转枚举、其余数值转换）仍由运行期的
-        /// <c>AttributeTableInfoProvider.ParseConstant</c> 完成，这里只保证值与声明类型不丢。
+        /// <c>MetaDataHelper.ParseConstant</c> 完成，这里只保证值与声明类型不丢。
         /// </summary>
         /// <param name="constant">特性上声明的命名参数值。</param>
         /// <returns>可直接写进生成代码的表达式；无法表达时返回 null。</returns>

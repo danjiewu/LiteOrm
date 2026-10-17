@@ -103,7 +103,7 @@ namespace LiteOrm
                 Name = tableName ?? objectType.Name,
                 DataSource = tableAttribute.DataSource,
                 SyncTable = tableAttribute.SyncTable,
-                ConstFilter = BuildConstFilter(columns)
+                ConstFilter = MetaDataHelper.BuildConstFilter(columns)
             };
         }
 
@@ -136,7 +136,7 @@ namespace LiteOrm
                     column.Length = columnAttribute.Length;
                     column.AllowNull = columnAttribute.AllowNull && (property.PropertyType.IsValueType ? Nullable.GetUnderlyingType(property.PropertyType) is not null : true);
                     column.DefaultValue = columnAttribute.DefaultValue;
-                    column.Constant = ParseConstant(property, columnAttribute.Constant);
+                    column.Constant = MetaDataHelper.ParseConstant(property, columnAttribute.Constant);
                     column.IdentityStart = columnAttribute.IdentityStart;
                     column.IdentityIncreasement = columnAttribute.IdentityIncreasement;
                     ColumnMode accessMask = (property.CanRead ? ColumnMode.Write : ColumnMode.None) | (property.CanWrite ? ColumnMode.Read : ColumnMode.None);
@@ -217,7 +217,7 @@ namespace LiteOrm
                 var targetTableDef = GetTableDefinition(tableJoin.TargetType);
                 if (targetTableDef == null) continue;
 
-                JoinedTable joinedTable = new JoinedTable(targetTableDef, GetJoinPrimeKeys(targetTableDef, tableJoin))
+                JoinedTable joinedTable = new JoinedTable(targetTableDef, MetaDataHelper.GetJoinPrimeKeys(targetTableDef, tableJoin.PrimeKeys))
                 {
                     JoinType = tableJoin.JoinType,
                     AutoExpand = tableJoin.AutoExpand
@@ -226,7 +226,7 @@ namespace LiteOrm
                     tableJoin.Alias = joinedTable.Name = tableJoin.TargetType.Name;
                 else
                     joinedTable.Name = tableJoin.Alias;
-                joinedTable.ConstFilter = AliasConstFilter(targetTableDef.ConstFilter, joinedTable.Name ?? string.Empty);
+                joinedTable.ConstFilter = MetaDataHelper.AliasConstFilter(targetTableDef.ConstFilter, joinedTable.Name ?? string.Empty);
                 if (joinedTables.ContainsKey(joinedTable.Name ?? string.Empty)) throw new ArgumentException($"Duplicate table alias name \"{joinedTable.Name}\"");
                 joinedTables[joinedTable.Name ?? string.Empty] = joinedTable;
             }
@@ -430,26 +430,6 @@ namespace LiteOrm
             };
         }
 
-        private static ColumnDefinition[] GetJoinPrimeKeys(TableDefinition targetTableDef, TableJoinAttribute tableJoin)
-        {
-            if (String.IsNullOrWhiteSpace(tableJoin.PrimeKeys))
-            {
-                return targetTableDef.Keys.ToArray();
-            }
-
-            string[] primeKeyNames = (tableJoin.PrimeKeys ?? string.Empty).Split(',');
-            ColumnDefinition[] primeKeys = new ColumnDefinition[primeKeyNames.Length];
-            for (int i = 0; i < primeKeyNames.Length; i++)
-            {
-                string primeKeyName = primeKeyNames[i].Trim();
-                ColumnDefinition? primeKey = targetTableDef.GetColumn(primeKeyName);
-                if (primeKey == null)
-                    throw new ArgumentException($"Prime key column \"{primeKeyName}\" does not exist in target table \"{targetTableDef.ObjectType.Name}\".");
-                primeKeys[i] = primeKey;
-            }
-            return primeKeys;
-        }
-
         private void JoinColumn(ConcurrentDictionary<string, JoinedTable> joinedTables, Queue<ColumnRef> columnRefs, ColumnRef columnRef, ForeignTable foreignTableInfo)
         {
             string joinedTableName = String.IsNullOrEmpty(foreignTableInfo.Alias) ? foreignTableInfo.ForeignType?.Name ?? string.Empty : foreignTableInfo.Alias ?? string.Empty;
@@ -470,7 +450,7 @@ namespace LiteOrm
                 JoinType = foreignTableInfo.JoinType,
                 AutoExpand = foreignTableInfo.AutoExpand,
                 Name = joinedTableName,
-                ConstFilter = AliasConstFilter(foreignTable!.ConstFilter, joinedTableName)
+                ConstFilter = MetaDataHelper.AliasConstFilter(foreignTable!.ConstFilter, joinedTableName)
             };
             List<ColumnRef> foreignKeys = new List<ColumnRef>();
             foreignKeys.Add(columnRef);
@@ -486,43 +466,6 @@ namespace LiteOrm
                     columnRefs.Enqueue(new ColumnRef(joinedTable, lcolumn));
                 }
             }
-        }
-
-        /// <summary>
-        /// 按列的固定筛选值（<see cref="ColumnDefinition.Constant"/>）拼出表的固定筛选条件。
-        /// </summary>
-        /// <param name="columns">表定义中的列集合。</param>
-        /// <returns>各列固定筛选条件以 AND 连接的表达式；没有列声明固定值时返回 null。</returns>
-        internal static LogicExpr? BuildConstFilter(IEnumerable<ColumnDefinition> columns)
-        {
-            LogicExpr? constFilter = null;
-            foreach (ColumnDefinition column in columns)
-            {
-                if (column.Constant is null) continue;
-                constFilter &= Expr.Prop(column.PropertyName) == Expr.Const(column.Constant);
-            }
-            return constFilter;
-        }
-
-        /// <summary>
-        /// 把固定筛选条件中的属性引用统一补上表别名，供关联表（<see cref="JoinedTable.ConstFilter"/>）复用。
-        /// </summary>
-        /// <param name="constFilter">原始固定筛选条件。</param>
-        /// <param name="tableAlias">要补的表别名。</param>
-        /// <returns>补上别名后的副本；<paramref name="constFilter"/> 为 null 时返回 null。</returns>
-        internal static LogicExpr? AliasConstFilter(LogicExpr? constFilter, string tableAlias)
-        {
-            if (constFilter is null) return null;
-            LogicExpr aliasedFilter = (LogicExpr)constFilter.Clone();
-            ExprVisitor.Visit(node =>
-            {
-                if (node is PropertyExpr propertyExpr && String.IsNullOrEmpty(propertyExpr.TableAlias))
-                {
-                    propertyExpr.TableAlias = tableAlias;
-                }
-                return true;
-            }, aliasedFilter);
-            return aliasedFilter;
         }
 
         /// <summary>
@@ -542,61 +485,6 @@ namespace LiteOrm
             if (instance is not IDbValueConverter converter)
                 throw new ArgumentException($"属性 \"{property.DeclaringType?.FullName}.{property.Name}\" 的 ValueConverterType \"{converterType.FullName}\" 无法创建 IDbValueConverter 实例（缺少公共无参构造函数）。");
             return converter;
-        }
-
-        /// <summary>
-        /// 把声明在特性上的常量对齐到属性类型（字符串枚举名、整数转枚举、其余按 <see cref="Convert.ChangeType(object, Type)"/>）。
-        /// </summary>
-        /// <param name="property">常量所属的属性。</param>
-        /// <param name="constant">特性上声明的原始常量值。</param>
-        /// <returns>已对齐到属性类型的常量；<paramref name="constant"/> 为 null 时返回 null。</returns>
-#if NET8_0_OR_GREATER
-        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "PropertyInfo.PropertyType is a runtime-known Type whose properties are naturally available; under AOT, properties are preserved via [Table] + source generator.")]
-#endif
-        internal static object? ParseConstant(PropertyInfo property, object? constant)
-        {
-            if (constant is null) return null;
-
-            Type propType = property.PropertyType.GetUnderlyingType();
-            Type constantType = constant.GetType();
-            if (constantType == propType || propType.IsAssignableFrom(constantType)) return constant;
-
-            if (propType.IsEnum)
-            {
-                if (constant is string text)
-                {
-                    text = text.Trim();
-                    if (text.Length == 0)
-                        throw new ArgumentException($"Column.Constant cannot be empty for enum property \"{property.DeclaringType?.FullName}.{property.Name}\".");
-                    if (Int32.TryParse(text, out int intValue))
-                        return Enum.ToObject(propType, intValue);
-                    return EnumUtil.Parse(propType, text) ?? Enum.Parse(propType, text);
-                }
-                else if (IsIntegerType(constantType))
-                {
-                    object numericValue = Convert.ChangeType(constant, Enum.GetUnderlyingType(propType));
-                    return Enum.ToObject(propType, numericValue);
-                }
-            }
-            try
-            {
-                return Convert.ChangeType(constant, propType);
-            }
-            catch { }
-            return constant;
-        }
-
-        private static bool IsIntegerType(Type type)
-        {
-            type = Nullable.GetUnderlyingType(type) ?? type;
-            return type == typeof(byte)
-                || type == typeof(sbyte)
-                || type == typeof(short)
-                || type == typeof(ushort)
-                || type == typeof(int)
-                || type == typeof(uint)
-                || type == typeof(long)
-                || type == typeof(ulong);
         }
 
         #endregion

@@ -308,23 +308,6 @@ For more details, see [Sharding and TableArgs](../advanced-topics/sharding-and-t
 - For fields that need association queries, prefer using view models; don't pollute basic entities.
 - When dealing with cross-database or legacy database compatibility, confirm the corresponding dialect behavior in advance.
 
-## How metadata is parsed
-
-How does the framework know that class `User` maps to table `t_user` and property `Name` to column `name`? Through metadata. Table structure is parsed and cached in exactly one place, and everything else reads it from there. Parsing once is enough because table structure does not change while the process runs; re-reading attributes on every query would cost enough reflection to wipe out the performance advantage.
-
-`TableInfoProvider` is a global singleton (`TableInfoProvider.cs:10`) with only two entry points:
-
-- `GetTableDefinition(Type)` returns the table definition, used by writes and single-table queries.
-- `GetTableView(Type)` layers related tables on top of the table definition, used by JOIN queries.
-
-The default implementation `AttributeTableInfoProvider` reads attributes: `[Table]` and `[Column]` build the column model, while `[TableJoin]`, `[ForeignColumn]` and `[ForeignType]` build relationships.
-
-`BuildConstFilter` (`AttributeTableInfoProvider.cs:486`) collects `ColumnAttribute.Constant` from all columns into one condition and stores it in `TableDefinition.ConstFilter`. This is the "constant slice" the docs keep referring to; it is later appended automatically to WHERE, JOIN ON, UPDATE and DELETE. The full mechanism is in [Permission Filtering and User Scopes](../advanced-topics/permission-filtering.en.md).
-
-The type chain is `SqlObject` → `SqlTable` → `TableDefinition` and `TableView`; on the column side it is `SqlColumn` → `ColumnDefinition` and `ForeignColumn`.
-
-For changing metadata at runtime (setting `ExpressionExpr` dynamically, for example) see [Dynamically Modifying Column Definitions](#dynamically-modifying-column-definitions).
-
 ## Related Links
 
 - [Back to docs hub](../README.md)

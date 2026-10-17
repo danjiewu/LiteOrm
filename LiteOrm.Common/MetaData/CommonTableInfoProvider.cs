@@ -178,7 +178,7 @@ namespace LiteOrm.Common
                     Expression = columnInfo.Expression,
                     Mode = columnInfo.Mode,
                     DefaultValue = columnInfo.DefaultValue,
-                    Constant = AttributeTableInfoProvider.ParseConstant(property, columnInfo.Constant),
+                    Constant = MetaDataHelper.ParseConstant(property, columnInfo.Constant),
                     IdentityExpression = columnInfo.IdentityExpression,
                     IdentityStart = columnInfo.IdentityStart,
                     IdentityIncreasement = columnInfo.IdentityIncreasement
@@ -195,7 +195,7 @@ namespace LiteOrm.Common
                 Name = tableInfo.Name,
                 DataSource = tableInfo.DataSource,
                 SyncTable = tableInfo.SyncTable,
-                ConstFilter = AttributeTableInfoProvider.BuildConstFilter(columns)
+                ConstFilter = MetaDataHelper.BuildConstFilter(columns)
             };
         }
 
@@ -221,14 +221,14 @@ namespace LiteOrm.Common
                     var targetTableDef = BuildTableDefinitionOnly(joinInfo.TargetType);
                     if (targetTableDef is null) continue;
 
-                    var joinedTable = new JoinedTable(targetTableDef, GetJoinPrimeKeys(targetTableDef, joinInfo))
+                    var joinedTable = new JoinedTable(targetTableDef, MetaDataHelper.GetJoinPrimeKeys(targetTableDef, joinInfo.PrimeKeys))
                     {
                         JoinType = joinInfo.JoinType,
                         AutoExpand = joinInfo.AutoExpand
                     };
                     string alias = string.IsNullOrEmpty(joinInfo.Alias) ? joinInfo.TargetType.Name : joinInfo.Alias!;
                     joinedTable.Name = alias;
-                    joinedTable.ConstFilter = AttributeTableInfoProvider.AliasConstFilter(targetTableDef.ConstFilter, alias);
+                    joinedTable.ConstFilter = MetaDataHelper.AliasConstFilter(targetTableDef.ConstFilter, alias);
                     if (joinedTables.ContainsKey(alias))
                         throw new ArgumentException($"Duplicate table alias name \"{alias}\"");
                     joinedTables[alias] = joinedTable;
@@ -500,7 +500,7 @@ namespace LiteOrm.Common
                 JoinType = foreignTableInfo.JoinType,
                 AutoExpand = foreignTableInfo.AutoExpand,
                 Name = joinedTableName,
-                ConstFilter = AttributeTableInfoProvider.AliasConstFilter(foreignTable.ConstFilter, joinedTableName)
+                ConstFilter = MetaDataHelper.AliasConstFilter(foreignTable.ConstFilter, joinedTableName)
             };
             joinedTable.ForeignKeys = new List<ColumnRef> { columnRef }.AsReadOnly();
             if (joinedTables.ContainsKey(joinedTableName))
@@ -515,29 +515,6 @@ namespace LiteOrm.Common
                     columnRefs.Enqueue(new ColumnRef(joinedTable, column));
                 }
             }
-        }
-
-        /// <summary>
-        /// 提取 <see cref="JoinedTableInfo"/> 中目标表参与关联的键列，未声明时使用目标表主键。
-        /// </summary>
-        private static ColumnDefinition[] GetJoinPrimeKeys(TableDefinition targetTableDef, JoinedTableInfo joinInfo)
-        {
-            if (string.IsNullOrWhiteSpace(joinInfo.PrimeKeys))
-            {
-                return targetTableDef.Keys.ToArray();
-            }
-
-            string[] primeKeyNames = joinInfo.PrimeKeys!.Split(',');
-            ColumnDefinition[] primeKeys = new ColumnDefinition[primeKeyNames.Length];
-            for (int i = 0; i < primeKeyNames.Length; i++)
-            {
-                string primeKeyName = primeKeyNames[i].Trim();
-                var primeKey = targetTableDef.GetColumn(primeKeyName);
-                if (primeKey == null)
-                    throw new ArgumentException($"Prime key column \"{primeKeyName}\" does not exist in target table \"{targetTableDef.ObjectType.Name}\".");
-                primeKeys[i] = primeKey;
-            }
-            return primeKeys;
         }
     }
 }
