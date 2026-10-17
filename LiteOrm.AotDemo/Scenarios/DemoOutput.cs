@@ -30,17 +30,12 @@ namespace LiteOrm.AotDemo.Scenarios
         {
             string? sql = LiteOrm.SessionManager.Current?.SqlStack?.LastOrDefault();
             if (string.IsNullOrEmpty(sql)) return;
-            Console.WriteLine($"  SQL: {Collapse(sql)}");
+            Console.WriteLine($"  SQL: {sql}");
         }
 
         /// <summary>打印异常信息，不中断演示。</summary>
         /// <param name="ex">异常实例。</param>
         public static void Error(Exception ex) => Console.WriteLine($"  [错误] {ex.GetType().Name}: {ex.Message}");
-
-        private static string Collapse(string sql)
-        {
-            return Regex.Replace(sql, @"\s+", " ").Trim();
-        }
 
         /// <summary>把一组值拼接为可读的表格行，便于控制台对齐输出。</summary>
         /// <param name="columns">各列文本。</param>

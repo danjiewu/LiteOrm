@@ -16,28 +16,28 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 创建指定表的列引用
+        /// 创建指定关联表的列引用
         /// </summary>
-        /// <param name="table">表</param>
-        /// <param name="column">列引用</param>
-        public ColumnRef(TableRef table, SqlColumn column)
+        /// <param name="table">列所属的关联表，为 null 表示主表（使用默认别名）</param>
+        /// <param name="column">列信息</param>
+        public ColumnRef(JoinedTable? table, SqlColumn column)
         {
             Name = column.Name;
             _column = column;
             _table = table;
         }
 
-        private TableRef? _table;
+        private JoinedTable? _table;
         /// <summary>
-        /// 列所在的表
+        /// 列所在的关联表，为 null 表示主表（使用默认别名）
         /// </summary>
-        public TableRef? Table
+        public JoinedTable? Table
         {
             get { return _table; }
             internal set { _table = value; }
         }
 
-        private SqlColumn _column;
+        private readonly SqlColumn _column;
         /// <summary>
         /// 列信息
         /// </summary>

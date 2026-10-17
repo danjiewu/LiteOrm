@@ -18,6 +18,7 @@
     <PackageReleaseNotes>
       8.1.13:
       - AOT 下 [TableJoin]/[ForeignType]/[ForeignColumn] 由 TableInfoGenerator 编译期写入 TableInfo，CommonTableInfoProvider 装配出完整的 TableView（关联表、外键链 Used 标记、投影列目标列），与 JIT 视图结构一致。
+      - 破坏性变更：删除 TableRef 抽象类，成员移入 JoinedTable；ColumnRef.Table 类型由 TableRef? 改为 JoinedTable?。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

@@ -2,6 +2,10 @@
 
 ## v8.1.13 (2026-10-17)
 
+### Breaking changes
+
+- **The `TableRef` abstract class is removed** (`LiteOrm.Common`): `JoinedTable` now derives from `SqlObject` directly and carries `TableDefinition`, `GetColumn`, `Equals` and `GetHashCode`; `TableRef.Columns` and `JoinedTable.Columns` are removed, use `GetColumn` to look a column up by property name; `ColumnRef.Table` and the two-argument constructor now take `JoinedTable?` instead of `TableRef?`.
+
 ### New Features
 
 - **Association metadata is generated under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `TableInfoGenerator` writes `[TableJoin]`, `[ForeignType]` and `[ForeignColumn]` into `TableInfo.JoinedTables` and `ColumnInfo.ForeignTables` / `ForeignColumn` at compile time, and `CommonTableInfoProvider` assembles the complete `TableView` from them at runtime (joined tables, `Used` marks along the foreign-key chain, projected target columns), so the view structure matches JIT.
