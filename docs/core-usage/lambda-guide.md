@@ -193,6 +193,37 @@ var users = await userService.SearchAsync(
 
 `ExistsRelated` 会根据 `ForeignType` / `TableJoin` 等元数据自动补关联条件。适合模型里已经声明好关联路径，只想"按关联表条件过滤主表"的场景。匹配逻辑、继承链规则和 `ConstFilter` 行为请看[关联查询](./associations.md)。
 
+### 5.3 嵌套 Lambda 与参数作用域
+
+内层 Lambda 的参数按引用区分作用域，与外层参数同名时不会互相覆盖：
+
+```csharp
+// 内层与外层参数均命名 u，转换完成后外层 u 的引用依然有效
+var users = await userService.SearchAsync(
+    u => u.Age > 18 && Exists<Department>(u => u.Name == "研发中心") && u.UserName != null
+);
+```
+
+多参数 Lambda 的全部参数都会注册：第一个参数对应别名 `T0` 的根表，其余参数获得新别名 `T{n}`。
+
+自定义方法处理器里转换内层 Lambda 时，可以通过构造重载把外层参数上下文传进子转换器，内层即可引用外层参数，且父子转换器共享别名编号，嵌套作用域不会分配到重复别名：
+
+```csharp
+LambdaExprConverter.RegisterMethodHandler("ExistsIn", (node, converter) =>
+{
+    var lambda = (LambdaExpression)((UnaryExpression)node.Arguments[1]).Operand;
+    var child = new LambdaExprConverter(lambda, converter);
+    // 子转换器的根表作为子查询外表，InnerExpr 中可见外层参数
+    return new ForeignExpr(child.Table!.Type)
+    {
+        Alias = child.Table!.Alias,
+        InnerExpr = child.ToLogicExpr()
+    };
+});
+```
+
+扩展点注册的完整机制见[表达式扩展](../extensibility/expression-extension.md)。
+
 ## 6. 投影查询（`SearchAs` / `SearchOneAs`）
 
 `SearchAs` / `SearchOneAs` 支持 IQueryable 形式的 Lambda，把结果投影为指定类型（自定义类、匿名类均可），适合「只取部分列」或「组装成视图 / 摘要对象」：

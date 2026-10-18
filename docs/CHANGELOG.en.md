@@ -6,11 +6,21 @@
 
 - **The `TableRef` abstract class is removed** (`LiteOrm.Common`): `JoinedTable` now derives from `SqlObject` directly and carries `TableDefinition`, `GetColumn`, `Equals` and `GetHashCode`; `TableRef.Columns` and `JoinedTable.Columns` are removed, use `GetColumn` to look a column up by property name; `ColumnRef.Table` and the two-argument constructor now take `JoinedTable?` instead of `TableRef?`.
 
+- **`LambdaExprConverter` parameter maps are now keyed by `ParameterExpression` reference** (`LiteOrm.Common`): the key type of the two protected fields `_parameterAliases` and `_parameterExprs` changes from parameter name `string` to `ParameterExpression`, so an inner lambda parameter that shares a name with an outer one no longer overwrites or removes the outer mapping; `_aliasCounter` changes from `int` to the shared `LambdaExprConverter.AliasSequence`; the `Table` property may be null when a parent converter is supplied and the lambda has no parameters.
+
 ### New Features
 
 - **Association metadata is generated under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `TableInfoGenerator` writes `[TableJoin]`, `[ForeignType]` and `[ForeignColumn]` into `TableInfo.JoinedTables` and `ColumnInfo.ForeignTables` / `ForeignColumn` at compile time, and `CommonTableInfoProvider` assembles the complete `TableView` from them at runtime (joined tables, `Used` marks along the foreign-key chain, projected target columns), so the view structure matches JIT.
 
 - **`[Column(Constant = ...)]` is collected into `TableDefinition.ConstFilter` under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `ColumnInfo` gains `Constant`, `TableInfoGenerator` renders the attribute value as a literal into the generated registration code, and `CommonTableInfoProvider` aligns it to the property type and builds `ConstFilter`, matching JIT.
+
+- **`LambdaExprConverter` supports nested parameter contexts** (`LiteOrm.Common`): the new `LambdaExprConverter(LambdaExpression expression, LambdaExprConverter? parent = null)` constructor overload lets a child converter inherit the parent's parameter mappings and share its alias sequence, so custom method handlers can create a child converter that sees outer parameters.
+
+- **All parameters of multi-parameter lambdas are registered** (`LiteOrm.Common`): the constructor registers every lambda parameter, with `param[0]` as the root `TableExpr` aliased `T0` and `param[i>0]` as a `TableExpr` with a fresh alias `T{n}`.
+
+### Fixes
+
+- **Fixed inner lambda parameters shadowing outer parameters with the same name** (`LiteOrm.Common`): when a nested lambda such as `Expr.Exists` had a parameter with the same name as an outer one, the mapping was removed by name after conversion, so later outer references failed (`ConvertParameter` returned null and `((IArged)u).TableArgs` assignments were skipped); scopes are now tracked per parameter reference, keeping outer references usable after nested conversion.
 
 ***
 

@@ -883,5 +883,140 @@ namespace LiteOrm.Tests
         }
 
         #endregion
+
+        #region 嵌套参数上下文
+
+        [Fact]
+        public void ConvertParameter_AfterSameNameNestedLambda_ResolvesOuterParameter()
+        {
+            // 内层 Exists 参数与外层同名：修复前转换完后外层 u 的映射被按名删除，裸参数引用返回 null
+            Expression<Func<TestUser, bool>> expr = u =>
+                Expr.Exists<TestDepartment>(u => u.Id == 1) && u.Name == "x";
+
+            var converter = new LambdaExprConverter(expr);
+            converter.ToLogicExpr();
+
+            var resolved = converter.Convert(expr.Parameters[0]);
+            Assert.IsType<TableExpr>(resolved);
+        }
+
+        [Fact]
+        public void TableArgs_AfterSameNameNestedExists_AppliedToRootTable()
+        {
+            // 内层 Exists 参数与外层同名：修复前外层 u 的映射被删除，
+            // ((IArged)u).TableArgs 赋值失效并在 ConvertUnary 抛 ArgumentException
+            Expression<Func<TestUser, bool>> expr = u =>
+                Expr.Exists<TestDepartment>(u => u.Id == 1) && ((IArged)u).TableArgs == new[] { "2024" };
+
+            var converter = new LambdaExprConverter(expr);
+            var result = converter.ToLogicExpr();
+
+            // TableArgs 赋值不产生 SQL 条件，整体结果即 Exists 子查询
+            Assert.IsType<ForeignExpr>(result);
+            Assert.Equal(new[] { "2024" }, converter.Table!.TableArgs);
+        }
+
+        [Fact]
+        public void NestedLambda_SameNameParameter_KeepsOuterCondition()
+        {
+            Expression<Func<TestUser, bool>> expr = u =>
+                Expr.Exists<TestDepartment>(u => u.Id == 1) && u.Name == "x";
+
+            var result = LambdaExprConverter.ToLogicExpr(expr);
+
+            var and = Assert.IsType<AndExpr>(result);
+            Assert.Equal(2, and.Count);
+            Assert.IsType<ForeignExpr>(and[0]);
+            var nameCondition = Assert.IsType<LogicBinaryExpr>(and[1]);
+            Assert.Equal("Name", Assert.IsType<PropertyExpr>(nameCondition.Left).PropertyName);
+        }
+
+        [Fact]
+        public void MultiParameterLambda_RegistersAllParametersWithAliases()
+        {
+            var uParam = Expression.Parameter(typeof(TestUser), "u");
+            var dParam = Expression.Parameter(typeof(TestDepartment), "d");
+            var body = Expression.Equal(
+                Expression.Property(uParam, "Id"),
+                Expression.Property(dParam, "Id"));
+            var lambda = Expression.Lambda<Func<TestUser, TestDepartment, bool>>(body, uParam, dParam);
+
+            var converter = new LambdaExprConverter(lambda);
+            var result = converter.ToLogicExpr();
+
+            var binary = Assert.IsType<LogicBinaryExpr>(result);
+            // u → T0，等于当前别名，不写别名；d → 新别名 T1
+            Assert.Null(Assert.IsType<PropertyExpr>(binary.Left).TableAlias);
+            Assert.Equal("T1", Assert.IsType<PropertyExpr>(binary.Right).TableAlias);
+            Assert.Equal(typeof(TestUser), converter.Table!.Type);
+        }
+
+        [Fact]
+        public void ChildConverter_InheritsParentParameterMappings()
+        {
+            Expression<Func<TestUser, bool>> outerExpr = u => u.DeptId > 0;
+            var parent = new LambdaExprConverter(outerExpr);
+
+            // 子 Lambda 只声明 d，body 同时引用内层 d 与外层 u
+            var dParam = Expression.Parameter(typeof(TestDepartment), "d");
+            var uParam = outerExpr.Parameters[0];
+            var body = Expression.AndAlso(
+                Expression.Equal(Expression.Property(dParam, "Id"), Expression.Constant(1)),
+                Expression.GreaterThan(Expression.Property(uParam, "DeptId"), Expression.Constant(0)));
+            var child = new LambdaExprConverter(
+                Expression.Lambda<Func<TestDepartment, bool>>(body, dParam), parent);
+
+            var result = child.ToLogicExpr();
+
+            var and = Assert.IsType<AndExpr>(result);
+            var inner = Assert.IsType<LogicBinaryExpr>(and[0]);
+            Assert.Null(Assert.IsType<PropertyExpr>(inner.Left).TableAlias);           // d → 子作用域当前别名
+            var outer = Assert.IsType<LogicBinaryExpr>(and[1]);
+            Assert.Equal("T0", Assert.IsType<PropertyExpr>(outer.Left).TableAlias);    // u → 继承自父的别名
+        }
+
+        [Fact]
+        public void ChildConverter_SharesAliasCounter_NoCollisionWithParent()
+        {
+            Expression<Func<TestUser, bool>> outerExpr = u => u.DeptId > 0;
+            var parent = new LambdaExprConverter(outerExpr);
+
+            var dParam = Expression.Parameter(typeof(TestDepartment), "d");
+            var child = new LambdaExprConverter(
+                Expression.Lambda<Func<TestDepartment, bool>>(
+                    Expression.GreaterThan(Expression.Property(dParam, "Id"), Expression.Constant(0)), dParam),
+                parent);
+            child.ToLogicExpr();
+            Assert.Equal("T1", child.Table!.Alias);
+
+            // 父转换器后续分配从 T2 开始，不与子转换器占用的 T1 冲突
+            Expression<Func<TestUser, bool>> existsExpr = u => Expr.Exists<TestDepartment>(d => d.Id == 1);
+            var foreign = Assert.IsType<ForeignExpr>(parent.Convert(existsExpr.Body));
+            Assert.Equal("T2", foreign.Alias);
+        }
+
+        [Fact]
+        public void ChildConverter_ZeroParameterLambda_HasNullTable()
+        {
+            Expression<Func<TestUser, bool>> outerExpr = u => u.DeptId > 0;
+            var parent = new LambdaExprConverter(outerExpr);
+
+            var uParam = outerExpr.Parameters[0];
+            var zeroLambda = Expression.Lambda<Func<bool>>(
+                Expression.GreaterThan(Expression.Property(uParam, "DeptId"), Expression.Constant(0)));
+            var child = new LambdaExprConverter(zeroLambda, parent);
+
+            Assert.Null(child.Table);
+            Assert.IsType<LogicBinaryExpr>(child.ToLogicExpr());
+        }
+
+        [Fact]
+        public void Constructor_ZeroParameterWithoutParent_Throws()
+        {
+            var zeroLambda = Expression.Lambda<Func<bool>>(Expression.Constant(true));
+            Assert.Throws<ArgumentException>(() => new LambdaExprConverter(zeroLambda));
+        }
+
+        #endregion
     }
 }

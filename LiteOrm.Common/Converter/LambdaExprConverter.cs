@@ -175,51 +175,98 @@ namespace LiteOrm.Common
         /// 初始化 LambdaExprConverter 类的新实例。
         /// </summary>
         /// <param name="expression">要转换的 Lambda 表达式。</param>
+        public LambdaExprConverter(LambdaExpression expression) : this(expression, null)
+        {
+        }
+
+        /// <summary>
+        /// 初始化 LambdaExprConverter 类的新实例，支持嵌套 Lambda 表达式的外部参数上下文。
+        /// </summary>
+        /// <param name="expression">要转换的 Lambda 表达式。</param>
+        /// <param name="parent">父转换器。为 null 时按独立作用域转换；非 null 时继承父转换器的参数映射（外层参数可见），
+        /// 自身的参数按新作用域注册，并与父转换器共享别名编号。</param>
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "LambdaExpression.Type returns a runtime-known Type; properties are preserved via [Table] entities through the source generator; under AOT, ensure entity types are registered.")]
         [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "LambdaExpression.Type is a runtime value; under AOT, users must annotate entity types with [Table] to ensure properties are preserved.")]
 #endif
-        public LambdaExprConverter(LambdaExpression expression)
+        public LambdaExprConverter(LambdaExpression expression, LambdaExprConverter? parent = null)
         {
             if (expression is null) throw new ArgumentNullException(nameof(expression));
             _expression = expression;
-            var _rootParameter = expression.Parameters[0];
-            Type objectType = _rootParameter.Type;
-            if (objectType.IsGenericType && (objectType.GetGenericTypeDefinition() == typeof(IQueryable<>) || objectType.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
-                objectType = objectType.GetGenericArguments()[0];
-            _currentAlias = _parameterAliases[_rootParameter.Name ?? string.Empty] = Constants.DefaultTableAlias;
-            _parameterExprs[_rootParameter.Name ?? string.Empty] = _tableExpr = Expr.From(objectType).As(_currentAlias);
-            _aliasCounter = 1;
+            var parameters = expression.Parameters;
+            if (parent != null)
+            {
+                // 继承外层参数映射，使内层 Lambda 可以引用外层参数
+                foreach (var item in parent._parameterAliases)
+                    _parameterAliases[item.Key] = item.Value;
+                foreach (var item in parent._parameterExprs)
+                    _parameterExprs[item.Key] = item.Value;
+                // 父子共享别名编号，避免嵌套作用域分配到重复别名
+                _aliasCounter = parent._aliasCounter;
+                // 无自有参数时沿用外层当前别名
+                _currentAlias = parent._currentAlias;
+            }
+            else
+            {
+                if (parameters.Count == 0)
+                    throw new ArgumentException("Lambda expression must have at least one parameter.", nameof(expression));
+                _aliasCounter = new AliasSequence(1);
+            }
+            for (int i = 0; i < parameters.Count; i++)
+            {
+                var parameter = parameters[i];
+                var tableExpr = Expr.From(UnwrapSourceType(parameter.Type))
+                    .As(i == 0 && parent == null ? Constants.DefaultTableAlias : _aliasCounter.NextAlias());
+                _parameterAliases[parameter] = tableExpr.Alias!;
+                _parameterExprs[parameter] = tableExpr;
+                if (i == 0)
+                {
+                    _tableExpr = tableExpr;
+                    _currentAlias = tableExpr.Alias!;
+                }
+            }
         }
-        private TableExpr _tableExpr;
+
+        private TableExpr? _tableExpr;
         /// <summary>
         /// 获取解析后的 TableExpr 对象，代表 Lambda 表达式中根参数对应的表信息。
+        /// 传入父转换器且 Lambda 无参数时为 null。
         /// </summary>
-        public TableExpr Table => _tableExpr;
+        public TableExpr? Table => _tableExpr;
         /// <summary>
         /// 当前别名，用于生成 SQL 时的表别名。对于嵌套 Lambda 表达式会动态更新以支持多层别名映射。
         /// </summary>
-        protected string _currentAlias;
+        protected string _currentAlias = Constants.DefaultTableAlias;
         /// <summary>
         /// 原始 Lambda 对象
         /// </summary>
         protected readonly LambdaExpression _expression;
         /// <summary>
-        /// 参数表达式到别名的映射
+        /// 参数表达式到别名的映射。按 <see cref="ParameterExpression"/> 引用键控，
+        /// 内层 Lambda 参数与外层同名时不会互相覆盖或删除。
         /// </summary>
-        protected readonly Dictionary<string, string> _parameterAliases = new Dictionary<string, string>();
+        protected readonly Dictionary<ParameterExpression, string> _parameterAliases = new Dictionary<ParameterExpression, string>();
         /// <summary>
-        /// 参数表达式到 FromExpr 或 ForeignExpr 对象的映射，用于处理分表参数
+        /// 参数表达式到 FromExpr 或 ForeignExpr 对象的映射，用于处理分表参数。
+        /// 按 <see cref="ParameterExpression"/> 引用键控。
         /// </summary>
-        protected readonly Dictionary<string, Expr> _parameterExprs = new Dictionary<string, Expr>();
+        protected readonly Dictionary<ParameterExpression, Expr> _parameterExprs = new Dictionary<ParameterExpression, Expr>();
         /// <summary>
-        /// 别名编号，用于生成新的别名
+        /// 别名编号序列，父子转换器共享同一实例以避免嵌套作用域分配到重复别名
         /// </summary>
-        protected int _aliasCounter = 0;
+        protected readonly AliasSequence _aliasCounter;
         /// <summary>
         /// 检测表达式是否包含 Lambda 参数
         /// </summary>
         protected readonly ExpressionDetector _expressionDetector = new ExpressionDetector();
+
+        /// <summary>
+        /// 解包 IQueryable&lt;T&gt; / IEnumerable&lt;T&gt; 形式的源参数，取其元素类型。
+        /// </summary>
+        private static Type UnwrapSourceType(Type type) =>
+            type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IQueryable<>) || type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                ? type.GetGenericArguments()[0]
+                : type;
 
         /// <summary>
         /// 转换表达式节点为 Expr 对象。
@@ -300,19 +347,15 @@ namespace LiteOrm.Common
         /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertLambda(LambdaExpression lambda)
         {
-            ParameterExpression? parameter = lambda.Parameters.FirstOrDefault();
-            if (parameter != null)
-            {
-                string paramName = parameter.Name ?? string.Empty;
-                _parameterAliases[paramName] = _currentAlias;
-            }
+            string lastAlias = _currentAlias;
+            // 登记全部参数（按引用键控，内层同名参数不会波及外层映射）
+            foreach (var parameter in lambda.Parameters)
+                _parameterAliases[parameter] = _currentAlias;
             var result = ConvertInternal(lambda.Body);
             result = lambda.ReturnType == typeof(bool) ? result.AsLogic() ?? null! : result.AsValue();
-            if (parameter != null)
-            {
-                string paramName = parameter.Name ?? string.Empty;
-                _parameterAliases.Remove(paramName);
-            }
+            foreach (var parameter in lambda.Parameters)
+                _parameterAliases.Remove(parameter);
+            _currentAlias = lastAlias;
             return result;
         }
 
@@ -323,7 +366,7 @@ namespace LiteOrm.Common
         /// <returns>转换后的 Expr 对象</returns>
         protected virtual Expr ConvertParameter(ParameterExpression parameter)
         {
-            _parameterExprs.TryGetValue(parameter.Name ?? string.Empty, out var expr);
+            _parameterExprs.TryGetValue(parameter, out var expr);
             return expr ?? null!;
         }
 
@@ -374,13 +417,13 @@ namespace LiteOrm.Common
                     }
 
                     // 如果是参数表达式
-                    if (targetExpr is ParameterExpression paramExpr && _parameterAliases.ContainsKey(paramExpr.Name ?? string.Empty))
+                    if (targetExpr is ParameterExpression paramExpr && _parameterAliases.ContainsKey(paramExpr))
                     {
                         // 解析赋值的值（数组或集合）
                         var tableArgs = EvaluateTableArgs(valueExpr);
 
                         // 设置 TableExpr 或 ForeignExpr 的 TableArgs
-                        if (_parameterExprs.TryGetValue(paramExpr.Name ?? string.Empty, out var paramArg))
+                        if (_parameterExprs.TryGetValue(paramExpr, out var paramArg))
                         {
                             if (paramArg is TableExpr tableExpr)
                             {
@@ -587,7 +630,7 @@ namespace LiteOrm.Common
             // 1. 处理直接的实体参数访问 (映射为数据库列)
             if (node.Expression is ParameterExpression paramExpr)
             {
-                _parameterAliases.TryGetValue(paramExpr.Name ?? string.Empty, out var paramAlias);
+                _parameterAliases.TryGetValue(paramExpr, out var paramAlias);
                 if (paramAlias == _currentAlias) paramAlias = null;
                 if (node.Member is PropertyInfo propertyInfo)
                 {
@@ -844,12 +887,14 @@ namespace LiteOrm.Common
             SqlSegment? source = src as SqlSegment;
 
             ParameterExpression parameter = lambda.Parameters[0];
-            _parameterAliases[parameter.Name ?? string.Empty] = _currentAlias;
+            string lastAlias = _currentAlias;
+            _parameterAliases[parameter] = _currentAlias;
 
             // 将 Lambda 条件转换为 LogicExpr
             var newCondition = ConvertInternal(lambda.Body).AsLogic();
 
-            _parameterAliases.Remove(parameter.Name ?? string.Empty);
+            _parameterAliases.Remove(parameter);
+            _currentAlias = lastAlias;
 
             // 条件为 null 时（如纯 TableArgs 赋值），直接返回源不添加 WHERE
             if (newCondition is null)
@@ -953,7 +998,7 @@ namespace LiteOrm.Common
             var selectExpr = (SelectExpr)source.Select(selectItems);
 
             // 为 SelectExpr 生成别名
-            _currentAlias = selectExpr.Alias = "T" + _aliasCounter++;
+            _currentAlias = selectExpr.Alias = _aliasCounter.NextAlias();
 
             return selectExpr;
         }
@@ -1139,18 +1184,18 @@ namespace LiteOrm.Common
                     ParameterExpression parameter = lambda.Parameters[0];
                     var lastAlias = _currentAlias;
                     // 为 Lambda 参数生成一个新的别名并缓存
-                    _currentAlias = _parameterAliases[parameter.Name ?? string.Empty] = "T" + _aliasCounter++;
+                    _currentAlias = _parameterAliases[parameter] = _aliasCounter.NextAlias();
                     // 创建 ForeignExpr 并缓存到 _parameterArgs
                     var foreignExpr = new ForeignExpr(parameter.Type) { Alias = _currentAlias };
-                    // 将参数名与 ForeignExpr 关联，以便在转换 Lambda.Body 时正确解析参数访问
-                    _parameterExprs[parameter.Name ?? string.Empty] = foreignExpr;
+                    // 将参数与 ForeignExpr 关联，以便在转换 Lambda.Body 时正确解析参数访问
+                    _parameterExprs[parameter] = foreignExpr;
 
                     // 转换 Lambda.Body，得到内部的 LogicExpr
                     foreignExpr.InnerExpr = ConvertInternal(lambda.Body).AsLogic();
 
                     // 转换完成后清理缓存，恢复之前的别名
-                    _parameterExprs.Remove(parameter.Name ?? string.Empty);
-                    _parameterAliases.Remove(parameter.Name ?? string.Empty);
+                    _parameterExprs.Remove(parameter);
+                    _parameterAliases.Remove(parameter);
                     _currentAlias = lastAlias;
                     if (node.Method.Name == nameof(Expr.ExistsRelated)) foreignExpr.AutoRelated = true;
                     return foreignExpr;
@@ -1265,6 +1310,33 @@ namespace LiteOrm.Common
                 }
                 return base.VisitMember(node);
             }
+        }
+
+        /// <summary>
+        /// 表别名编号序列。父子转换器共享同一实例，避免嵌套作用域分配到重复别名。
+        /// </summary>
+        public sealed class AliasSequence
+        {
+            private int _next;
+
+            /// <summary>
+            /// 初始化 <see cref="AliasSequence"/> 类的新实例。
+            /// </summary>
+            /// <param name="start">起始编号，首个可用编号为 start。</param>
+            public AliasSequence(int start)
+            {
+                _next = start;
+            }
+
+            /// <summary>
+            /// 取下一个编号并递增。
+            /// </summary>
+            public int Next() => _next++;
+
+            /// <summary>
+            /// 按 T{n} 规则生成下一个表别名。
+            /// </summary>
+            public string NextAlias() => "T" + Next();
         }
     }
 }

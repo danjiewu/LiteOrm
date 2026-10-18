@@ -19,7 +19,10 @@
       8.1.13:
       - AOT 下 [TableJoin]/[ForeignType]/[ForeignColumn] 由 TableInfoGenerator 编译期写入 TableInfo，CommonTableInfoProvider 装配出完整的 TableView（关联表、外键链 Used 标记、投影列目标列），与 JIT 视图结构一致。
       - AOT 下 [Column(Constant = ...)] 收进 TableDefinition.ConstFilter：ColumnInfo 新增 Constant，源生成器把特性值写入生成的注册代码，CommonTableInfoProvider 按属性类型对齐后拼出 ConstFilter。
+      - LambdaExprConverter 支持嵌套参数上下文：新增带父转换器的构造重载，子转换器继承外层参数映射并共享别名编号；多参数 Lambda 全部注册（param[0] 为 T0 根表，其余参数获得新别名）。
       - 破坏性变更：删除 TableRef 抽象类，成员移入 JoinedTable；ColumnRef.Table 类型由 TableRef? 改为 JoinedTable?。
+      - 破坏性变更：LambdaExprConverter 参数映射改按 ParameterExpression 引用键控，_aliasCounter 改为父子共享的 AliasSequence，Table 在零参数且传入父转换器时可为 null。
+      - 修复内层 Lambda 同名参数遮蔽外层参数的 bug：Expr.Exists 等嵌套 Lambda 参数与外层同名时，转换完成后外层参数引用不再失效。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

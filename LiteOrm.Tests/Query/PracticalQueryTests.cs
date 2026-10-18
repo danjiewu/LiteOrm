@@ -363,6 +363,36 @@ namespace LiteOrm.Tests
             Assert.Equal(20, unchangedUser.Age);
         }
 
+        [Fact]
+        public async Task ShadowedParameter_ExistsAndOuterCondition_FiltersCorrectly()
+        {
+            var deptService = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestDepartment>>();
+            var service = ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>();
+            var viewService = ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>();
+            var ct = TestContext.Current.CancellationToken;
+
+            var dept = new TestDepartment { Name = "ShadowDept" };
+            await deptService.InsertAsync(dept, ct);
+
+            // 内层 ExistsRelated 参数与外层同名（均命名 u），三层条件需全部生效
+            var matching = new TestUser { Name = "ShadowUser", Age = 20, DeptId = dept.Id, CreateTime = DateTime.Now };
+            var tooYoung = new TestUser { Name = "ShadowUser", Age = 10, DeptId = dept.Id, CreateTime = DateTime.Now };
+            var otherName = new TestUser { Name = "OtherUser", Age = 20, DeptId = dept.Id, CreateTime = DateTime.Now };
+            var noDept = new TestUser { Name = "ShadowUser", Age = 20, DeptId = 0, CreateTime = DateTime.Now };
+            await service.InsertAsync(matching, ct);
+            await service.InsertAsync(tooYoung, ct);
+            await service.InsertAsync(otherName, ct);
+            await service.InsertAsync(noDept, ct);
+
+            var result = await viewService.SearchAsync(
+                u => u.Age > 18 && Expr.ExistsRelated<TestDepartment>(u => u.Name == "ShadowDept") && u.Name == "ShadowUser",
+                cancellationToken: ct);
+
+            Assert.Single(result);
+            Assert.Equal("ShadowUser", result[0].Name);
+            Assert.Equal(20, result[0].Age);
+        }
+
         #endregion
 
         #region CommonTableExpr 实际数据库查询测试

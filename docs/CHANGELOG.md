@@ -6,11 +6,21 @@
 
 - **删除 `TableRef` 抽象类**（`LiteOrm.Common`）：`JoinedTable` 改为直接继承 `SqlObject`，`TableDefinition`、`GetColumn`、`Equals`、`GetHashCode` 移入 `JoinedTable`；`TableRef.Columns` 与 `JoinedTable.Columns` 一并删除，按属性名取列请改用 `GetColumn`；`ColumnRef.Table` 与双参构造函数的参数类型由 `TableRef?` 改为 `JoinedTable?`。
 
+- **`LambdaExprConverter` 参数映射改按 `ParameterExpression` 引用键控**（`LiteOrm.Common`）：`_parameterAliases` 与 `_parameterExprs` 两个 protected 字段的键类型由参数名 `string` 改为 `ParameterExpression` 引用，内层 Lambda 参数与外层同名时不再覆盖或删除外层映射；`_aliasCounter` 由 `int` 改为父子转换器共享的 `LambdaExprConverter.AliasSequence`；`Table` 属性在传入父转换器且 Lambda 无参数时可为 null。
+
 ### 新特性
 
 - **AOT 下生成关联元数据**（`LiteOrm.Common` / `LiteOrm.Generators`）：`[TableJoin]`、`[ForeignType]`、`[ForeignColumn]` 由 `TableInfoGenerator` 编译期写入 `TableInfo.JoinedTables` 与 `ColumnInfo.ForeignTables` / `ForeignColumn`，运行期 `CommonTableInfoProvider` 据此装配出完整的 `TableView`（关联表、外键链 `Used` 标记、投影列目标列），AOT 与 JIT 的视图结构一致。
 
 - **AOT 下 `[Column(Constant = ...)]` 收进 `TableDefinition.ConstFilter`**（`LiteOrm.Common` / `LiteOrm.Generators`）：`ColumnInfo` 新增 `Constant`，`TableInfoGenerator` 把特性值渲染成字面量写入生成的注册代码，`CommonTableInfoProvider` 按属性类型对齐后拼出 `ConstFilter`，与 JIT 一致。
+
+- **`LambdaExprConverter` 支持嵌套参数上下文**（`LiteOrm.Common`）：新增 `LambdaExprConverter(LambdaExpression expression, LambdaExprConverter? parent = null)` 构造重载，子转换器继承父转换器的参数映射并共享别名编号，自定义方法处理器可创建能看见外层参数的子转换器。
+
+- **多参数 Lambda 全量注册**（`LiteOrm.Common`）：构造函数注册 Lambda 的全部参数，`param[0]` 为别名 `T0` 的根 `TableExpr`，`param[i>0]` 获得新别名 `T{n}` 的 `TableExpr`。
+
+### 修复
+
+- **修复内层 Lambda 同名参数遮蔽外层参数的 bug**（`LiteOrm.Common`）：`Expr.Exists` 等嵌套 Lambda 的参数与外层同名时，转换完成后按参数名删除映射，导致外层参数引用失效（`ConvertParameter` 返回 null、`((IArged)u).TableArgs` 赋值被跳过），现按参数引用区分作用域，外层引用在嵌套转换后依然可用。
 
 ***
 

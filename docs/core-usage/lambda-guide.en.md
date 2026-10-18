@@ -193,6 +193,37 @@ var users = await userService.SearchAsync(
 
 `ExistsRelated` fills in the relation condition from metadata such as `ForeignType` and `TableJoin`. Use this when relationships are already declared in the model and you only want to filter the main table by related-table conditions. For matching rules, inheritance behavior, and `ConstFilter` interaction, see [Associations](./associations.en.md).
 
+### 5.3 Nested Lambdas and Parameter Scopes
+
+Parameters of an inner lambda are tracked per instance, so an inner parameter that shares a name with an outer one no longer clobbers the outer mapping:
+
+```csharp
+// Inner and outer parameters are both named u; outer references stay valid after the inner lambda is converted
+var users = await userService.SearchAsync(
+    u => u.Age > 18 && Exists<Department>(u => u.Name == "R&D") && u.UserName != null
+);
+```
+
+Every parameter of a multi-parameter lambda is registered: the first one maps to the root table with alias `T0`, the rest receive fresh aliases `T{n}`.
+
+When a custom method handler converts an inner lambda, the constructor overload passes the outer parameter context into the child converter. Inner lambdas can then reference outer parameters, and parent and child share one alias sequence so nested scopes never allocate a duplicate alias:
+
+```csharp
+LambdaExprConverter.RegisterMethodHandler("ExistsIn", (node, converter) =>
+{
+    var lambda = (LambdaExpression)((UnaryExpression)node.Arguments[1]).Operand;
+    var child = new LambdaExprConverter(lambda, converter);
+    // The child root table acts as the subquery table; outer parameters stay visible in InnerExpr
+    return new ForeignExpr(child.Table!.Type)
+    {
+        Alias = child.Table!.Alias,
+        InnerExpr = child.ToLogicExpr()
+    };
+});
+```
+
+For the full extension mechanism, see [Expression Extension](../extensibility/expression-extension.en.md).
+
 ## 6. Projection Queries (`SearchAs` / `SearchOneAs`)
 
 `SearchAs` / `SearchOneAs` accept IQueryable-style lambdas and project the result into a target type (custom classes or anonymous types), which is convenient for "select only some columns" or "assemble view / summary objects":
