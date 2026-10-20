@@ -17,7 +17,7 @@
     <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
       8.1.13:
-      - AOT 下 [TableJoin]/[ForeignType]/[ForeignColumn] 与 [Column(Constant = ...)] 由 TableInfoGenerator 编译期写入 TableInfo（JoinedTables、ColumnInfo.ForeignTables/ForeignColumn、Constant），CommonTableInfoProvider 装配出完整的 TableView 与 TableDefinition.ConstFilter，与 JIT 一致。
+      - AOT 下 [TableJoin]/[ForeignType]/[ForeignColumn] 与 [Column(Constant = ...)] 由 TableInfoGenerator 编译期写入 TableInfo ，CommonTableInfoProvider 装配出完整的 TableView 与 TableDefinition.ConstFilter，与 JIT 一致。
       - LambdaExprConverter 支持嵌套参数上下文：新增带父转换器的构造重载，子转换器继承外层参数映射并共享别名编号；多参数 Lambda 全部注册（param[0] 为 T0 根表，其余参数获得新别名）。
       - 破坏性变更：删除 Expr.Exists/Expr.ExistsRelated 的泛型重载，LogicExpr 场景改用 Type 重载 Expr.Exists(typeof(T), ...)；删除 Where&lt;T&gt; Lambda 扩展方法，改用 Where(Expr.Lambda&lt;T&gt;(...))。
       - 破坏性变更：删除 TableRef 抽象类，成员移入 JoinedTable；ColumnRef.Table 类型由 TableRef? 改为 JoinedTable?。
