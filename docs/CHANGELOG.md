@@ -14,9 +14,7 @@
 
 ### 新特性
 
-- **AOT 下生成关联元数据**（`LiteOrm.Common` / `LiteOrm.Generators`）：`[TableJoin]`、`[ForeignType]`、`[ForeignColumn]` 由 `TableInfoGenerator` 编译期写入 `TableInfo.JoinedTables` 与 `ColumnInfo.ForeignTables` / `ForeignColumn`，运行期 `CommonTableInfoProvider` 据此装配出完整的 `TableView`（关联表、外键链 `Used` 标记、投影列目标列），AOT 与 JIT 的视图结构一致。
-
-- **AOT 下 `[Column(Constant = ...)]` 收进 `TableDefinition.ConstFilter`**（`LiteOrm.Common` / `LiteOrm.Generators`）：`ColumnInfo` 新增 `Constant`，`TableInfoGenerator` 把特性值渲染成字面量写入生成的注册代码，`CommonTableInfoProvider` 按属性类型对齐后拼出 `ConstFilter`，与 JIT 一致。
+- **AOT 下生成关联元数据与常量过滤**（`LiteOrm.Common` / `LiteOrm.Generators`）：`[TableJoin]`、`[ForeignType]`、`[ForeignColumn]` 由 `TableInfoGenerator` 编译期写入 `TableInfo.JoinedTables` 与 `ColumnInfo.ForeignTables` / `ForeignColumn`，`[Column(Constant = ...)]` 渲染成字面量写入 `ColumnInfo.Constant`；运行期 `CommonTableInfoProvider` 据此装配出完整的 `TableView`（关联表、外键链 `Used` 标记、投影列目标列）与 `TableDefinition.ConstFilter`，与 JIT 结构一致。
 
 - **`LambdaExprConverter` 支持嵌套参数上下文**（`LiteOrm.Common`）：新增 `LambdaExprConverter(LambdaExpression expression, LambdaExprConverter? parent = null)` 构造重载，子转换器继承父转换器的参数映射并共享别名编号，自定义方法处理器可创建能看见外层参数的子转换器。
 

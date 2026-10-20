@@ -14,9 +14,7 @@
 
 ### New Features
 
-- **Association metadata is generated under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `TableInfoGenerator` writes `[TableJoin]`, `[ForeignType]` and `[ForeignColumn]` into `TableInfo.JoinedTables` and `ColumnInfo.ForeignTables` / `ForeignColumn` at compile time, and `CommonTableInfoProvider` assembles the complete `TableView` from them at runtime (joined tables, `Used` marks along the foreign-key chain, projected target columns), so the view structure matches JIT.
-
-- **`[Column(Constant = ...)]` is collected into `TableDefinition.ConstFilter` under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `ColumnInfo` gains `Constant`, `TableInfoGenerator` renders the attribute value as a literal into the generated registration code, and `CommonTableInfoProvider` aligns it to the property type and builds `ConstFilter`, matching JIT.
+- **Association metadata and constant filters are generated under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `TableInfoGenerator` writes `[TableJoin]`, `[ForeignType]` and `[ForeignColumn]` into `TableInfo.JoinedTables` and `ColumnInfo.ForeignTables` / `ForeignColumn`, and renders `[Column(Constant = ...)]` as a literal into `ColumnInfo.Constant`; at runtime `CommonTableInfoProvider` assembles the complete `TableView` (joined tables, `Used` marks along the foreign-key chain, projected target columns) and `TableDefinition.ConstFilter` from them, matching JIT.
 
 - **`LambdaExprConverter` supports nested parameter contexts** (`LiteOrm.Common`): the new `LambdaExprConverter(LambdaExpression expression, LambdaExprConverter? parent = null)` constructor overload lets a child converter inherit the parent's parameter mappings and share its alias sequence, so custom method handlers can create a child converter that sees outer parameters.
 
