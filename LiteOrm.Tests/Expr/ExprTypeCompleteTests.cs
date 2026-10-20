@@ -923,9 +923,9 @@ namespace LiteOrm.Tests
         [Fact]
         public void ComplexExpr_NestedExists_Tests()
         {
-            var expr = Expr.ExistsRelated<TestDepartment>(
+            var expr = Expr.ExistsRelated(typeof(TestDepartment),
                 Expr.Prop("Name") == "IT" &
-                Expr.Exists<TestUser>(Expr.Prop("DeptId") == Expr.Prop("TestDepartment", "Id"))
+                Expr.Exists(typeof(TestUser), Expr.Prop("DeptId") == Expr.Prop("TestDepartment", "Id"))
             );
 
             Assert.NotNull(expr);

@@ -274,8 +274,8 @@ var query = From<User>()
 | `Expr.From<T>()` | 创建链式查询起点 | `Expr.From<User>()` |
 | `Expr.Update<T>()` | 创建 UPDATE 表达式 | `Expr.Update<User>()` |
 | `Expr.Delete<T>()` | 创建 DELETE 表达式 | `Expr.Delete<User>()` |
-| `Expr.Exists<T>(innerExpr)` | 创建 EXISTS 子查询 | `Expr.Exists<Department>(...)` |
-| `Expr.ExistsRelated<T>(innerExpr)` | 创建自动关联 EXISTS 子查询 | `Expr.ExistsRelated<DepartmentView>(...)` |
+| `Expr.Exists(type, innerExpr)` | 创建 EXISTS 子查询 | `Expr.Exists(typeof(Department), ...)` |
+| `Expr.ExistsRelated(type, innerExpr)` | 创建自动关联 EXISTS 子查询 | `Expr.ExistsRelated(typeof(DepartmentView), ...)` |
 | `Expr.Lambda<T>(expr)` | 将 Lambda 转成 `LogicExpr` | `Expr.Lambda<User>(u => u.Age > 18)` |
 | `Expr.Func(name, args)` | 创建函数表达式 | `Expr.Func("COUNT", Expr.Prop("Id"))` |
 | `Expr.Aggregate(name, expr, isDistinct)` | 创建聚合函数表达式 | `Expr.Aggregate("COUNT", Expr.Prop("Id"), true)` |

@@ -493,10 +493,8 @@ services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
 | `Expr.Case(params Expr[])`                       | `FunctionExpr`    | CASE 表达式（交替参数形式）                          |
 | `Expr.Query<T>(expression)`                      | `Expr`            | IQueryable Lambda 转 Expr                    |
 | `Expr.Query<T, TResult>(expression)`             | `Expr`            | 带返回值的 IQueryable Lambda 转 Expr              |
-| `Expr.Exists<T>(innerExpr, tableArgs)`           | `ForeignExpr`     | 关联表 EXISTS 查询                               |
-| `Expr.Exists(type, innerExpr, tableArgs)`        | `ForeignExpr`     | 关联表 EXISTS 查询（指定类型）                         |
-| `Expr.ExistsRelated<T>(innerExpr, tableArgs)`    | `ForeignExpr`     | 自动关联的 EXISTS 查询                             |
-| `Expr.ExistsRelated(type, innerExpr, tableArgs)` | `ForeignExpr`     | 自动关联的 EXISTS 查询（指定类型）                       |
+| `Expr.Exists(type, innerExpr, tableArgs)`        | `ForeignExpr`     | 关联表 EXISTS 查询                               |
+| `Expr.ExistsRelated(type, innerExpr, tableArgs)` | `ForeignExpr`     | 自动关联的 EXISTS 查询                             |
 | `Expr.Exists<T>(lambda)`                         | `bool`            | 仅用于 Lambda 表达式中构造 EXISTS 查询（直接调用会抛出异常）      |
 | `Expr.ExistsRelated<T>(lambda)`                  | `bool`            | 仅用于 Lambda 表达式中构造自动关联的 EXISTS 查询（直接调用会抛出异常） |
 

@@ -114,7 +114,7 @@ namespace LiteOrm.Tests
             Assert.NotEmpty(propResults);
 
             // 测试Exists方法
-            var existsExpr = Expr.Exists<TestDepartment>(Expr.Prop("Id") == user1.DeptId);
+            var existsExpr = Expr.Exists(typeof(TestDepartment), Expr.Prop("Id") == user1.DeptId);
             var existsResults = await objectViewDAO.Search(existsExpr).ToListAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(existsResults);
 

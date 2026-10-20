@@ -8,6 +8,10 @@
 
 - **`LambdaExprConverter` 参数映射改按 `ParameterExpression` 引用键控**（`LiteOrm.Common`）：`_parameterAliases` 与 `_parameterExprs` 两个 protected 字段的键类型由参数名 `string` 改为 `ParameterExpression` 引用，内层 Lambda 参数与外层同名时不再覆盖或删除外层映射；`_aliasCounter` 由 `int` 改为父子转换器共享的 `LambdaExprConverter.AliasSequence`；`Table` 属性在传入父转换器且 Lambda 无参数时可为 null。
 
+- **删除 `Expr.Exists` / `Expr.ExistsRelated` 的泛型重载**（`LiteOrm.Common`）：`Exists<T>(LogicExpr, params string[])` 与 `ExistsRelated<T>(LogicExpr?, params string[])` 一并删除，`LogicExpr` 场景统一改用 Type 重载 `Expr.Exists(typeof(T), innerExpr, tableArgs)` 与 `Expr.ExistsRelated(typeof(T), innerExpr, tableArgs)`；Lambda 表达式内的 `Expr.Exists<T>(lambda)` / `Expr.ExistsRelated<T>(lambda)` 不受影响。
+
+- **删除 `Where<T>` Lambda 扩展方法**（`LiteOrm.Common`）：`ISourceAnchor` 上的 `Where<T>(this ISourceAnchor?, Expression<Func<T, bool>>)` 删除，改用 `.Where(Expr.Lambda<T>(u => ...))`。
+
 ### 新特性
 
 - **AOT 下生成关联元数据**（`LiteOrm.Common` / `LiteOrm.Generators`）：`[TableJoin]`、`[ForeignType]`、`[ForeignColumn]` 由 `TableInfoGenerator` 编译期写入 `TableInfo.JoinedTables` 与 `ColumnInfo.ForeignTables` / `ForeignColumn`，运行期 `CommonTableInfoProvider` 据此装配出完整的 `TableView`（关联表、外键链 `Used` 标记、投影列目标列），AOT 与 JIT 的视图结构一致。
@@ -17,6 +21,10 @@
 - **`LambdaExprConverter` 支持嵌套参数上下文**（`LiteOrm.Common`）：新增 `LambdaExprConverter(LambdaExpression expression, LambdaExprConverter? parent = null)` 构造重载，子转换器继承父转换器的参数映射并共享别名编号，自定义方法处理器可创建能看见外层参数的子转换器。
 
 - **多参数 Lambda 全量注册**（`LiteOrm.Common`）：构造函数注册 Lambda 的全部参数，`param[0]` 为别名 `T0` 的根 `TableExpr`，`param[i>0]` 获得新别名 `T{n}` 的 `TableExpr`。
+
+### 改进
+
+- **`Section` / `Select` / `Where` / `Having` 的条件参数改为可空**（`LiteOrm.Common`）：`LogicExpr` 参数统一改为 `LogicExpr?`，无过滤条件的分页、选择与查询可直接传 `null`。
 
 ### 修复
 

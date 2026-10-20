@@ -493,10 +493,8 @@ Event subscribers are resolved lazily: constructing an entity service instance n
 | `Expr.Case(params Expr[])` | `FunctionExpr` | CASE expression (alternating argument form) |
 | `Expr.Query<T>(expression)` | `Expr` | Converts an IQueryable Lambda to Expr |
 | `Expr.Query<T, TResult>(expression)` | `Expr` | Converts an IQueryable Lambda with a return value to Expr |
-| `Expr.Exists<T>(innerExpr, tableArgs)` | `ForeignExpr` | EXISTS query on a related table |
-| `Expr.Exists(type, innerExpr, tableArgs)` | `ForeignExpr` | EXISTS query on a related table (explicit type) |
-| `Expr.ExistsRelated<T>(innerExpr, tableArgs)` | `ForeignExpr` | EXISTS query using automatic relation discovery |
-| `Expr.ExistsRelated(type, innerExpr, tableArgs)` | `ForeignExpr` | EXISTS query using automatic relation discovery (explicit type) |
+| `Expr.Exists(type, innerExpr, tableArgs)` | `ForeignExpr` | EXISTS query on a related table |
+| `Expr.ExistsRelated(type, innerExpr, tableArgs)` | `ForeignExpr` | EXISTS query using automatic relation discovery |
 | `Expr.Exists<T>(lambda)` | `bool` | Used only inside Lambda expressions to build EXISTS queries (direct calls throw an exception) |
 | `Expr.ExistsRelated<T>(lambda)` | `bool` | Used only inside Lambda expressions to build automatic-related EXISTS queries (direct calls throw an exception) |
 

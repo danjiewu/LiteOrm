@@ -277,7 +277,7 @@ namespace LiteOrm.Tests
         public void ExistsSubquery_Serialization()
         {
             // 测试：验证 Exists 表达式可以被序列化
-            var foreignExpr = Expr.Exists<TestDepartment>(Expr.Prop("Id") == Expr.Prop("u", "DeptId"));
+            var foreignExpr = Expr.Exists(typeof(TestDepartment), Expr.Prop("Id") == Expr.Prop("u", "DeptId"));
             Assert.NotNull(foreignExpr);
 
             // 使用 Expr.And 与其他逻辑表达式组合

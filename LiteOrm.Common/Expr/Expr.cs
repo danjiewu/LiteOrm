@@ -130,30 +130,6 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件，支持分表。
-        /// </summary>
-        /// <typeparam name="T">关联外部实体的类型</typeparam>
-        /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
-        /// <param name="tableArgs">动态表名参数。</param>
-        /// <returns>外键关联查询表达式。</returns>
-        public static ForeignExpr Exists<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(LogicExpr innerExpr, params string[] tableArgs)
-        {
-            return new ForeignExpr(typeof(T), innerExpr, tableArgs);
-        }
-
-        /// <summary>
-        /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件，支持分表，并自动根据当前查询上下文推断关联关系。
-        /// </summary>
-        /// <typeparam name="T">关联外部实体的类型。</typeparam>
-        /// <param name="innerExpr">针对关联表的过滤条件表达式。</param>
-        /// <param name="tableArgs">动态表名参数。</param>
-        /// <returns>外键关联查询表达式。</returns>
-        public static ForeignExpr ExistsRelated<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(LogicExpr? innerExpr = null, params string[] tableArgs)
-        {
-            return new ForeignExpr(typeof(T), innerExpr, tableArgs) { AutoRelated = true };
-        }
-
-        /// <summary>
         /// 创建外键表达式，用于构建关联表的 EXISTS 查询条件，支持分表，并自动根据当前查询上下文推断关联关系。
         /// </summary>
         /// <param name="type">关联外部实体的类型。</param>
@@ -457,7 +433,6 @@ namespace LiteOrm.Common
             var f = new TableExpr(objectType) { TableArgs = tableArgs };
             return f;
         }
-
 
         /// <summary>
         /// 初始化 From 表达式的关联表信息，根据主表类型自动加载其关联的 JoinedTables，并构建对应的 TableJoinExpr 列表。

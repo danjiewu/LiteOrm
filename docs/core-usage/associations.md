@@ -262,7 +262,7 @@ LiteOrm 会先按依赖关系对 `TableView` 中的关联表做拓扑排序，�
 ```csharp
 using static LiteOrm.Common.Expr;
 var expr1 = From<TestUserView>()
-    .Where<TestUserView>(u => u.DeptName != null)
+    .Where(Lambda<TestUserView>(u => u.DeptName != null))
     .OrderBy((nameof(TestUserView.DeptName), true))
     .OrderBy((nameof(TestUser.Age), false))
     .Section(0, 3);
@@ -275,7 +275,7 @@ var users1 = await viewService.SearchAsync(expr1);
 ```csharp
 using static LiteOrm.Common.Expr;
 var expr2 = From<TestUserView>()
-    .Where<TestUserView>(u => u.ParentDeptName == "Parent Dept")
+    .Where(Lambda<TestUserView>(u => u.ParentDeptName == "Parent Dept"))
     .OrderBy(nameof(TestUserView.ParentDeptName))
     .OrderBy(nameof(TestUserView.DeptName))
     .OrderBy(nameof(TestUser.Age))

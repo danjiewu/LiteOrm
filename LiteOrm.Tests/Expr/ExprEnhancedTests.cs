@@ -650,7 +650,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(user3, TestContext.Current.CancellationToken);
 
             // 正向路径：TestUser 通过 [ForeignType] 关联 TestDepartment，自动推断 TestDepartment.Id = TestUser.DeptId
-            var expr = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ER_IT");
+            var expr = Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "ER_IT");
             var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);
@@ -675,7 +675,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(userNoDept, TestContext.Current.CancellationToken);
 
             // NOT ExistsRelated：返回没有关联 IT 部门的用户
-            var expr = !Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ERNot_IT");
+            var expr = !Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "ERNot_IT");
             var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);
@@ -701,7 +701,7 @@ namespace LiteOrm.Tests
 
             // 反向路径：TestDepartment 无 [ForeignType]/[TableJoin] 指向 TestUser，
             // 通过 TestUser 的 JoinedTables 反向推断 TestUser.DeptId = TestDepartment.Id
-            var expr = Expr.ExistsRelated<TestUser>(Expr.Prop("Name") == "ERRev_User1");
+            var expr = Expr.ExistsRelated(typeof(TestUser), Expr.Prop("Name") == "ERRev_User1");
             var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);
@@ -727,7 +727,7 @@ namespace LiteOrm.Tests
             var innerExpr = Expr.Prop("Name") == "ERType_IT";
 
             // 泛型重载
-            var genericResults = await objectViewDAO.Search(Expr.ExistsRelated<TestDepartment>(innerExpr))
+            var genericResults = await objectViewDAO.Search(Expr.ExistsRelated(typeof(TestDepartment), innerExpr))
                 .ToListAsync(TestContext.Current.CancellationToken);
 
             // Type 重载
@@ -760,7 +760,7 @@ namespace LiteOrm.Tests
             await userService.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             // ExistsRelated AND 年龄条件组合
-            var expr = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "ERCombo_IT") & (Expr.Prop("Age") >= 30);
+            var expr = Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "ERCombo_IT") & (Expr.Prop("Age") >= 30);
             var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);

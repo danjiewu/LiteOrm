@@ -47,10 +47,10 @@ namespace LiteOrm.Demo.Demos
                     "ExistsRelated 自动推断关联条件，无需手动写 T1.Id = T0.DeptId。");
 
                 DemoHelper.PrintSection("📝 代码实现",
-                    "var expr = ExistsRelated<DepartmentView>(Prop(\"Name\") == \"研发中心\");\n" +
+                    "var expr = ExistsRelated(typeof(DepartmentView), Prop(\"Name\") == \"研发中心\");\n" +
                     "var results = await userSvc.SearchAsync(expr);");
 
-                var expr = ExistsRelated<DepartmentView>(Prop("Name") == "研发中心");
+                var expr = ExistsRelated(typeof(DepartmentView), Prop("Name") == "研发中心");
                 var results = await userSvc.SearchAsync(expr);
 
                 var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
@@ -93,10 +93,10 @@ namespace LiteOrm.Demo.Demos
                     "ExistsRelated 自动推断 EXISTS 子查询的关联条件 T1.Id = T0.ManagerId。");
 
                 DemoHelper.PrintSection("📝 代码实现",
-                    "var expr = ExistsRelated<User>(Prop(\"Age\") > 35);\n" +
+                    "var expr = ExistsRelated(typeof(User), Prop(\"Age\") > 35);\n" +
                     "var results = await deptSvc.SearchAsync(expr);");
 
-                var expr = ExistsRelated<User>(Prop("Age") > 35);
+                var expr = ExistsRelated(typeof(User), Prop("Age") > 35);
                 var results = await deptSvc.SearchAsync(expr);
 
                 var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
@@ -136,10 +136,10 @@ namespace LiteOrm.Demo.Demos
                     "对 ExistsRelated 取反，生成 NOT EXISTS 子查询。");
 
                 DemoHelper.PrintSection("📝 代码实现",
-                    "var expr = ExistsRelated<DepartmentView>(Prop(\"Name\").StartsWith(\"研\")).Not();\n" +
+                    "var expr = ExistsRelated(typeof(DepartmentView), Prop(\"Name\").StartsWith(\"研\")).Not();\n" +
                     "var results = await userSvc.SearchAsync(expr);");
 
-                var expr = ExistsRelated<DepartmentView>(Prop("Name").StartsWith("研")).Not();
+                var expr = ExistsRelated(typeof(DepartmentView), Prop("Name").StartsWith("研")).Not();
                 var results = await userSvc.SearchAsync(expr);
 
                 var sql = SessionManager.Current?.SqlStack?.LastOrDefault() ?? "SQL 不可用";
@@ -181,11 +181,11 @@ namespace LiteOrm.Demo.Demos
                     "将 ExistsRelated 条件与普通字段条件通过 & 运算符组合使用。");
 
                 DemoHelper.PrintSection("📝 代码实现",
-                    "var expr = ExistsRelated<DepartmentView>(Prop(\"Name\") == \"市场部\")\n" +
+                    "var expr = ExistsRelated(typeof(DepartmentView), Prop(\"Name\") == \"市场部\")\n" +
                     "         & (Prop(\"Age\") > 25);\n" +
                     "var results = await userSvc.SearchAsync(expr);");
 
-                var expr = ExistsRelated<DepartmentView>(Prop("Name") == "市场部")
+                var expr = ExistsRelated(typeof(DepartmentView), Prop("Name") == "市场部")
                          & (Prop("Age") > 25);
                 var results = await userSvc.SearchAsync(expr);
 

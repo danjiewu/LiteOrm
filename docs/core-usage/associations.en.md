@@ -240,7 +240,7 @@ Association fields can directly participate in sorting and pagination:
 ```csharp
 using static LiteOrm.Common.Expr;
 var expr1 = From<TestUserView>()
-    .Where<TestUserView>(u => u.DeptName != null)
+    .Where(Lambda<TestUserView>(u => u.DeptName != null))
     .OrderBy((nameof(TestUserView.DeptName), true))
     .OrderBy((nameof(TestUser.Age), false))
     .Section(0, 3);
@@ -253,7 +253,7 @@ And for deeper parent department fields:
 ```csharp
 using static LiteOrm.Common.Expr;
 var expr2 = From<TestUserView>()
-    .Where<TestUserView>(u => u.ParentDeptName == "Parent Dept")
+    .Where(Lambda<TestUserView>(u => u.ParentDeptName == "Parent Dept"))
     .OrderBy(nameof(TestUserView.ParentDeptName))
     .OrderBy(nameof(TestUserView.DeptName))
     .OrderBy(nameof(TestUser.Age))

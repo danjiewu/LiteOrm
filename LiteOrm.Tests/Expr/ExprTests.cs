@@ -209,10 +209,10 @@ namespace LiteOrm.Tests
         public void ForeignExpr_Tests()
         {
             // 相等性测试
-            Expr f1 = Expr.Exists<object>(Expr.Prop("Name") == "IT");
-            Expr f2 = Expr.Exists<object>(Expr.Prop("Name") == "IT");
-            Expr f3 = Expr.Exists<object>(Expr.Prop("Name") == "HR");
-            Expr f4 = Expr.Exists<string>(Expr.Prop("Name") == "IT");
+            Expr f1 = Expr.Exists(typeof(object), Expr.Prop("Name") == "IT");
+            Expr f2 = Expr.Exists(typeof(object), Expr.Prop("Name") == "IT");
+            Expr f3 = Expr.Exists(typeof(object), Expr.Prop("Name") == "HR");
+            Expr f4 = Expr.Exists(typeof(string), Expr.Prop("Name") == "IT");
 
             Assert.True(f1.Equals(f2));
             Assert.False(f1.Equals(f3));
@@ -444,7 +444,7 @@ namespace LiteOrm.Tests
         public void ExistsRelated_Tests()
         {
             // AutoRelated 标志应为 true
-            var f1 = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "IT");
+            var f1 = Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "IT");
             Assert.IsType<ForeignExpr>(f1);
             Assert.True(f1.AutoRelated);
             Assert.Equal(typeof(TestDepartment), f1.Foreign);
@@ -459,27 +459,27 @@ namespace LiteOrm.Tests
             Assert.True(f1.Equals(f2));
 
             // 相同参数的两个 ExistsRelated 应相等
-            var f3 = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "IT");
+            var f3 = Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "IT");
             Assert.True(f1.Equals(f3));
             Assert.Equal(f1.GetHashCode(), f3.GetHashCode());
 
             // ExistsRelated 与 Exists 不相等（AutoRelated 不同）
-            var f4 = Expr.Exists<TestDepartment>(Expr.Prop("Name") == "IT");
+            var f4 = Expr.Exists(typeof(TestDepartment), Expr.Prop("Name") == "IT");
             Assert.False(f4.AutoRelated);
             Assert.False(f1.Equals(f4));
 
             // 不同 InnerExpr 应不相等
-            var f5 = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "HR");
+            var f5 = Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "HR");
             Assert.False(f1.Equals(f5));
 
             // 不同外部类型应不相等
-            var f6 = Expr.ExistsRelated<TestUser>(Expr.Prop("Name") == "IT");
+            var f6 = Expr.ExistsRelated(typeof(TestUser), Expr.Prop("Name") == "IT");
             Assert.False(f1.Equals(f6));
 
             // 带 TableArgs 的版本
-            var f7 = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "IT", "2024");
-            var f8 = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "IT", "2024");
-            var f9 = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "IT", "2025");
+            var f7 = Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "IT", "2024");
+            var f8 = Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "IT", "2024");
+            var f9 = Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "IT", "2025");
             Assert.True(f7.Equals(f8));
             Assert.Equal(f7.GetHashCode(), f8.GetHashCode());
             Assert.False(f7.Equals(f9));

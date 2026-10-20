@@ -32,8 +32,8 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
   - `LiteOrm.Tests\ServiceTests.cs`
   - `LiteOrm.Tests\LambdaQueryTests.cs`
 - Focus:
-  - `Expr.Exists<T>(...)`
-  - `Expr.ExistsRelated<T>(...)`
+  - `Expr.Exists(typeof(T), ...)`
+  - `Expr.ExistsRelated(typeof(T), ...)`
   - `NOT ExistsRelated(...)`
   - `IN` subqueries
   - combining relationship filters with ordinary predicates

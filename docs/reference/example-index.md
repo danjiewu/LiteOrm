@@ -32,8 +32,8 @@
   - `LiteOrm.Tests\ServiceTests.cs`
   - `LiteOrm.Tests\LambdaQueryTests.cs`
 - 重点内容：
-  - `Expr.Exists<T>(...)`
-  - `Expr.ExistsRelated<T>(...)`
+  - `Expr.Exists(typeof(T), ...)`
+  - `Expr.ExistsRelated(typeof(T), ...)`
   - `NOT ExistsRelated(...)`
   - `IN` 子查询
   - 关联过滤与普通字段条件组合

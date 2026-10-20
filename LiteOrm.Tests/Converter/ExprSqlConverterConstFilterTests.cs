@@ -147,7 +147,7 @@ namespace LiteOrm.Common.UnitTests
                     Source = new WhereExpr
                     {
                         Source = new FromExpr(typeof(PlainJoinOrder)),
-                        Where = Expr.Exists<ConstFilterDepartment>(Expr.Prop("Id") > 0)
+                        Where = Expr.Exists(typeof(ConstFilterDepartment), Expr.Prop("Id") > 0)
                     }
                 };
 
@@ -173,7 +173,7 @@ namespace LiteOrm.Common.UnitTests
                     Source = new WhereExpr
                     {
                         Source = new FromExpr(typeof(ConstFilterJoinOrder)),
-                        Where = Expr.ExistsRelated<ConstFilterDepartment>(Expr.Prop("Id") > 0)
+                        Where = Expr.ExistsRelated(typeof(ConstFilterDepartment), Expr.Prop("Id") > 0)
                     }
                 };
 

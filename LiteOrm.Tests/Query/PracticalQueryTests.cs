@@ -713,7 +713,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(user2, TestContext.Current.CancellationToken);
             await userService.InsertAsync(user3, TestContext.Current.CancellationToken);
 
-            var expr = Expr.Exists<TestDepartment>(Expr.Prop("Id") == Expr.Prop("T0", "DeptId"));
+            var expr = Expr.Exists(typeof(TestDepartment), Expr.Prop("Id") == Expr.Prop("T0", "DeptId"));
             var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);
@@ -899,7 +899,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(user2, TestContext.Current.CancellationToken);
             await userService.InsertAsync(user3, TestContext.Current.CancellationToken);
 
-            var expr = Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "Practical_IT");
+            var expr = Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "Practical_IT");
             var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);
@@ -922,7 +922,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(user1, TestContext.Current.CancellationToken);
             await userService.InsertAsync(user2, TestContext.Current.CancellationToken);
 
-            var expr = !Expr.ExistsRelated<TestDepartment>(Expr.Prop("Name") == "NotExists_IT");
+            var expr = !Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "NotExists_IT");
             var results = await objectViewDAO.Search(expr).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(results);

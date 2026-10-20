@@ -477,7 +477,7 @@ namespace LiteOrm.Common
         /// <param name="skip">跳过记录数。</param>
         /// <param name="take">获取记录数。</param>
         /// <returns>分页表达式对象。</returns>
-        public static SectionExpr Section(this LogicExpr logic, int skip, int take) => new SectionExpr(new WhereExpr(null, logic), skip, take);
+        public static SectionExpr Section(this LogicExpr? logic, int skip, int take) => new SectionExpr(new WhereExpr(null, logic), skip, take);
 
         /// <summary>
         /// 基于逻辑条件开启选择子句构建。
@@ -485,7 +485,7 @@ namespace LiteOrm.Common
         /// <param name="logic">逻辑条件表达式。</param>
         /// <param name="selects">选择项表达式序列。</param>
         /// <returns>选择表达式对象。</returns>
-        public static SelectExpr Select(this LogicExpr logic, params ValueTypeExpr[] selects) => new SelectExpr(new WhereExpr(null, logic), selects);
+        public static SelectExpr Select(this LogicExpr? logic, params ValueTypeExpr[] selects) => new SelectExpr(new WhereExpr(null, logic), selects);
 
         /// <summary>
         /// 为 SQL 语句添加 WHERE 子句。
@@ -498,7 +498,7 @@ namespace LiteOrm.Common
         /// var query = table.Where(Expr.Prop("Age") > 18);
         /// </code>
         /// </example>
-        public static WhereExpr Where(this ISourceAnchor? source, LogicExpr where)
+        public static WhereExpr Where(this ISourceAnchor? source, LogicExpr? where)
         {
             if (source is WhereExpr whereExpr)
             {
@@ -507,15 +507,6 @@ namespace LiteOrm.Common
             }
             else return new WhereExpr(source as SqlSegment, where);
         }
-
-        /// <summary>
-        /// 使用指定的 Lambda 表达式创建 WHERE 条件表达式
-        /// </summary>
-        /// <typeparam name="T">实体类型</typeparam>
-        /// <param name="source">SQL 语句构建起点</param>
-        /// <param name="expression">定义筛选条件的 Lambda 表达式</param>
-        /// <returns>WHERE 条件表达式实例</returns>
-        public static WhereExpr Where<T>(this ISourceAnchor? source, Expression<Func<T, bool>> expression) => new WhereExpr(source as SqlSegment, Expr.Lambda(expression));
 
         /// <summary>
         /// 为 UPDATE 表达式添加 WHERE 条件。
@@ -575,7 +566,7 @@ namespace LiteOrm.Common
         ///     .Having(Expr.Prop("Count").Count().GreaterThan(10));
         /// </code>
         /// </example>
-        public static HavingExpr Having(this IHavingAnchor? source, LogicExpr having) => new HavingExpr(source as SqlSegment, having);
+        public static HavingExpr Having(this IHavingAnchor? source, LogicExpr? having) => new HavingExpr(source as SqlSegment, having);
 
 
         /// <summary>

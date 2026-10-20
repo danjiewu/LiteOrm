@@ -377,12 +377,12 @@ namespace LiteOrm.Tests
 
             // Act - Order
             var ordered = await viewService.SearchAsync(
-                Expr.From<TestUser>().Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", false)), cancellationToken: TestContext.Current.CancellationToken
+                Expr.From<TestUser>().Where(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Order"))).OrderBy(("Age", false)), cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Act - Section
             var section = await viewService.SearchAsync(
-                Expr.From<TestUser>().Where<TestUser>(u => u.Name!.StartsWith("Order")).OrderBy(("Age", false)).Section(0, 2), cancellationToken: TestContext.Current.CancellationToken
+                Expr.From<TestUser>().Where(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Order"))).OrderBy(("Age", false)).Section(0, 2), cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert
@@ -475,7 +475,7 @@ namespace LiteOrm.Tests
             // Act
             // 使用 ForeignExpr 进行关联查询 (使用 EXISTS 子查询)
             // 需要在 InnerExpr 中添加外键关联条件：TestUser.DeptId = TestDepartment.Id
-            var users = await viewService.SearchAsync(Expr.Exists<TestDepartment>(
+            var users = await viewService.SearchAsync(Expr.Exists(typeof(TestDepartment), 
                 (Expr.Prop("Name") == "Foreign Dept") &
                 (Expr.Prop("T0", "DeptId") == Expr.Prop("Id"))
             ), cancellationToken: TestContext.Current.CancellationToken);
@@ -503,7 +503,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "User C", Age = 30, DeptId = dept2.Id, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             var users = await viewService.SearchAsync(
-                (Expr.Prop("Age") == 30) & Expr.Exists<TestDepartment>(
+                (Expr.Prop("Age") == 30) & Expr.Exists(typeof(TestDepartment), 
                     (Expr.Prop("Name") == "Dept 1") &
                     (Expr.Prop("T0", "DeptId") == Expr.Prop("Id")) &
                     (Expr.Prop("T0", "Name") != Expr.Prop("Name"))), cancellationToken: TestContext.Current.CancellationToken
@@ -617,7 +617,7 @@ namespace LiteOrm.Tests
 
             // Act 1: 使用 ForeignColumn (DeptName) 作为查询条件和排序条件，同时分页
             var expr1 = Expr.From<TestUserView>()
-                .Where<TestUserView>(u => u.DeptName != null)
+                .Where(Expr.Lambda<TestUserView>(u => u.DeptName != null))
                 .OrderBy((nameof(TestUserView.DeptName), true))  // 按部门名称升序
                 .OrderBy((nameof(TestUser.Age), false))          // 再按年龄降序
                 .Section(0, 3);                                  // 分页，取前3条
@@ -646,7 +646,7 @@ namespace LiteOrm.Tests
 
             // 使用 ParentDeptName 作为查询和排序条件
             var expr2 = Expr.From<TestUserView>()
-                .Where<TestUserView>(u => u.ParentDeptName == "Parent Dept")
+                .Where(Expr.Lambda<TestUserView>(u => u.ParentDeptName == "Parent Dept"))
                 .OrderBy(nameof(TestUserView.ParentDeptName))  // 按父部门名称升序
                 .OrderBy(nameof(TestUserView.DeptName))        // 再按部门名称升序
                 .OrderBy(nameof(TestUser.Age))                 // 再按年龄升序
@@ -1027,7 +1027,7 @@ namespace LiteOrm.Tests
             var updateExpr = new UpdateExpr
             {
                 Table = new TableExpr(typeof(TestUser)),
-                Sets = new ()
+                Sets = new()
                 {
                     new (Expr.Prop("Age"), Expr.Prop("Age") + Expr.Const(5)), // 使用运算符重载和Expr.Const，Age = Age + 5
                     new (Expr.Prop("Name"), new FunctionExpr("UPPER", Expr.Prop("Name"))) // 使用UPPER函数，参数为Name属性
@@ -1056,7 +1056,7 @@ namespace LiteOrm.Tests
             var updateExpr = new UpdateExpr
             {
                 Table = new TableExpr(typeof(TestUser)),
-                Sets = new ()
+                Sets = new()
                 {
                     new (Expr.Prop("Age"), Expr.Prop("Age") + Expr.Const(10)), // 使用运算符重载和Expr.Const，Age = Age + 10
                     new (Expr.Prop("Name"), new FunctionExpr("CONCAT", Expr.Prop("Name"), Expr.Const("_Updated"))) // 使用CONCAT函数，参数为Name属性和字符串
@@ -1160,7 +1160,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var log1 = new TestLog { Event = "Short", Amount = 100, CreateTime = new DateTime(2024, 6, 10), Duration = TimeSpan.FromHours(1), UserID = user.Id };
-            var log2 = new TestLog { Event = "Long",  Amount = 200, CreateTime = new DateTime(2024, 6, 15), Duration = TimeSpan.FromHours(5), UserID = user.Id };
+            var log2 = new TestLog { Event = "Long", Amount = 200, CreateTime = new DateTime(2024, 6, 15), Duration = TimeSpan.FromHours(5), UserID = user.Id };
             await service.InsertAsync(log1, TestContext.Current.CancellationToken);
             await service.InsertAsync(log2, TestContext.Current.CancellationToken);
 

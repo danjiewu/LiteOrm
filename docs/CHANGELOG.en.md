@@ -8,6 +8,10 @@
 
 - **`LambdaExprConverter` parameter maps are now keyed by `ParameterExpression` reference** (`LiteOrm.Common`): the key type of the two protected fields `_parameterAliases` and `_parameterExprs` changes from parameter name `string` to `ParameterExpression`, so an inner lambda parameter that shares a name with an outer one no longer overwrites or removes the outer mapping; `_aliasCounter` changes from `int` to the shared `LambdaExprConverter.AliasSequence`; the `Table` property may be null when a parent converter is supplied and the lambda has no parameters.
 
+- **The generic overloads of `Expr.Exists` / `Expr.ExistsRelated` are removed** (`LiteOrm.Common`): `Exists<T>(LogicExpr, params string[])` and `ExistsRelated<T>(LogicExpr?, params string[])` are deleted; `LogicExpr` scenarios now use the Type-based overloads `Expr.Exists(typeof(T), innerExpr, tableArgs)` and `Expr.ExistsRelated(typeof(T), innerExpr, tableArgs)`. The in-lambda forms `Expr.Exists<T>(lambda)` / `Expr.ExistsRelated<T>(lambda)` are unaffected.
+
+- **The `Where<T>` Lambda extension method is removed** (`LiteOrm.Common`): `Where<T>(this ISourceAnchor?, Expression<Func<T, bool>>)` on `ISourceAnchor` is deleted; use `.Where(Expr.Lambda<T>(u => ...))` instead.
+
 ### New Features
 
 - **Association metadata is generated under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `TableInfoGenerator` writes `[TableJoin]`, `[ForeignType]` and `[ForeignColumn]` into `TableInfo.JoinedTables` and `ColumnInfo.ForeignTables` / `ForeignColumn` at compile time, and `CommonTableInfoProvider` assembles the complete `TableView` from them at runtime (joined tables, `Used` marks along the foreign-key chain, projected target columns), so the view structure matches JIT.
@@ -17,6 +21,10 @@
 - **`LambdaExprConverter` supports nested parameter contexts** (`LiteOrm.Common`): the new `LambdaExprConverter(LambdaExpression expression, LambdaExprConverter? parent = null)` constructor overload lets a child converter inherit the parent's parameter mappings and share its alias sequence, so custom method handlers can create a child converter that sees outer parameters.
 
 - **All parameters of multi-parameter lambdas are registered** (`LiteOrm.Common`): the constructor registers every lambda parameter, with `param[0]` as the root `TableExpr` aliased `T0` and `param[i>0]` as a `TableExpr` with a fresh alias `T{n}`.
+
+### Enhancements
+
+- **Condition parameters of `Section` / `Select` / `Where` / `Having` are now nullable** (`LiteOrm.Common`): the `LogicExpr` parameters are changed to `LogicExpr?`, so conditional-free paging, selection and filtering can pass `null` directly.
 
 ### Fixes
 

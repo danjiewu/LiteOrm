@@ -278,8 +278,8 @@ In day-to-day query code, the most common ones are usually:
 | `Expr.From<T>()` | Create a chained-query starting point | `Expr.From<User>()` |
 | `Expr.Update<T>()` | Create an UPDATE expression | `Expr.Update<User>()` |
 | `Expr.Delete<T>()` | Create a DELETE expression | `Expr.Delete<User>()` |
-| `Expr.Exists<T>(innerExpr)` | Create an EXISTS subquery | `Expr.Exists<Department>(...)` |
-| `Expr.ExistsRelated<T>(innerExpr)` | Create an auto-related EXISTS subquery | `Expr.ExistsRelated<DepartmentView>(...)` |
+| `Expr.Exists(type, innerExpr)` | Create an EXISTS subquery | `Expr.Exists(typeof(Department), ...)` |
+| `Expr.ExistsRelated(type, innerExpr)` | Create an auto-related EXISTS subquery | `Expr.ExistsRelated(typeof(DepartmentView), ...)` |
 | `Expr.Lambda<T>(expr)` | Convert Lambda into `LogicExpr` | `Expr.Lambda<User>(u => u.Age > 18)` |
 | `Expr.Func(name, args)` | Create a function expression | `Expr.Func("COUNT", Expr.Prop("Id"))` |
 | `Expr.Aggregate(name, expr, isDistinct)` | Create an aggregate expression | `Expr.Aggregate("COUNT", Expr.Prop("Id"), true)` |

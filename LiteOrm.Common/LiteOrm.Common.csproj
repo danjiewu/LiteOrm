@@ -23,6 +23,8 @@
       - 破坏性变更：删除 TableRef 抽象类，成员移入 JoinedTable；ColumnRef.Table 类型由 TableRef? 改为 JoinedTable?。
       - 破坏性变更：LambdaExprConverter 参数映射改按 ParameterExpression 引用键控，_aliasCounter 改为父子共享的 AliasSequence，Table 在零参数且传入父转换器时可为 null。
       - 修复内层 Lambda 同名参数遮蔽外层参数的 bug：Expr.Exists 等嵌套 Lambda 参数与外层同名时，转换完成后外层参数引用不再失效。
+      - 破坏性变更：删除 Expr.Exists/Expr.ExistsRelated 的泛型重载，LogicExpr 场景改用 Type 重载 Expr.Exists(typeof(T), ...)；删除 Where<T> Lambda 扩展方法，改用 Where(Expr.Lambda<T>(...))。
+      - Section/Select/Where/Having 的条件参数改为 LogicExpr?，无过滤条件时可直接传 null。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
