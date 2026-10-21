@@ -144,7 +144,7 @@ This is still **TableArgs routing**. The only difference is that the placeholder
 
 1. The same connection can already access multiple databases or schemas.
 2. All shards share the same table structure.
-3. You want to keep using the same dynamic routing APIs: `IArged`, `tableArgs`, `WithArgs(...)`, and `Expr.From<T>(...)`.
+3. You want to keep using the same dynamic routing APIs: `IArged`, `tableArgs`, `WithArgs(...)`, and `Expr.From(typeof(T), ...)`.
 
 > **Important**: `{0}.Orders` depends on provider support for cross-database or cross-schema access on the current connection.<br/>
 > If each shard requires a completely different connection string, prefer the `DataSource` approach below instead of pushing the database name into `TableArgs`.
@@ -208,7 +208,7 @@ var results = await salesViewDAO
 
 `TableArgs` are not limited to just "the current table". They propagate through scopes:
 
-1. Once the main table specifies `tableArgs`, `WithArgs(...)`, or `Expr.From<T>(...)`, those arguments enter the current SQL scope.
+1. Once the main table specifies `tableArgs`, `WithArgs(...)`, or `Expr.From(typeof(T), ...)`, those arguments enter the current SQL scope.
 2. Later tables in the same scope, and nested tables in child scopes such as subqueries or association expressions, reuse those propagated arguments if they do not explicitly specify their own `TableArgs`.
 3. If a later table explicitly sets `TableArgs` on its own `TableExpr` or association expression, that explicit value overrides the inherited one.
 
@@ -276,12 +276,12 @@ var sales = await salesService.SearchAsync(
 
 Suitable for unified control of shard parameters at the caller layer.
 
-### 6.3 Use `Expr.From<T>(...)` to Specify Shard
+### 6.3 Use `Expr.From(typeof(T), ...)` to Specify Shard
 
 ```csharp
 using static LiteOrm.Common.Expr;
 var sales = await salesService.SearchAsync(
-    From<SalesRecordView>("202411")
+    From(typeof(SalesRecordView), "202411")
         .Where(Prop("Amount") > 100)
         .OrderBy(("Amount", false))
         .Section(0, 3)
@@ -295,7 +295,7 @@ Suitable for combining complex queries, sorting, and pagination.
 ```csharp
 using static LiteOrm.Common.Expr;
 var sales = await salesService.SearchAsync(
-    From<SalesRecord>("US", "2025")
+    From(typeof(SalesRecord), "US", "2025")
         .Where(Prop("Amount") > 100)
         .Section(0, 20)
 );
@@ -327,7 +327,7 @@ Pass the argument array only once on the main table:
 using static LiteOrm.Common.Expr;
 var args = new[] { "TenantA", "202501" };
 
-var expr = From<Table1Row>(args)
+var expr = From(typeof(Table1Row), args)
     // Table2Row in the same scope or a child scope keeps using args
     // unless it explicitly sets its own TableArgs.
     .Where(Exists<Table2Row>(t => true));

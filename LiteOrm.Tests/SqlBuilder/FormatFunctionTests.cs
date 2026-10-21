@@ -35,7 +35,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(user, ct);
 
             var formatExpr = new FunctionExpr("Format", Expr.Prop("CreateTime"), new ValueExpr("yyyy-MM-dd"));
-            var query = Expr.From<TestUser>()
+            var query = Expr.From(typeof(TestUser))
                 .Where(Expr.Prop("Id") == user.Id)
                 .Select(formatExpr.As("FormattedDate"));
             var dt = await dataViewDao.Search(query).GetResultAsync(ct);
@@ -62,7 +62,7 @@ namespace LiteOrm.Tests
             Expression<Func<TestUser, string>> lambdaExpr = u => u.CreateTime.ToString("yyyy-MM-dd");
             var func = Assert.IsType<FunctionExpr>(LambdaExprConverter.ToValueExpr(lambdaExpr));
 
-            var query = Expr.From<TestUser>()
+            var query = Expr.From(typeof(TestUser))
                 .Where(Expr.Prop("Id") == user.Id)
                 .Select(func.As("FormattedDate"));
             var dt = await dataViewDao.Search(query).GetResultAsync(ct);

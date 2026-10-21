@@ -412,7 +412,7 @@ namespace LiteOrm.Tests
             ], ct);
 
             var cteDef = new SelectExpr(
-                Expr.From<TestUser>().Where(Expr.Prop("Name").StartsWith("CteBasic_")),
+                Expr.From(typeof(TestUser)).Where(Expr.Prop("Name").StartsWith("CteBasic_")),
                 Expr.Prop("Name").As("Name"),
                 Expr.Prop("Age").As("Age"),
                 Expr.Prop("DeptId").As("DeptId"));
@@ -455,7 +455,7 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "CteStats_User5", Age = 42, DeptId = dept2.Id, CreateTime = DateTime.Now }
             ], ct);
 
-            var cteDef = Expr.From<TestUser>()
+            var cteDef = Expr.From(typeof(TestUser))
                 .Where(Expr.Prop("Name").StartsWith("CteStats_"))
                 .GroupBy(Expr.Prop("DeptId"))
                 .Select(
@@ -505,7 +505,7 @@ namespace LiteOrm.Tests
                 new TestUser { Name = "CteUnionReuse_User4", Age = 36, DeptId = 2, CreateTime = DateTime.Now }
             ], ct);
 
-            var adultUsers = Expr.From<TestUser>()
+            var adultUsers = Expr.From(typeof(TestUser))
                 .Where(Expr.Prop("Name").StartsWith("CteUnionReuse_"))
                 .Select(
                     Expr.Prop("Name").As("Name"),
@@ -540,10 +540,10 @@ namespace LiteOrm.Tests
         {
             var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
 
-            var first = Expr.From<TestUser>()
+            var first = Expr.From(typeof(TestUser))
                 .Select(Expr.Prop("Name").As("Name"))
                 .With("DupCte");
-            var second = Expr.From<TestUser>()
+            var second = Expr.From(typeof(TestUser))
                 .Select(Expr.Prop("Name").As("Name"))
                 .With("DupCte");
 
@@ -561,10 +561,10 @@ namespace LiteOrm.Tests
         {
             var dataViewDAO = ServiceProvider.GetRequiredService<DataViewDAO<TestUser>>();
 
-            var first = Expr.From<TestUser>()
+            var first = Expr.From(typeof(TestUser))
                 .Select(Expr.Prop("Name").As("Name"))
                 .With("DupCte");
-            var second = Expr.From<TestUser>()
+            var second = Expr.From(typeof(TestUser))
                 .Where(Expr.Prop("Age") > 30)
                 .Select(Expr.Prop("Name").As("Name"))
                 .With("DupCte");
@@ -621,7 +621,7 @@ namespace LiteOrm.Tests
 
             var userViewDAO = ServiceProvider.GetRequiredService<ObjectViewDAO<TestUserView>>();
 
-            var query = Expr.From<TestUserView>()
+            var query = Expr.From(typeof(TestUserView))
                 .Where(Expr.Prop("DeptName").IsNotNull());
 
             var results = await userViewDAO.Search(query).ToListAsync(TestContext.Current.CancellationToken);
@@ -653,7 +653,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(user2, TestContext.Current.CancellationToken);
             await userService.InsertAsync(user3, TestContext.Current.CancellationToken);
 
-            var subquery = Expr.From<TestDepartment>()
+            var subquery = Expr.From(typeof(TestDepartment))
                 .Where(Expr.Prop("Name").StartsWith("SubqueryDept"))
                 .Select(Expr.Prop("Id"));
 
@@ -682,7 +682,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(user1, TestContext.Current.CancellationToken);
             await userService.InsertAsync(user2, TestContext.Current.CancellationToken);
 
-            var subquery = Expr.From<TestDepartment>()
+            var subquery = Expr.From(typeof(TestDepartment))
                 .Where(Expr.Prop("Name") == "NotInDept")
                 .Select(Expr.Prop("Id"));
 
@@ -749,7 +749,7 @@ namespace LiteOrm.Tests
                 }, TestContext.Current.CancellationToken);
             }
 
-            var query = Expr.From<TestUser>()
+            var query = Expr.From(typeof(TestUser))
                 .Where(Expr.Prop("Age") > 22)
                 .GroupBy(Expr.Prop("DeptId"))
                 .Having(Expr.Prop("Id").Count() >= 1)
@@ -784,7 +784,7 @@ namespace LiteOrm.Tests
                 }, TestContext.Current.CancellationToken);
             }
 
-            var query = Expr.From<TestUser>()
+            var query = Expr.From(typeof(TestUser))
                 .Where(Expr.Prop("Name").StartsWith("PageUser"))
                 .OrderBy(Expr.Prop("Age").Asc())
                 .Section(2, 3)
@@ -815,7 +815,7 @@ namespace LiteOrm.Tests
                 Expr.Const("Senior")
             );
 
-            var query = Expr.From<TestUser>()
+            var query = Expr.From(typeof(TestUser))
                 .Where(Expr.Prop("Name").StartsWith("CaseUser"))
                 .Select(
                     Expr.Prop("Name"),
@@ -843,8 +843,8 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "UnionA", Age = 20, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await userService.InsertAsync(new TestUser { Name = "UnionB", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var s1 = Expr.From<TestUser>().Where(Expr.Prop("Name") == "UnionA").Select(Expr.Prop("Name"));
-            var s2 = Expr.From<TestUser>().Where(Expr.Prop("Name") == "UnionB").Select(Expr.Prop("Name"));
+            var s1 = Expr.From(typeof(TestUser)).Where(Expr.Prop("Name") == "UnionA").Select(Expr.Prop("Name"));
+            var s2 = Expr.From(typeof(TestUser)).Where(Expr.Prop("Name") == "UnionB").Select(Expr.Prop("Name"));
             var union = s1.Union(s2);
 
             var dt = await dataViewDAO.Search(union).GetResultAsync(TestContext.Current.CancellationToken);
@@ -864,8 +864,8 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "ExceptA", Age = 15, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await userService.InsertAsync(new TestUser { Name = "ExceptB", Age = 25, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var s1 = Expr.From<TestUser>().Where(Expr.Prop("Age") >= 10).Select(Expr.Prop("Name"));
-            var s2 = Expr.From<TestUser>().Where(Expr.Prop("Age") > 20).Select(Expr.Prop("Name"));
+            var s1 = Expr.From(typeof(TestUser)).Where(Expr.Prop("Age") >= 10).Select(Expr.Prop("Name"));
+            var s2 = Expr.From(typeof(TestUser)).Where(Expr.Prop("Age") > 20).Select(Expr.Prop("Name"));
             var except = s1.Except(s2);
 
             var dt = await dataViewDAO.Search(except).GetResultAsync(TestContext.Current.CancellationToken);
@@ -994,7 +994,7 @@ namespace LiteOrm.Tests
             var addExpr = (Expr.Prop("Age") + 5).As("AgePlus5");
             var multiplyExpr = (Expr.Prop("Age") * 2).As("AgeDouble");
 
-            var query = Expr.From<TestUser>()
+            var query = Expr.From(typeof(TestUser))
                 .Where(Expr.Prop("Name") == "ArithUser")
                 .Select(addExpr, multiplyExpr);
 
@@ -1014,7 +1014,7 @@ namespace LiteOrm.Tests
 
             var concatExpr = Expr.Prop("Name").Concat(Expr.Const("_Suffix")).As("FullName");
 
-            var query = Expr.From<TestUser>()
+            var query = Expr.From(typeof(TestUser))
                 .Where(Expr.Prop("Name") == "ConcatUser")
                 .Select(concatExpr);
 

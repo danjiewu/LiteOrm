@@ -37,7 +37,7 @@ namespace LiteOrm.AotDemo.Scenarios
             DemoOutput.LastSql();
 
             DemoOutput.Section("2.2 关联列参与过滤、排序与分页");
-            var expr = Expr.From<AotOrderView>()
+            var expr = Expr.From(typeof(AotOrderView))
                 .Where(Expr.Prop(nameof(AotOrderView.DeptName)) == Expr.Const("研发部"))
                 .OrderBy(Expr.Prop(nameof(AotOrder.Amount)).Desc())
                 .Section(0, 2);

@@ -361,6 +361,16 @@ Usage recommendations:
 
 > `ForeignColumnAttribute.ConverterType` declares this foreign projection column's own column-level converter. When reading, **it prefers its own declared converter and otherwise falls back to the target column's converter** (the target column may itself be another `ForeignColumn`, enabling stepwise fallback). Its usage matches `ColumnAttribute.ConverterType` — provide a type implementing `IDbValueConverter`.
 
+This metadata does not only serve `ExistsRelated`; it also drives the behavior of three related-query entry points:
+
+| Entry point | Location | Where the relation condition lands |
+|------|------|----------------|
+| `ExistsRelated` | WHERE condition | Inside the generated `EXISTS(...)` subquery |
+| `FromRelated<T>` | Lambda query source | Resolves to a `WhereExpr` filtering that table |
+| `JoinRelated<T1, T2>` | Lambda join | Resolves to `TableJoinExpr.On` |
+
+All three share the same inference, implemented as `Expr.BuildRelatedLogic(rootType, rootAlias, foreignType, foreignAlias)`: first look for the target type among the main table's `JoinedTables`, then search the target table's `JoinedTables` in reverse. When no relation is found, `ExistsRelated` and `FromRelated` degrade to a version without a relation condition, while `JoinRelated` throws and asks you to use `Join` with an explicit condition. You can call the method directly when you need to build the relation condition yourself; it returns a `LogicExpr` with both table aliases applied.
+
 In implementation, LiteOrm merges ForeignType and TableJoin information during the metadata phase to generate JoinedTable / ForeignTable structures. For fixed-filter metadata and SQL injection details, see [Permission Filtering and User Scope Control](../advanced-topics/permission-filtering.en.md).
 
 ---

@@ -224,6 +224,40 @@ LambdaExprConverter.RegisterMethodHandler("ExistsIn", (node, converter) =>
 
 扩展点注册的完整机制见[表达式扩展](../extensibility/expression-extension.md)。
 
+### 5.4 连接查询 `Join` 与 `JoinRelated`
+
+`Join<T1, T2>` 显式给出连接条件，`JoinRelated<T1, T2>` 按外键元数据自动推断：
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// 显式条件
+var expr = Query<Order, IEnumerable<(Order, Customer)>>(
+    q => q.Join<Order, Customer>((o, c) => o.CustomerId == c.Id)
+          .Where(x => x.Item2.Name == "VIP")
+          .Select(x => new { x.Item1.Id, x.Item2.Name })
+);
+
+// 自动推断外键条件
+var related = Query<Order, IEnumerable<(Order, Customer)>>(
+    q => q.JoinRelated<Order, Customer>()
+);
+
+// 自动条件 + 附加条件，两者按 AND 合并
+var merged = Query<Order, IEnumerable<(Order, Customer)>>(
+    q => q.JoinRelated<Order, Customer>((o, c) => o.Amount > 0)
+);
+```
+
+返回的是元素元组序列，可以继续用现有的 `Where` / `Select` / `OrderBy` 链式调用。元组元素用 `Item1`、`Item2` 访问，分别对应左表和右表，解析时各自带上正确的表别名。
+
+几处要点：
+
+- `Join` 生成的 SQL 形如 `FROM Orders T0 LEFT JOIN Customers T1 ON T0.CustomerId = T1.Id`，连接类型默认左连接。
+- `JoinRelated` 推断不到关联关系时抛 `InvalidOperationException`，提示改用带条件的 `Join`。这类表需要先用 `[ForeignType]` 或 `[TableJoin]` 声明关联。
+- 支持多级连接，`From<A>().Join<B>(...).Join<C>(...)` 会连续追加两条 JOIN，第二级左源是 `(A, B)` 元组。
+- `Select(x => x.Item1)` 这种整表投影不支持，`Select` 里请写具体列。
+
 ## 6. 投影查询（`SearchAs` / `SearchOneAs`）
 
 `SearchAs` / `SearchOneAs` 支持 IQueryable 形式的 Lambda，把结果投影为指定类型（自定义类、匿名类均可），适合「只取部分列」或「组装成视图 / 摘要对象」：

@@ -93,7 +93,7 @@ namespace LiteOrm.Tests
 
             // 简单的 GROUP BY 聚合
             var deptUserCounts = dataViewDao.Search(
-                Expr.From<TestUser>()
+                Expr.From(typeof(TestUser))
                     .Where(Expr.Prop("DeptId") != -1)
                     .GroupBy(Expr.Prop("DeptId"))
                     .Select(Expr.Prop("DeptId"), Expr.Prop("Id").Count().As("UserCount"), Expr.Prop("Age").Avg().As("AvgAge"))

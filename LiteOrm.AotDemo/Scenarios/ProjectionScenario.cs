@@ -22,7 +22,7 @@ namespace LiteOrm.AotDemo.Scenarios
 
             DemoOutput.Section("3.1 SearchAs：只取需要的列并投影到自定义类型");
             var selectExpr = new SelectExpr(
-                Expr.From<AotOrderView>()
+                Expr.From(typeof(AotOrderView))
                     .OrderBy(Expr.Prop(nameof(AotOrder.Amount)).Desc())
                     .Section(0, 3),
                 Expr.Prop(nameof(AotOrder.Id)).As(nameof(AotOrderRow.OrderId)),
@@ -40,7 +40,7 @@ namespace LiteOrm.AotDemo.Scenarios
             DemoOutput.LastSql();
 
             DemoOutput.Section("3.2 分组聚合：按用户统计订单数与金额合计");
-            var statExpr = Expr.From<AotOrderView>()
+            var statExpr = Expr.From(typeof(AotOrderView))
                 .GroupBy(
                     Expr.Prop(nameof(AotOrderView.UserId)),
                     Expr.Prop(nameof(AotOrderView.UserName)))

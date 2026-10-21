@@ -377,12 +377,12 @@ namespace LiteOrm.Tests
 
             // Act - Order
             var ordered = await viewService.SearchAsync(
-                Expr.From<TestUser>().Where(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Order"))).OrderBy(("Age", false)), cancellationToken: TestContext.Current.CancellationToken
+                Expr.From(typeof(TestUser)).Where(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Order"))).OrderBy(("Age", false)), cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Act - Section
             var section = await viewService.SearchAsync(
-                Expr.From<TestUser>().Where(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Order"))).OrderBy(("Age", false)).Section(0, 2), cancellationToken: TestContext.Current.CancellationToken
+                Expr.From(typeof(TestUser)).Where(Expr.Lambda<TestUser>(u => u.Name!.StartsWith("Order"))).OrderBy(("Age", false)).Section(0, 2), cancellationToken: TestContext.Current.CancellationToken
             );
 
             // Assert
@@ -616,7 +616,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "User 5", Age = 40, CreateTime = DateTime.Now, DeptId = dept2.Id }, TestContext.Current.CancellationToken);
 
             // Act 1: 使用 ForeignColumn (DeptName) 作为查询条件和排序条件，同时分页
-            var expr1 = Expr.From<TestUserView>()
+            var expr1 = Expr.From(typeof(TestUserView))
                 .Where(Expr.Lambda<TestUserView>(u => u.DeptName != null))
                 .OrderBy((nameof(TestUserView.DeptName), true))  // 按部门名称升序
                 .OrderBy((nameof(TestUser.Age), false))          // 再按年龄降序
@@ -645,7 +645,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "Child User 2", Age = 28, CreateTime = DateTime.Now, DeptId = childDept2.Id }, TestContext.Current.CancellationToken);
 
             // 使用 ParentDeptName 作为查询和排序条件
-            var expr2 = Expr.From<TestUserView>()
+            var expr2 = Expr.From(typeof(TestUserView))
                 .Where(Expr.Lambda<TestUserView>(u => u.ParentDeptName == "Parent Dept"))
                 .OrderBy(nameof(TestUserView.ParentDeptName))  // 按父部门名称升序
                 .OrderBy(nameof(TestUserView.DeptName))        // 再按部门名称升序

@@ -380,6 +380,16 @@ var matureItUsers = await objectViewDAO.Search(
 
 > `ForeignColumnAttribute.ConverterType` 指定该外键投影列自己的列级转换器；读取时**优先使用自身声明的转换器，否则回退目标列的转换器**（目标列本身也可为 `ForeignColumn`，支持逐层回退）。用法与 `ColumnAttribute.ConverterType` 一致：提供一个实现 `IDbValueConverter` 的转换器类型。
 
+上面这些元数据不只服务于 `ExistsRelated`，也决定了三个关联查询入口的行为：
+
+| 入口 | 位置 | 关联条件的落点 |
+|------|------|----------------|
+| `ExistsRelated` | WHERE 条件 | 生成的 `EXISTS(...)` 子查询内层 |
+| `FromRelated<T>` | Lambda 查询源 | 解析成 `WhereExpr`，作为该表的过滤条件 |
+| `JoinRelated<T1, T2>` | Lambda 连接 | 解析成 `TableJoinExpr.On` |
+
+三者共用同一套推断逻辑，实现是 `Expr.BuildRelatedLogic(rootType, rootAlias, foreignType, foreignAlias)`：先看主表的 `JoinedTables` 里有没有目标类型，找不到再反向查目标表的 `JoinedTables`。推断不到时 `ExistsRelated` 与 `FromRelated` 退化为不带关联条件的写法，`JoinRelated` 则直接抛异常，提示改用带显式条件的 `Join`。需要自己拼关联条件时可以直接调用这个方法，返回的是一段带表别名的 `LogicExpr`。
+
 实现上，LiteOrm 会在元数据阶段合并 ForeignType 与 TableJoin 的信息，生成 JoinedTable / ForeignTable 结构。固定筛选相关的元数据与 SQL 注入细节，见[权限过滤与用户范围控制](../advanced-topics/permission-filtering.md)。
 
 ---

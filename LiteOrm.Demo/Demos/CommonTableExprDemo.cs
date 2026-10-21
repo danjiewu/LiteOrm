@@ -90,7 +90,7 @@ namespace LiteOrm.Demo.Demos
                 DemoHelper.PrintSection("🔍 执行的 SQL（主查询继续过滤）", filteredSql);
                 DemoHelper.PrintSection("✅ 查询结果（30 岁及以上）", FormatDataTable(filteredResult, "Name", "Age"));
 
-                var adultUsers = From<User>()
+                var adultUsers = From(typeof(User))
                     .Where(Prop("Age") >= 18)
                     .Select(
                         Prop("UserName").As("Name"),
@@ -141,7 +141,7 @@ namespace LiteOrm.Demo.Demos
 
             try
             {
-                var deptAdultStatsDefinition = From<User>()
+                var deptAdultStatsDefinition = From(typeof(User))
                     .Where(Prop("Age") >= 25)
                     .GroupBy(Prop("DeptId"))
                     .Select(

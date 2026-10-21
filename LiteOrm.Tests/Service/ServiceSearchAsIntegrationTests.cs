@@ -100,7 +100,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "AsExpr 2", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             var selectExpr = new SelectExpr(
-                Expr.From<TestUser>().Where(Expr.Prop("Name").StartsWith("AsExpr")),
+                Expr.From(typeof(TestUser)).Where(Expr.Prop("Name").StartsWith("AsExpr")),
                 Expr.Prop("Name").As("Name"),
                 Expr.Prop("Age").As("Age"));
 
@@ -119,7 +119,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "AsOneExpr 2", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             var selectExpr = new SelectExpr(
-                Expr.From<TestUser>().Where(Expr.Prop("Name") == "AsOneExpr 2"),
+                Expr.From(typeof(TestUser)).Where(Expr.Prop("Name") == "AsOneExpr 2"),
                 Expr.Prop("Name").As("Name"),
                 Expr.Prop("Age").As("Age"));
 

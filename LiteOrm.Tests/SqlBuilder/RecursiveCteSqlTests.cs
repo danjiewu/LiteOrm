@@ -85,7 +85,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void ToSql_ExplicitRecursiveTrue_NonRecursiveCte_EmitsWithRecursive()
         {
-            var cteDef = From<TestUser>().Select(Prop("Id").As("Id"));
+            var cteDef = From(typeof(TestUser)).Select(Prop("Id").As("Id"));
             var query = cteDef.With("MyCTE").Select(Prop("Id"));
 
             var sql = query.ToPreparedSql(new SqlBuildContext(SQLiteBuilder.Instance) { SingleTable = false });
@@ -99,7 +99,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void ToSql_ExplicitRecursiveFalse_NonRecursiveCte_EmitsWithOnly()
         {
-            var cteDef = From<TestUser>().Select(Prop("Id").As("Id"));
+            var cteDef = From(typeof(TestUser)).Select(Prop("Id").As("Id"));
             var query = cteDef.With("MyCTE").Select(Prop("Id"));
 
             var sql = query.ToPreparedSql(new SqlBuildContext(SqlServerBuilder.Instance) { SingleTable = false });
@@ -147,8 +147,8 @@ namespace LiteOrm.Tests
         [Fact]
         public void ToSql_MultipleNonRecursiveCtes_ExplicitRecursiveTrue_EmitsWithRecursive()
         {
-            var cte1Def = From<TestUser>().Select(Prop("Id").As("Id"));
-            var cte2Def = From<TestUser>().Select(Prop("Name").As("Name"));
+            var cte1Def = From(typeof(TestUser)).Select(Prop("Id").As("Id"));
+            var cte2Def = From(typeof(TestUser)).Select(Prop("Name").As("Name"));
 
             var cte1 = cte1Def.With("Cte1");
             var cte2 = cte2Def.With("Cte2");
@@ -168,8 +168,8 @@ namespace LiteOrm.Tests
         [Fact]
         public void ToSql_MultipleNonRecursiveCtes_ExplicitRecursiveFalse_EmitsWithOnly()
         {
-            var cte1Def = From<TestUser>().Select(Prop("Id").As("Id"));
-            var cte2Def = From<TestUser>().Select(Prop("Name").As("Name"));
+            var cte1Def = From(typeof(TestUser)).Select(Prop("Id").As("Id"));
+            var cte2Def = From(typeof(TestUser)).Select(Prop("Name").As("Name"));
 
             var cte1 = cte1Def.With("Cte1");
             var cte2 = cte2Def.With("Cte2");

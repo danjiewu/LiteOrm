@@ -898,7 +898,7 @@ namespace LiteOrm.Tests
         public void ComplexExpr_UpdateWithSubquery_Tests()
         {
             var update = Expr.Update<TestUser>()
-                .Where(Expr.Prop("Id").In(Expr.From<TestDepartment>().Where(Expr.Prop("Name") == "IT").Select(Expr.Prop("Id"))))
+                .Where(Expr.Prop("Id").In(Expr.From(typeof(TestDepartment)).Where(Expr.Prop("Name") == "IT").Select(Expr.Prop("Id"))))
                 .Set(("Name", Expr.Const("Updated")));
 
             Assert.NotNull(update.Where);
@@ -908,7 +908,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void ComplexExpr_SelectWithAllClauses_Tests()
         {
-            var query = Expr.From<TestUser>()
+            var query = Expr.From(typeof(TestUser))
                 .Where(Expr.Prop("Age") > 18)
                 .GroupBy(Expr.Prop("DeptId"))
                 .Having(Expr.Prop("Id").Count() > 1)
@@ -953,7 +953,7 @@ namespace LiteOrm.Tests
                 new UnaryExpr(UnaryOperator.Nagive, Expr.Prop("Score")),
                 Expr.Const(42),
                 new GenericSqlExpr("TestKey"),
-                Expr.From<TestUser>(),
+                Expr.From(typeof(TestUser)),
                 new SelectExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Id")),
                 new WhereExpr(new FromExpr(typeof(TestUser)), Expr.Prop("Age") > 18),
                 new GroupByExpr(new FromExpr(typeof(TestUser)), Expr.Prop("DeptId")),

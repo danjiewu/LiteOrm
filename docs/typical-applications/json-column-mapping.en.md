@@ -204,7 +204,7 @@ using static LiteOrm.Common.Expr;
 static FunctionExpr JsonField(string column, string path)
     => new FunctionExpr("JsonValue", Prop(column), Const(path));
 
-var query = Expr.From<Order>()
+var query = Expr.From(typeof(Order))
     .Where(JsonField("Settings", "$.Level") > 3)
     .OrderBy(JsonField("Settings", "$.Channel").Asc())
     .Select(Prop("OrderNo"), JsonField("Settings", "$.Channel"));

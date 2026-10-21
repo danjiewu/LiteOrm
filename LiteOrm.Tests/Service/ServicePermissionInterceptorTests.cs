@@ -315,7 +315,7 @@ namespace LiteOrm.Tests
             var service = scope.ServiceProvider.GetRequiredService<IEntityViewService<ProbeEntity>>();
 
             // 表不存在，调用会在 SQL 生成阶段以非权限异常失败；断言的是「不因权限被拒」
-            var ex = Record.Exception(() => service.Search(From<ProbeEntity>()));
+            var ex = Record.Exception(() => service.Search(From(typeof(ProbeEntity))));
             Assert.False(ex is ServicePermissionException, $"unexpected: {ex}");
         }
 

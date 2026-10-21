@@ -50,6 +50,20 @@ var currentUserFilter = Sql("CurrentUserFilter");
 - `Aggregate(name, expr, isDistinct)`: aggregate wrapper
 - `Sql(key, arg)`: registered dynamic SQL fragment for runtime-context filters
 
+`Count`, `Sum`, `Average`, `Max`, and `Min` inside lambdas also convert to aggregate queries, with the same behavior at root level and inside subqueries:
+
+```csharp
+// SELECT COUNT(1) FROM Orders T0 WHERE ...
+var total = Expr.Query<Order, int>(q => q.Count());
+var amountSum = Expr.Query<Order, decimal>(q => q.Sum(o => o.Amount));
+var avgAmount = Expr.Query<Order, decimal>(q => q.Average(o => o.Amount));
+
+// Scalar subquery; parentheses are added automatically when used in a comparison
+var aboveAverage = Expr.Query<Order>(q => q.Amount > Expr.From<Order>().Average(o => o.Amount));
+```
+
+Without a selector, `Count()` renders `COUNT(1)`; with one, the whole selector expression becomes the aggregate argument, so arithmetic such as `x => x.Amount * x.Rate` works too. Both `Average` and `Avg` map to `AVG`. The resulting `SelectExpr` carries no column alias, so a scalar subquery does not emit a redundant `AS`.
+
 ### 1.4 Type conversion and conditional values
 
 ```csharp
@@ -182,12 +196,12 @@ Additional note: in string-based entry points like these, property names and `or
 
 In a Lambda you can embed a dynamic `Expr` with `expr.To<bool>()`. For the full approach and trade-offs, see [Mixing Lambda and Expr](./lambda-expr-mixing.en.md).
 
-## 4. Build chained queries with `Expr.From<T>()`
+## 4. Build chained queries with `Expr.From(type)`
 
 ```csharp
 using static LiteOrm.Common.Expr;
 
-var query = From<User>()
+var query = From(typeof(User))
     .Where(Prop("Age") > 18)
     .GroupBy(Prop("DeptId"))
     .Having(Prop("Id").Count() > 5)
@@ -200,6 +214,11 @@ var query = From<User>()
 ```
 
 This is the most complete `Expr` style: start from `FROM`, then build `WHERE / GROUP BY / HAVING / SELECT / ORDER BY / paging`.
+
+`From` has two overloads with different roles:
+
+- `Expr.From(type, tableArgs)` takes a `Type` and returns `TableExpr`. It is the only factory that can be called directly.
+- `Expr.From<T>(tableArgs)` returns `IEnumerable<T>` and exists only for building query sources inside lambda expressions; calling it directly throws `InvalidOperationException`. When the lambda is converted, the resolver turns `From<T>()` into a table reference for the inner query, so `Expr.From<User>().Where(Prop("Age") > 18)` inside `Expr.Query` becomes a subquery.
 
 ## 5. Expr type map
 
@@ -275,7 +294,8 @@ In day-to-day query code, the most common ones are usually:
 | `Expr.Value(value)` | Create a parameterized value | `Expr.Value(18)` |
 | `Expr.Const(value)` | Create an inline constant | `Expr.Const("Enabled")` |
 | `Expr.Null` | SQL NULL | `Expr.Null` |
-| `Expr.From<T>()` | Create a chained-query starting point | `Expr.From<User>()` |
+| `Expr.From(type)` | Create a chained-query starting point (callable directly) | `Expr.From(typeof(User))` |
+| `Expr.From<T>()` | Only for building query sources inside lambdas (throws when called directly) | `Expr.From<User>()` |
 | `Expr.Update<T>()` | Create an UPDATE expression | `Expr.Update<User>()` |
 | `Expr.Delete<T>()` | Create a DELETE expression | `Expr.Delete<User>()` |
 | `Expr.Exists(type, innerExpr)` | Create an EXISTS subquery | `Expr.Exists(typeof(Department), ...)` |
@@ -424,7 +444,7 @@ LiteOrm also includes a few ergonomic conversions for chained APIs:
 ```csharp
 using static LiteOrm.Common.Expr;
 
-var query = From<User>()
+var query = From(typeof(User))
     .OrderBy(("Age", false)); // (string property, bool ascending) -> OrderByItemExpr
 
 var update = Update<User>()

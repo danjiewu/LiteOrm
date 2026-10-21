@@ -112,7 +112,7 @@ namespace LiteOrm.Demo.Demos
                     "var deserializedExpr = JsonSerializer.Deserialize<SqlSegmentExpr>(json);");
 
                 // 构建 Expr 模型
-                var expr = From<UserView>()
+                var expr = From(typeof(UserView))
                     .Where(Prop("Age") >= minAge)
                     .Where(Prop("UserName").Like($"%{searchName}%"))
                     .OrderBy(("Id", false))
@@ -176,7 +176,7 @@ namespace LiteOrm.Demo.Demos
                     IQueryable<User>>> lambdaExpr = q => q.Where(u => u.Age > 25);
 
                 // 方式2：Expr 模型
-                var exprModel = From<User>().As(Constants.DefaultTableAlias)
+                var exprModel = From(typeof(User)).As(Constants.DefaultTableAlias)
                     .Where(Prop("Age") > 25);
 
                 // 验证等价性

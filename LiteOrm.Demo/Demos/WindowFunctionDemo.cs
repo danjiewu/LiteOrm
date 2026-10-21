@@ -168,7 +168,7 @@ namespace LiteOrm.Demo.Demos
                         [Prop(nameof(SalesRecord.ProductId))],
                         [Prop(nameof(SalesRecord.SaleTime)).Asc()]);
 
-                var selectExpr = From<SalesRecord>(tableMonth)
+                var selectExpr = From(typeof(SalesRecord), tableMonth)
                     .OrderBy(Prop(nameof(SalesRecord.ProductId)).Asc())
                     .Select(nameof(SalesRecord.Id),
                         nameof(SalesRecord.ProductId),

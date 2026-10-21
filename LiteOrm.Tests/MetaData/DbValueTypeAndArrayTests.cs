@@ -76,7 +76,7 @@ namespace LiteOrm.Tests
         public void PostgreSqlBuilder_AnyArray_BindsAsSingleParameter()
         {
             var query = new SelectExpr(
-                Expr.From<PgsqlArrayModel>().Where(Expr.Prop(nameof(PgsqlArrayModel.Tags)).Any(new ValueExpr(new[] { "a", "b" }))),
+                Expr.From(typeof(PgsqlArrayModel)).Where(Expr.Prop(nameof(PgsqlArrayModel.Tags)).Any(new ValueExpr(new[] { "a", "b" }))),
                 Expr.Prop(nameof(PgsqlArrayModel.Id)));
 
             var prepared = query.ToPreparedSql(new SqlBuildContext(PostgreSqlBuilder.Instance) { SingleTable = false });

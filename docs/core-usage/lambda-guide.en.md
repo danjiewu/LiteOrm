@@ -224,6 +224,40 @@ LambdaExprConverter.RegisterMethodHandler("ExistsIn", (node, converter) =>
 
 For the full extension mechanism, see [Expression Extension](../extensibility/expression-extension.en.md).
 
+### 5.4 Joins with `Join` and `JoinRelated`
+
+`Join<T1, T2>` takes an explicit condition, while `JoinRelated<T1, T2>` infers one from foreign-key metadata:
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// Explicit condition
+var expr = Query<Order, IEnumerable<(Order, Customer)>>(
+    q => q.Join<Order, Customer>((o, c) => o.CustomerId == c.Id)
+          .Where(x => x.Item2.Name == "VIP")
+          .Select(x => new { x.Item1.Id, x.Item2.Name })
+);
+
+// Inferred foreign-key condition
+var related = Query<Order, IEnumerable<(Order, Customer)>>(
+    q => q.JoinRelated<Order, Customer>()
+);
+
+// Inferred condition combined with an extra one by AND
+var merged = Query<Order, IEnumerable<(Order, Customer)>>(
+    q => q.JoinRelated<Order, Customer>((o, c) => o.Amount > 0)
+);
+```
+
+The result is a sequence of element tuples, so the existing `Where` / `Select` / `OrderBy` chains keep working. Access the tuple elements as `Item1` and `Item2`; each resolves to the correct table alias during conversion.
+
+A few points worth knowing:
+
+- `Join` produces SQL like `FROM Orders T0 LEFT JOIN Customers T1 ON T0.CustomerId = T1.Id`; the join type defaults to left.
+- `JoinRelated` throws `InvalidOperationException` when no relation can be inferred, telling you to use `Join` with an explicit condition. Declare such relations with `[ForeignType]` or `[TableJoin]`.
+- Multi-level joins are supported: `From<A>().Join<B>(...).Join<C>(...)` appends two JOINs, and the second level joins from the `(A, B)` tuple.
+- Whole-table projections such as `Select(x => x.Item1)` are not supported; list specific columns inside `Select`.
+
 ## 6. Projection Queries (`SearchAs` / `SearchOneAs`)
 
 `SearchAs` / `SearchOneAs` accept IQueryable-style lambdas and project the result into a target type (custom classes or anonymous types), which is convenient for "select only some columns" or "assemble view / summary objects":

@@ -144,7 +144,7 @@ UserShard_1.Orders
 
 1. 同一个连接已经可以访问多个库 / Schema。
 2. 各分片中的表结构相同，只是库名 / Schema 名不同。
-3. 你希望继续沿用 `IArged`、`tableArgs`、`WithArgs(...)`、`Expr.From<T>(...)` 这一整套动态路由方式。
+3. 你希望继续沿用 `IArged`、`tableArgs`、`WithArgs(...)`、`Expr.From(typeof(T), ...)` 这一整套动态路由方式。
 
 > **注意**：`{0}.Orders` 依赖目标数据库支持当前连接跨库 / Schema 访问。<br/>
 > 如果不同分片必须使用完全不同的连接字符串，应优先使用后文的 `DataSource` 方案，而不是把库名直接写进 `TableArgs`。
@@ -208,7 +208,7 @@ var results = await salesViewDAO
 
 `TableArgs` 不只是“当前这一张表”的参数，还具有作用域传递性：
 
-1. 主表一旦指定了 `tableArgs`、`WithArgs(...)`、`Expr.From<T>(...)` 的参数，这组参数会进入当前 SQL 作用域。
+1. 主表一旦指定了 `tableArgs`、`WithArgs(...)`、`Expr.From(typeof(T), ...)` 的参数，这组参数会进入当前 SQL 作用域。
 2. 同作用域中的后续表，以及下级作用域中的子查询 / 关联查询，如果自己没有再显式指定 `TableArgs`，会继续使用主表传递下来的参数。
 3. 如果后续表在自己的 `TableExpr` 或关联表达式上再次显式指定了 `TableArgs`，则以显式值覆盖继承值。
 
@@ -276,12 +276,12 @@ var sales = await salesService.SearchAsync(
 
 适合把分表参数放在调用层统一控制。
 
-### 6.3 使用 `Expr.From<T>(...)` 指定分表
+### 6.3 使用 `Expr.From(typeof(T), ...)` 指定分表
 
 ```csharp
 using static LiteOrm.Common.Expr;
 var sales = await salesService.SearchAsync(
-    From<SalesRecordView>("202411")
+    From(typeof(SalesRecordView), "202411")
         .Where(Prop("Amount") > 100)
         .OrderBy(("Amount", false))
         .Section(0, 3)
@@ -295,7 +295,7 @@ var sales = await salesService.SearchAsync(
 ```csharp
 using static LiteOrm.Common.Expr;
 var sales = await salesService.SearchAsync(
-    From<SalesRecord>("US", "2025")
+    From(typeof(SalesRecord), "US", "2025")
         .Where(Prop("Amount") > 100)
         .Section(0, 20)
 );
@@ -327,7 +327,7 @@ public class Table2Row
 using static LiteOrm.Common.Expr;
 var args = new[] { "TenantA", "202501" };
 
-var expr = From<Table1Row>(args)
+var expr = From(typeof(Table1Row), args)
     // 同作用域或下级作用域里的 Table2Row 如果没有单独指定 TableArgs
     // 会继续使用这组 args
     .Where(Exists<Table2Row>(t => true));

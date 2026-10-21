@@ -382,7 +382,7 @@ namespace LiteOrm.Tests
         [Fact]
         public void QueryExpr_Constructor_Tests()
         {
-            var table = Expr.From<TestUser>();
+            var table = Expr.From(typeof(TestUser));
             var section = table
                 .Where(Expr.Prop("Age") > 18)
                 .GroupBy(Expr.Prop("DeptId"))

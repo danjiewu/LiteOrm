@@ -4,6 +4,7 @@ using System.Data.Common;
 
 using LiteOrm;
 using LiteOrm.Common;
+using LiteOrm.Tests.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
@@ -186,6 +187,24 @@ namespace LiteOrm.Common.UnitTests
                 Assert.DoesNotContain(sql.Params, param => Equals(param.Value, ConstFilterState.Enabled));
                 Assert.Contains($"\"State\" = {(int)ConstFilterState.Enabled}", sql.Sql);
             });
+        }
+
+        [Fact]
+        public void ToPreparedSql_ExistsRelated_QualifiesBothSidesOfJoinCondition()
+        {
+            var expr = new SelectExpr
+            {
+                Source = new WhereExpr
+                {
+                    Source = new FromExpr(typeof(TestUser)),
+                    Where = Expr.ExistsRelated(typeof(TestDepartment), Expr.Prop("Name") == "X")
+                }
+            };
+
+            var sql = expr.ToPreparedSql(new SqlBuildContext(SqlBuilder.Instance) { SingleTable = false });
+
+            // 关联条件两侧都必须带各自表别名，不能依赖默认别名隐式解析
+            Assert.Contains("\"T0\".\"DeptId\" = \"T1\".\"Id\"", sql.Sql);
         }
 
         private static void RunWithProvider(TableInfoProvider provider, Action action)

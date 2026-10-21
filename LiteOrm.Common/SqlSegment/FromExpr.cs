@@ -99,7 +99,7 @@ namespace LiteOrm.Common
         public override Expr Clone()
         {
             var f = new FromExpr();
-            f.Source = Source?.Clone() as TableExpr;
+            f.Source = Source?.Clone() as SourceExpr;
             f._joins = _joins.Select(j => (TableJoinExpr)j.Clone()).ToList();
             return f;
         }

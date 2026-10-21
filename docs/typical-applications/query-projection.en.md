@@ -577,7 +577,7 @@ var stats = await orderService.SearchAsAsync(
     cancellationToken: ct);
 ```
 
-`g.Key` takes the group key and `g.Count()` / `g.Sum(...)` produce the aggregates, all written inside the lambda; queries assembled at runtime can fall back to the hand-built `SelectExpr` form (`Expr.From<OrderVO>().GroupBy(...).Select(...)`).
+`g.Key` takes the group key and `g.Count()` / `g.Sum(...)` produce the aggregates, all written inside the lambda; queries assembled at runtime can fall back to the hand-built `SelectExpr` form (`Expr.From(typeof(OrderVO)).GroupBy(...).Select(...)`).
 
 The SQL has just 3 columns, and as many rows as there are statuses:
 

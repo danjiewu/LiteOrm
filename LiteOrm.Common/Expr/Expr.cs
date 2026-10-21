@@ -164,6 +164,71 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 按 <see cref="TableView.JoinedTables"/> 声明的外键关系推断两个表之间的关联条件。
+        /// 先正向查找 <paramref name="rootType"/> 的关联表，再反向查找 <paramref name="foreignType"/> 的关联表。
+        /// </summary>
+        /// <param name="rootType">关联源表类型。</param>
+        /// <param name="rootAlias">关联源表别名。</param>
+        /// <param name="foreignType">关联目标表类型。</param>
+        /// <param name="foreignAlias">关联目标表别名。</param>
+        /// <returns>关联条件，未找到关联关系时返回 null。</returns>
+        public static LogicExpr? BuildRelatedLogic(
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] Type rootType,
+            string rootAlias,
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] Type foreignType,
+            string foreignAlias)
+        {
+            // 正向：关联目标出现在根类型的关联表集合中，此时 ForeignKeys 属于根表、ForeignPrimeKeys 属于目标表
+            var rootView = TableInfoProvider.Instance.GetTableView(rootType);
+            if (rootView != null)
+            {
+                foreach (JoinedTable joinedTable in rootView.JoinedTables)
+                {
+                    if (joinedTable.TableDefinition is null) continue;
+                    if (!joinedTable.TableDefinition.DefinitionType.IsAssignableFrom(foreignType)) continue;
+
+                    var conditions = new List<LogicExpr>();
+                    int count = Math.Min(joinedTable.ForeignKeys.Count, joinedTable.ForeignPrimeKeys.Count);
+                    bool usable = count > 0;
+                    for (int i = 0; i < count; i++)
+                    {
+                        ColumnRef fk = joinedTable.ForeignKeys[i];
+                        ColumnRef pk = joinedTable.ForeignPrimeKeys[i];
+                        // 外键列必须直接来自根表（Table 为 null），否则关联需要经过第三张表，不推断
+                        if (fk.Table is not null) { usable = false; break; }
+                        conditions.Add(Expr.Prop(rootAlias, fk.Column.PropertyName) == Expr.Prop(foreignAlias, pk.Column.PropertyName));
+                    }
+                    if (usable) return new AndExpr(conditions);
+                }
+            }
+
+            // 反向：根类型出现在目标类型的关联表集合中，此时 ForeignKeys 属于目标表、ForeignPrimeKeys 属于根表
+            var foreignView = TableInfoProvider.Instance.GetTableView(foreignType);
+            if (foreignView != null)
+            {
+                foreach (JoinedTable joinedTable in foreignView.JoinedTables)
+                {
+                    if (joinedTable.TableDefinition is null) continue;
+                    if (!joinedTable.TableDefinition.DefinitionType.IsAssignableFrom(rootType)) continue;
+
+                    var conditions = new List<LogicExpr>();
+                    int count = Math.Min(joinedTable.ForeignKeys.Count, joinedTable.ForeignPrimeKeys.Count);
+                    bool usable = count > 0;
+                    for (int i = 0; i < count; i++)
+                    {
+                        ColumnRef fk = joinedTable.ForeignKeys[i];
+                        ColumnRef pk = joinedTable.ForeignPrimeKeys[i];
+                        if (fk.Table is not null) { usable = false; break; }
+                        conditions.Add(Expr.Prop(rootAlias, pk.Column.PropertyName) == Expr.Prop(foreignAlias, fk.Column.PropertyName));
+                    }
+                    if (usable) return new AndExpr(conditions);
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// 从表达式树创建 Lambda 表达式封装。
         /// </summary>
         /// <typeparam name="T">实体类型。</typeparam>
@@ -412,14 +477,25 @@ namespace LiteOrm.Common
         public static GenericSqlExpr Sql(string key, object? arg = null) => GenericSqlExpr.Get(key, arg);
 
         /// <summary>
-        /// 创建 From 表达式，支持动态表名参数。
+        /// 创建 From 表达式，支持动态表名参数。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
         /// </summary>
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="tableArgs">动态表名参数</param>
-        /// <returns>From 表达式实例</returns>
-        public static TableExpr From<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(params string[] tableArgs)
+        /// <returns>查询源表达式。</returns>
+        public static IEnumerable<T> From<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(params string[] tableArgs)
         {
-            return From(typeof(T), tableArgs);
+            throw new InvalidOperationException("The Expr.From method is only used for parsing lambda expressions and cannot be called directly.");
+        }
+
+        /// <summary>
+        /// 创建关联表的 From 表达式，自动根据当前查询上下文推断关联条件。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
+        /// </summary>
+        /// <typeparam name="T">关联外部实体的类型</typeparam>
+        /// <param name="tableArgs">动态表名参数</param>
+        /// <returns>查询源表达式。</returns>
+        public static IEnumerable<T> FromRelated<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(params string[] tableArgs)
+        {
+            throw new InvalidOperationException("The Expr.FromRelated method is only used for parsing lambda expressions and cannot be called directly.");
         }
 
         /// <summary>

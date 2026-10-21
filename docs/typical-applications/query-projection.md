@@ -577,7 +577,7 @@ var stats = await orderService.SearchAsAsync(
     cancellationToken: ct);
 ```
 
-`g.Key` 取分组键，`g.Count()`、`g.Sum(...)` 生成聚合值，都写在 Lambda 里；运行期动态拼装的场景，再用 `SelectExpr` 的手工形式（`Expr.From<OrderVO>().GroupBy(...).Select(...)`）。
+`g.Key` 取分组键，`g.Count()`、`g.Sum(...)` 生成聚合值，都写在 Lambda 里；运行期动态拼装的场景，再用 `SelectExpr` 的手工形式（`Expr.From(typeof(OrderVO)).GroupBy(...).Select(...)`）。
 
 SQL 只有 3 列，行数等于状态数：
 

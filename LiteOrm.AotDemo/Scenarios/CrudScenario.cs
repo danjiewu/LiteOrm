@@ -71,7 +71,7 @@ namespace LiteOrm.AotDemo.Scenarios
 
             DemoOutput.Section("1.5 UpdateAll（条件批量更新）");
             var updateExpr = new UpdateExpr(
-                Expr.From<AotUser>(),
+                Expr.From(typeof(AotUser)),
                 Expr.Prop(nameof(AotUser.UserName)) == Expr.Const("crud_upsert"))
                 .Set((nameof(AotUser.Age), Expr.Const(99)));
             int affected = userService.UpdateAll(updateExpr);

@@ -173,7 +173,7 @@ foreach (var order in orders)
     Console.WriteLine($"{order.Id} {order.Amount} {order.UserName} {order.DeptName} {order.AmountWithTax:0.##}");
 
 // 关联列可以直接参与过滤、排序、分页，Lambda 写法同样可用
-var expr = Expr.From<AotOrderView>()
+var expr = Expr.From(typeof(AotOrderView))
     .Where(Expr.Prop(nameof(AotOrderView.DeptName)) == Expr.Const("研发部"))
     .OrderBy(Expr.Prop(nameof(AotOrder.Amount)).Desc())
     .Section(0, 2);

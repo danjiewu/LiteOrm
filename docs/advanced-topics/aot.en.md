@@ -173,7 +173,7 @@ foreach (var order in orders)
     Console.WriteLine($"{order.Id} {order.Amount} {order.UserName} {order.DeptName} {order.AmountWithTax:0.##}");
 
 // Associated columns take part in filtering, ordering and paging; lambdas work too
-var expr = Expr.From<AotOrderView>()
+var expr = Expr.From(typeof(AotOrderView))
     .Where(Expr.Prop(nameof(AotOrderView.DeptName)) == Expr.Const("R&D"))
     .OrderBy(Expr.Prop(nameof(AotOrder.Amount)).Desc())
     .Section(0, 2);

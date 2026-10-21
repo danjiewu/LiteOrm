@@ -484,7 +484,8 @@ Event subscribers are resolved lazily: constructing an entity service instance n
 | `Expr.Aggregate("SUM", expr, isDistinct)` | `FunctionExpr` | Aggregate function (`IsAggregate=true`) |
 | `Expr.Concat(e1, e2)` | `ValueSet` | CONCAT string composition (extension method) |
 | `Expr.Lambda<T>(u => u.Age > 18)` | `LogicExpr` | Converts Lambda to Expr |
-| `Expr.From<T>(tableArgs)` | `FromExpr` | Starting point for chained queries |
+| `Expr.From(type, tableArgs)` | `TableExpr` | Starting point for chained queries (the only factory that can be called directly) |
+| `Expr.From<T>(tableArgs)` | `IEnumerable<T>` | Only for building query sources inside lambdas (throws when called directly) |
 | `Expr.Sql("key", arg)` | `GenericSqlExpr` | Dynamic SQL fragment |
 | `Expr.Delete<T>(tableArgs)` | `DeleteExpr` | Creates a DELETE expression |
 | `Expr.If(condition, thenExpr, elseExpr)` | `FunctionExpr` | IF expression |
@@ -497,6 +498,7 @@ Event subscribers are resolved lazily: constructing an entity service instance n
 | `Expr.ExistsRelated(type, innerExpr, tableArgs)` | `ForeignExpr` | EXISTS query using automatic relation discovery |
 | `Expr.Exists<T>(lambda)` | `bool` | Used only inside Lambda expressions to build EXISTS queries (direct calls throw an exception) |
 | `Expr.ExistsRelated<T>(lambda)` | `bool` | Used only inside Lambda expressions to build automatic-related EXISTS queries (direct calls throw an exception) |
+| `Expr.FromRelated<T>(tableArgs)` | `IEnumerable<T>` | Used only inside Lambda expressions to build automatic-related query sources (direct calls throw an exception) |
 
 Additional rule:
 

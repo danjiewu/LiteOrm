@@ -252,6 +252,11 @@ namespace LiteOrm.Common
         /// </summary>
         protected readonly Dictionary<ParameterExpression, Expr> _parameterExprs = new Dictionary<ParameterExpression, Expr>();
         /// <summary>
+        /// 元组 Lambda 参数到其元素表的映射，用于解析 <c>x.Item1</c> / <c>x.Item2</c> 这类元素访问。
+        /// 按 <see cref="ParameterExpression"/> 引用键控，元素顺序与元组的 Item1..ItemN 一致。
+        /// </summary>
+        protected readonly Dictionary<ParameterExpression, List<TableExpr>> _tupleElements = new Dictionary<ParameterExpression, List<TableExpr>>();
+        /// <summary>
         /// 别名编号序列，父子转换器共享同一实例以避免嵌套作用域分配到重复别名
         /// </summary>
         protected readonly AliasSequence _aliasCounter;
@@ -627,7 +632,23 @@ namespace LiteOrm.Common
                 return ConvertInternal(node.Expression!);
             }
 
-            // 1. 处理直接的实体参数访问 (映射为数据库列)
+            // 1. 处理元组元素成员访问 (如 x.Item2.Name)，需在普通参数访问之前判定，
+            //    否则 x.Item1 会被误当作名为 Item1 的数据库列
+            if (TryResolveTupleElement(node, out TableExpr? tupleElement))
+            {
+                string? elementAlias = tupleElement!.Alias;
+                if (elementAlias == _currentAlias) elementAlias = null;
+                if (node.Member is PropertyInfo tupleProperty)
+                {
+                    return new PropertyExpr(tupleProperty.Name) { TableAlias = elementAlias };
+                }
+                if (node.Member is FieldInfo tupleField)
+                {
+                    return new PropertyExpr(tupleField.Name) { TableAlias = elementAlias };
+                }
+            }
+
+            // 2. 处理直接的实体参数访问 (映射为数据库列)
             if (node.Expression is ParameterExpression paramExpr)
             {
                 _parameterAliases.TryGetValue(paramExpr, out var paramAlias);
@@ -656,6 +677,74 @@ namespace LiteOrm.Common
 
             // 5. 兜底使用默认成员处理器，将成员访问转换为 FunctionExpr
             return DefaultMemberHandler(node, this);
+        }
+
+        /// <summary>
+        /// 判断成员访问的宿主是否为某个元组参数的元素（如 <c>x.Item2.Name</c> 中的 <c>x.Item2</c>），
+        /// 是则通过 <paramref name="element"/> 返回该元素对应的表。
+        /// </summary>
+        /// <param name="node">成员访问表达式</param>
+        /// <param name="element">解析出的元素表</param>
+        /// <returns>命中元组元素时为 true</returns>
+        private bool TryResolveTupleElement(MemberExpression node, out TableExpr? element)
+        {
+            element = null;
+            if (node.Expression is not MemberExpression host || _tupleElements.Count == 0) return false;
+            if (host.Expression is not ParameterExpression tupleParam) return false;
+            if (!_tupleElements.TryGetValue(tupleParam, out var elements)) return false;
+            if (!TryGetTupleIndex(host.Member.Name, out int index)) return false;
+            if (index < 0 || index >= elements.Count) return false;
+
+            element = elements[index];
+            return true;
+        }
+
+        /// <summary>
+        /// 从 <c>Item1</c> / <c>Item2</c> 这类成员名中解析出从 0 开始的元素序号。
+        /// </summary>
+        private static bool TryGetTupleIndex(string memberName, out int index)
+        {
+            index = -1;
+            if (memberName.Length <= 4 || !memberName.StartsWith("Item", StringComparison.Ordinal)) return false;
+            if (!int.TryParse(memberName.Substring(4), out int itemNumber) || itemNumber < 1) return false;
+            index = itemNumber - 1;
+            return true;
+        }
+
+        /// <summary>
+        /// 为元组类型的 Lambda 参数登记元素表，使其后的 <c>Where</c> / <c>Select</c> 能解析 <c>x.Item1</c> 这类访问。
+        /// 元素表按 <see cref="FromExpr"/> 的主表在前、各连接表在后的顺序排列。
+        /// </summary>
+        /// <param name="lambda">要转换的 Lambda 表达式</param>
+        /// <param name="source">Join 产生的查询源</param>
+        /// <returns>登记成功时返回元组参数，否则返回 null。</returns>
+        private ParameterExpression? RegisterTupleElements(LambdaExpression lambda, Expr? source)
+        {
+            if (lambda.Parameters.Count != 1) return null;
+            ParameterExpression parameter = lambda.Parameters[0];
+            if (!IsTupleType(parameter.Type)) return null;
+            if (source is not FromExpr from) return null;
+
+            var elements = new List<TableExpr>();
+            if (from.Source is TableExpr mainTable) elements.Add(mainTable);
+            foreach (TableJoinExpr join in from.Joins)
+            {
+                if (join.Source is TableExpr joinTable) elements.Add(joinTable);
+            }
+            if (elements.Count == 0) return null;
+
+            _tupleElements[parameter] = elements;
+            return parameter;
+        }
+
+        /// <summary>
+        /// 判断类型是否为二元及以上的元组类型。
+        /// </summary>
+        private static bool IsTupleType(Type type)
+        {
+            if (!type.IsGenericType) return false;
+            Type definition = type.GetGenericTypeDefinition();
+            return definition == typeof(ValueTuple<,>) || definition == typeof(Tuple<,>);
         }
 
         /// <summary>
@@ -730,9 +819,15 @@ namespace LiteOrm.Common
                     case "GroupBy": return HandleGroupBy(node);
                     case "Select": return HandleSelect(node);
                 }
+                // 未匹配的 LINQ 方法中，聚合函数单独处理，避免落到默认函数处理器生成非法 SQL
+                if (IsAggregateMethod(node)) return HandleAggregate(node);
             }
             else if (type == typeof(Expr) && (method.Name == nameof(Expr.Exists) || method.Name == nameof(Expr.ExistsRelated)))
                 return HandleExists(node);
+            else if (type == typeof(Expr) && (method.Name == nameof(Expr.From) || method.Name == nameof(Expr.FromRelated)))
+                return HandleFrom(node);
+            else if (type == typeof(ExprExtensions) && (method.Name == nameof(ExprExtensions.Join) || method.Name == nameof(ExprExtensions.JoinRelated)))
+                return HandleJoin(node);
 
             // 处理类型成员处理器
             if (type != null && _typeMethodHandlers.TryGetValue((type, method.Name), out var typeMethodHandler))
@@ -866,7 +961,7 @@ namespace LiteOrm.Common
         private Expr HandleWhere(MethodCallExpression node)
         {
             var src = ConvertInternal(node.Arguments[0]);
-            var lambda = (LambdaExpression)((UnaryExpression)node.Arguments[1]).Operand;
+            var lambda = UnwrapLambda(node.Arguments[1]);
 
             // 如果源是 GroupByExpr 或 HavingExpr，则这是一个 Having 筛选，否则是普通的 Where 筛选
             if (src is GroupByExpr or HavingExpr)
@@ -889,10 +984,13 @@ namespace LiteOrm.Common
             ParameterExpression parameter = lambda.Parameters[0];
             string lastAlias = _currentAlias;
             _parameterAliases[parameter] = _currentAlias;
+            // Join 产生的元组参数需要按 Item1..ItemN 还原到各表，才能解析 x.Item2.Name
+            ParameterExpression? tupleParam = RegisterTupleElements(lambda, src);
 
             // 将 Lambda 条件转换为 LogicExpr
             var newCondition = ConvertInternal(lambda.Body).AsLogic();
 
+            if (tupleParam is not null) _tupleElements.Remove(tupleParam);
             _parameterAliases.Remove(parameter);
             _currentAlias = lastAlias;
 
@@ -986,14 +1084,17 @@ namespace LiteOrm.Common
         /// <returns>SelectExpr</returns>
         private Expr HandleSelect(MethodCallExpression node)
         {
-            var source = ConvertInternal(node.Arguments[0]) as ISelectAnchor;
-            var lambda = (LambdaExpression)((UnaryExpression)node.Arguments[1]).Operand;
+            Expr rawSource = ConvertInternal(node.Arguments[0]);
+            var source = rawSource as ISelectAnchor;
+            var lambda = UnwrapLambda(node.Arguments[1]);
 
             // 检查是否是 GroupBy 后的 Select
             var groupBySource = source as GroupByExpr;
 
-            // 转换 Select 的选择表达式
+            // 转换 Select 的选择表达式；Join 产生的元组参数需按 Item1..ItemN 还原到各表
+            ParameterExpression? tupleParam = RegisterTupleElements(lambda, rawSource);
             var selectItems = ConvertSelectLambda(lambda, groupBySource?.GroupBys.ToArray());
+            if (tupleParam is not null) _tupleElements.Remove(tupleParam);
 
             var selectExpr = (SelectExpr)source.Select(selectItems);
 
@@ -1205,6 +1306,220 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// From / FromRelated 方法处理器：将 <c>Expr.From&lt;T&gt;()</c> 转换为 <see cref="TableExpr"/>，
+        /// <c>Expr.FromRelated&lt;T&gt;()</c> 在此基础上按关联元数据推断关联条件并包一层 <see cref="WhereExpr"/>。
+        /// </summary>
+        /// <param name="node">方法调用表达式节点</param>
+        /// <returns>表表达式，或带关联条件的筛选表达式</returns>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Generic argument type comes from the lambda itself; properties are preserved via [Table] entities through the source generator.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "The generic argument type of Expr.From<T> is resolved from the lambda's method call; entity types must be registered via [Table] under AOT.")]
+#endif
+        private Expr HandleFrom(MethodCallExpression node)
+        {
+            Type[] genericArgs = node.Method.GetGenericArguments();
+            if (genericArgs.Length != 1)
+                throw new ArgumentException($"Method {node.Method.Name} must have exactly one generic argument.", nameof(node));
+
+            Type entityType = genericArgs[0];
+            string alias = _aliasCounter.NextAlias();
+            var tableExpr = new TableExpr(entityType) { Alias = alias };
+            if (node.Arguments.Count > 0)
+                tableExpr.TableArgs = EvaluateTableArgs(node.Arguments[0]);
+
+            if (node.Method.Name != nameof(Expr.FromRelated)) return tableExpr;
+
+            // FromRelated 以当前根参数的表作为关联源，推断不到关联关系时退化为普通 From
+            Type? rootType = _tableExpr?.Type;
+            string? rootAlias = _tableExpr?.Alias;
+            if (rootType == null || rootAlias == null) return tableExpr;
+
+            LogicExpr? related = Expr.BuildRelatedLogic(rootType, rootAlias, entityType, alias);
+            return related is null ? tableExpr : new WhereExpr(tableExpr, related);
+        }
+
+        /// <summary>
+        /// Join / JoinRelated 方法处理器：把右表以 <see cref="TableJoinExpr"/> 形式追加到 <see cref="FromExpr"/> 的 Joins 中。
+        /// 左源是 <see cref="TableExpr"/> 时新建 <see cref="FromExpr"/>，已是 <see cref="FromExpr"/> 时在其上追加，从而支持多级连接。
+        /// </summary>
+        /// <param name="node">方法调用表达式节点</param>
+        /// <returns>包含连接信息的 <see cref="FromExpr"/></returns>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Generic argument types come from the join call itself; properties are preserved via [Table] entities through the source generator.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "The right-hand entity type is resolved from the generic arguments of Join; entity types must be registered via [Table] under AOT.")]
+#endif
+        private Expr HandleJoin(MethodCallExpression node)
+        {
+            Type[] genericArgs = node.Method.GetGenericArguments();
+            if (genericArgs.Length != 2)
+                throw new ArgumentException($"Method {node.Method.Name} must have exactly two generic arguments.", nameof(node));
+
+            Type rightType = genericArgs[1];
+            Expr left = ConvertInternal(node.Arguments[0]);
+
+            // 左源统一收敛到 FromExpr：TableExpr 作为主表新建，FromExpr 直接复用以便追加第二个连接
+            FromExpr from;
+            if (left is FromExpr existingFrom) from = existingFrom;
+            else if (left is TableExpr tableExpr) from = new FromExpr(tableExpr);
+            else
+                throw new ArgumentException($"Join source must be a table or an existing join chain, but got {left?.GetType().Name}.", nameof(node));
+
+            string rightAlias = _aliasCounter.NextAlias();
+            var joinTable = new TableExpr(rightType) { Alias = rightAlias };
+            var joinExpr = new TableJoinExpr(joinTable, null)
+            {
+                JoinType = ResolveJoinType(node.Method.Name, from.Source as TableExpr, rightType)
+            };
+            from.Joins.Add(joinExpr);
+            joinExpr.On = BuildJoinCondition(node, from, joinTable, rightAlias);
+            return from;
+        }
+
+        /// <summary>
+        /// 构造 Join 的 ON 条件。Join 使用显式条件；JoinRelated 使用自动推断的关联条件，
+        /// 若同时提供了显式条件则两者按 AND 合并。
+        /// </summary>
+        private LogicExpr? BuildJoinCondition(MethodCallExpression node, FromExpr from, TableExpr joinTable, string rightAlias)
+        {
+            bool isRelated = node.Method.Name == nameof(ExprExtensions.JoinRelated);
+            bool hasExplicitOn = node.Arguments.Count > 1;
+
+            LogicExpr? autoRelated = null;
+            if (isRelated)
+            {
+                Type? leftType = (from.Source as TableExpr)?.Type;
+                string? leftAlias = (from.Source as TableExpr)?.Alias;
+                if (leftType is null || leftAlias is null)
+                    throw new InvalidOperationException($"{node.Method.Name} requires a table as the join source.");
+
+                autoRelated = Expr.BuildRelatedLogic(leftType, leftAlias, joinTable.Type!, rightAlias);
+                if (autoRelated is null && !hasExplicitOn)
+                    throw new InvalidOperationException(
+                        $"No relation between {leftType.Name} and {joinTable.Type!.Name} is found in metadata. " +
+                        $"Annotate the association with [ForeignType] / [TableJoin], or use Join with an explicit condition.");
+            }
+
+            if (!hasExplicitOn) return autoRelated;
+
+            LambdaExpression on = UnwrapLambda(node.Arguments[1]);
+            ParameterExpression leftParam = on.Parameters[0];
+            ParameterExpression rightParam = on.Parameters[1];
+
+            string? lastAlias = _currentAlias;
+            string leftAliasName = (from.Source as TableExpr)?.Alias ?? _currentAlias;
+            _parameterAliases[leftParam] = leftAliasName;
+            _parameterExprs[leftParam] = from.Source as TableExpr ?? new TableExpr((from.Source as TableExpr)?.Type!) { Alias = leftAliasName };
+            _parameterAliases[rightParam] = rightAlias;
+            _parameterExprs[rightParam] = joinTable;
+            _currentAlias = leftAliasName;
+
+            LogicExpr? explicitOn;
+            try
+            {
+                explicitOn = ConvertInternal(on.Body).AsLogic();
+            }
+            finally
+            {
+                _parameterAliases.Remove(leftParam);
+                _parameterAliases.Remove(rightParam);
+                _parameterExprs.Remove(leftParam);
+                _parameterExprs.Remove(rightParam);
+                _currentAlias = lastAlias!;
+            }
+
+            if (autoRelated is null) return explicitOn;
+            if (explicitOn is null) return autoRelated;
+            return new AndExpr(autoRelated, explicitOn);
+        }
+
+        /// <summary>
+        /// 解析连接类型：JoinRelated 优先沿用元数据中声明的连接方式，其余情况使用左连接。
+        /// </summary>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Type comes from the lambda's generic arguments; entity metadata is preserved via [Table] under AOT.")]
+#endif
+        private static TableJoinType ResolveJoinType(string methodName, TableExpr? leftTable, Type rightType)
+        {
+            if (methodName == nameof(ExprExtensions.JoinRelated) && leftTable?.Type != null)
+            {
+                var view = TableInfoProvider.Instance.GetTableView(leftTable.Type);
+                if (view != null)
+                {
+                    foreach (JoinedTable joinedTable in view.JoinedTables)
+                    {
+                        if (joinedTable.TableDefinition is null) continue;
+                        if (joinedTable.TableDefinition.DefinitionType.IsAssignableFrom(rightType))
+                            return joinedTable.JoinType;
+                    }
+                }
+            }
+            return TableJoinType.Left;
+        }
+
+        /// <summary>
+        /// 去掉 Lambda 参数上的 Quote 包装。
+        /// </summary>
+        private static LambdaExpression UnwrapLambda(Expression expression)
+        {
+            if (expression is UnaryExpression quote && quote.NodeType == ExpressionType.Quote) expression = quote.Operand;
+            return expression as LambdaExpression
+                ?? throw new ArgumentException($"Expected a lambda expression, but got {expression.GetType().Name}.");
+        }
+
+        /// <summary>
+        /// 判断方法调用是否为根级 LINQ 聚合函数（Count/Sum/Average/Max/Min 等）。
+        /// </summary>
+        private static bool IsAggregateMethod(MethodCallExpression node)
+            => node.Method.IsStatic
+                && node.Arguments.Count > 0
+                && GetAggregateName(node.Method.Name) != null;
+
+        /// <summary>
+        /// 聚合函数处理器：将 <c>q.Count()</c>、<c>q.Sum(x => x.Age)</c> 等转换为只含单个聚合列的 <see cref="SelectExpr"/>。
+        /// 生成的表达式既可作为根查询，也可作为标量子查询嵌入其他表达式中。
+        /// </summary>
+        /// <param name="node">方法调用表达式节点</param>
+        /// <returns>聚合查询表达式</returns>
+        private Expr HandleAggregate(MethodCallExpression node)
+        {
+            string aggregateName = GetAggregateName(node.Method.Name)!;
+            Expr source = ConvertInternal(node.Arguments[0]);
+            if (source is not SqlSegment sourceSegment)
+                throw new ArgumentException($"Aggregate source must be a query expression, but got {source?.GetType().Name}.", nameof(node));
+
+            string lastAlias = _currentAlias;
+            if (source is SelectExpr selectExpr && selectExpr.Alias != null) _currentAlias = selectExpr.Alias;
+
+            ValueTypeExpr aggregateArg = Expr.Const(1);
+            try
+            {
+                if (node.Arguments.Count > 1)
+                {
+                    Expression selector = node.Arguments[1];
+                    if (selector is UnaryExpression quote && quote.NodeType == ExpressionType.Quote) selector = quote.Operand;
+                    if (selector is LambdaExpression selectorLambda)
+                    {
+                        ParameterExpression parameter = selectorLambda.Parameters[0];
+                        _parameterAliases[parameter] = _currentAlias;
+                        aggregateArg = ConvertInternal(selectorLambda.Body).AsValue();
+                        _parameterAliases.Remove(parameter);
+                    }
+                    else
+                    {
+                        aggregateArg = ConvertInternal(selector).AsValue();
+                    }
+                }
+            }
+            finally
+            {
+                _currentAlias = lastAlias;
+            }
+
+            var aggregate = new FunctionExpr(aggregateName.ToUpperInvariant(), aggregateArg) { IsAggregate = true };
+            return new SelectExpr(sourceSegment, new SelectItemExpr(aggregate));
+        }
+
+        /// <summary>
         /// 根据方法名获取对应的聚合函数名称（用于将 LINQ 聚合函数映射到 SQL 聚合函数）。
         /// </summary>
         /// <param name="name">方法名</param>
@@ -1213,7 +1528,7 @@ namespace LiteOrm.Common
         {
             "Count" or "LongCount" => "Count",
             "Sum" => "Sum",
-            "Average" => "Avg",
+            "Average" or "Avg" => "Avg",
             "Max" => "Max",
             "Min" => "Min",
             _ => null
@@ -1288,6 +1603,13 @@ namespace LiteOrm.Common
             /// <returns></returns>
             protected override Expression VisitMethodCall(MethodCallExpression node)
             {
+                // Expr.From / Expr.FromRelated 是纯占位方法，调用即抛异常，必须交给 ConvertMethodCall 解析而非本地求值
+                if (node.Method.DeclaringType == typeof(Expr)
+                    && (node.Method.Name == nameof(Expr.From) || node.Method.Name == nameof(Expr.FromRelated)))
+                {
+                    _result = false;
+                    return node; // 直接返回原节点，避免继续访问子表达式影响结果
+                }
                 if (_typeMethodHandlers.TryGetValue((node.Method.DeclaringType!, node.Method.Name), out _) || _methodNameHandlers.TryGetValue(node.Method.Name, out _))
                 {
                     _result = false;

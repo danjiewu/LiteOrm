@@ -17,11 +17,13 @@
     <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
       8.1.13:
-      - AOT 下 [TableJoin]/[ForeignType]/[ForeignColumn] 与 [Column(Constant = ...)] 由 TableInfoGenerator 编译期写入 TableInfo ，CommonTableInfoProvider 装配出完整的 TableView 与 TableDefinition.ConstFilter，与 JIT 一致。
-      - LambdaExprConverter 支持嵌套参数上下文：新增带父转换器的构造重载，子转换器继承外层参数映射并共享别名编号；多参数 Lambda 全部注册（param[0] 为 T0 根表，其余参数获得新别名）。
-      - 破坏性变更：删除 Expr.Exists/Expr.ExistsRelated 的泛型重载，LogicExpr 场景改用 Type 重载 Expr.Exists(typeof(T), ...)；删除 Where&lt;T&gt; Lambda 扩展方法，改用 Where(Expr.Lambda&lt;T&gt;(...))。
-      - 破坏性变更：删除 TableRef 抽象类，成员移入 JoinedTable；ColumnRef.Table 类型由 TableRef? 改为 JoinedTable?。
-      - 修复内层 Lambda 同名参数遮蔽外层参数的 bug：Expr.Exists 等嵌套 Lambda 参数与外层同名时，转换完成后外层参数引用不再失效。
+      - 破坏性变更：Expr.From&lt;T&gt;() 改为 Lambda 专用占位方法，返回 IEnumerable&lt;T&gt; 并直接抛异常；新增 Expr.FromRelated&lt;T&gt;()。
+      - 破坏性变更：删除 Expr.Exists/Expr.ExistsRelated 的 LogicExpr 泛型重载与 Where&lt;T&gt; Lambda 扩展方法；删除 TableRef 抽象类，JoinedTable 改为直接继承 SqlObject。
+      - Lambda 支持根级聚合：Count/Sum/Average/Max/Min 等可在 Expr.Query 内直接解析。
+      - 新增 Join&lt;T1, T2&gt; / JoinRelated&lt;T1, T2&gt; 扩展方法，返回元素元组并可继续 Where/Select；x.Item1 / x.Item2 能还原表别名。
+      - LambdaExprConverter 参数作用域改按 ParameterExpression 引用键控，支持嵌套参数上下文与多参数 Lambda 全量注册；修复内层同名参数遮蔽外层参数。
+      - AOT 下 [TableJoin]/[ForeignType]/[ForeignColumn] 与 [Column(Constant = ...)] 由 TableInfoGenerator 编译期写入 TableInfo，CommonTableInfoProvider 装配出完整的 TableView 与 TableDefinition.ConstFilter。
+      - 其他：Section/Select/Where/Having 的条件参数改为可空；新增公开方法 Expr.BuildRelatedLogic，ExistsRelated/FromRelated/JoinRelated 与 ForeignExpr 渲染共用关联推断实现。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

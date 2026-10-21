@@ -50,6 +50,20 @@ var currentUserFilter = Sql("CurrentUserFilter");
 - `Aggregate(name, expr, isDistinct)`：聚合函数包装
 - `Sql(key, arg)`：注册式动态 SQL 片段，适合运行时上下文过滤
 
+Lambda 里的 `Count`、`Sum`、`Average`、`Max`、`Min` 也能直接解析成聚合查询，根级与子查询内写法一致：
+
+```csharp
+// SELECT COUNT(1) FROM Orders T0 WHERE ...
+var total = Expr.Query<Order, int>(q => q.Count());
+var amountSum = Expr.Query<Order, decimal>(q => q.Sum(o => o.Amount));
+var avgAmount = Expr.Query<Order, decimal>(q => q.Average(o => o.Amount));
+
+// 标量子查询，参与比较时会自动加括号
+var aboveAverage = Expr.Query<Order>(q => q.Amount > Expr.From<Order>().Average(o => o.Amount));
+```
+
+`Count()` 不带选择器时生成 `COUNT(1)`；带选择器则把选择器表达式整体作为聚合参数，因此 `x => x.Amount * x.Rate` 这类算式也可用。`Average` 与 `Avg` 都映射到 `AVG`。聚合生成的 `SelectExpr` 不带列别名，作为标量子查询使用时不会输出多余的 `AS`。
+
 ### 1.4 类型转换与条件值
 
 ```csharp
@@ -178,12 +192,12 @@ public static LogicExpr BuildUserSearch(IReadOnlyDictionary<string, string?> que
 
 在 Lambda 中可用 `expr.To<bool>()` 把动态 `Expr` 嵌入条件；完整方法与取舍见 [Lambda 与 Expr 组合使用](./lambda-expr-mixing.md)。
 
-## 4. 用 `Expr.From<T>()` 链式构建查询
+## 4. 用 `Expr.From(type)` 链式构建查询
 
 ```csharp
 using static LiteOrm.Common.Expr;
 
-var query = From<User>()
+var query = From(typeof(User))
     .Where(Prop("Age") > 18)
     .GroupBy(Prop("DeptId"))
     .Having(Prop("Id").Count() > 5)
@@ -196,6 +210,11 @@ var query = From<User>()
 ```
 
 这是 `Expr` 最完整的用法：从 `FROM` 起点一路构造 `WHERE / GROUP BY / HAVING / SELECT / ORDER BY / 分页`。
+
+`From` 有两个重载，分工不同：
+
+- `Expr.From(type, tableArgs)` 接受 `Type`，返回 `TableExpr`，是唯一可以真实调用的工厂方法。
+- `Expr.From<T>(tableArgs)` 返回 `IEnumerable<T>`，只用于 Lambda 表达式中构造查询源，直接调用会抛 `InvalidOperationException`。改写 Lambda 时解析器会把 `From<T>()` 换成对内层查询的表引用，例如 `Expr.From<User>().Where(Prop("Age") > 18)` 出现在 `Expr.Query` 里时按子查询处理。
 
 ## 5. Expr 类型总览
 
@@ -271,7 +290,8 @@ var query = From<User>()
 | `Expr.Value(value)` | 创建参数化值 | `Expr.Value(18)` |
 | `Expr.Const(value)` | 创建常量值 | `Expr.Const("Enabled")` |
 | `Expr.Null` | SQL NULL | `Expr.Null` |
-| `Expr.From<T>()` | 创建链式查询起点 | `Expr.From<User>()` |
+| `Expr.From(type)` | 创建链式查询起点（可真实调用） | `Expr.From(typeof(User))` |
+| `Expr.From<T>()` | 仅用于 Lambda 内构造查询源，直接调用抛异常 | `Expr.From<User>()` |
 | `Expr.Update<T>()` | 创建 UPDATE 表达式 | `Expr.Update<User>()` |
 | `Expr.Delete<T>()` | 创建 DELETE 表达式 | `Expr.Delete<User>()` |
 | `Expr.Exists(type, innerExpr)` | 创建 EXISTS 子查询 | `Expr.Exists(typeof(Department), ...)` |
@@ -420,7 +440,7 @@ var expr3 = Prop("DeletedTime").IsNull();       // 同上，语义最清晰
 ```csharp
 using static LiteOrm.Common.Expr;
 
-var query = From<User>()
+var query = From(typeof(User))
     .OrderBy(("Age", false)); // (string property, bool ascending) -> OrderByItemExpr
 
 var update = Update<User>()

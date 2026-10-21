@@ -49,7 +49,7 @@ namespace LiteOrm.Demo.Demos
             ShowSection("1.3 结构化查询模型 (Select/Update/Delete)", () =>
             {
                 // Select 链式构建
-                var query = From<User>()
+                var query = From(typeof(User))
                     .Where(Prop("Age") > 20)
                     .Select(Prop("Id"), Prop("UserName").As("Name"))
                     .OrderBy(Prop("Id").Desc());

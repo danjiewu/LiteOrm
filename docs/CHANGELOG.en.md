@@ -1,32 +1,34 @@
 # Changelog
 
-## v8.1.13 (2026-10-17)
+## v8.1.13 (2026-10-21)
 
 ### Breaking changes
 
-- **The `TableRef` abstract class is removed** (`LiteOrm.Common`): `JoinedTable` now derives from `SqlObject` directly and carries `TableDefinition`, `GetColumn`, `Equals` and `GetHashCode`; `TableRef.Columns` and `JoinedTable.Columns` are removed, use `GetColumn` to look a column up by property name; `ColumnRef.Table` and the two-argument constructor now take `JoinedTable?` instead of `TableRef?`.
+- **`Expr.From<T>()` becomes a lambda-only placeholder** (`LiteOrm.Common`): the return type changes from `TableExpr` to `IEnumerable<T>` and the method body throws `InvalidOperationException`.
 
-- **`LambdaExprConverter` parameter maps are now keyed by `ParameterExpression` reference** (`LiteOrm.Common`): the key type of the two protected fields `_parameterAliases` and `_parameterExprs` changes from parameter name `string` to `ParameterExpression`, so an inner lambda parameter that shares a name with an outer one no longer overwrites or removes the outer mapping; `_aliasCounter` changes from `int` to the shared `LambdaExprConverter.AliasSequence`; the `Table` property may be null when a parent converter is supplied and the lambda has no parameters.
+- **Redundant generic lambda overloads are removed** (`LiteOrm.Common`): `Expr.Exists<T>(LogicExpr, ...)` and `Expr.ExistsRelated<T>(LogicExpr?, ...)` are deleted, and `ISourceAnchor.Where<T>(Expression<Func<T, bool>>)` is deleted as well.
 
-- **The generic overloads of `Expr.Exists` / `Expr.ExistsRelated` are removed** (`LiteOrm.Common`): `Exists<T>(LogicExpr, params string[])` and `ExistsRelated<T>(LogicExpr?, params string[])` are deleted; `LogicExpr` scenarios now use the Type-based overloads `Expr.Exists(typeof(T), innerExpr, tableArgs)` and `Expr.ExistsRelated(typeof(T), innerExpr, tableArgs)`. The in-lambda forms `Expr.Exists<T>(lambda)` / `Expr.ExistsRelated<T>(lambda)` are unaffected.
-
-- **The `Where<T>` Lambda extension method is removed** (`LiteOrm.Common`): `Where<T>(this ISourceAnchor?, Expression<Func<T, bool>>)` on `ISourceAnchor` is deleted; use `.Where(Expr.Lambda<T>(u => ...))` instead.
+- **The `TableRef` abstract class is removed** (`LiteOrm.Common`): `JoinedTable` now derives from `SqlObject`; `ColumnRef.Table` and the two-argument constructor take `JoinedTable?` instead of `TableRef?`.
 
 ### New Features
 
-- **Association metadata and constant filters are generated under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `TableInfoGenerator` writes `[TableJoin]`, `[ForeignType]` and `[ForeignColumn]` into `TableInfo.JoinedTables` and `ColumnInfo.ForeignTables` / `ForeignColumn`, and renders `[Column(Constant = ...)]` as a literal into `ColumnInfo.Constant`; at runtime `CommonTableInfoProvider` assembles the complete `TableView` (joined tables, `Used` marks along the foreign-key chain, projected target columns) and `TableDefinition.ConstFilter` from them, matching JIT.
+- **Root-level aggregate functions in lambdas** (`LiteOrm.Common`): `Count`, `LongCount`, `Sum`, `Average`, `Avg`, `Max` and `Min` now convert inside `Expr.Query`.
 
-- **`LambdaExprConverter` supports nested parameter contexts** (`LiteOrm.Common`): the new `LambdaExprConverter(LambdaExpression expression, LambdaExprConverter? parent = null)` constructor overload lets a child converter inherit the parent's parameter mappings and share its alias sequence, so custom method handlers can create a child converter that sees outer parameters.
+- **`Join<T1, T2>` / `JoinRelated<T1, T2>` extension methods** (`LiteOrm.Common`): joins another entity table and returns element tuples `IEnumerable<(T1, T2)>`, so the existing `Where` / `Select` / `OrderBy` chains keep working; tuple element access is resolved alongside, so `x.Item1` / `x.Item2` map to the correct aliases instead of being treated as columns named `Item1`.
 
-- **All parameters of multi-parameter lambdas are registered** (`LiteOrm.Common`): the constructor registers every lambda parameter, with `param[0]` as the root `TableExpr` aliased `T0` and `param[i>0]` as a `TableExpr` with a fresh alias `T{n}`.
+- **`LambdaExprConverter` supports nested parameter contexts** (`LiteOrm.Common`): a constructor overload accepts a parent converter, letting a child inherit the parent's parameter mappings and share its alias sequence; the constructor registers every lambda parameter, with `param[0]` as the root table aliased `T0` and the rest getting fresh aliases `T{n}`.
+
+- **Association metadata and constant filters are generated under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `TableInfoGenerator` writes `[TableJoin]`, `[ForeignType]` and `[ForeignColumn]` into `TableInfo.JoinedTables` and `ColumnInfo.ForeignTables` / `ForeignColumn`, and renders `[Column(Constant = ...)]` as a literal into `ColumnInfo.Constant`; at runtime `CommonTableInfoProvider` assembles the complete `TableView` and `TableDefinition.ConstFilter` from them, matching JIT.
 
 ### Enhancements
 
-- **Condition parameters of `Section` / `Select` / `Where` / `Having` are now nullable** (`LiteOrm.Common`): the `LogicExpr` parameters are changed to `LogicExpr?`, so conditional-free paging, selection and filtering can pass `null` directly.
+- **Condition parameters are now nullable** (`LiteOrm.Common`): the `LogicExpr` parameters of `Section` / `Select` / `Where` / `Having` change to `LogicExpr?`, so conditional-free calls can pass `null` directly.
+
+- **`Expr.BuildRelatedLogic` is now public** (`LiteOrm.Common`): relation inference is extracted into a public method shared by `ExistsRelated`, `FromRelated`, `JoinRelated` and the `ForeignExpr` SQL rendering. Both sides of the relation condition now carry explicit table aliases.
 
 ### Fixes
 
-- **Fixed inner lambda parameters shadowing outer parameters with the same name** (`LiteOrm.Common`): when a nested lambda such as `Expr.Exists` had a parameter with the same name as an outer one, the mapping was removed by name after conversion, so later outer references failed (`ConvertParameter` returned null and `((IArged)u).TableArgs` assignments were skipped); scopes are now tracked per parameter reference, keeping outer references usable after nested conversion.
+- **Inner lambda parameters no longer shadow outer parameters with the same name** (`LiteOrm.Common`): when a nested lambda parameter shared a name with an outer one, the mapping was removed by name after conversion, so outer references failed (`ConvertParameter` returned null and `((IArged)u).TableArgs` assignments were skipped). Fixed together with the reference-keyed parameter scopes.
 
 ***
 

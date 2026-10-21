@@ -19,8 +19,8 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
-8.1.13:
-- 同步 LiteOrm.Common 8.1.13 / LiteOrm 8.1.13。
+      8.1.13:
+      - 同步 LiteOrm.Common 8.1.13 / LiteOrm 8.1.13。
     </PackageReleaseNotes>
 	</PropertyGroup>
 	<PropertyGroup>

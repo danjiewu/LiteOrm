@@ -236,7 +236,7 @@ namespace LiteOrm.Demo.Demos
 
                 var update1 =
                     Update<User>()
-                    .Set(("Age", From<User>()
+                    .Set(("Age", From(typeof(User))
                         .Where(Prop("UserName").StartsWith("UpdateDemo_"))
                         .Select(Aggregate("AVG", Prop("Age")).As("avg_age"))
                         .Select("avg_age").AsValue()//必须加一层嵌套，令 MySQL 将其视为独立数据源，MySQL 禁止子查询的 FROM 与被更新目标表相同
@@ -261,7 +261,7 @@ namespace LiteOrm.Demo.Demos
                     "var update = new UpdateExpr(From<User>(), Prop(\"UserName\") == \"UpdateDemo_Carol\")\n" +
                     "    .Set((\"DeptId\", subDept));");
 
-                var subDept = From<Department>()
+                var subDept = From(typeof(Department))
                     .Where(Prop("Name") == "研发中心")
                     .Select(Prop("Id"));
 

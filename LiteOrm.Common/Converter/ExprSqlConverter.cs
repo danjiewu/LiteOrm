@@ -771,37 +771,9 @@ namespace LiteOrm.Common
             LogicExpr? joinedExpr = null;
             if (foreignExpr.AutoRelated && context.Table is not null)
             {
-                var mainTable = TableInfoProvider.Instance.GetTableView(context.Table.DefinitionType);
-                // 首先尝试正向查找当前表与目标表之间的关联关系
-                if (mainTable != null)
-                {
-                    foreach (JoinedTable joinedTable in mainTable.JoinedTables)
-                    {
-                        if (joinedTable.TableDefinition is null) continue;
-                        if (joinedTable.TableDefinition.DefinitionType.IsAssignableFrom(foreignExpr.Foreign))
-                        {
-                            // 找到当前表与目标表之间的关联关系，自动生成关联条件
-                            joinedExpr |= new AndExpr(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
-                                Expr.Prop(pk.Name!) == Expr.Prop(fk.Table?.Name ?? context.DefaultTableAliasName, fk.Name!)
-                            ));
-                        }
-                    }
-                }
-                // 正向没有找到关联关系，尝试反向查找
-                if (joinedExpr is null)
-                {
-                    foreach (JoinedTable joinedTable in foreignTable.JoinedTables)
-                    {
-                        if (joinedTable.TableDefinition is null) continue;
-                        if (joinedTable.TableDefinition.DefinitionType.IsAssignableFrom(context.Table.DefinitionType))
-                        {
-                            // 找到当前表与目标表之间的关联关系，自动生成关联条件
-                            joinedExpr |= new AndExpr(joinedTable.ForeignPrimeKeys.Zip(joinedTable.ForeignKeys, (pk, fk) =>
-                                Expr.Prop(fk.Table?.Name, fk.Name!) == Expr.Prop(context.DefaultTableAliasName, pk.Name!)
-                            ));
-                        }
-                    }
-                }
+                // 关联条件按外键元数据推断，推断不到时退化为不带关联条件的 EXISTS
+                string rootAlias = context.DefaultTableAliasName ?? Constants.DefaultTableAlias;
+                joinedExpr = Expr.BuildRelatedLogic(context.Table.DefinitionType, rootAlias, foreignExpr.Foreign, foreignAlias);
             }
 
             using (context.BeginScope())

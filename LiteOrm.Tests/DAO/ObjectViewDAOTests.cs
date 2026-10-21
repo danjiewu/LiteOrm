@@ -430,7 +430,7 @@ namespace LiteOrm.Tests
             var user = new TestUser { Name = "ObjectViewSearchAs", Age = 29, CreateTime = DateTime.Now };
             await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
-            var selectExpr = Expr.From<TestUser>()
+            var selectExpr = Expr.From(typeof(TestUser))
                 .Where(Expr.Prop("Name") == "ObjectViewSearchAs")
                 .Select(Expr.Prop("Name"), Expr.Prop("Age"));
 

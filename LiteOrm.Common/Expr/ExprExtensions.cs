@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
@@ -931,6 +932,90 @@ namespace LiteOrm.Common
         /// </code>
         /// </example>
         public static FunctionExpr Min(this ValueTypeExpr expr) => new FunctionExpr("MIN", expr) { IsAggregate = true };
+
+        /// <summary>
+        /// 连接另一个实体表，并使用显式的连接条件。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
+        /// </summary>
+        /// <typeparam name="T1">左表实体类型。</typeparam>
+        /// <typeparam name="T2">右表实体类型。</typeparam>
+        /// <param name="source">左表查询源，通常由 <see cref="Expr.From{T}(string[])"/> 产生。</param>
+        /// <param name="on">连接条件表达式。</param>
+        /// <returns>左右两表的元素元组序列。</returns>
+        /// <example>
+        /// <code>
+        /// var query = Expr.Query&lt;Order, int&gt;(q =&gt; q
+        ///     .Join&lt;Customer&gt;((o, c) =&gt; o.CustomerId == c.Id)
+        ///     .Where(x =&gt; x.Item2.Name == "A")
+        ///     .Count());
+        /// </code>
+        /// </example>
+        public static IEnumerable<(T1, T2)> Join<T1, T2>(this IEnumerable<T1> source, Expression<Func<T1, T2, bool>> on)
+        {
+            throw new InvalidOperationException("The Join method is only used for parsing lambda expressions and cannot be called directly.");
+        }
+
+        /// <summary>
+        /// 连接另一个实体表，并使用显式的连接条件。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
+        /// </summary>
+        /// <typeparam name="T1">左表实体类型。</typeparam>
+        /// <typeparam name="T2">右表实体类型。</typeparam>
+        /// <param name="source">左表查询源。</param>
+        /// <param name="on">连接条件表达式。</param>
+        /// <returns>左右两表的元素元组序列。</returns>
+        public static IEnumerable<(T1, T2)> Join<T1, T2>(this IQueryable<T1> source, Expression<Func<T1, T2, bool>> on)
+        {
+            throw new InvalidOperationException("The Join method is only used for parsing lambda expressions and cannot be called directly.");
+        }
+
+        /// <summary>
+        /// 连接另一个实体表，并按外键元数据自动推断连接条件。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
+        /// </summary>
+        /// <typeparam name="T1">左表实体类型。</typeparam>
+        /// <typeparam name="T2">右表实体类型。</typeparam>
+        /// <param name="source">左表查询源，通常由 <see cref="Expr.From{T}(string[])"/> 产生。</param>
+        /// <returns>左右两表的元素元组序列。</returns>
+        public static IEnumerable<(T1, T2)> JoinRelated<T1, T2>(this IEnumerable<T1> source)
+        {
+            throw new InvalidOperationException("The JoinRelated method is only used for parsing lambda expressions and cannot be called directly.");
+        }
+
+        /// <summary>
+        /// 连接另一个实体表，并按外键元数据自动推断连接条件。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
+        /// </summary>
+        /// <typeparam name="T1">左表实体类型。</typeparam>
+        /// <typeparam name="T2">右表实体类型。</typeparam>
+        /// <param name="source">左表查询源。</param>
+        /// <returns>左右两表的元素元组序列。</returns>
+        public static IEnumerable<(T1, T2)> JoinRelated<T1, T2>(this IQueryable<T1> source)
+        {
+            throw new InvalidOperationException("The JoinRelated method is only used for parsing lambda expressions and cannot be called directly.");
+        }
+
+        /// <summary>
+        /// 连接另一个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
+        /// </summary>
+        /// <typeparam name="T1">左表实体类型。</typeparam>
+        /// <typeparam name="T2">右表实体类型。</typeparam>
+        /// <param name="source">左表查询源，通常由 <see cref="Expr.From{T}(string[])"/> 产生。</param>
+        /// <param name="on">附加的连接条件，与自动推断的关联条件取 AND。</param>
+        /// <returns>左右两表的元素元组序列。</returns>
+        public static IEnumerable<(T1, T2)> JoinRelated<T1, T2>(this IEnumerable<T1> source, Expression<Func<T1, T2, bool>> on)
+        {
+            throw new InvalidOperationException("The JoinRelated method is only used for parsing lambda expressions and cannot be called directly.");
+        }
+
+        /// <summary>
+        /// 连接另一个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
+        /// </summary>
+        /// <typeparam name="T1">左表实体类型。</typeparam>
+        /// <typeparam name="T2">右表实体类型。</typeparam>
+        /// <param name="source">左表查询源。</param>
+        /// <param name="on">附加的连接条件，与自动推断的关联条件取 AND。</param>
+        /// <returns>左右两表的元素元组序列。</returns>
+        public static IEnumerable<(T1, T2)> JoinRelated<T1, T2>(this IQueryable<T1> source, Expression<Func<T1, T2, bool>> on)
+        {
+            throw new InvalidOperationException("The JoinRelated method is only used for parsing lambda expressions and cannot be called directly.");
+        }
 
         /// <summary>
         /// 将聚合或窗口函数应用到分区窗口（OVER PARTITION BY）。

@@ -10,8 +10,8 @@
     <FileVersion>8.1.13.0</FileVersion>
     <VersionPrefix>8.1.13</VersionPrefix>
     <PackageReleaseNotes>
-8.1.13:
-- 同步 LiteOrm.Common 8.1.13 / LiteOrm 8.1.13。
+      8.1.13:
+      - 同步 LiteOrm.Common 8.1.13 / LiteOrm 8.1.13。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>

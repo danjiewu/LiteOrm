@@ -229,7 +229,7 @@ namespace LiteOrm.Demo.Demos
                     ");");
 
                 var sales = await salesService.SearchAsync(
-                    From<SalesRecordView>("202411")
+                    From(typeof(SalesRecordView), "202411")
                         .Where(Prop("Amount") > 100)
                 );
 
@@ -301,7 +301,7 @@ namespace LiteOrm.Demo.Demos
                     ");");
 
                 var topSales = await salesService.SearchAsync(
-                    From<SalesRecordView>("202412")
+                    From(typeof(SalesRecordView), "202412")
                         .Where(Prop("Amount") > 0)
                         .OrderBy(("Amount", false))
                         .Section(0, 3)
