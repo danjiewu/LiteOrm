@@ -1169,6 +1169,17 @@ namespace LiteOrm.Common
             // 如果是 MemberAccess (如 g.Key) 
             if (arg is MemberExpression memberExpr)
             {
+                // 元组元素访问（x.Item2.Name）需要还原到对应表别名，优先于普通列处理
+                if (TryResolveTupleElement(memberExpr, out TableExpr? tupleElement))
+                {
+                    string? elementAlias = tupleElement!.Alias;
+                    if (elementAlias == _currentAlias) elementAlias = null;
+                    if (memberExpr.Member is PropertyInfo tupleProperty)
+                        return new PropertyExpr(tupleProperty.Name) { TableAlias = elementAlias };
+                    if (memberExpr.Member is FieldInfo tupleField)
+                        return new PropertyExpr(tupleField.Name) { TableAlias = elementAlias };
+                }
+
                 // 检查是否是 lambda 参数的成员访问
                 if (IsParameterAccess(memberExpr.Expression, lambdaParam))
                 {

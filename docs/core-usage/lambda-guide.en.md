@@ -256,7 +256,8 @@ A few points worth knowing:
 - `Join` produces SQL like `FROM Orders T0 LEFT JOIN Customers T1 ON T0.CustomerId = T1.Id`; the join type defaults to left.
 - `JoinRelated` throws `InvalidOperationException` when no relation can be inferred, telling you to use `Join` with an explicit condition. Declare such relations with `[ForeignType]` or `[TableJoin]`.
 - Multi-level joins are supported: `From<A>().Join<B>(...).Join<C>(...)` appends two JOINs, and the second level joins from the `(A, B)` tuple.
-- Whole-table projections such as `Select(x => x.Item1)` are not supported; list specific columns inside `Select`.
+- Join aliases are assigned in order. When you build `SelectItemExpr` by alias, read them from `from.Source.Alias` and `from.Joins[i].Source.Alias` instead of hard-coding `T1`, since the outer query may already have used that number.
+- Whole-table projections such as `Select(x => x.Item1)` are not supported; list specific columns inside `Select`, for example `Select(x => new { x.Item1.Id, x.Item2.Name })`.
 
 ## 6. Projection Queries (`SearchAs` / `SearchOneAs`)
 

@@ -256,7 +256,8 @@ var merged = Query<Order, IEnumerable<(Order, Customer)>>(
 - `Join` 生成的 SQL 形如 `FROM Orders T0 LEFT JOIN Customers T1 ON T0.CustomerId = T1.Id`，连接类型默认左连接。
 - `JoinRelated` 推断不到关联关系时抛 `InvalidOperationException`，提示改用带条件的 `Join`。这类表需要先用 `[ForeignType]` 或 `[TableJoin]` 声明关联。
 - 支持多级连接，`From<A>().Join<B>(...).Join<C>(...)` 会连续追加两条 JOIN，第二级左源是 `(A, B)` 元组。
-- `Select(x => x.Item1)` 这种整表投影不支持，`Select` 里请写具体列。
+- 连接表别名按分配顺序生成，需要按别名手工拼 `SelectItemExpr` 时从 `from.Source.Alias` 与 `from.Joins[i].Source.Alias` 读取，不要写死 `T1`，外层查询可能已经占用过该编号。
+- `Select(x => x.Item1)` 这种整表投影不支持，`Select` 里请写具体列，例如 `Select(x => new { x.Item1.Id, x.Item2.Name })`。
 
 ## 6. 投影查询（`SearchAs` / `SearchOneAs`）
 

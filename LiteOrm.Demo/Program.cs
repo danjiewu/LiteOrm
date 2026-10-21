@@ -76,6 +76,9 @@ using (var scope = host.Services.CreateScope())
 
     // 11. 远程服务调用演示 (AddRemoteServiceFactory：从配置读取远程地址、工厂代理、远程调用)
     await RemoteServiceDemo.RunAsync();
+
+    // 12. Lambda 查询能力演示 (12.1-12.6: From 重载、FromRelated、根级聚合、Join、JoinRelated、标量子查询)
+    await LambdaQueryFeatureDemo.RunAsync(scope.ServiceProvider);
 }
 
 

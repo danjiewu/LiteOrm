@@ -20,12 +20,6 @@
 
 - **Association metadata and constant filters are generated under AOT** (`LiteOrm.Common` / `LiteOrm.Generators`): `TableInfoGenerator` writes `[TableJoin]`, `[ForeignType]` and `[ForeignColumn]` into `TableInfo.JoinedTables` and `ColumnInfo.ForeignTables` / `ForeignColumn`, and renders `[Column(Constant = ...)]` as a literal into `ColumnInfo.Constant`; at runtime `CommonTableInfoProvider` assembles the complete `TableView` and `TableDefinition.ConstFilter` from them, matching JIT.
 
-### Enhancements
-
-- **Condition parameters are now nullable** (`LiteOrm.Common`): the `LogicExpr` parameters of `Section` / `Select` / `Where` / `Having` change to `LogicExpr?`, so conditional-free calls can pass `null` directly.
-
-- **`Expr.BuildRelatedLogic` is now public** (`LiteOrm.Common`): relation inference is extracted into a public method shared by `ExistsRelated`, `FromRelated`, `JoinRelated` and the `ForeignExpr` SQL rendering. Both sides of the relation condition now carry explicit table aliases.
-
 ### Fixes
 
 - **Inner lambda parameters no longer shadow outer parameters with the same name** (`LiteOrm.Common`): when a nested lambda parameter shared a name with an outer one, the mapping was removed by name after conversion, so outer references failed (`ConvertParameter` returned null and `((IArged)u).TableArgs` assignments were skipped). Fixed together with the reference-keyed parameter scopes.

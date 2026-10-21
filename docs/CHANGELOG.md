@@ -20,12 +20,6 @@
 
 - **AOT 下生成关联元数据与常量过滤**（`LiteOrm.Common` / `LiteOrm.Generators`）：`[TableJoin]`、`[ForeignType]`、`[ForeignColumn]` 由 `TableInfoGenerator` 编译期写入 `TableInfo.JoinedTables` 与 `ColumnInfo.ForeignTables` / `ForeignColumn`，`[Column(Constant = ...)]` 渲染成字面量写入 `ColumnInfo.Constant`；运行期 `CommonTableInfoProvider` 据此装配完整的 `TableView` 与 `TableDefinition.ConstFilter`，与 JIT 结构一致。
 
-### 改进
-
-- **条件参数改为可空**（`LiteOrm.Common`）：`Section` / `Select` / `Where` / `Having` 的 `LogicExpr` 参数统一改为 `LogicExpr?`，无过滤条件时可直接传 `null`。
-
-- **新增 `Expr.BuildRelatedLogic`**（`LiteOrm.Common`）：关联条件推断提取为公开方法，`ExistsRelated`、`FromRelated`、`JoinRelated` 与 `ForeignExpr` 的 SQL 渲染共用同一份实现。关联条件两侧现在都显式带表别名。
-
 ### 修复
 
 - **修复内层 Lambda 同名参数遮蔽外层参数**（`LiteOrm.Common`）：嵌套 Lambda 参数与外层同名时，转换完成后按参数名删除映射，导致外层引用失效（`ConvertParameter` 返回 null、`((IArged)u).TableArgs` 赋值被跳过）。随参数作用域改按引用键控一并修复。

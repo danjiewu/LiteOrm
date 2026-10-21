@@ -23,7 +23,6 @@
       - 新增 Join&lt;T1, T2&gt; / JoinRelated&lt;T1, T2&gt; 扩展方法，返回元素元组并可继续 Where/Select；x.Item1 / x.Item2 能还原表别名。
       - LambdaExprConverter 参数作用域改按 ParameterExpression 引用键控，支持嵌套参数上下文与多参数 Lambda 全量注册；修复内层同名参数遮蔽外层参数。
       - AOT 下 [TableJoin]/[ForeignType]/[ForeignColumn] 与 [Column(Constant = ...)] 由 TableInfoGenerator 编译期写入 TableInfo，CommonTableInfoProvider 装配出完整的 TableView 与 TableDefinition.ConstFilter。
-      - 其他：Section/Select/Where/Having 的条件参数改为可空；新增公开方法 Expr.BuildRelatedLogic，ExistsRelated/FromRelated/JoinRelated 与 ForeignExpr 渲染共用关联推断实现。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
