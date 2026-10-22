@@ -769,7 +769,7 @@ namespace LiteOrm.Common
             if (!TryGetTupleIndex(host.Member.Name, out int index)) return false;
 
             TupleNode? parent = ResolveTupleNode(host.Expression);
-            TupleNode? target = parent is null ? null : (index == 0 ? parent.First : parent.Second);
+            TupleNode? target = parent?.GetChild(index);
             // 落到嵌套元组而不是具体表时不算命中，交由调用方决定如何处理
             if (target?.Table is null) return false;
 
@@ -807,8 +807,7 @@ namespace LiteOrm.Common
             if (expression is MemberExpression member && TryGetTupleIndex(member.Member.Name, out int index))
             {
                 TupleNode? parent = ResolveTupleNode(member.Expression);
-                if (parent is null) return null;
-                return index == 0 ? parent.First : parent.Second;
+                return parent?.GetChild(index);
             }
             return null;
         }
@@ -844,7 +843,7 @@ namespace LiteOrm.Common
             while (current is HavingExpr havingExpr) current = havingExpr.Source;
             if (current is not FromExpr from) return null;
 
-            var tree = BuildTupleTree(from);
+            var tree = BuildTupleTree(parameter.Type, from);
             if (tree is null) return null;
 
             _tupleTrees[parameter] = tree;
@@ -852,58 +851,97 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 按主表在前、各连接表在后的顺序构建元组元素树。
-        /// 链式 Join 每追加一张表就与左侧已有结果组成一对，因此树形天然右结合，与 <c>((A, B), C)</c> 的元素结构一致。
+        /// 按主表在前、各连接表在后的顺序，并结合元组类型的嵌套结构构建元组元素树。
+        /// 二元链式 Join 会得到 <c>((A, B), C)</c> 这样的嵌套树；一次连接多表得到的平坦元组
+        /// <c>(A, B, C)</c> 则按三个并列元素建树。
         /// </summary>
+        /// <param name="tupleType">Lambda 参数声明的元组类型</param>
         /// <param name="from">连接产生的 <see cref="FromExpr"/></param>
-        /// <returns>元组元素树，没有可用表时返回 null</returns>
-        private static TupleNode? BuildTupleTree(FromExpr from)
+        /// <returns>元组元素树，类型与表数量不匹配时返回 null</returns>
+        private static TupleNode? BuildTupleTree(Type tupleType, FromExpr from)
         {
-            TupleNode? node = from.Source is TableExpr mainTable ? TupleNode.FromTable(mainTable) : null;
+            var tables = new List<TableExpr>();
+            if (from.Source is TableExpr mainTable) tables.Add(mainTable);
             foreach (TableJoinExpr join in from.Joins)
             {
-                if (join.Source is not TableExpr joinTable) continue;
-                node = node is null ? TupleNode.FromTable(joinTable) : TupleNode.FromPair(node, TupleNode.FromTable(joinTable));
+                if (join.Source is TableExpr joinTable) tables.Add(joinTable);
             }
-            return node;
+            if (tables.Count == 0) return null;
+
+            int index = 0;
+            TupleNode? root = BuildTupleNode(tupleType, tables, ref index);
+            return index == tables.Count ? root : null;
         }
 
         /// <summary>
-        /// 元组元素树节点：叶子对应实体表，分支对应嵌套元组 <c>((A, B), C)</c>。
+        /// 递归构建元组元素树：元组类型按泛型参数逐层展开，实体类型消费一张表。
+        /// </summary>
+        private static TupleNode? BuildTupleNode(Type type, IReadOnlyList<TableExpr> tables, ref int index)
+        {
+            if (IsTupleType(type))
+            {
+                Type[] elementTypes = type.GetGenericArguments();
+                var children = new TupleNode[elementTypes.Length];
+                for (int i = 0; i < elementTypes.Length; i++)
+                {
+                    TupleNode? child = BuildTupleNode(elementTypes[i], tables, ref index);
+                    if (child is null) return null;
+                    children[i] = child;
+                }
+                return TupleNode.FromBranch(children);
+            }
+
+            if (index >= tables.Count) return null;
+            return TupleNode.FromTable(tables[index++]);
+        }
+
+        /// <summary>
+        /// 元组元素树节点：叶子对应实体表，分支对应元组及其 <c>Item1..ItemN</c> 子元素。
         /// </summary>
         protected sealed class TupleNode
         {
-            private TupleNode(TableExpr? table, TupleNode? first, TupleNode? second)
+            private readonly TupleNode[] _children;
+
+            private TupleNode(TableExpr? table, TupleNode[]? children)
             {
                 Table = table;
-                First = first;
-                Second = second;
+                _children = children ?? Array.Empty<TupleNode>();
             }
 
             /// <summary>叶子节点对应的表；分支节点为 null。</summary>
             public TableExpr? Table { get; }
 
-            /// <summary><c>Item1</c> 分支。</summary>
-            public TupleNode? First { get; }
+            /// <summary>按 <c>Item1..ItemN</c> 顺序排列的子节点。</summary>
+            public IReadOnlyList<TupleNode> Children => _children;
 
-            /// <summary><c>Item2</c> 分支。</summary>
-            public TupleNode? Second { get; }
+            /// <summary>取得指定序号的子节点，序号越界时返回 null。</summary>
+            public TupleNode? GetChild(int index)
+                => index >= 0 && index < _children.Length ? _children[index] : null;
 
             /// <summary>创建表叶子节点。</summary>
-            public static TupleNode FromTable(TableExpr table) => new TupleNode(table, null, null);
+            public static TupleNode FromTable(TableExpr table) => new TupleNode(table, null);
 
-            /// <summary>创建嵌套元组分支节点。</summary>
-            public static TupleNode FromPair(TupleNode first, TupleNode second) => new TupleNode(null, first, second);
+            /// <summary>创建元组分支节点。</summary>
+            public static TupleNode FromBranch(params TupleNode[] children) => new TupleNode(null, children);
         }
 
         /// <summary>
-        /// 判断类型是否为二元及以上的元组类型。
+        /// 判断类型是否为二元到七元的元组类型（<see cref="ValueTuple"/> 或 <see cref="Tuple"/>）。
         /// </summary>
         private static bool IsTupleType(Type type)
         {
             if (!type.IsGenericType) return false;
             Type definition = type.GetGenericTypeDefinition();
-            return definition == typeof(ValueTuple<,>) || definition == typeof(Tuple<,>);
+            if (definition.Namespace != "System") return false;
+            string name = definition.Name;
+            if (!name.StartsWith("ValueTuple`", StringComparison.Ordinal)
+                && !name.StartsWith("Tuple`", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            int arity = definition.GetGenericArguments().Length;
+            return arity >= 2 && arity <= 7;
         }
 
         /// <summary>
@@ -1534,40 +1572,52 @@ namespace LiteOrm.Common
         /// <returns>包含连接信息的 <see cref="FromExpr"/></returns>
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Generic argument types come from the join call itself; properties are preserved via [Table] entities through the source generator.")]
-        [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "The right-hand entity type is resolved from the generic arguments of Join; entity types must be registered via [Table] under AOT.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "The right-hand entity types are resolved from the generic arguments of Join; entity types must be registered via [Table] under AOT.")]
 #endif
         private Expr HandleJoin(MethodCallExpression node)
         {
-            // 右表类型从返回类型 QuerySource<(T1, T2)> 解析，不依赖泛型参数个数与顺序
-            Type rightType = ResolveJoinRightType(node);
+            // 右表类型从返回类型 QuerySource<(T1, T2, ...)> 解析，不依赖泛型参数个数与顺序
+            IReadOnlyList<Type> rightTypes = ResolveJoinRightTypes(node);
             // Join / JoinRelated 是 QuerySource<T1> 上的实例方法，接收者一定在 Object 上
             Expr left = ConvertInternal(node.Object
                 ?? throw new ArgumentException($"Join source is missing on {node.Method.Name}.", nameof(node)));
 
-            // 左源统一收敛到 FromExpr：TableExpr 作为主表新建，FromExpr 直接复用以便追加第二个连接
+            // 左源统一收敛到 FromExpr：TableExpr 作为主表新建，FromExpr 直接复用以便追加后续连接
             FromExpr from;
             if (left is FromExpr existingFrom) from = existingFrom;
             else if (left is TableExpr tableExpr) from = new FromExpr(tableExpr);
             else
                 throw new ArgumentException($"Join source must be a table or an existing join chain, but got {left?.GetType().Name}.", nameof(node));
 
-            string rightAlias = _aliasCounter.NextAlias();
-            var joinTable = new TableExpr(rightType) { Alias = rightAlias };
-            var joinExpr = new TableJoinExpr(joinTable, null)
+            var joinTables = new List<TableExpr>(rightTypes.Count);
+            foreach (Type rightType in rightTypes)
             {
-                JoinType = ResolveJoinType(node.Method.Name, from.Source as TableExpr, rightType)
-            };
-            // 先算 ON 再追加本段，令元组树只包含左参数对应的表（不含本次新增的连接表）
-            joinExpr.On = BuildJoinCondition(node, from, joinTable, rightAlias);
-            from.Joins.Add(joinExpr);
+                joinTables.Add(new TableExpr(rightType) { Alias = _aliasCounter.NextAlias() });
+            }
+
+            // 先构造所有右表别名并计算 ON，再统一追加，令元组树只包含左参数对应的表
+            LogicExpr?[] conditions = BuildJoinConditions(node, from, joinTables);
+            for (int i = 0; i < joinTables.Count; i++)
+            {
+                TableExpr joinTable = joinTables[i];
+                LogicExpr? condition = conditions[i];
+                var joinExpr = new TableJoinExpr(joinTable, condition)
+                {
+                    // 没有条件的连接段使用 CROSS JOIN，避免生成缺少 ON 的 LEFT JOIN
+                    JoinType = condition is null
+                        ? TableJoinType.Cross
+                        : ResolveJoinType(node.Method.Name, from.Source as TableExpr, joinTable.Type!)
+                };
+                from.Joins.Add(joinExpr);
+            }
             return from;
         }
 
         /// <summary>
-        /// 从 Join / JoinRelated 的返回类型中解析右表类型 T2。
-        /// 支持 <c>QuerySource&lt;(T1, T2)&gt;</c> 与 <c>IEnumerable&lt;(T1, T2)&gt;</c> 两种返回形态。
+        /// 从 Join / JoinRelated 的返回类型中解析全部右表类型。
+        /// 支持 <c>QuerySource&lt;(T1, T2, ...)&gt;</c> 与 <c>IEnumerable&lt;(T1, T2, ...)&gt;</c> 两种返回形态。
         /// </summary>
-        private static Type ResolveJoinRightType(MethodCallExpression node)
+        private static IReadOnlyList<Type> ResolveJoinRightTypes(MethodCallExpression node)
         {
             Type returnType = node.Method.ReturnType;
             Type? element = null;
@@ -1577,28 +1627,27 @@ namespace LiteOrm.Common
                 if (definition == typeof(IEnumerable<>) || definition == typeof(QuerySource<>))
                     element = returnType.GetGenericArguments()[0];
             }
-            if (element is not null && element.IsGenericType
-                && element.GetGenericTypeDefinition() == typeof(ValueTuple<,>))
+            if (element is not null && IsTupleType(element))
             {
-                // ValueTuple<T1, T2> 的第二个类型参数是右表
-                return element.GetGenericArguments()[1];
+                // 元组第一个类型参数是左源，其余按顺序对应各个右表
+                return element.GetGenericArguments().Skip(1).ToArray();
             }
             throw new ArgumentException(
-                $"Cannot resolve the joined table type from the return type of {node.Method.Name}. " +
-                $"Expected QuerySource<(T1, T2)> or IEnumerable<(T1, T2)>, but got {returnType.Name}.");
+                $"Cannot resolve the joined table types from the return type of {node.Method.Name}. " +
+                $"Expected QuerySource<(T1, T2, ...)> or IEnumerable<(T1, T2, ...)>, but got {returnType.Name}.");
         }
 
         /// <summary>
-        /// 构造 Join 的 ON 条件。Join 使用显式条件；JoinRelated 使用自动推断的关联条件，
-        /// 若同时提供了显式条件则两者按 AND 合并。
+        /// 构造 Join 的 ON 条件数组。Join 使用显式条件，并按条件中引用到的右表拆分到对应的 JOIN 段；
+        /// JoinRelated 使用自动推断的关联条件，若同时提供了显式条件则两者按 AND 合并。
         /// </summary>
-        private LogicExpr? BuildJoinCondition(MethodCallExpression node, FromExpr from, TableExpr joinTable, string rightAlias)
+        private LogicExpr?[] BuildJoinConditions(MethodCallExpression node, FromExpr from, IReadOnlyList<TableExpr> joinTables)
         {
             bool isRelated = node.Method.Name == nameof(QuerySource<object>.JoinRelated);
             // Join / JoinRelated 都是 QuerySource<T1> 上的实例方法，左源在 Object 上，on 是唯一参数
             bool hasExplicitOn = node.Arguments.Count > 0;
+            var conditions = new LogicExpr?[joinTables.Count];
 
-            LogicExpr? autoRelated = null;
             if (isRelated)
             {
                 Type? leftType = (from.Source as TableExpr)?.Type;
@@ -1606,49 +1655,151 @@ namespace LiteOrm.Common
                 if (leftType is null || leftAlias is null)
                     throw new InvalidOperationException($"{node.Method.Name} requires a table as the join source.");
 
-                autoRelated = Expr.BuildRelatedLogic(leftType, leftAlias, joinTable.Type!, rightAlias);
-                if (autoRelated is null && !hasExplicitOn)
-                    throw new InvalidOperationException(
-                        $"No relation between {leftType.Name} and {joinTable.Type!.Name} is found in metadata. " +
-                        $"Annotate the association with [ForeignType] / [TableJoin], or use Join with an explicit condition.");
+                for (int i = 0; i < joinTables.Count; i++)
+                {
+                    TableExpr joinTable = joinTables[i];
+                    LogicExpr? autoRelated = Expr.BuildRelatedLogic(leftType, leftAlias, joinTable.Type!, joinTable.Alias!);
+                    if (autoRelated is null && !hasExplicitOn)
+                        throw new InvalidOperationException(
+                            $"No relation between {leftType.Name} and {joinTable.Type!.Name} is found in metadata. " +
+                            $"Annotate the association with [ForeignType] / [TableJoin], or use Join with an explicit condition.");
+                    conditions[i] = autoRelated;
+                }
             }
 
-            if (!hasExplicitOn) return autoRelated;
+            if (!hasExplicitOn) return conditions;
 
             LambdaExpression on = UnwrapLambda(node.Arguments[node.Arguments.Count - 1]);
-            ParameterExpression leftParam = on.Parameters[0];
-            ParameterExpression rightParam = on.Parameters[1];
+            if (on.Parameters.Count != joinTables.Count + 1)
+                throw new ArgumentException(
+                    $"The join condition for {node.Method.Name} expects {joinTables.Count + 1} parameters (left source plus each joined table), " +
+                    $"but got {on.Parameters.Count}.",
+                    nameof(node));
 
+            ParameterExpression leftParam = on.Parameters[0];
+            var rightParams = new ParameterExpression[joinTables.Count];
+            for (int i = 0; i < rightParams.Length; i++) rightParams[i] = on.Parameters[i + 1];
+
+            TableExpr leftTable = from.Source as TableExpr
+                ?? throw new InvalidOperationException($"{node.Method.Name} requires a table as the join source.");
             string? lastAlias = _currentAlias;
-            string leftAliasName = (from.Source as TableExpr)?.Alias ?? _currentAlias;
+            string leftAliasName = leftTable.Alias ?? _currentAlias
+                ?? throw new InvalidOperationException($"{node.Method.Name} requires an alias on the join source.");
+
             _parameterAliases[leftParam] = leftAliasName;
-            _parameterExprs[leftParam] = from.Source as TableExpr ?? new TableExpr((from.Source as TableExpr)?.Type!) { Alias = leftAliasName };
-            _parameterAliases[rightParam] = rightAlias;
-            _parameterExprs[rightParam] = joinTable;
+            _parameterExprs[leftParam] = leftTable;
+            for (int i = 0; i < joinTables.Count; i++)
+            {
+                _parameterAliases[rightParams[i]] = joinTables[i].Alias!;
+                _parameterExprs[rightParams[i]] = joinTables[i];
+            }
             _currentAlias = leftAliasName;
 
             // 多级连接时左参数类型是元组（(A, B) 或 ((A, B), C)），登记元素树后才能解析 x.Item1.RegionId
-            TupleNode? leftTupleTree = IsTupleType(leftParam.Type) ? BuildTupleTree(from) : null;
+            TupleNode? leftTupleTree = IsTupleType(leftParam.Type) ? BuildTupleTree(leftParam.Type, from) : null;
             if (leftTupleTree is not null) _tupleTrees[leftParam] = leftTupleTree;
 
-            LogicExpr? explicitOn;
             try
             {
-                explicitOn = ConvertInternal(on.Body).AsLogic();
+                var explicitParts = new List<LogicExpr>[joinTables.Count];
+                for (int i = 0; i < explicitParts.Length; i++) explicitParts[i] = new List<LogicExpr>();
+
+                // 按 AND 拆分条件，并把每个分支放到引用到的最右侧 JOIN 段：
+                // (o.CustomerId == c.Id) && (c.RegionId == r.Id) 会分别成为 C 和 R 的 ON 条件。
+                foreach (Expression conjunct in SplitConjuncts(on.Body))
+                {
+                    int targetIndex = DetermineJoinIndex(conjunct, leftParam, rightParams);
+                    if (targetIndex < 0) targetIndex = 0;
+                    LogicExpr? explicitPart = ConvertInternal(conjunct).AsLogic();
+                    if (explicitPart is not null) explicitParts[targetIndex].Add(explicitPart);
+                }
+
+                for (int i = 0; i < joinTables.Count; i++)
+                {
+                    if (explicitParts[i].Count == 0) continue;
+                    LogicExpr explicitOn = explicitParts[i].Count == 1
+                        ? explicitParts[i][0]
+                        : new AndExpr(explicitParts[i]);
+                    LogicExpr? autoRelated = conditions[i];
+                    conditions[i] = autoRelated is null ? explicitOn : new AndExpr(autoRelated, explicitOn);
+                }
             }
             finally
             {
                 _parameterAliases.Remove(leftParam);
-                _parameterAliases.Remove(rightParam);
                 _parameterExprs.Remove(leftParam);
-                _parameterExprs.Remove(rightParam);
                 if (leftTupleTree is not null) _tupleTrees.Remove(leftParam);
+                foreach (ParameterExpression rightParam in rightParams)
+                {
+                    _parameterAliases.Remove(rightParam);
+                    _parameterExprs.Remove(rightParam);
+                }
                 _currentAlias = lastAlias!;
             }
 
-            if (autoRelated is null) return explicitOn;
-            if (explicitOn is null) return autoRelated;
-            return new AndExpr(autoRelated, explicitOn);
+            return conditions;
+        }
+
+        /// <summary>
+        /// 将一个布尔表达式按顶层 <see cref="ExpressionType.AndAlso"/> 拆成多个独立条件。
+        /// </summary>
+        private static IEnumerable<Expression> SplitConjuncts(Expression expression)
+        {
+            if (expression is BinaryExpression binary && binary.NodeType == ExpressionType.AndAlso)
+            {
+                foreach (Expression part in SplitConjuncts(binary.Left)) yield return part;
+                foreach (Expression part in SplitConjuncts(binary.Right)) yield return part;
+            }
+            else
+            {
+                yield return expression;
+            }
+        }
+
+        /// <summary>
+        /// 判断条件引用了最右侧的哪个 Join 参数，用于把多表显式条件拆分到各 JOIN 段。
+        /// 只引用左源时返回 -1。
+        /// </summary>
+        private static int DetermineJoinIndex(Expression expression, ParameterExpression leftParam, IReadOnlyList<ParameterExpression> rightParams)
+        {
+            var visitor = new JoinParameterVisitor(leftParam, rightParams);
+            visitor.Visit(expression);
+            return visitor.MaxRightIndex;
+        }
+
+        /// <summary>
+        /// 收集表达式中引用到的 Join 参数，记录最右侧右表参数的下标。
+        /// </summary>
+        private sealed class JoinParameterVisitor : ExpressionVisitor
+        {
+            private readonly ParameterExpression _leftParam;
+            private readonly IReadOnlyList<ParameterExpression> _rightParams;
+
+            public JoinParameterVisitor(ParameterExpression leftParam, IReadOnlyList<ParameterExpression> rightParams)
+            {
+                _leftParam = leftParam;
+                _rightParams = rightParams;
+            }
+
+            /// <summary>引用到的最右侧右表参数下标；仅引用左源时为 -1。</summary>
+            public int MaxRightIndex { get; private set; } = -1;
+
+            /// <inheritdoc/>
+            protected override Expression VisitParameter(ParameterExpression node)
+            {
+                if (node != _leftParam)
+                {
+                    for (int i = 0; i < _rightParams.Count; i++)
+                    {
+                        if (node == _rightParams[i])
+                        {
+                            if (i > MaxRightIndex) MaxRightIndex = i;
+                            break;
+                        }
+                    }
+                }
+                return node;
+            }
         }
 
         /// <summary>

@@ -279,6 +279,130 @@ namespace LiteOrm.Common.UnitTests
             Assert.DoesNotContain("Item2", sql);
         }
 
+        [Fact]
+        public void Convert_MultiTableJoin_ProducesFlatTupleAndSplitsConditions()
+        {
+            var converter = new LambdaExprConverter(
+                (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer, JoinRegion)>>>)(
+                    q => Expr.From<JoinOrder>()
+                          .Join<JoinCustomer, JoinRegion>((o, c, r) =>
+                              o.CustomerId == c.Id && c.Id == r.Id)));
+
+            var from = Assert.IsType<FromExpr>(converter.ToSqlSegment());
+
+            Assert.Equal(2, from.Joins.Count);
+            Assert.Equal(typeof(JoinCustomer), ((TableExpr)from.Joins[0].Source!).Type);
+            Assert.Equal(typeof(JoinRegion), ((TableExpr)from.Joins[1].Source!).Type);
+            Assert.All(from.Joins, join => Assert.NotNull(join.On));
+            Assert.All(from.Joins, join => Assert.NotEqual(TableJoinType.Cross, join.JoinType));
+
+            // 两个 AND 分支分别落到 Customer 和 Region 的 JOIN 段
+            string customerAlias = ((TableExpr)from.Joins[0].Source!).Alias!;
+            string regionAlias = ((TableExpr)from.Joins[1].Source!).Alias!;
+            Assert.Contains(customerAlias, from.Joins[0].On!.ToString());
+            Assert.DoesNotContain(regionAlias, from.Joins[0].On!.ToString());
+            Assert.Contains(regionAlias, from.Joins[1].On!.ToString());
+
+            string sql = ToSql(from).Sql;
+            Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(sql, "JOIN").Count);
+            Assert.DoesNotContain("CROSS JOIN", sql);
+        }
+
+        [Fact]
+        public void Convert_MultiTableJoin_WhereAndSelectOnItem3_ResolvesThirdTable()
+        {
+            var converter = new LambdaExprConverter(
+                (Expression<Func<IQueryable<JoinOrder>, IEnumerable<object>>>)(
+                    q => Expr.From<JoinOrder>()
+                          .Join<JoinCustomer, JoinRegion>((o, c, r) =>
+                              o.CustomerId == c.Id && c.Id == r.Id)
+                          .Where(x => x.Item3.Name == "North")
+                          .Select(x => new { CustomerName = x.Item2.Name, RegionName = x.Item3.Name })));
+
+            var select = Assert.IsType<SelectExpr>(converter.ToSqlSegment());
+            var where = Assert.IsType<WhereExpr>(select.Source);
+            var from = Assert.IsType<FromExpr>(where.Source);
+            string regionAlias = ((TableExpr)from.Joins[1].Source!).Alias!;
+
+            var condition = Assert.IsType<LogicBinaryExpr>(where.Where);
+            Assert.Equal(regionAlias, Assert.IsType<PropertyExpr>(condition.Left).TableAlias);
+
+            Assert.Equal(2, select.Selects.Count);
+            Assert.Equal("CustomerName", select.Selects[0].Alias);
+            Assert.Equal("RegionName", select.Selects[1].Alias);
+            Assert.Equal(regionAlias, Assert.IsType<PropertyExpr>(select.Selects[1].Value).TableAlias);
+        }
+
+        [Fact]
+        public void Convert_MultiTableJoinRelated_InfersOnForEachRightTable()
+        {
+            var converter = new LambdaExprConverter(
+                (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer, JoinRegion)>>>)(
+                    q => Expr.From<JoinOrder>().JoinRelated<JoinCustomer, JoinRegion>()));
+
+            var from = Assert.IsType<FromExpr>(converter.ToSqlSegment());
+
+            Assert.Equal(2, from.Joins.Count);
+            Assert.All(from.Joins, join => Assert.NotNull(join.On));
+            Assert.Contains("CustomerId", from.Joins[0].On!.ToString());
+            Assert.Contains("RegionId", from.Joins[1].On!.ToString());
+        }
+
+        [Fact]
+        public void Convert_MultiTableJoinRelatedWithLambda_MergesEachAutoCondition()
+        {
+            var converter = new LambdaExprConverter(
+                (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer, JoinRegion)>>>)(
+                    q => Expr.From<JoinOrder>()
+                          .JoinRelated<JoinCustomer, JoinRegion>((o, c, r) =>
+                              o.Amount > 10 && r.Name != null)));
+
+            var from = Assert.IsType<FromExpr>(converter.ToSqlSegment());
+
+            var customerOn = Assert.IsType<AndExpr>(from.Joins[0].On);
+            Assert.Equal(2, customerOn.Count);
+            Assert.Contains("CustomerId", customerOn.ToString());
+            Assert.Contains("Amount", customerOn.ToString());
+
+            var regionOn = Assert.IsType<AndExpr>(from.Joins[1].On);
+            Assert.Equal(2, regionOn.Count);
+            Assert.Contains("RegionId", regionOn.ToString());
+            Assert.Contains("Name", regionOn.ToString());
+        }
+
+        [Fact]
+        public void Convert_SevenTableJoin_SupportsItem7InWhereAndSelect()
+        {
+            var converter = new LambdaExprConverter(
+                (Expression<Func<IQueryable<JoinOrder>, IEnumerable<object>>>)(
+                    q => Expr.From<JoinOrder>()
+                          .Join<JoinCustomer, JoinRegion, JoinZone, JoinStore, JoinCity, JoinCountry>(
+                              (o, c, r, z, s, ci, co) =>
+                                  o.CustomerId == c.Id
+                                  && c.Id == r.Id
+                                  && r.Id == z.RegionId
+                                  && z.Id == s.RegionId
+                                  && s.Id == ci.StoreId
+                                  && ci.Id == co.CityId)
+                          .Where(x => x.Item7.Id > 0)
+                          .Select(x => new { x.Item7.Id })));
+
+            var select = Assert.IsType<SelectExpr>(converter.ToSqlSegment());
+            var where = Assert.IsType<WhereExpr>(select.Source);
+            var from = Assert.IsType<FromExpr>(where.Source);
+            string countryAlias = ((TableExpr)from.Joins[5].Source!).Alias!;
+
+            Assert.Equal(6, from.Joins.Count);
+            Assert.All(from.Joins, join => Assert.NotNull(join.On));
+            Assert.Equal(countryAlias, Assert.IsType<PropertyExpr>(Assert.IsType<LogicBinaryExpr>(where.Where).Left).TableAlias);
+            Assert.Equal(countryAlias, Assert.IsType<PropertyExpr>(select.Selects[0].Value).TableAlias);
+
+            string sql = ToSql(select).Sql;
+            Assert.Equal(6, System.Text.RegularExpressions.Regex.Matches(sql, "JOIN").Count);
+            Assert.Contains("JoinCountries", sql);
+            Assert.DoesNotContain("Item7", sql);
+        }
+
         #endregion
 
         #region 测试模型
@@ -297,6 +421,7 @@ namespace LiteOrm.Common.UnitTests
             public int CustomerId { get; set; }
 
             [Column("RegionId")]
+            [ForeignType(typeof(JoinRegion), Alias = "Region")]
             public int RegionId { get; set; }
         }
 
@@ -335,6 +460,36 @@ namespace LiteOrm.Common.UnitTests
         {
             [Column("Id", IsPrimaryKey = true)]
             public int Id { get; set; }
+        }
+
+        [Table("JoinStores")]
+        private class JoinStore
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("RegionId")]
+            public int RegionId { get; set; }
+        }
+
+        [Table("JoinCities")]
+        private class JoinCity
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("StoreId")]
+            public int StoreId { get; set; }
+        }
+
+        [Table("JoinCountries")]
+        private class JoinCountry
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("CityId")]
+            public int CityId { get; set; }
         }
 
         #endregion

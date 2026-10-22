@@ -218,6 +218,107 @@ namespace LiteOrm.Common
         public QuerySource<(T1, T2)> JoinRelated<T2>(Expression<Func<T1, T2, bool>> on)
             => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
 
+        /// <summary>
+        /// 一次连接多个实体表，并使用覆盖所有新增表的显式连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        /// <typeparam name="T2">第一个右表实体类型。</typeparam>
+        /// <typeparam name="T3">第二个右表实体类型。</typeparam>
+        /// <param name="on">连接条件表达式，参数依次为左表和各个右表。</param>
+        /// <returns>连接结果查询源，元素为按顺序排列的三元组。</returns>
+        public QuerySource<(T1, T2, T3)> Join<T2, T3>(Expression<Func<T1, T2, T3, bool>> on)
+            => throw new InvalidOperationException("Join is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，并使用覆盖所有新增表的显式连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        public QuerySource<(T1, T2, T3, T4)> Join<T2, T3, T4>(Expression<Func<T1, T2, T3, T4, bool>> on)
+            => throw new InvalidOperationException("Join is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，并使用覆盖所有新增表的显式连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        public QuerySource<(T1, T2, T3, T4, T5)> Join<T2, T3, T4, T5>(Expression<Func<T1, T2, T3, T4, T5, bool>> on)
+            => throw new InvalidOperationException("Join is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，并使用覆盖所有新增表的显式连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        public QuerySource<(T1, T2, T3, T4, T5, T6)> Join<T2, T3, T4, T5, T6>(Expression<Func<T1, T2, T3, T4, T5, T6, bool>> on)
+            => throw new InvalidOperationException("Join is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，并使用覆盖所有新增表的显式连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        public QuerySource<(T1, T2, T3, T4, T5, T6, T7)> Join<T2, T3, T4, T5, T6, T7>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, bool>> on)
+            => throw new InvalidOperationException("Join is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，并按外键元数据自动推断每个右表与来源表的连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        /// <typeparam name="T2">第一个右表实体类型。</typeparam>
+        /// <typeparam name="T3">第二个右表实体类型。</typeparam>
+        /// <returns>连接结果查询源，元素为按顺序排列的三元组。</returns>
+        public QuerySource<(T1, T2, T3)> JoinRelated<T2, T3>()
+            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，并按外键元数据自动推断每个右表与来源表的连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        public QuerySource<(T1, T2, T3, T4)> JoinRelated<T2, T3, T4>()
+            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，并按外键元数据自动推断每个右表与来源表的连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        public QuerySource<(T1, T2, T3, T4, T5)> JoinRelated<T2, T3, T4, T5>()
+            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，并按外键元数据自动推断每个右表与来源表的连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        public QuerySource<(T1, T2, T3, T4, T5, T6)> JoinRelated<T2, T3, T4, T5, T6>()
+            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，并按外键元数据自动推断每个右表与来源表的连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        public QuerySource<(T1, T2, T3, T4, T5, T6, T7)> JoinRelated<T2, T3, T4, T5, T6, T7>()
+            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        /// <typeparam name="T2">第一个右表实体类型。</typeparam>
+        /// <typeparam name="T3">第二个右表实体类型。</typeparam>
+        /// <param name="on">附加的连接条件，参数依次为左表和各个右表。</param>
+        /// <returns>连接结果查询源，元素为按顺序排列的三元组。</returns>
+        public QuerySource<(T1, T2, T3)> JoinRelated<T2, T3>(Expression<Func<T1, T2, T3, bool>> on)
+            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        public QuerySource<(T1, T2, T3, T4)> JoinRelated<T2, T3, T4>(Expression<Func<T1, T2, T3, T4, bool>> on)
+            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        public QuerySource<(T1, T2, T3, T4, T5)> JoinRelated<T2, T3, T4, T5>(Expression<Func<T1, T2, T3, T4, T5, bool>> on)
+            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        public QuerySource<(T1, T2, T3, T4, T5, T6)> JoinRelated<T2, T3, T4, T5, T6>(Expression<Func<T1, T2, T3, T4, T5, T6, bool>> on)
+            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
+
+        /// <summary>
+        /// 一次连接多个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// </summary>
+        public QuerySource<(T1, T2, T3, T4, T5, T6, T7)> JoinRelated<T2, T3, T4, T5, T6, T7>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, bool>> on)
+            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
+
         #endregion
     }
 
