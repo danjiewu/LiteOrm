@@ -1,0 +1,228 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using LiteOrm;
+using LiteOrm.Common;
+using LiteOrm.Tests.Models;
+using Xunit;
+
+namespace LiteOrm.Common.UnitTests
+{
+    /// <summary>
+    /// 校验 IQueryable 查询树到 Expr 的解析：根改写、终结符剥离、TableArgs 回填，
+    /// 以及 <see cref="QuerySource{T1}"/> 终端方法在 Lambda 内的预注册解析。
+    /// </summary>
+    public class QuerySourceExprTests
+    {
+        private static PreparedSql ToSql(Expr expr)
+            => expr.ToPreparedSql(new SqlBuildContext(SqlBuilder.Instance) { SingleTable = false });
+
+        #region IQueryable 转 Expr
+
+        [Fact]
+        public void ToExpr_FromOnly_ReturnsTableExpr()
+        {
+            var segment = QuerySourceExprConverter.ToExpr(Expr.From<TestUser>());
+
+            var table = Assert.IsType<TableExpr>(segment);
+            Assert.Equal(typeof(TestUser), table.Type);
+            Assert.Equal(Constants.DefaultTableAlias, table.Alias);
+        }
+
+        [Fact]
+        public void ToExpr_Where_ProducesWhereOverTable()
+        {
+            var segment = QuerySourceExprConverter.ToExpr(
+                Expr.From<TestUser>().Where(u => u.Age > 18));
+
+            var where = Assert.IsType<WhereExpr>(segment);
+            Assert.IsType<TableExpr>(where.Source);
+
+            var condition = Assert.IsType<LogicBinaryExpr>(where.Where);
+            Assert.Equal("Age", Assert.IsType<PropertyExpr>(condition.Left).PropertyName);
+        }
+
+        [Fact]
+        public void ToExpr_WhereSelectOrderBy_ProducesSelectChain()
+        {
+            var segment = QuerySourceExprConverter.ToExpr(
+                Expr.From<TestUser>()
+                    .Where(u => u.Age > 18)
+                    .OrderBy(u => u.Id)
+                    .Select(u => new { u.Id, u.Name }));
+
+            var select = Assert.IsType<SelectExpr>(segment);
+            var orderBy = Assert.IsType<OrderByExpr>(select.Source);
+            var where = Assert.IsType<WhereExpr>(orderBy.Source);
+            Assert.IsType<TableExpr>(where.Source);
+
+            Assert.Equal(2, select.Selects.Count);
+            Assert.Equal("Id", select.Selects[0].Alias);
+            Assert.Equal("Name", select.Selects[1].Alias);
+        }
+
+        [Fact]
+        public void ToExpr_WithTableArgs_BackfillsRootTable()
+        {
+            var segment = QuerySourceExprConverter.ToExpr(
+                Expr.From<TestUser>("202405").Where(u => u.Age > 18));
+
+            var where = Assert.IsType<WhereExpr>(segment);
+            var table = Assert.IsType<TableExpr>(where.Source);
+            Assert.Equal(new[] { "202405" }, table.TableArgs);
+        }
+
+        [Fact]
+        public void ToExpr_NonQuerySourceRoot_Works()
+        {
+            // 不限制源类型：任意 IQueryable 都能作为查询根
+            var segment = QuerySourceExprConverter.ToExpr(
+                new List<TestUser>().AsQueryable().Where(u => u.Age > 18));
+
+            var where = Assert.IsType<WhereExpr>(segment);
+            Assert.Equal(typeof(TestUser), Assert.IsType<TableExpr>(where.Source).Type);
+        }
+
+        [Fact]
+        public void ToExpr_NoIQueryableRoot_Throws()
+        {
+            var ex = Assert.Throws<ArgumentException>(
+                () => QuerySourceExprConverter.ToExpr(System.Linq.Expressions.Expression.Constant(42)));
+            Assert.Contains("not rooted at an IQueryable", ex.Message);
+        }
+
+        [Fact]
+        public void ToExpr_UnsupportedOperator_Throws()
+        {
+            var ex = Assert.Throws<NotSupportedException>(
+                () => QuerySourceExprConverter.ToExpr(Expr.From<TestUser>().Select(u => u.Name).Distinct()));
+            Assert.Contains("Distinct", ex.Message);
+        }
+
+        [Fact]
+        public void ToExpr_TerminalFirstOrDefault_Unwrapped()
+        {
+            // 终结符不改变 SQL 形态，应被剥离后按普通查询解析
+            var source = Expr.From<TestUser>();
+            System.Linq.Expressions.Expression call = System.Linq.Expressions.Expression.Call(
+                typeof(Queryable),
+                nameof(Queryable.FirstOrDefault),
+                new[] { typeof(TestUser) },
+                source.Expression);
+
+            var segment = QuerySourceExprConverter.ToExpr(call);
+            Assert.IsType<TableExpr>(segment);
+        }
+
+        [Fact]
+        public void QuerySource_WithoutExecutor_Throws()
+        {
+            var source = Expr.From<TestUser>();
+
+            Assert.Throws<InvalidOperationException>(() => source.Count());
+            Assert.Throws<InvalidOperationException>(() => source.FirstOrDefault());
+            Assert.Throws<InvalidOperationException>(() => source.ToList());
+        }
+
+        #endregion
+
+        #region Lambda 内终端方法解析
+
+        [Fact]
+        public void Lambda_FromThenCount_ParsesToAggregate()
+        {
+            Expr expr = Expr.Query<TestUser, int>(q => Expr.From<TestUser>().Count());
+
+            var select = Assert.IsType<SelectExpr>(expr);
+            var function = Assert.IsType<FunctionExpr>(select.Selects[0].Value);
+            Assert.Equal("COUNT", function.FunctionName);
+            Assert.True(function.IsAggregate);
+
+            string sql = ToSql(select).Sql;
+            Assert.Contains("COUNT(1)", sql);
+        }
+
+        [Fact]
+        public void Lambda_FromThenToList_ParsesToSource()
+        {
+            Expr expr = Expr.Query<TestUser, List<TestUser>>(q => Expr.From<TestUser>().ToList());
+
+            // 结果集本身就是源，不应残留 ToList 函数
+            Assert.IsType<TableExpr>(expr);
+            Assert.DoesNotContain("ToList", ToSql(expr).Sql);
+        }
+
+        [Fact]
+        public void Lambda_FromThenFirstOrDefault_LimitsOneRow()
+        {
+            Expr expr = Expr.Query<TestUser, TestUser>(q => Expr.From<TestUser>().FirstOrDefault());
+
+            var section = Assert.IsType<SectionExpr>(expr);
+            Assert.Equal(0, section.Skip);
+            Assert.Equal(1, section.Take);
+        }
+
+        [Fact]
+        public void Lambda_FromThenJoinThenCount_Parses()
+        {
+            Expr expr = Expr.Query<TestUser, int>(q =>
+                Expr.From<TestUser>().JoinRelated<TestDepartment>().Count());
+
+            string sql = ToSql(expr).Sql;
+            Assert.Contains("LEFT JOIN", sql);
+            Assert.Contains("COUNT(1)", sql);
+        }
+
+        #endregion
+
+        #region 方法处理器查找
+
+        /// <summary>用于验证泛型方法处理器查找的探针类型。</summary>
+        private static class GenericProbe<T>
+        {
+            public static int Probe() => 0;
+        }
+
+        [Fact]
+        public void MethodHandler_PrefersSpecializedTypeThenFallsBackToGenericDefinition()
+        {
+            try
+            {
+                // 只注册泛型定义：特化类型应回退命中
+                LambdaExprConverter.RegisterMethodHandler(
+                    typeof(GenericProbe<>),
+                    nameof(GenericProbe<object>.Probe),
+                    (node, converter) => new FunctionExpr("GENERIC_PROBE"));
+
+                FunctionExpr generic = ConvertProbe();
+                Assert.Equal("GENERIC_PROBE", generic.FunctionName);
+
+                // 再注册特化类型：应覆盖泛型定义
+                LambdaExprConverter.RegisterMethodHandler(
+                    typeof(GenericProbe<int>),
+                    nameof(GenericProbe<int>.Probe),
+                    (node, converter) => new FunctionExpr("SPECIALIZED_PROBE"));
+
+                FunctionExpr specialized = ConvertProbe();
+                Assert.Equal("SPECIALIZED_PROBE", specialized.FunctionName);
+            }
+            finally
+            {
+                // 注册表是全局静态的，撤掉特化条目避免影响其他用例
+                LambdaExprConverter.RegisterMethodHandler(
+                    typeof(GenericProbe<int>),
+                    nameof(GenericProbe<int>.Probe),
+                    (node, converter) => new FunctionExpr("GENERIC_PROBE"));
+            }
+        }
+
+        private static FunctionExpr ConvertProbe()
+        {
+            var converter = new LambdaExprConverter(
+                (System.Linq.Expressions.Expression<Func<TestUser, int>>)(u => GenericProbe<int>.Probe()));
+            return Assert.IsType<FunctionExpr>(converter.ToValueExpr());
+        }
+
+        #endregion
+    }
+}

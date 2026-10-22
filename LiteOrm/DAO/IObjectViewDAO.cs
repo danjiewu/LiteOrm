@@ -14,7 +14,7 @@ namespace LiteOrm.Common
     /// 实体类的查询数据访问对象的泛型接口
     /// </summary>
     /// <typeparam name="T">实体类类型</typeparam>
-    public interface IObjectViewDAO<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : IObjectViewDAO
+    public interface IObjectViewDAO<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : IObjectViewDAO, IQuerySourceExecutor
     {
         /// <summary>
         /// 根据主键获取对象
@@ -55,6 +55,22 @@ namespace LiteOrm.Common
         /// <returns></returns>
 
         EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<AutoLockDataReader, TResult>? readerFunc = null);
+
+        /// <summary>
+        /// 执行已构建好的 <see cref="IQueryable{T}"/> 查询，并返回实体集合。
+        /// </summary>
+        /// <param name="query">查询对象</param>
+        /// <returns>符合条件的实体枚举，同时支持同步和异步操作</returns>
+        EnumerableResult<T> Search(IQueryable<T> query);
+
+        /// <summary>
+        /// 执行已构建好的 <see cref="IQueryable{T}"/> 查询，并返回指定结果类型集合。
+        /// </summary>
+        /// <typeparam name="TResult">结果元素类型，投影后类型或实体类型</typeparam>
+        /// <param name="query">查询对象</param>
+        /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时实体按列位置映射、投影按列名映射</param>
+        /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
+        EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(IQueryable<TResult> query, Func<AutoLockDataReader, TResult>? readerFunc = null);
     }
     #endregion
 

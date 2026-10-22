@@ -17,7 +17,7 @@
     <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
       8.1.13:
-      - 破坏性变更：Expr.From&lt;T&gt;() 改为 Lambda 专用占位方法，返回 QuerySource&lt;T&gt;（实现 IEnumerable&lt;T&gt;）并直接抛异常；新增 Expr.FromRelated&lt;T&gt;()。
+      - 破坏性变更：Expr.From&lt;T&gt;() 返回 QuerySource&lt;T&gt;（实现 IQueryable&lt;T&gt;）；可传 IQuerySourceExecutor 直接取数，无执行器时取数抛异常；新增 Expr.FromRelated&lt;T&gt;()。
       - 破坏性变更：删除 Expr.Exists/Expr.ExistsRelated 的 LogicExpr 泛型重载与 Where&lt;T&gt; Lambda 扩展方法；删除 TableRef 抽象类，JoinedTable 改为直接继承 SqlObject。
       - Lambda 支持根级聚合：Count/Sum/Average/Max/Min 等可在 Expr.Query 内直接解析。
       - 新增 Join&lt;T2&gt; / JoinRelated&lt;T2&gt;：Expr.From&lt;T1&gt;() 返回 QuerySource&lt;T1&gt;，只写右表类型即可连接；返回 QuerySource&lt;(T1, T2)&gt; 可继续 Join&lt;T3&gt;() 做多级连接，也能按 IEnumerable&lt;(T1, T2)&gt; 接 Where/Select/OrderBy；x.Item1 / x.Item2 能还原表别名，嵌套元组用 x.Item1.Item2 逐级访问；lambda 连接不提供 IQueryable 扩展方法入口。
@@ -61,8 +61,13 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <PackageReference Include="System.Text.Json" Version="8.0.0" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'netstandard2.0'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
     <PackageReference Include="System.Text.Json" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+    <!-- netstandard2.0 不内置 IAsyncEnumerable<T>，QuerySource<T> 需要实现它 -->
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LiteOrm.Generators\LiteOrm.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

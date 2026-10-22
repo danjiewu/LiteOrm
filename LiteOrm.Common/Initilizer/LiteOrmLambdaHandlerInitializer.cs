@@ -89,6 +89,9 @@ namespace LiteOrm
                 converter.Convert(node.Arguments[0])
             );
 
+            // QuerySource<T> 的终端方法：Lambda 内转换为对应 Expr，不真正执行
+            RegisterQuerySourceMethodHandlers();
+
             // JsonNode 索引访问 json["a"]["b"]（编译器以 get_Item 方法调用表示）：映射到 JsonExtract
             // 常量键（字符串/整数）拼接为固定 JSON 路径；动态键（不可编译期求值，转出非 ValueExpr）作为参数经 string Concat 拼入路径。
             LambdaExprConverter.RegisterMethodHandler(typeof(JsonNode), "get_Item", (node, converter) =>
@@ -309,6 +312,40 @@ namespace LiteOrm
                 }
                 return converter.Convert(node.Object!);
             });
+        }
+
+        /// <summary>
+        /// 注册 <see cref="QuerySource{T1}"/> 终端方法的处理器。
+        /// 这些方法在 Lambda 内会被解析成对应的 Expr，不会真正执行查询。
+        /// </summary>
+        private static void RegisterQuerySourceMethodHandlers()
+        {
+            // ToList 的语义就是结果集本身，列由执行侧的 ToSelectExpr 补全
+            LambdaExprConverter.RegisterMethodHandler(typeof(QuerySource<>), nameof(QuerySource<object>.ToList),
+                (node, converter) => converter.Convert(node.Object!)
+            );
+
+            // Count 转成 COUNT(1)，与 Expr.Aggregate("Count", ...) 保持一致
+            LambdaExprConverter.RegisterMethodHandler(typeof(QuerySource<>), nameof(QuerySource<object>.Count),
+                (node, converter) =>
+                {
+                    Expr source = converter.Convert(node.Object!);
+                    if (source is SelectExpr select && select.Source is not null) source = select.Source;
+                    return new SelectExpr(source as SqlSegment, new SelectItemExpr(Expr.Aggregate("COUNT", Expr.Const(1))));
+                }
+            );
+
+            // FirstOrDefault 只需要限制返回一行
+            LambdaExprConverter.RegisterMethodHandler(typeof(QuerySource<>), nameof(QuerySource<object>.FirstOrDefault),
+                (node, converter) =>
+                {
+                    var source = converter.Convert(node.Object!) as ISectionAnchor;
+                    if (source is null)
+                        throw new NotSupportedException(
+                            $"FirstOrDefault requires a query source that supports paging, but got {node.Object!.Type.Name}.");
+                    return source.Section(0, 1);
+                }
+            );
         }
 
         /// <summary>

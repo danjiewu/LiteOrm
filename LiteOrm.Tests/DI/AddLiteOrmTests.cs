@@ -46,6 +46,11 @@ namespace LiteOrm.Tests
             Assert.NotNull(scope.ServiceProvider.GetRequiredService<IEntityViewService<TestUser>>());
             Assert.NotNull(scope.ServiceProvider.GetRequiredService<IEntityServiceAsync<TestUser>>());
             Assert.NotNull(scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<TestUser>>());
+            // 查询源与其执行器可直接解析，不需要先取 DAO
+            Assert.NotNull(scope.ServiceProvider.GetRequiredService<IQuerySourceExecutor<TestUser>>());
+            var querySource = scope.ServiceProvider.GetRequiredService<QuerySource<TestUser>>();
+            Assert.NotNull(querySource);
+            Assert.Same(typeof(TestUser), querySource.ElementType);
         }
 
         [Fact]

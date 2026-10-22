@@ -82,6 +82,9 @@ namespace LiteOrm
             services.TryAddScoped(typeof(ObjectViewDAO<>));
             services.TryAddScoped(typeof(IObjectDAO<>), typeof(ObjectDAO<>));
             services.TryAddScoped(typeof(IObjectViewDAO<>), typeof(ObjectViewDAO<>));
+            // 查询源与其执行器：可直接解析，不必先取 DAO
+            services.TryAddScoped(typeof(IQuerySourceExecutor<>), typeof(ObjectViewDAO<>));
+            services.TryAddScoped(typeof(QuerySource<>));
             services.TryAddScoped(typeof(EntityService<>));
             services.TryAddScoped(typeof(EntityViewService<>));
             services.TryAddScoped(typeof(IEntityService<>), typeof(EntityService<>));

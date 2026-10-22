@@ -485,7 +485,7 @@ Event subscribers are resolved lazily: constructing an entity service instance n
 | `Expr.Concat(e1, e2)` | `ValueSet` | CONCAT string composition (extension method) |
 | `Expr.Lambda<T>(u => u.Age > 18)` | `LogicExpr` | Converts Lambda to Expr |
 | `Expr.From(type, tableArgs)` | `TableExpr` | Starting point for chained queries (the only factory that can be called directly) |
-| `Expr.From<T>(tableArgs)` | `IEnumerable<T>` | Only for building query sources inside lambdas (throws when called directly) |
+| `Expr.From<T>(tableArgs)` | `QuerySource<T>` | Builds a query source; handled by the lambda parser inside a lambda, composes IQueryable queries outside it, needs an executor to run |
 | `Expr.Sql("key", arg)` | `GenericSqlExpr` | Dynamic SQL fragment |
 | `Expr.Delete<T>(tableArgs)` | `DeleteExpr` | Creates a DELETE expression |
 | `Expr.If(condition, thenExpr, elseExpr)` | `FunctionExpr` | IF expression |

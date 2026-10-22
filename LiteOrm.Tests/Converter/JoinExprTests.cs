@@ -21,18 +21,24 @@ namespace LiteOrm.Common.UnitTests
         #region 占位方法
 
         [Fact]
-        public void QuerySource_HasNoPublicConstructor()
+        public void QuerySource_HasParameterlessAndExecutorConstructors()
         {
-            // 只能由 Expr.From<T>() 在 Lambda 内产生，外部无法构造
-            Assert.Empty(typeof(QuerySource<JoinOrder>).GetConstructors(
-                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance));
+            // Expr.From<T>() 现在返回真实实例，同时支持传入执行器直接取数
+            Assert.NotNull(typeof(QuerySource<JoinOrder>).GetConstructor(Type.EmptyTypes));
+            Assert.NotNull(typeof(QuerySource<JoinOrder>).GetConstructor(new[] { typeof(IQuerySourceExecutor<JoinOrder>) }));
         }
 
         [Fact]
-        public void From_DirectCall_Throws()
+        public void From_ReturnsUnboundQuerySource()
         {
-            var ex = Assert.Throws<InvalidOperationException>(() => Expr.From<JoinOrder>());
-            Assert.Contains("only used for parsing lambda expressions", ex.Message);
+            var source = Expr.From<JoinOrder>();
+
+            Assert.IsType<QuerySource<JoinOrder>>(source);
+            Assert.IsAssignableFrom<IQueryable<JoinOrder>>(source);
+
+            // 未提供执行器：只能用于解析表达式，取数即抛
+            var ex = Assert.Throws<InvalidOperationException>(() => source.ToList());
+            Assert.Contains("no executor", ex.Message);
         }
 
         #endregion

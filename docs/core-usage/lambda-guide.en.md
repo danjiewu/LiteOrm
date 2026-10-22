@@ -261,6 +261,35 @@ A few points worth knowing:
 - Join aliases are assigned in order. When you build `SelectItemExpr` by alias, read them from `from.Source.Alias` and `from.Joins[i].Source.Alias` instead of hard-coding `T1`, since the outer query may already have used that number.
 - Whole-table projections such as `Select(x => x.Item1)` are not supported; list specific columns inside `Select`, for example `Select(x => new { x.Item1.Id, x.Item2.Name })`. Using `x.Item1` on a nested tuple directly as a column throws `NotSupportedException`.
 
+`QuerySource<T>` implements `IQueryable<T>`, so a query can also be composed outside a lambda and handed to a DAO:
+
+```csharp
+// Resolve it straight from the container; the executor is already attached, no DAO lookup needed
+var users = serviceProvider.GetRequiredService<QuerySource<User>>();
+
+foreach (User user in users.Where(u => u.Age >= 18)) { }
+List<User> adults = users.Where(u => u.Age >= 18).ToList();
+
+// Async: Where returns IQueryable, so use AsSource to narrow back to QuerySource and call its async methods
+List<User> asyncAdults = await users.Where(u => u.Age >= 18).AsSource().ToListAsync();
+int count = await users.Where(u => u.Age >= 18).AsSource().CountAsync();
+
+await foreach (User u in users.Where(u => u.Age >= 18).AsSource().ToAsyncEnumerable()) { }
+
+// After a projection too; AsSource follows the Select element type
+List<string> names = await users.Where(u => u.Age >= 18)
+    .Select(u => u.Name)
+    .AsSource()
+    .ToListAsync();
+
+// Or hand it to the DAO, which accepts any IQueryable source
+var dao = serviceProvider.GetRequiredService<ObjectViewDAO<User>>();
+var result = await dao.SearchAs(
+    users.Where(u => u.Age >= 18).Select(u => new { u.Id, u.Name })).ToListAsync();
+```
+
+An instance returned by `Expr.From<T>()` carries no executor and can only build an expression; enumerating it or calling `ToList` throws `InvalidOperationException` asking for an executor. A `QuerySource<T>` lives as long as its DAO, so do not cache it in a singleton or static field.
+
 ## 6. Projection Queries (`SearchAs` / `SearchOneAs`)
 
 `SearchAs` / `SearchOneAs` accept IQueryable-style lambdas and project the result into a target type (custom classes or anonymous types), which is convenient for "select only some columns" or "assemble view / summary objects":

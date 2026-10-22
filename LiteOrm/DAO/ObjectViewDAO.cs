@@ -6,6 +6,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LiteOrm
 {
@@ -30,7 +32,7 @@ namespace LiteOrm
     /// 它支持与 TableJoinAttribute 定义的多表关联进行查询。
     /// </remarks>
     [AutoRegister(Lifetime = Lifetime.Scoped)]
-    public class ObjectViewDAO<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : DAOBase, IObjectViewDAO<T>
+    public class ObjectViewDAO<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : DAOBase, IObjectViewDAO<T>, IQuerySourceExecutor<T>
     {
         /// <summary>
         /// 初始化 <see cref="ObjectViewDAO{T}"/> 类的新实例。
@@ -246,6 +248,129 @@ namespace LiteOrm
             var prepared = seg.ToPreparedSql(CreateSqlBuildContext());
             return new EnumerableResult<TResult>(this, prepared, readerFunc);
         }
+
+        /// <summary>
+        /// 执行已构建好的 <see cref="IQueryable{T}"/> 查询，并返回指定结果类型集合。
+        /// 查询根可以是任意 <see cref="IQueryable{T}"/>，不要求来自 <see cref="Expr.From{T}(string[])"/>。
+        /// </summary>
+        /// <typeparam name="TResult">结果元素类型，投影后类型或实体类型</typeparam>
+        /// <param name="query">查询对象</param>
+        /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时实体按列位置映射、投影按列名映射</param>
+        /// <returns>符合条件的对象枚举，同时支持同步和异步操作</returns>
+        public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(
+            IQueryable<TResult> query, Func<AutoLockDataReader, TResult>? readerFunc = null)
+        {
+            if (query is null) throw new ArgumentNullException(nameof(query));
+
+            SqlSegment segment = QuerySourceExprConverter.ToExpr(query);
+            EnsureQueryRootType(segment);
+            bool mapAsEntity = typeof(TResult) == ObjectType && segment is not SelectExpr;
+            SelectExpr selectExpr = segment as SelectExpr ?? ToSelectExpr(segment);
+            var prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext());
+            readerFunc ??= mapAsEntity ? DataReaderConverter.GetConverterByTable<TResult>(SqlBuilder) : null;
+            return new EnumerableResult<TResult>(this, prepared, readerFunc);
+        }
+
+        /// <summary>
+        /// 执行已构建好的 <see cref="IQueryable{T}"/> 查询，并返回实体集合。
+        /// </summary>
+        /// <param name="query">查询对象</param>
+        /// <returns>符合条件的实体枚举，同时支持同步和异步操作</returns>
+        public virtual EnumerableResult<T> Search(IQueryable<T> query) => SearchAs<T>(query);
+
+        #region IQuerySourceExecutor
+
+        /// <summary>
+        /// 把查询表达式包装成结果对象。实体类型按列位置映射，投影类型按列名映射。
+        /// </summary>
+        /// <typeparam name="TResult">结果元素类型。</typeparam>
+        /// <param name="query">查询表达式。</param>
+        /// <returns>可执行的结果对象。</returns>
+        private EnumerableResult<TResult> CreateQueryResult<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(Expr query)
+        {
+            EnsureQueryRootType(query);
+
+            // 未显式 Select 时 ToSelectExpr 会用全列补齐，此时 TResult 是实体，必须按列位置映射；
+            // 按列名映射（GetConverterBySchema）在 [Column("USER_NAME")] Name 这类映射上会失配
+            bool mapAsEntity = typeof(TResult) == ObjectType && query is not SelectExpr;
+            SelectExpr selectExpr = ToSelectExpr(query);
+            PreparedSql prepared = selectExpr.ToPreparedSql(CreateSqlBuildContext());
+            Func<AutoLockDataReader, TResult>? readerFunc =
+                mapAsEntity ? DataReaderConverter.GetConverterByTable<TResult>(SqlBuilder) : null;
+            return new EnumerableResult<TResult>(this, prepared, readerFunc);
+        }
+
+        /// <summary>
+        /// 校验查询的根表类型与当前 DAO 的实体类型一致，避免跨实体误用被 ToSource 静默改写。
+        /// </summary>
+        /// <param name="query">查询表达式。</param>
+        private void EnsureQueryRootType(Expr query)
+        {
+            SqlSegment? current = query as SqlSegment;
+            while (current?.Source is SqlSegment next) current = next;
+            if (current is TableExpr table && table.Type is not null && table.Type != ObjectType)
+                throw new ArgumentException(
+                    $"The query is rooted at '{table.Type.Name}' but this DAO is for '{ObjectType.Name}'.");
+        }
+
+        /// <inheritdoc/>
+        public IEnumerable<TResult> AsEnumerable<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(Expr query)
+        {
+            using var result = CreateQueryResult<TResult>(query);
+            foreach (TResult item in result) yield return item;
+        }
+
+        /// <inheritdoc/>
+        public async IAsyncEnumerable<TResult> AsAsyncEnumerable<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(
+            Expr query, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            using var result = CreateQueryResult<TResult>(query);
+            await foreach (TResult item in result.WithCancellation(cancellationToken))
+                yield return item;
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<TResult>> ToListAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(
+            Expr query, CancellationToken cancellationToken = default)
+        {
+            using var result = CreateQueryResult<TResult>(query);
+            return await result.ToListAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc/>
+        public TResult FirstOrDefault<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(Expr query)
+        {
+            using var result = CreateQueryResult<TResult>(query);
+            return result.FirstOrDefault();
+        }
+
+        /// <inheritdoc/>
+        public async Task<TResult> FirstOrDefaultAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(
+            Expr query, CancellationToken cancellationToken = default)
+        {
+            using var result = CreateQueryResult<TResult>(query);
+            return await result.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <inheritdoc/>
+        public IEnumerable<T> AsEnumerable(Expr query) => AsEnumerable<T>(query);
+
+        /// <inheritdoc/>
+        public IAsyncEnumerable<T> AsAsyncEnumerable(Expr query, CancellationToken cancellationToken = default)
+            => AsAsyncEnumerable<T>(query, cancellationToken);
+
+        /// <inheritdoc/>
+        public Task<List<T>> ToListAsync(Expr query, CancellationToken cancellationToken = default)
+            => ToListAsync<T>(query, cancellationToken);
+
+        /// <inheritdoc/>
+        public T FirstOrDefault(Expr query) => FirstOrDefault<T>(query);
+
+        /// <inheritdoc/>
+        public Task<T> FirstOrDefaultAsync(Expr query, CancellationToken cancellationToken = default)
+            => FirstOrDefaultAsync<T>(query, cancellationToken);
+
+        #endregion
 
         /// <summary>
         /// 使用带参数的SQL查询

@@ -477,17 +477,18 @@ namespace LiteOrm.Common
         public static GenericSqlExpr Sql(string key, object? arg = null) => GenericSqlExpr.Get(key, arg);
 
         /// <summary>
-        /// 创建 From 表达式，支持动态表名参数。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
-        /// 返回的 <see cref="QuerySource{T}"/> 可作为 <c>Join&lt;T2&gt;</c> / <c>JoinRelated&lt;T2&gt;</c> 的接收者；
-        /// 连接结果为 <see cref="QuerySource{T}"/>（<c>T</c> 为 <c>(T1, T2)</c> 元组），可继续 <c>Join&lt;T3&gt;</c> 追加多级连接，
-        /// 也可当作 <c>IEnumerable&lt;T&gt;</c> 参与 Where / Select 等链式调用。
+        /// 创建 From 表达式，支持动态表名参数。
+        /// 返回的 <see cref="QuerySource{T}"/> 实现 <see cref="IQueryable{T}"/>：在 Lambda 内由解析器接管，
+        /// 在 Lambda 外可以继续拼 Where / Select 等查询，再交给 <see cref="QuerySourceExprConverter"/> 或
+        /// <c>ObjectViewDAO.SearchAs(IQueryable&lt;T&gt;)</c> 转成 SQL。
+        /// 未提供执行器的实例不能枚举，调用取数方法会抛 <see cref="InvalidOperationException"/>。
         /// </summary>
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>查询源表达式。</returns>
         public static QuerySource<T> From<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(params string[] tableArgs)
         {
-            throw new InvalidOperationException("The Expr.From method is only used for parsing lambda expressions and cannot be called directly.");
+            return new QuerySource<T> { TableArgs = tableArgs };
         }
 
         /// <summary>

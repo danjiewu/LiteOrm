@@ -4,7 +4,7 @@
 
 ### 破坏性变更
 
-- **`Expr.From<T>()` 改为 Lambda 专用占位方法**（`LiteOrm.Common`）：返回类型由 `TableExpr` 改为 `QuerySource<T>`（实现 `IEnumerable<T>`），方法体直接抛 `InvalidOperationException`。
+- **`Expr.From<T>()` 返回 `QuerySource<T>`**（`LiteOrm.Common`）：返回类型由 `TableExpr` 改为 `QuerySource<T>`。`QuerySource<T>` 实现 `IQueryable<T>`，既可作 Lambda 表达式占位，也可在 Lambda 外拼查询；构造参数为 `IQuerySourceExecutor<T>`（`ObjectViewDAO<T>` 实现该接口，已注册进容器，可直接解析），有执行器时可直接枚举、`ToList`、`Count`、`ToListAsync`，没有执行器时取数抛 `InvalidOperationException`。`ObjectViewDAO<T>` 新增 `SearchAs(IQueryable<TResult>)` / `Search(IQueryable<T>)` 重载，接受任意 `IQueryable` 源。新增 `AsSource()` 扩展，把 `Where` / `Select` 之后静态类型为 `IQueryable<T>` 的查询收窄回 `QuerySource<T>`，从而能接着调用 `ToListAsync` / `CountAsync` / `ToAsyncEnumerable`。
 
 - **删除冗余的 Lambda 泛型重载**（`LiteOrm.Common`）：`Expr.Exists<T>(LogicExpr, ...)` 与 `Expr.ExistsRelated<T>(LogicExpr?, ...)` 删除，`ISourceAnchor.Where<T>(Expression<Func<T, bool>>)` 一并删除。
 

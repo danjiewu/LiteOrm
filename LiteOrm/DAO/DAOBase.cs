@@ -91,7 +91,6 @@ namespace LiteOrm
         /// </summary>
         protected virtual string? DataSource => TableDefinition.DataSource;
 
-
         /// <summary>
         /// 是否为视图，默认为 false。对于视图，某些操作（如插入、更新、删除）可能不适用，因此在生成 SQL 语句时需要特殊处理。
         /// </summary>
@@ -161,7 +160,6 @@ namespace LiteOrm
         /// </summary>
         public string[]? TableArgs { get; internal set; }
 
-
         private SqlBuildContext? _initSqlBuildContext;
         /// <summary>
         /// 用于初始化表信息的 SQL 构建上下文，只有在需要初始化表信息时才创建，并且在整个 DAO 生命周期内保持不变，以提高性能。对于某些操作（如生成 SQL 语句），可能需要在上下文中包含表信息以正确解析列和别名等细节，因此提供了这个属性来避免重复创建上下文。子类可以根据需要重写 CreateSqlBuildContext 方法来修改上下文的内容，但 InitSqlBuildContext 将始终返回一个包含表信息的上下文实例。
@@ -225,7 +223,6 @@ namespace LiteOrm
         /// 查询时需要获取的所有列
         /// </summary>
         protected virtual ReadOnlyCollection<SqlColumn> SelectColumns => Table.SelectColumns;
-
 
         /// <summary>
         /// 查询时需要获取的所有字段的 SQL
@@ -649,8 +646,6 @@ namespace LiteOrm
                 return _mutiReplacer;
             }
         }
-
-
 
         /// <summary>
         /// 为command创建根据主键查询的条件，在参数集合中添加参数并返回where条件的语句

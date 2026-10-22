@@ -261,6 +261,35 @@ var merged = Query<Order, IEnumerable<(Order, Customer)>>(
 - 连接表别名按分配顺序生成，需要按别名手工拼 `SelectItemExpr` 时从 `from.Source.Alias` 与 `from.Joins[i].Source.Alias` 读取，不要写死 `T1`，外层查询可能已经占用过该编号。
 - `Select(x => x.Item1)` 这种整表投影不支持，`Select` 里请写具体列，例如 `Select(x => new { x.Item1.Id, x.Item2.Name })`。嵌套元组上的 `x.Item1` 直接当列用会抛 `NotSupportedException`。
 
+`QuerySource<T>` 实现 `IQueryable<T>`，所以在 Lambda 之外也能拼查询，再交给 DAO 转成 SQL 执行：
+
+```csharp
+// 直接从容器取，已绑定执行器，不需要先拿 DAO
+var users = serviceProvider.GetRequiredService<QuerySource<User>>();
+
+foreach (User user in users.Where(u => u.Age >= 18)) { }
+List<User> adults = users.Where(u => u.Age >= 18).ToList();
+
+// 异步：Where 返回静态类型 IQueryable，用 AsSource 收窄回 QuerySource 即可用异步实例方法
+List<User> asyncAdults = await users.Where(u => u.Age >= 18).AsSource().ToListAsync();
+int count = await users.Where(u => u.Age >= 18).AsSource().CountAsync();
+
+await foreach (User u in users.Where(u => u.Age >= 18).AsSource().ToAsyncEnumerable()) { }
+
+// 投影之后同样适用，AsSource 的元素类型会跟着 Select 走
+List<string> names = await users.Where(u => u.Age >= 18)
+    .Select(u => u.Name)
+    .AsSource()
+    .ToListAsync();
+
+// 也可以交给 DAO 执行，任意 IQueryable 源都接受
+var dao = serviceProvider.GetRequiredService<ObjectViewDAO<User>>();
+var result = await dao.SearchAs(
+    users.Where(u => u.Age >= 18).Select(u => new { u.Id, u.Name })).ToListAsync();
+```
+
+`Expr.From<T>()` 返回的实例不带执行器，只能用来拼表达式；直接枚举或调用 `ToList` 会抛 `InvalidOperationException`，提示补上执行器。`QuerySource<T>` 与其 DAO 生命周期一致，不要缓存到单例或静态字段里。
+
 ## 6. 投影查询（`SearchAs` / `SearchOneAs`）
 
 `SearchAs` / `SearchOneAs` 支持 IQueryable 形式的 Lambda，把结果投影为指定类型（自定义类、匿名类均可），适合「只取部分列」或「组装成视图 / 摘要对象」：

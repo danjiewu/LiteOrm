@@ -99,6 +99,40 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
+        /// 按「类型 + 方法名」查找已注册的方法处理器。
+        /// 优先按特化类型（如 <c>QuerySource&lt;User&gt;</c>）匹配；未命中且该类型是构造泛型时，
+        /// 再按泛型定义（如 <c>typeof(QuerySource&lt;&gt;)</c>）匹配，从而支持注册在开放泛型上的处理器。
+        /// </summary>
+        /// <param name="type">方法声明类型，可为 null。</param>
+        /// <param name="methodName">方法名称。</param>
+        /// <param name="handler">命中的处理器，未命中时为 null。</param>
+        /// <returns>命中时为 true。</returns>
+        private static bool TryGetTypeMethodHandler(
+            Type? type,
+            string methodName,
+            out Func<MethodCallExpression, LambdaExprConverter, Expr>? handler)
+        {
+            handler = null;
+            if (type is null) return false;
+
+            // 1. 特化类型优先：注册在具体类型上的处理器可以覆盖泛型定义的默认行为
+            if (_typeMethodHandlers.TryGetValue((type, methodName), out handler) && handler is not null) return true;
+
+            // 2. 回退到泛型定义。开放泛型自身的 GetGenericTypeDefinition 返回自身，跳过避免重复查找
+            if (type.IsGenericType)
+            {
+                Type definition = type.GetGenericTypeDefinition();
+                if (definition != type
+                    && _typeMethodHandlers.TryGetValue((definition, methodName), out handler)
+                    && handler is not null)
+                    return true;
+            }
+
+            handler = null;
+            return false;
+        }
+
+        /// <summary>
         /// 注册成员（属性/字段）的转换逻辑。
         /// </summary>
         public static void RegisterMemberHandler(string memberName, Func<MemberExpression, LambdaExprConverter, Expr>? handler = null)
@@ -193,6 +227,7 @@ namespace LiteOrm.Common
         {
             if (expression is null) throw new ArgumentNullException(nameof(expression));
             _expression = expression;
+            _body = expression.Body;
             var parameters = expression.Parameters;
             if (parent != null)
             {
@@ -227,6 +262,33 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 直接从表达式主体与参数构造转换器，不要求先合成 <see cref="LambdaExpression"/>。
+        /// 用于把 IQueryable 查询树转成 Expr：AOT 下 <see cref="Expression.Lambda(Expression, ParameterExpression[])"/>
+        /// 需要动态生成委托类型，此入口可以绕开。
+        /// </summary>
+        /// <param name="body">表达式主体。</param>
+        /// <param name="parameter">查询根参数，作为第一个参数分配默认别名。</param>
+#if NET8_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "The parameter type comes from the query expression root; properties are preserved via [Table] entities through the source generator.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2062", Justification = "The parameter type is a runtime value; under AOT, users must annotate entity types with [Table] to ensure properties are preserved.")]
+#endif
+        internal LambdaExprConverter(Expression body, ParameterExpression parameter)
+        {
+            if (body is null) throw new ArgumentNullException(nameof(body));
+            if (parameter is null) throw new ArgumentNullException(nameof(parameter));
+
+            _body = body;
+            _expression = null!;
+            _aliasCounter = new AliasSequence(1);
+
+            var tableExpr = Expr.From(UnwrapSourceType(parameter.Type)).As(Constants.DefaultTableAlias);
+            _parameterAliases[parameter] = tableExpr.Alias!;
+            _parameterExprs[parameter] = tableExpr;
+            _tableExpr = tableExpr;
+            _currentAlias = tableExpr.Alias!;
+        }
+
         private TableExpr? _tableExpr;
         /// <summary>
         /// 获取解析后的 TableExpr 对象，代表 Lambda 表达式中根参数对应的表信息。
@@ -241,6 +303,11 @@ namespace LiteOrm.Common
         /// 原始 Lambda 对象
         /// </summary>
         protected readonly LambdaExpression _expression;
+        /// <summary>
+        /// 要转换的表达式主体。由 Lambda 构造时取 <see cref="LambdaExpression.Body"/>；
+        /// 由 <see cref="LambdaExprConverter(Expression, ParameterExpression)"/> 构造时直接使用传入的主体。
+        /// </summary>
+        protected readonly Expression _body;
         /// <summary>
         /// 参数表达式到别名的映射。按 <see cref="ParameterExpression"/> 引用键控，
         /// 内层 Lambda 参数与外层同名时不会互相覆盖或删除。
@@ -266,10 +333,12 @@ namespace LiteOrm.Common
         protected readonly ExpressionDetector _expressionDetector = new ExpressionDetector();
 
         /// <summary>
-        /// 解包 IQueryable&lt;T&gt; / IEnumerable&lt;T&gt; 形式的源参数，取其元素类型。
+        /// 解包 IQueryable&lt;T&gt; / IEnumerable&lt;T&gt; / QuerySource&lt;T&gt; 形式的源参数，取其元素类型。
         /// </summary>
         private static Type UnwrapSourceType(Type type) =>
-            type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IQueryable<>) || type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IQueryable<>)
+                || type.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+                || type.GetGenericTypeDefinition() == typeof(QuerySource<>))
                 ? type.GetGenericArguments()[0]
                 : type;
 
@@ -281,12 +350,12 @@ namespace LiteOrm.Common
         /// <summary>
         /// 执行整体转换并将根节点转为 LogicExpr。
         /// </summary>
-        public LogicExpr? ToLogicExpr() => ConvertInternal(_expression.Body).AsLogic();
+        public LogicExpr? ToLogicExpr() => ConvertInternal(_body).AsLogic();
 
         /// <summary>
         /// 执行整体转换并将根节点转为 ValueTypeExpr。
         /// </summary>
-        public ValueTypeExpr ToValueExpr() => ConvertInternal(_expression.Body).AsValue();
+        public ValueTypeExpr ToValueExpr() => ConvertInternal(_body).AsValue();
 
         /// <summary>
         /// 静态便捷入口，将 Lambda 表达式转换为 ValueTypeExpr 模型。
@@ -303,7 +372,7 @@ namespace LiteOrm.Common
         /// </summary>
         public Expr ToSqlSegment()
         {
-            Expr expr = ConvertInternal(_expression.Body);
+            Expr expr = ConvertInternal(_body);
             if (expr is not SqlSegment) throw new InvalidOperationException("Lambda expression cannot convert to SqlSegment.");
             return expr;
         }
@@ -911,6 +980,13 @@ namespace LiteOrm.Common
                 }
                 // 未匹配的 LINQ 方法中，聚合函数单独处理，避免落到默认函数处理器生成非法 SQL
                 if (IsAggregateMethod(node)) return HandleAggregate(node);
+
+                // Queryable 上未实现的算子必须显式报错，不能落到 DefaultFunctionHandler 生成伪函数 SQL。
+                // 只对 Queryable 生效：Enumerable 上的 Contains 等已有按名注册的处理器，提前抛错会破坏现有功能。
+                if (type == typeof(Queryable))
+                    throw new NotSupportedException(
+                        $"LINQ operator '{node.Method.Name}' is not supported in LiteOrm expressions. " +
+                        "Supported: Where/Select/OrderBy/ThenBy/Skip/Take/GroupBy and Count/Sum/Average/Max/Min.");
             }
             else if (type == typeof(Expr) && (method.Name == nameof(Expr.Exists) || method.Name == nameof(Expr.ExistsRelated)))
                 return HandleExists(node);
@@ -920,8 +996,8 @@ namespace LiteOrm.Common
                 && (method.Name == nameof(QuerySource<object>.Join) || method.Name == nameof(QuerySource<object>.JoinRelated)))
                 return HandleJoin(node);
 
-            // 处理类型成员处理器
-            if (type != null && _typeMethodHandlers.TryGetValue((type, method.Name), out var typeMethodHandler))
+            // 处理类型成员处理器：先按特化类型查，未命中再按泛型定义查
+            if (TryGetTypeMethodHandler(type, method.Name, out var typeMethodHandler))
                 if (typeMethodHandler != null) return typeMethodHandler(node, this);
 
             // 处理方法名处理器
@@ -940,6 +1016,10 @@ namespace LiteOrm.Common
         protected Expr ConvertConstant(ConstantExpression node)
         {
             if (node.Value is Expr expr) return expr;
+            if (node.Value is IQueryable)
+                throw new NotSupportedException(
+                    "An IQueryable constant cannot be converted to Expr directly. " +
+                    "Use QuerySourceExprConverter.ToExpr or ObjectViewDAO.SearchAs(IQueryable<T>) so the query root is rewritten to a table source.");
             if (node.Value == null) return Expr.Null;
             bool isConst = node.Type.IsPrimitive || node.Type == typeof(string);
             return new ValueExpr(node.Value) { IsConst = isConst };
@@ -1725,6 +1805,21 @@ namespace LiteOrm.Common
             }
 
             /// <summary>
+            /// 访问常量表达式。IQueryable 常量代表查询根，本地求值会真的执行查询，必须交给解析器。
+            /// </summary>
+            /// <param name="node">常量表达式节点。</param>
+            /// <returns>返回原节点。</returns>
+            protected override Expression VisitConstant(ConstantExpression node)
+            {
+                if (node.Value is IQueryable)
+                {
+                    _result = false;
+                    return node;
+                }
+                return base.VisitConstant(node);
+            }
+
+            /// <summary>
             /// 访问参数表达式。
             /// </summary>
             /// <param name="node">参数表达式节点。</param>
@@ -1756,7 +1851,7 @@ namespace LiteOrm.Common
                     _result = false;
                     return node; // 直接返回原节点，避免继续访问子表达式影响结果
                 }
-                if (_typeMethodHandlers.TryGetValue((node.Method.DeclaringType!, node.Method.Name), out _) || _methodNameHandlers.TryGetValue(node.Method.Name, out _))
+                if (TryGetTypeMethodHandler(node.Method.DeclaringType, node.Method.Name, out _) || _methodNameHandlers.TryGetValue(node.Method.Name, out _))
                 {
                     _result = false;
                     return node; // 直接返回原节点，避免继续访问子表达式影响结果

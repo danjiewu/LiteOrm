@@ -485,7 +485,7 @@ services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
 | `Expr.Concat(e1, e2)`                            | `ValueSet`        | CONCAT 字符串拼接（扩展方法）                          |
 | `Expr.Lambda<T>(u => u.Age > 18)`                | `LogicExpr`       | Lambda 转 Expr                               |
 | `Expr.From(type, tableArgs)`                     | `TableExpr`       | 链式查询起点（唯一可真实调用的工厂方法）                         |
-| `Expr.From<T>(tableArgs)`                        | `IEnumerable<T>`  | 仅用于 Lambda 表达式中构造查询源（直接调用会抛出异常）              |
+| `Expr.From<T>(tableArgs)`                        | `QuerySource<T>`  | 构造查询源；Lambda 内由解析器接管，Lambda 外可拼 IQueryable 查询，无执行器时不能取数 |
 | `Expr.Sql("key", arg)`                           | `GenericSqlExpr`  | 动态 SQL 片段                                   |
 | `Expr.Delete<T>(tableArgs)`                      | `DeleteExpr`      | 创建 DELETE 表达式                               |
 | `Expr.If(condition, thenExpr, elseExpr)`         | `FunctionExpr`    | IF 表达式                                      |

@@ -20,10 +20,14 @@ namespace LiteOrm.Common.UnitTests
         #region 占位方法
 
         [Fact]
-        public void From_Generic_ThrowsWhenCalledDirectly()
+        public void From_Generic_ReturnsUnboundQuerySource()
         {
-            var ex = Assert.Throws<InvalidOperationException>(() => Expr.From<AggOrder>());
-            Assert.Contains("only used for parsing lambda expressions", ex.Message);
+            // From<T>() 现在返回真实实例，只是没有执行器，取数时才抛异常
+            var source = Expr.From<AggOrder>();
+            Assert.IsType<QuerySource<AggOrder>>(source);
+
+            var ex = Assert.Throws<InvalidOperationException>(() => source.ToList());
+            Assert.Contains("no executor", ex.Message);
         }
 
         [Fact]

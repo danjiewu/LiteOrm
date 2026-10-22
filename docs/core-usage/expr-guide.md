@@ -214,7 +214,7 @@ var query = From(typeof(User))
 `From` 有两个重载，分工不同：
 
 - `Expr.From(type, tableArgs)` 接受 `Type`，返回 `TableExpr`，是唯一可以真实调用的工厂方法。
-- `Expr.From<T>(tableArgs)` 返回 `IEnumerable<T>`，只用于 Lambda 表达式中构造查询源，直接调用会抛 `InvalidOperationException`。改写 Lambda 时解析器会把 `From<T>()` 换成对内层查询的表引用，例如 `Expr.From<User>().Where(Prop("Age") > 18)` 出现在 `Expr.Query` 里时按子查询处理。
+- `Expr.From<T>(tableArgs)` 返回 `QuerySource<T>`，实现 `IQueryable<T>`。在 Lambda 表达式里由解析器接管；在 Lambda 外可以继续拼 `Where` / `Select` 等查询，再交给 `QuerySourceExprConverter` 或 `ObjectViewDAO.SearchAs(IQueryable<T>)` 转成 SQL。未提供执行器时不能取数，枚举会抛 `InvalidOperationException`。
 
 ## 5. Expr 类型总览
 
@@ -291,7 +291,7 @@ var query = From(typeof(User))
 | `Expr.Const(value)` | 创建常量值 | `Expr.Const("Enabled")` |
 | `Expr.Null` | SQL NULL | `Expr.Null` |
 | `Expr.From(type)` | 创建链式查询起点（可真实调用） | `Expr.From(typeof(User))` |
-| `Expr.From<T>()` | 仅用于 Lambda 内构造查询源，直接调用抛异常 | `Expr.From<User>()` |
+| `Expr.From<T>()` | 构造 `QuerySource<T>`，可作 Lambda 占位或拼 IQueryable 查询；无执行器时不能取数 | `Expr.From<User>()` |
 | `Expr.Update<T>()` | 创建 UPDATE 表达式 | `Expr.Update<User>()` |
 | `Expr.Delete<T>()` | 创建 DELETE 表达式 | `Expr.Delete<User>()` |
 | `Expr.Exists(type, innerExpr)` | 创建 EXISTS 子查询 | `Expr.Exists(typeof(Department), ...)` |

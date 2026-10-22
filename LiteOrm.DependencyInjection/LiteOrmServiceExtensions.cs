@@ -140,6 +140,7 @@ namespace LiteOrm.DependencyInjection
                         builder.RegisterGeneric(typeof(ObjectViewDAO<>))
                             .AsSelf()
                             .As(typeof(IObjectViewDAO<>))
+                            .As(typeof(IQuerySourceExecutor<>))
                             .InstancePerLifetimeScope();
 
                         builder.RegisterGeneric(typeof(DataDAO<>))
@@ -151,6 +152,13 @@ namespace LiteOrm.DependencyInjection
                             .As(typeof(IDataViewDAO<>))
                             .InstancePerLifetimeScope();
                     }
+
+                    // 查询源：直接解析即可拿到带执行器的实例，不需要先取 DAO。
+                    // 放在分支外，自动注册与显式注册两条路径都生效。
+                    // 两个公共构造中，Autofac 会选参数可解析的那一个（带 IQuerySourceExecutor<T>）
+                    builder.RegisterGeneric(typeof(QuerySource<>))
+                        .AsSelf()
+                        .InstancePerLifetimeScope();
 
                     // 注册自定义 SqlBuilder
                     foreach (var kvp in options.SqlBuilders)

@@ -4,7 +4,7 @@
 
 ### Breaking changes
 
-- **`Expr.From<T>()` becomes a lambda-only placeholder** (`LiteOrm.Common`): the return type changes from `TableExpr` to `QuerySource<T>` (which implements `IEnumerable<T>`) and the method body throws `InvalidOperationException`.
+- **`Expr.From<T>()` returns `QuerySource<T>`** (`LiteOrm.Common`): the return type changes from `TableExpr` to `QuerySource<T>`. `QuerySource<T>` implements `IQueryable<T>`, so it works both as a lambda placeholder and as a query composed outside a lambda. Its constructor takes an optional `IQuerySourceExecutor<T>` (implemented by `ObjectViewDAO<T>` and registered in the container): with an executor it can be enumerated directly and supports `ToList`, `Count` and `ToListAsync`; without one, running it throws `InvalidOperationException`. `ObjectViewDAO<T>` gains `SearchAs(IQueryable<TResult>)` and `Search(IQueryable<T>)` overloads that accept any `IQueryable` source. A new `AsSource()` extension narrows an `IQueryable<T>` (the static type after `Where` / `Select`) back to `QuerySource<T>`, so `ToListAsync`, `CountAsync` and `ToAsyncEnumerable` remain reachable.
 
 - **Redundant generic lambda overloads are removed** (`LiteOrm.Common`): `Expr.Exists<T>(LogicExpr, ...)` and `Expr.ExistsRelated<T>(LogicExpr?, ...)` are deleted, and `ISourceAnchor.Where<T>(Expression<Func<T, bool>>)` is deleted as well.
 
