@@ -259,7 +259,7 @@ var merged = Query<Order, IEnumerable<(Order, Customer)>>(
 var multiple = Query<Order, IEnumerable<(Order, Customer, Region)>>(
     q => From<Order>()
           .Join<Customer>((o, c) => o.CustomerId == c.Id)
-          .Join<Region>((x, r) => x.Item2.RegionId == r.Id)
+          .Join<Region>((o, c, r) => c.RegionId == r.Id)
           .Where(x => x.Item3.Name == "North")
 );
 
@@ -269,7 +269,7 @@ var multipleRelated = Query<Order, IEnumerable<(Order, Customer, Region)>>(
 );
 ```
 
-The result is a sequence of element tuples; `Where` / `OrderBy` preserve the tuple element type, while `Select` changes it to the projection result. Access the tuple elements as `Item1`, `Item2`, ..., `Item7`; each resolves to the correct table alias during conversion. Multi-table joins are chained: `From<T1>()` returns `QuerySource<T1>`, `Join<T2>` returns `QuerySource<T1, T2>`, and a further `Join<T3>` yields `QuerySource<T1, T2, T3>`, up to seven elements. The tuple is always flat; the `on` parameter of each chained call receives the already-joined tuple plus the new right table.
+The result is a sequence of element tuples; `Where` / `OrderBy` preserve the tuple element type, while `Select` changes it to the projection result. Access the tuple elements as `Item1`, `Item2`, ..., `Item7`; each resolves to the correct table alias during conversion. Multi-table joins are chained: `From<T1>()` returns `QuerySource<T1>`, `Join<T2>` returns `QuerySource<T1, T2>`, and a further `Join<T3>` yields `QuerySource<T1, T2, T3>`, up to seven elements. The tuple is always flat; the `on` parameters of each chained call take one table each, with the already-joined tables first and the new right table last.
 
 `Join` / `JoinRelated` are instance methods that build expressions both inside a lambda and outside one; `Expr.Query` and the `Expr.From<T>()` chain are both supported entry points.
 
@@ -277,7 +277,7 @@ A few points worth knowing:
 
 - `Join` produces SQL like `FROM Orders T0 LEFT JOIN Customers T1 ON T0.CustomerId = T1.Id`; the join type defaults to left.
 - `JoinRelated` throws `InvalidOperationException` when no relation can be inferred, telling you to use `Join` with an explicit condition. Declare such relations with `[ForeignType]` or `[TableJoin]`.
-- Multi-level joins are supported: `From<A>().Join<B>(...).Join<C>(...)` appends JOINs. The `on` parameter of the second join is the `(A, B)` tuple, referenced as `x.Item1` / `x.Item2`; the third join receives `(A, B, C)` and references the newly joined table as `x.Item3`.
+- Multi-level joins are supported: `From<A>().Join<B>(...).Join<C>(...)` appends JOINs. The condition lambda takes one parameter per table in order — already-joined tables first, then the new right table: the second join is `(a, b, c) => ...` and the third is `(a, b, c, d) => ...`.
 - Each chained `Join` / `JoinRelated` appends exactly one table; the explicit condition only has to relate that segment to the already-joined tables. `JoinRelated` still infers conditions from foreign-key metadata and ANDs any explicit condition with the inferred one.
 - Join aliases are assigned in order. When you build `SelectItemExpr` by alias, read them from `from.Source.Alias` and `from.Joins[i].Source.Alias` instead of hard-coding `T1`, since the outer query may already have used that number.
 - Whole-table projections such as `Select(x => x.Item1)` are not supported; list specific columns inside `Select`, for example `Select(x => new { x.Item1.Id, x.Item2.Name })`. Using a tuple element `x.Item1` directly as a column throws `NotSupportedException`.

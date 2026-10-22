@@ -130,7 +130,7 @@ namespace LiteOrm.Common.UnitTests
                 (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer, JoinRegion)>>>)(
                     q => Expr.From<JoinOrder>()
                           .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
-                          .Join<JoinRegion>((x, r) => x.Item1.RegionId == r.Id)));
+                          .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)));
 
             var from = Assert.IsType<FromExpr>(converter.ToSqlSegment());
 
@@ -138,7 +138,7 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal(typeof(JoinCustomer), ((TableExpr)from.Joins[0].Source!).Type);
             Assert.Equal(typeof(JoinRegion), ((TableExpr)from.Joins[1].Source!).Type);
 
-            // 第二段 ON 必须落在主表 RegionId 上，不能被渲染成 RegionId([Item1])
+            // 第二个连接参数 c 必须落到第一段连接表的别名上，不能留下元组占位符
             string on = from.Joins[1].On!.ToString()!;
             Assert.Contains("RegionId", on);
             Assert.DoesNotContain("Item1", on);
@@ -226,8 +226,8 @@ namespace LiteOrm.Common.UnitTests
                 (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer, JoinRegion, JoinZone)>>>)(
                     q => Expr.From<JoinOrder>()
                           .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
-                          .Join<JoinRegion>((x, r) => x.Item1.RegionId == r.Id)
-                          .Join<JoinZone>((y, z) => y.Item3.Id == z.RegionId)));
+                          .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                          .Join<JoinZone>((o, c, r, z) => r.Id == z.RegionId)));
 
             var from = Assert.IsType<FromExpr>(converter.ToSqlSegment());
 
@@ -236,7 +236,7 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal(typeof(JoinRegion), ((TableExpr)from.Joins[1].Source!).Type);
             Assert.Equal(typeof(JoinZone), ((TableExpr)from.Joins[2].Source!).Type);
 
-            // 第三段的 Item3 指向第二段连接的表 JoinRegion
+            // 第三段的参数 r 指向第二段连接的表 JoinRegion
             string on = from.Joins[2].On!.ToString()!;
             Assert.Contains("RegionId", on);
             Assert.DoesNotContain("Item1", on);
@@ -271,7 +271,7 @@ namespace LiteOrm.Common.UnitTests
                 (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer, JoinRegion)>>>)(
                     q => Expr.From<JoinOrder>()
                           .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
-                          .Join<JoinRegion>((x, r) => x.Item2.Id == r.Id)));
+                          .Join<JoinRegion>((o, c, r) => c.Id == r.Id)));
 
             var from = Assert.IsType<FromExpr>(converter.ToSqlSegment());
 
@@ -300,7 +300,7 @@ namespace LiteOrm.Common.UnitTests
                 (Expression<Func<IQueryable<JoinOrder>, IEnumerable<object>>>)(
                     q => Expr.From<JoinOrder>()
                           .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
-                          .Join<JoinRegion>((x, r) => x.Item2.Id == r.Id)
+                          .Join<JoinRegion>((o, c, r) => c.Id == r.Id)
                           .Where(x => x.Item3.Name == "North")
                           .Select(x => new { CustomerName = x.Item2.Name, RegionName = x.Item3.Name })));
 
@@ -340,7 +340,7 @@ namespace LiteOrm.Common.UnitTests
                 (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer, JoinRegion)>>>)(
                     q => Expr.From<JoinOrder>()
                           .JoinRelated<JoinCustomer>((o, c) => o.Amount > 10)
-                          .JoinRelated<JoinRegion>((x, r) => r.Name != null)));
+                          .JoinRelated<JoinRegion>((o, c, r) => r.Name != null)));
 
             var from = Assert.IsType<FromExpr>(converter.ToSqlSegment());
 
@@ -362,11 +362,11 @@ namespace LiteOrm.Common.UnitTests
                 (Expression<Func<IQueryable<JoinOrder>, IEnumerable<object>>>)(
                     q => Expr.From<JoinOrder>()
                           .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
-                          .Join<JoinRegion>((x, r) => x.Item2.Id == r.Id)
-                          .Join<JoinZone>((x, z) => x.Item3.Id == z.RegionId)
-                          .Join<JoinStore>((x, s) => x.Item4.Id == s.RegionId)
-                          .Join<JoinCity>((x, ci) => x.Item5.Id == ci.StoreId)
-                          .Join<JoinCountry>((x, co) => x.Item6.Id == co.CityId)
+                          .Join<JoinRegion>((o, c, r) => c.Id == r.Id)
+                          .Join<JoinZone>((o, c, r, z) => r.Id == z.RegionId)
+                          .Join<JoinStore>((o, c, r, z, s) => z.Id == s.RegionId)
+                          .Join<JoinCity>((o, c, r, z, s, ci) => s.Id == ci.StoreId)
+                          .Join<JoinCountry>((o, c, r, z, s, ci, co) => ci.Id == co.CityId)
                           .Where(x => x.Item7.Id > 0)
                           .Select(x => new { x.Item7.Id })));
 
@@ -442,7 +442,7 @@ namespace LiteOrm.Common.UnitTests
                 .Where(o => o.Amount > 0)
                 .AsSource()
                 .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
-                .Join<JoinRegion>((x, r) => x.Item1.RegionId == r.Id);
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id);
 
             var where = Assert.IsType<WhereExpr>(source.GetQueryExpr());
             var from = Assert.IsType<FromExpr>(where.Source);

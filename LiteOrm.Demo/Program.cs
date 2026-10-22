@@ -74,7 +74,10 @@ using (var scope = host.Services.CreateScope())
     // 10. JsonNode 属性演示 (Info 列：JSON 文本存储 + 列级 JsonNodeConverter 读写)
     await JsonNodeDemo.RunAsync(serviceFactory);
 
-    // 11. 远程服务调用演示 (AddRemoteServiceFactory：从配置读取远程地址、工厂代理、远程调用)
+    // 11. Join 多表连接查询演示 (11.1 Join、11.2 JoinRelated + 连接类型、11.3 链式三表连接)
+    await JoinQueryDemo.RunAsync(scope.ServiceProvider);
+
+    // 12. 远程服务调用演示 (AddRemoteServiceFactory：从配置读取远程地址、工厂代理、远程调用)
     await RemoteServiceDemo.RunAsync();
 }
 

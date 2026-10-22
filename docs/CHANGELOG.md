@@ -20,7 +20,7 @@
 
 - **Lambda 支持根级聚合函数**（`LiteOrm.Common`）：`Count`、`LongCount`、`Sum`、`Average`、`Avg`、`Max`、`Min` 在 IQueryable Lambda 内直接解析。
 
-- **新增 `Join` / `JoinRelated` 与多值泛型查询源**（`LiteOrm.Common`）：`Expr.From<T1>()` 返回 `QuerySource<T1>`，其上提供实例方法 `Join<T2>`、`JoinRelated<T2>()` 与 `JoinRelated<T2>(on)`，只写右表类型。新增 `QuerySource<T1, T2>` … `QuerySource<T1, ..., T7>` 多值泛型，每次 `Join<TNext>` 只追加一张右表并返回下一元数，例如 `QuerySource<T1, T2>.Join<T3>` 得到 `QuerySource<T1, T2, T3>`；结果元组始终平铺，`on` 参数为「已连接元组 + 新右表」。连接结果可按 `IEnumerable<(T1, ..., Tn)>` 接 `Where` / `OrderBy`；接 `Select` 时元素类型会变化，`TResult` 需写成与投影结果兼容的类型（如 `IEnumerable<object>`）。`x.Item1` / `x.Item2` 等还原到各表别名，不再被当成名为 `Item1` 的列。连接既可在 Lambda 内解析，也可在 Lambda 外直接拼表达式。
+- **新增 `Join` / `JoinRelated` 与多值泛型查询源**（`LiteOrm.Common`）：`Expr.From<T1>()` 返回 `QuerySource<T1>`，其上提供实例方法 `Join<T2>`、`JoinRelated<T2>()` 与 `JoinRelated<T2>(on)`，只写右表类型。新增 `QuerySource<T1, T2>` … `QuerySource<T1, ..., T7>` 多值泛型，每次 `Join<TNext>` 只追加一张右表并返回下一元数，例如 `QuerySource<T1, T2>.Join<T3>` 得到 `QuerySource<T1, T2, T3>`；结果元组始终平铺，`on` 参数按顺序一表一个（已连接的各表在前，新右表在最后）。连接结果可按 `IEnumerable<(T1, ..., Tn)>` 接 `Where` / `OrderBy`；接 `Select` 时元素类型会变化，`TResult` 需写成与投影结果兼容的类型（如 `IEnumerable<object>`）。`x.Item1` / `x.Item2` 等还原到各表别名，不再被当成名为 `Item1` 的列。连接既可在 Lambda 内解析，也可在 Lambda 外直接拼表达式。
 
 - **`LambdaExprConverter` 支持嵌套参数上下文**（`LiteOrm.Common`）：新增带父转换器的构造重载，子转换器继承外层参数映射并共享别名编号；构造函数注册 Lambda 的全部参数，`param[0]` 为别名 `T0` 的根表，其余参数获得新别名 `T{n}`。
 

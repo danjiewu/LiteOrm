@@ -28,13 +28,13 @@ namespace LiteOrm.Common
         /// 连接第三张表，并使用显式连接条件。
         /// </summary>
         /// <typeparam name="T3">右表实体类型。</typeparam>
-        /// <param name="on">连接条件表达式，第一个参数为前两张表的元组。</param>
+        /// <param name="on">连接条件表达式，参数依次为 T1、T2 和右表 T3。</param>
         /// <param name="joinType">连接类型，为 null 时使用左连接。</param>
         /// <returns>元素为三表元组的查询源。</returns>
-        public new QuerySource<T1, T2, T3> Join<T3>(Expression<Func<(T1, T2), T3, bool>> on, TableJoinType? joinType = null)
+        public QuerySource<T1, T2, T3> Join<T3>(Expression<Func<T1, T2, T3, bool>> on, TableJoinType? joinType = null)
         {
             if (on is null) throw new ArgumentNullException(nameof(on));
-            Func<Expression<Func<(T1, T2), T3, bool>>, TableJoinType?, QuerySource<T1, T2, T3>> target = Join;
+            Func<Expression<Func<T1, T2, T3, bool>>, TableJoinType?, QuerySource<T1, T2, T3>> target = Join;
             return new QuerySource<T1, T2, T3>(Executor,
                 QuerySourceExpressionBuilder.BuildJoinCall(QueryExpression, target.Method, Expression.Quote(on), QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
         }
@@ -57,13 +57,13 @@ namespace LiteOrm.Common
         /// 连接第三张表，自动推断的连接条件与显式条件按 AND 合并。
         /// </summary>
         /// <typeparam name="T3">右表实体类型。</typeparam>
-        /// <param name="on">附加的连接条件，第一个参数为前两张表的元组。</param>
+        /// <param name="on">附加的连接条件，参数依次为 T1、T2 和右表 T3。</param>
         /// <param name="joinType">连接类型，为 null 时沿用元数据中声明的连接方式。</param>
         /// <returns>元素为三表元组的查询源。</returns>
-        public new QuerySource<T1, T2, T3> JoinRelated<T3>(Expression<Func<(T1, T2), T3, bool>> on, TableJoinType? joinType = null)
+        public QuerySource<T1, T2, T3> JoinRelated<T3>(Expression<Func<T1, T2, T3, bool>> on, TableJoinType? joinType = null)
         {
             if (on is null) throw new ArgumentNullException(nameof(on));
-            Func<Expression<Func<(T1, T2), T3, bool>>, TableJoinType?, QuerySource<T1, T2, T3>> target = JoinRelated<T3>;
+            Func<Expression<Func<T1, T2, T3, bool>>, TableJoinType?, QuerySource<T1, T2, T3>> target = JoinRelated<T3>;
             return new QuerySource<T1, T2, T3>(Executor,
                 QuerySourceExpressionBuilder.BuildJoinCall(QueryExpression, target.Method, Expression.Quote(on), QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
         }
@@ -94,13 +94,13 @@ namespace LiteOrm.Common
         /// 连接第四张表，并使用显式连接条件。
         /// </summary>
         /// <typeparam name="T4">右表实体类型。</typeparam>
-        /// <param name="on">连接条件表达式，第一个参数为前三张表的元组。</param>
+        /// <param name="on">连接条件表达式，参数依次为 T1、T2、T3 和右表 T4。</param>
         /// <param name="joinType">连接类型，为 null 时使用左连接。</param>
         /// <returns>元素为四表元组的查询源。</returns>
-        public new QuerySource<T1, T2, T3, T4> Join<T4>(Expression<Func<(T1, T2, T3), T4, bool>> on, TableJoinType? joinType = null)
+        public QuerySource<T1, T2, T3, T4> Join<T4>(Expression<Func<T1, T2, T3, T4, bool>> on, TableJoinType? joinType = null)
         {
             if (on is null) throw new ArgumentNullException(nameof(on));
-            Func<Expression<Func<(T1, T2, T3), T4, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4>> target = Join;
+            Func<Expression<Func<T1, T2, T3, T4, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4>> target = Join;
             return new QuerySource<T1, T2, T3, T4>(Executor,
                 QuerySourceExpressionBuilder.BuildJoinCall(QueryExpression, target.Method, Expression.Quote(on), QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
         }
@@ -123,13 +123,13 @@ namespace LiteOrm.Common
         /// 连接第四张表，自动推断的连接条件与显式条件按 AND 合并。
         /// </summary>
         /// <typeparam name="T4">右表实体类型。</typeparam>
-        /// <param name="on">附加的连接条件，第一个参数为前三张表的元组。</param>
+        /// <param name="on">附加的连接条件，参数依次为 T1、T2、T3 和右表 T4。</param>
         /// <param name="joinType">连接类型，为 null 时沿用元数据中声明的连接方式。</param>
         /// <returns>元素为四表元组的查询源。</returns>
-        public new QuerySource<T1, T2, T3, T4> JoinRelated<T4>(Expression<Func<(T1, T2, T3), T4, bool>> on, TableJoinType? joinType = null)
+        public QuerySource<T1, T2, T3, T4> JoinRelated<T4>(Expression<Func<T1, T2, T3, T4, bool>> on, TableJoinType? joinType = null)
         {
             if (on is null) throw new ArgumentNullException(nameof(on));
-            Func<Expression<Func<(T1, T2, T3), T4, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4>> target = JoinRelated<T4>;
+            Func<Expression<Func<T1, T2, T3, T4, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4>> target = JoinRelated<T4>;
             return new QuerySource<T1, T2, T3, T4>(Executor,
                 QuerySourceExpressionBuilder.BuildJoinCall(QueryExpression, target.Method, Expression.Quote(on), QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
         }
@@ -161,13 +161,13 @@ namespace LiteOrm.Common
         /// 连接第五张表，并使用显式连接条件。
         /// </summary>
         /// <typeparam name="T5">右表实体类型。</typeparam>
-        /// <param name="on">连接条件表达式，第一个参数为前四张表的元组。</param>
+        /// <param name="on">连接条件表达式，参数依次为 T1、T2、T3、T4 和右表 T5。</param>
         /// <param name="joinType">连接类型，为 null 时使用左连接。</param>
         /// <returns>元素为五表元组的查询源。</returns>
-        public new QuerySource<T1, T2, T3, T4, T5> Join<T5>(Expression<Func<(T1, T2, T3, T4), T5, bool>> on, TableJoinType? joinType = null)
+        public QuerySource<T1, T2, T3, T4, T5> Join<T5>(Expression<Func<T1, T2, T3, T4, T5, bool>> on, TableJoinType? joinType = null)
         {
             if (on is null) throw new ArgumentNullException(nameof(on));
-            Func<Expression<Func<(T1, T2, T3, T4), T5, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4, T5>> target = Join;
+            Func<Expression<Func<T1, T2, T3, T4, T5, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4, T5>> target = Join;
             return new QuerySource<T1, T2, T3, T4, T5>(Executor,
                 QuerySourceExpressionBuilder.BuildJoinCall(QueryExpression, target.Method, Expression.Quote(on), QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
         }
@@ -190,13 +190,13 @@ namespace LiteOrm.Common
         /// 连接第五张表，自动推断的连接条件与显式条件按 AND 合并。
         /// </summary>
         /// <typeparam name="T5">右表实体类型。</typeparam>
-        /// <param name="on">附加的连接条件，第一个参数为前四张表的元组。</param>
+        /// <param name="on">附加的连接条件，参数依次为 T1、T2、T3、T4 和右表 T5。</param>
         /// <param name="joinType">连接类型，为 null 时沿用元数据中声明的连接方式。</param>
         /// <returns>元素为五表元组的查询源。</returns>
-        public new QuerySource<T1, T2, T3, T4, T5> JoinRelated<T5>(Expression<Func<(T1, T2, T3, T4), T5, bool>> on, TableJoinType? joinType = null)
+        public QuerySource<T1, T2, T3, T4, T5> JoinRelated<T5>(Expression<Func<T1, T2, T3, T4, T5, bool>> on, TableJoinType? joinType = null)
         {
             if (on is null) throw new ArgumentNullException(nameof(on));
-            Func<Expression<Func<(T1, T2, T3, T4), T5, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4, T5>> target = JoinRelated<T5>;
+            Func<Expression<Func<T1, T2, T3, T4, T5, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4, T5>> target = JoinRelated<T5>;
             return new QuerySource<T1, T2, T3, T4, T5>(Executor,
                 QuerySourceExpressionBuilder.BuildJoinCall(QueryExpression, target.Method, Expression.Quote(on), QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
         }
@@ -229,13 +229,13 @@ namespace LiteOrm.Common
         /// 连接第六张表，并使用显式连接条件。
         /// </summary>
         /// <typeparam name="T6">右表实体类型。</typeparam>
-        /// <param name="on">连接条件表达式，第一个参数为前五张表的元组。</param>
+        /// <param name="on">连接条件表达式，参数依次为 T1…T5 和右表 T6。</param>
         /// <param name="joinType">连接类型，为 null 时使用左连接。</param>
         /// <returns>元素为六表元组的查询源。</returns>
-        public new QuerySource<T1, T2, T3, T4, T5, T6> Join<T6>(Expression<Func<(T1, T2, T3, T4, T5), T6, bool>> on, TableJoinType? joinType = null)
+        public QuerySource<T1, T2, T3, T4, T5, T6> Join<T6>(Expression<Func<T1, T2, T3, T4, T5, T6, bool>> on, TableJoinType? joinType = null)
         {
             if (on is null) throw new ArgumentNullException(nameof(on));
-            Func<Expression<Func<(T1, T2, T3, T4, T5), T6, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4, T5, T6>> target = Join;
+            Func<Expression<Func<T1, T2, T3, T4, T5, T6, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4, T5, T6>> target = Join;
             return new QuerySource<T1, T2, T3, T4, T5, T6>(Executor,
                 QuerySourceExpressionBuilder.BuildJoinCall(QueryExpression, target.Method, Expression.Quote(on), QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
         }
@@ -258,13 +258,13 @@ namespace LiteOrm.Common
         /// 连接第六张表，自动推断的连接条件与显式条件按 AND 合并。
         /// </summary>
         /// <typeparam name="T6">右表实体类型。</typeparam>
-        /// <param name="on">附加的连接条件，第一个参数为前五张表的元组。</param>
+        /// <param name="on">附加的连接条件，参数依次为 T1…T5 和右表 T6。</param>
         /// <param name="joinType">连接类型，为 null 时沿用元数据中声明的连接方式。</param>
         /// <returns>元素为六表元组的查询源。</returns>
-        public new QuerySource<T1, T2, T3, T4, T5, T6> JoinRelated<T6>(Expression<Func<(T1, T2, T3, T4, T5), T6, bool>> on, TableJoinType? joinType = null)
+        public QuerySource<T1, T2, T3, T4, T5, T6> JoinRelated<T6>(Expression<Func<T1, T2, T3, T4, T5, T6, bool>> on, TableJoinType? joinType = null)
         {
             if (on is null) throw new ArgumentNullException(nameof(on));
-            Func<Expression<Func<(T1, T2, T3, T4, T5), T6, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4, T5, T6>> target = JoinRelated<T6>;
+            Func<Expression<Func<T1, T2, T3, T4, T5, T6, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4, T5, T6>> target = JoinRelated<T6>;
             return new QuerySource<T1, T2, T3, T4, T5, T6>(Executor,
                 QuerySourceExpressionBuilder.BuildJoinCall(QueryExpression, target.Method, Expression.Quote(on), QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
         }
@@ -298,13 +298,13 @@ namespace LiteOrm.Common
         /// 连接第七张表，并使用显式连接条件。
         /// </summary>
         /// <typeparam name="T7">右表实体类型。</typeparam>
-        /// <param name="on">连接条件表达式，第一个参数为前六张表的元组。</param>
+        /// <param name="on">连接条件表达式，参数依次为 T1…T6 和右表 T7。</param>
         /// <param name="joinType">连接类型，为 null 时使用左连接。</param>
         /// <returns>元素为七表元组的查询源。</returns>
-        public new QuerySource<T1, T2, T3, T4, T5, T6, T7> Join<T7>(Expression<Func<(T1, T2, T3, T4, T5, T6), T7, bool>> on, TableJoinType? joinType = null)
+        public QuerySource<T1, T2, T3, T4, T5, T6, T7> Join<T7>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, bool>> on, TableJoinType? joinType = null)
         {
             if (on is null) throw new ArgumentNullException(nameof(on));
-            Func<Expression<Func<(T1, T2, T3, T4, T5, T6), T7, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4, T5, T6, T7>> target = Join;
+            Func<Expression<Func<T1, T2, T3, T4, T5, T6, T7, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4, T5, T6, T7>> target = Join;
             return new QuerySource<T1, T2, T3, T4, T5, T6, T7>(Executor,
                 QuerySourceExpressionBuilder.BuildJoinCall(QueryExpression, target.Method, Expression.Quote(on), QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
         }
@@ -327,13 +327,13 @@ namespace LiteOrm.Common
         /// 连接第七张表，自动推断的连接条件与显式条件按 AND 合并。
         /// </summary>
         /// <typeparam name="T7">右表实体类型。</typeparam>
-        /// <param name="on">附加的连接条件，第一个参数为前六张表的元组。</param>
+        /// <param name="on">附加的连接条件，参数依次为 T1…T6 和右表 T7。</param>
         /// <param name="joinType">连接类型，为 null 时沿用元数据中声明的连接方式。</param>
         /// <returns>元素为七表元组的查询源。</returns>
-        public new QuerySource<T1, T2, T3, T4, T5, T6, T7> JoinRelated<T7>(Expression<Func<(T1, T2, T3, T4, T5, T6), T7, bool>> on, TableJoinType? joinType = null)
+        public QuerySource<T1, T2, T3, T4, T5, T6, T7> JoinRelated<T7>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, bool>> on, TableJoinType? joinType = null)
         {
             if (on is null) throw new ArgumentNullException(nameof(on));
-            Func<Expression<Func<(T1, T2, T3, T4, T5, T6), T7, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4, T5, T6, T7>> target = JoinRelated<T7>;
+            Func<Expression<Func<T1, T2, T3, T4, T5, T6, T7, bool>>, TableJoinType?, QuerySource<T1, T2, T3, T4, T5, T6, T7>> target = JoinRelated<T7>;
             return new QuerySource<T1, T2, T3, T4, T5, T6, T7>(Executor,
                 QuerySourceExpressionBuilder.BuildJoinCall(QueryExpression, target.Method, Expression.Quote(on), QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
         }

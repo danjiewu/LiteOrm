@@ -1586,7 +1586,7 @@ namespace LiteOrm.Common
 #endif
         private Expr HandleJoin(MethodCallExpression node)
         {
-            // 右表类型从返回类型 QuerySource<(T1, T2, ...)> 解析，不依赖泛型参数个数与顺序
+            // 每次连接只追加一张表，右表类型即连接方法的泛型实参
             IReadOnlyList<Type> rightTypes = ResolveJoinRightTypes(node);
             // 实例方法的接收者在 Object 上；扩展方法的接收者是第一个参数
             Expression sourceExpression = node.Object
@@ -1614,7 +1614,7 @@ namespace LiteOrm.Common
                 joinTables.Add(new TableExpr(rightType) { Alias = _aliasCounter.NextAlias() });
             }
 
-            // 先构造所有右表别名并计算 ON，再统一追加，令元组树只包含左参数对应的表
+            // 先构造右表别名并计算 ON 条件，再统一追加到连接链
             LambdaExpression? on = GetJoinLambda(node);
             LogicExpr?[] conditions = BuildJoinConditions(node, from, joinTables, on);
             TableJoinType? explicitJoinType = GetJoinTypeArgument(node);
@@ -1687,34 +1687,46 @@ namespace LiteOrm.Common
 
             if (on is null) return conditions;
 
-            if (on.Parameters.Count != joinTables.Count + 1)
+            // 连接条件的参数按顺序一表一个：已连接的每张表（主表 + 各 JOIN 表）在前，新右表在后
+            var leftTables = new List<TableExpr>(from.Joins.Count + 1);
+            if (from.Source is not TableExpr mainTable)
+                throw new InvalidOperationException($"{node.Method.Name} requires a table as the join source.");
+            leftTables.Add(mainTable);
+            foreach (TableJoinExpr join in from.Joins)
+            {
+                if (join.Source is not TableExpr joinedTable)
+                    throw new InvalidOperationException($"{node.Method.Name} requires a table as the join source.");
+                leftTables.Add(joinedTable);
+            }
+
+            int expectedParameters = leftTables.Count + joinTables.Count;
+            if (on.Parameters.Count != expectedParameters)
                 throw new ArgumentException(
-                    $"The join condition for {node.Method.Name} expects {joinTables.Count + 1} parameters (left source plus each joined table), " +
+                    $"The join condition for {node.Method.Name} expects {expectedParameters} parameters (one per joined table in order), " +
                     $"but got {on.Parameters.Count}.",
                     nameof(node));
 
             ParameterExpression leftParam = on.Parameters[0];
+            var leftParams = new ParameterExpression[leftTables.Count];
+            for (int i = 0; i < leftParams.Length; i++) leftParams[i] = on.Parameters[i];
             var rightParams = new ParameterExpression[joinTables.Count];
-            for (int i = 0; i < rightParams.Length; i++) rightParams[i] = on.Parameters[i + 1];
+            for (int i = 0; i < rightParams.Length; i++) rightParams[i] = on.Parameters[leftParams.Length + i];
 
-            TableExpr leftTable = from.Source as TableExpr
-                ?? throw new InvalidOperationException($"{node.Method.Name} requires a table as the join source.");
             string? lastAlias = _currentAlias;
-            string leftAliasName = leftTable.Alias ?? _currentAlias
+            string leftAliasName = mainTable.Alias ?? _currentAlias
                 ?? throw new InvalidOperationException($"{node.Method.Name} requires an alias on the join source.");
 
-            _parameterAliases[leftParam] = leftAliasName;
-            _parameterExprs[leftParam] = leftTable;
+            for (int i = 0; i < leftTables.Count; i++)
+            {
+                _parameterAliases[leftParams[i]] = leftTables[i].Alias ?? leftAliasName;
+                _parameterExprs[leftParams[i]] = leftTables[i];
+            }
             for (int i = 0; i < joinTables.Count; i++)
             {
                 _parameterAliases[rightParams[i]] = joinTables[i].Alias!;
                 _parameterExprs[rightParams[i]] = joinTables[i];
             }
             _currentAlias = leftAliasName;
-
-            // 多级连接时左参数类型是元组（(A, B) 或 ((A, B), C)），登记元素树后才能解析 x.Item1.RegionId
-            TupleNode? leftTupleTree = IsTupleType(leftParam.Type) ? BuildTupleTree(leftParam.Type, from) : null;
-            if (leftTupleTree is not null) _tupleTrees[leftParam] = leftTupleTree;
 
             try
             {
@@ -1743,9 +1755,11 @@ namespace LiteOrm.Common
             }
             finally
             {
-                _parameterAliases.Remove(leftParam);
-                _parameterExprs.Remove(leftParam);
-                if (leftTupleTree is not null) _tupleTrees.Remove(leftParam);
+                foreach (ParameterExpression leftTableParam in leftParams)
+                {
+                    _parameterAliases.Remove(leftTableParam);
+                    _parameterExprs.Remove(leftTableParam);
+                }
                 foreach (ParameterExpression rightParam in rightParams)
                 {
                     _parameterAliases.Remove(rightParam);

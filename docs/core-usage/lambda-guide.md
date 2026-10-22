@@ -259,7 +259,7 @@ var merged = Query<Order, IEnumerable<(Order, Customer)>>(
 var multiple = Query<Order, IEnumerable<(Order, Customer, Region)>>(
     q => From<Order>()
           .Join<Customer>((o, c) => o.CustomerId == c.Id)
-          .Join<Region>((x, r) => x.Item2.RegionId == r.Id)
+          .Join<Region>((o, c, r) => c.RegionId == r.Id)
           .Where(x => x.Item3.Name == "North")
 );
 
@@ -269,7 +269,7 @@ var multipleRelated = Query<Order, IEnumerable<(Order, Customer, Region)>>(
 );
 ```
 
-返回的是元素元组序列，`Where` / `OrderBy` 会保持元素元组类型，`Select` 则会把元素类型改成投影结果。元组元素用 `Item1`、`Item2`……`Item7` 访问，分别对应左表和各个右表，解析时各自带上正确的表别名。多表连接采用链式调用：`From<T1>()` 返回 `QuerySource<T1>`，`Join<T2>` 返回 `QuerySource<T1, T2>`，再调用 `Join<T3>` 得到 `QuerySource<T1, T2, T3>`，依次最多到 7 个元素。结果元组始终按顺序平铺，链式调用的 `on` 参数是「已连接的元组 + 新右表」。
+返回的是元素元组序列，`Where` / `OrderBy` 会保持元素元组类型，`Select` 则会把元素类型改成投影结果。元组元素用 `Item1`、`Item2`……`Item7` 访问，分别对应左表和各个右表，解析时各自带上正确的表别名。多表连接采用链式调用：`From<T1>()` 返回 `QuerySource<T1>`，`Join<T2>` 返回 `QuerySource<T1, T2>`，再调用 `Join<T3>` 得到 `QuerySource<T1, T2, T3>`，依次最多到 7 个元素。结果元组始终按顺序平铺；链式调用的 `on` 参数按顺序一表一个，即已连接的每张表在前、新右表在最后。
 
 `Join` / `JoinRelated` 是实例方法，既能在 Lambda 内解析，也能在 Lambda 外直接拼表达式；`Expr.Query` 与 `Expr.From<T>()` 链式写法都是受支持的入口。
 
@@ -277,7 +277,7 @@ var multipleRelated = Query<Order, IEnumerable<(Order, Customer, Region)>>(
 
 - `Join` 生成的 SQL 形如 `FROM Orders T0 LEFT JOIN Customers T1 ON T0.CustomerId = T1.Id`，连接类型默认左连接。
 - `JoinRelated` 推断不到关联关系时抛 `InvalidOperationException`，提示改用带条件的 `Join`。这类表需要先用 `[ForeignType]` 或 `[TableJoin]` 声明关联。
-- 支持多级连接，`From<A>().Join<B>(...).Join<C>(...)` 会连续追加 JOIN。第二级连接的 `on` 参数是 `(A, B)` 元组，用 `x.Item1` / `x.Item2` 引用已连接的表；第三级连接的 `on` 参数是 `(A, B, C)`，用 `x.Item3` 引用刚连接的第三张表。
+- 支持多级连接，`From<A>().Join<B>(...).Join<C>(...)` 会连续追加 JOIN。连接条件的 lambda 参数按「已连接的各表 + 新右表」顺序排列：第二级连接是 `(a, b, c) => ...`，第三级连接是 `(a, b, c, d) => ...`，直接按参数名引用对应的表即可。
 - 链式连接中每个 `Join` / `JoinRelated` 只负责追加一张表，显式条件只需描述该段与已连接表的关联；`JoinRelated` 仍按外键元数据推断条件，显式条件与自动条件取 AND。
 - 连接表别名按分配顺序生成，需要按别名手工拼 `SelectItemExpr` 时从 `from.Source.Alias` 与 `from.Joins[i].Source.Alias` 读取，不要写死 `T1`，外层查询可能已经占用过该编号。
 - `Select(x => x.Item1)` 这种整表投影不支持，`Select` 里请写具体列，例如 `Select(x => new { x.Item1.Id, x.Item2.Name })`。元组元素 `x.Item1` 直接当列用会抛 `NotSupportedException`。
