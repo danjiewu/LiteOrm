@@ -252,10 +252,10 @@ namespace LiteOrm.Common
         /// </summary>
         protected readonly Dictionary<ParameterExpression, Expr> _parameterExprs = new Dictionary<ParameterExpression, Expr>();
         /// <summary>
-        /// 元组 Lambda 参数到其元素表的映射，用于解析 <c>x.Item1</c> / <c>x.Item2</c> 这类元素访问。
-        /// 按 <see cref="ParameterExpression"/> 引用键控，元素顺序与元组的 Item1..ItemN 一致。
+        /// 元组 Lambda 参数到其元素树的映射，用于解析 <c>x.Item1</c> / <c>x.Item1.Item2</c> 这类元素访问。
+        /// 按 <see cref="ParameterExpression"/> 引用键控，树结构与元组的 Item1..ItemN 嵌套一致。
         /// </summary>
-        protected readonly Dictionary<ParameterExpression, List<TableExpr>> _tupleElements = new Dictionary<ParameterExpression, List<TableExpr>>();
+        protected readonly Dictionary<ParameterExpression, TupleNode> _tupleTrees = new Dictionary<ParameterExpression, TupleNode>();
         /// <summary>
         /// 别名编号序列，父子转换器共享同一实例以避免嵌套作用域分配到重复别名
         /// </summary>
@@ -648,6 +648,12 @@ namespace LiteOrm.Common
                 }
             }
 
+            // 1.1 指向嵌套元组分支（如 ((A, B), C) 上的 x.Item1）无法映射到列，明确报错而不是渲染成 [Item1]
+            if (IsNestedTupleAccess(node))
+                throw new NotSupportedException(
+                    $"'{node}' refers to a nested tuple element and cannot be used as a column. " +
+                    $"Access a concrete table element instead, for example x.Item1.Item2.Column.");
+
             // 2. 处理直接的实体参数访问 (映射为数据库列)
             if (node.Expression is ParameterExpression paramExpr)
             {
@@ -681,22 +687,61 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 判断成员访问的宿主是否为某个元组参数的元素（如 <c>x.Item2.Name</c> 中的 <c>x.Item2</c>），
-        /// 是则通过 <paramref name="element"/> 返回该元素对应的表。
+        /// 是则通过 <paramref name="element"/> 返回该元素对应的表。支持 <c>x.Item1.Item2.Column</c> 这类多级元素路径。
         /// </summary>
         /// <param name="node">成员访问表达式</param>
         /// <param name="element">解析出的元素表</param>
-        /// <returns>命中元组元素时为 true</returns>
+        /// <returns>命中元组元素且落在具体表上时为 true</returns>
         private bool TryResolveTupleElement(MemberExpression node, out TableExpr? element)
         {
             element = null;
-            if (node.Expression is not MemberExpression host || _tupleElements.Count == 0) return false;
-            if (host.Expression is not ParameterExpression tupleParam) return false;
-            if (!_tupleElements.TryGetValue(tupleParam, out var elements)) return false;
+            if (_tupleTrees.Count == 0) return false;
+            if (node.Expression is not MemberExpression host) return false;
             if (!TryGetTupleIndex(host.Member.Name, out int index)) return false;
-            if (index < 0 || index >= elements.Count) return false;
 
-            element = elements[index];
+            TupleNode? parent = ResolveTupleNode(host.Expression);
+            TupleNode? target = parent is null ? null : (index == 0 ? parent.First : parent.Second);
+            // 落到嵌套元组而不是具体表时不算命中，交由调用方决定如何处理
+            if (target?.Table is null) return false;
+
+            element = target.Table;
             return true;
+        }
+
+        /// <summary>
+        /// 判断成员访问是否指向嵌套元组的中间层级（如 <c>((A, B), C)</c> 上的 <c>x.Item1</c>），
+        /// 这类访问不对应任何表，不能当作列使用。
+        /// </summary>
+        /// <param name="node">成员访问表达式</param>
+        /// <returns>指向嵌套元组分支时为 true</returns>
+        private bool IsNestedTupleAccess(MemberExpression node)
+        {
+            if (_tupleTrees.Count == 0) return false;
+            if (!TryGetTupleIndex(node.Member.Name, out _)) return false;
+            // 宿主可以是参数本身（x.Item1）或上一级元素（x.Item1.Item2）
+            if (node.Expression is not (ParameterExpression or MemberExpression)) return false;
+
+            TupleNode? target = ResolveTupleNode(node);
+            return target is not null && target.Table is null;
+        }
+
+        /// <summary>
+        /// 沿 <c>Item1</c> / <c>Item2</c> 链逐级下沉，取得表达式对应的元组节点。
+        /// </summary>
+        /// <param name="expression">参数本身或形如 <c>x.Item1</c> 的成员访问</param>
+        /// <returns>对应的元组节点，无法解析时返回 null</returns>
+        private TupleNode? ResolveTupleNode(Expression? expression)
+        {
+            if (expression is ParameterExpression parameter)
+                return _tupleTrees.TryGetValue(parameter, out TupleNode? root) ? root : null;
+
+            if (expression is MemberExpression member && TryGetTupleIndex(member.Member.Name, out int index))
+            {
+                TupleNode? parent = ResolveTupleNode(member.Expression);
+                if (parent is null) return null;
+                return index == 0 ? parent.First : parent.Second;
+            }
+            return null;
         }
 
         /// <summary>
@@ -723,18 +768,63 @@ namespace LiteOrm.Common
             if (lambda.Parameters.Count != 1) return null;
             ParameterExpression parameter = lambda.Parameters[0];
             if (!IsTupleType(parameter.Type)) return null;
-            if (source is not FromExpr from) return null;
 
-            var elements = new List<TableExpr>();
-            if (from.Source is TableExpr mainTable) elements.Add(mainTable);
+            // Join 之后若先接 Where/Having，源已变成 WhereExpr，需要沿 Source 逐层回溯到 FromExpr
+            Expr? current = source;
+            while (current is WhereExpr whereExpr) current = whereExpr.Source;
+            while (current is HavingExpr havingExpr) current = havingExpr.Source;
+            if (current is not FromExpr from) return null;
+
+            var tree = BuildTupleTree(from);
+            if (tree is null) return null;
+
+            _tupleTrees[parameter] = tree;
+            return parameter;
+        }
+
+        /// <summary>
+        /// 按主表在前、各连接表在后的顺序构建元组元素树。
+        /// 链式 Join 每追加一张表就与左侧已有结果组成一对，因此树形天然右结合，与 <c>((A, B), C)</c> 的元素结构一致。
+        /// </summary>
+        /// <param name="from">连接产生的 <see cref="FromExpr"/></param>
+        /// <returns>元组元素树，没有可用表时返回 null</returns>
+        private static TupleNode? BuildTupleTree(FromExpr from)
+        {
+            TupleNode? node = from.Source is TableExpr mainTable ? TupleNode.FromTable(mainTable) : null;
             foreach (TableJoinExpr join in from.Joins)
             {
-                if (join.Source is TableExpr joinTable) elements.Add(joinTable);
+                if (join.Source is not TableExpr joinTable) continue;
+                node = node is null ? TupleNode.FromTable(joinTable) : TupleNode.FromPair(node, TupleNode.FromTable(joinTable));
             }
-            if (elements.Count == 0) return null;
+            return node;
+        }
 
-            _tupleElements[parameter] = elements;
-            return parameter;
+        /// <summary>
+        /// 元组元素树节点：叶子对应实体表，分支对应嵌套元组 <c>((A, B), C)</c>。
+        /// </summary>
+        protected sealed class TupleNode
+        {
+            private TupleNode(TableExpr? table, TupleNode? first, TupleNode? second)
+            {
+                Table = table;
+                First = first;
+                Second = second;
+            }
+
+            /// <summary>叶子节点对应的表；分支节点为 null。</summary>
+            public TableExpr? Table { get; }
+
+            /// <summary><c>Item1</c> 分支。</summary>
+            public TupleNode? First { get; }
+
+            /// <summary><c>Item2</c> 分支。</summary>
+            public TupleNode? Second { get; }
+
+            /// <summary>创建表叶子节点。</summary>
+            public static TupleNode FromTable(TableExpr table) => new TupleNode(table, null, null);
+
+            /// <summary>创建嵌套元组分支节点。</summary>
+            public static TupleNode FromPair(TupleNode first, TupleNode second) => new TupleNode(null, first, second);
         }
 
         /// <summary>
@@ -826,7 +916,8 @@ namespace LiteOrm.Common
                 return HandleExists(node);
             else if (type == typeof(Expr) && (method.Name == nameof(Expr.From) || method.Name == nameof(Expr.FromRelated)))
                 return HandleFrom(node);
-            else if (type == typeof(ExprExtensions) && (method.Name == nameof(ExprExtensions.Join) || method.Name == nameof(ExprExtensions.JoinRelated)))
+            else if (type != null && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(QuerySource<>)
+                && (method.Name == nameof(QuerySource<object>.Join) || method.Name == nameof(QuerySource<object>.JoinRelated)))
                 return HandleJoin(node);
 
             // 处理类型成员处理器
@@ -990,7 +1081,7 @@ namespace LiteOrm.Common
             // 将 Lambda 条件转换为 LogicExpr
             var newCondition = ConvertInternal(lambda.Body).AsLogic();
 
-            if (tupleParam is not null) _tupleElements.Remove(tupleParam);
+            if (tupleParam is not null) _tupleTrees.Remove(tupleParam);
             _parameterAliases.Remove(parameter);
             _currentAlias = lastAlias;
 
@@ -1094,7 +1185,7 @@ namespace LiteOrm.Common
             // 转换 Select 的选择表达式；Join 产生的元组参数需按 Item1..ItemN 还原到各表
             ParameterExpression? tupleParam = RegisterTupleElements(lambda, rawSource);
             var selectItems = ConvertSelectLambda(lambda, groupBySource?.GroupBys.ToArray());
-            if (tupleParam is not null) _tupleElements.Remove(tupleParam);
+            if (tupleParam is not null) _tupleTrees.Remove(tupleParam);
 
             var selectExpr = (SelectExpr)source.Select(selectItems);
 
@@ -1179,6 +1270,12 @@ namespace LiteOrm.Common
                     if (memberExpr.Member is FieldInfo tupleField)
                         return new PropertyExpr(tupleField.Name) { TableAlias = elementAlias };
                 }
+
+                // 指向嵌套元组分支时无法映射到列，明确报错而不是渲染成 [Item1]
+                if (IsNestedTupleAccess(memberExpr))
+                    throw new NotSupportedException(
+                        $"'{memberExpr}' refers to a nested tuple element and cannot be used as a column. " +
+                        $"Access a concrete table element instead, for example x.Item1.Item2.Column.");
 
                 // 检查是否是 lambda 参数的成员访问
                 if (IsParameterAccess(memberExpr.Expression, lambdaParam))
@@ -1361,12 +1458,11 @@ namespace LiteOrm.Common
 #endif
         private Expr HandleJoin(MethodCallExpression node)
         {
-            Type[] genericArgs = node.Method.GetGenericArguments();
-            if (genericArgs.Length != 2)
-                throw new ArgumentException($"Method {node.Method.Name} must have exactly two generic arguments.", nameof(node));
-
-            Type rightType = genericArgs[1];
-            Expr left = ConvertInternal(node.Arguments[0]);
+            // 右表类型从返回类型 QuerySource<(T1, T2)> 解析，不依赖泛型参数个数与顺序
+            Type rightType = ResolveJoinRightType(node);
+            // Join / JoinRelated 是 QuerySource<T1> 上的实例方法，接收者一定在 Object 上
+            Expr left = ConvertInternal(node.Object
+                ?? throw new ArgumentException($"Join source is missing on {node.Method.Name}.", nameof(node)));
 
             // 左源统一收敛到 FromExpr：TableExpr 作为主表新建，FromExpr 直接复用以便追加第二个连接
             FromExpr from;
@@ -1381,9 +1477,35 @@ namespace LiteOrm.Common
             {
                 JoinType = ResolveJoinType(node.Method.Name, from.Source as TableExpr, rightType)
             };
-            from.Joins.Add(joinExpr);
+            // 先算 ON 再追加本段，令元组树只包含左参数对应的表（不含本次新增的连接表）
             joinExpr.On = BuildJoinCondition(node, from, joinTable, rightAlias);
+            from.Joins.Add(joinExpr);
             return from;
+        }
+
+        /// <summary>
+        /// 从 Join / JoinRelated 的返回类型中解析右表类型 T2。
+        /// 支持 <c>QuerySource&lt;(T1, T2)&gt;</c> 与 <c>IEnumerable&lt;(T1, T2)&gt;</c> 两种返回形态。
+        /// </summary>
+        private static Type ResolveJoinRightType(MethodCallExpression node)
+        {
+            Type returnType = node.Method.ReturnType;
+            Type? element = null;
+            if (returnType.IsGenericType)
+            {
+                Type definition = returnType.GetGenericTypeDefinition();
+                if (definition == typeof(IEnumerable<>) || definition == typeof(QuerySource<>))
+                    element = returnType.GetGenericArguments()[0];
+            }
+            if (element is not null && element.IsGenericType
+                && element.GetGenericTypeDefinition() == typeof(ValueTuple<,>))
+            {
+                // ValueTuple<T1, T2> 的第二个类型参数是右表
+                return element.GetGenericArguments()[1];
+            }
+            throw new ArgumentException(
+                $"Cannot resolve the joined table type from the return type of {node.Method.Name}. " +
+                $"Expected QuerySource<(T1, T2)> or IEnumerable<(T1, T2)>, but got {returnType.Name}.");
         }
 
         /// <summary>
@@ -1392,8 +1514,9 @@ namespace LiteOrm.Common
         /// </summary>
         private LogicExpr? BuildJoinCondition(MethodCallExpression node, FromExpr from, TableExpr joinTable, string rightAlias)
         {
-            bool isRelated = node.Method.Name == nameof(ExprExtensions.JoinRelated);
-            bool hasExplicitOn = node.Arguments.Count > 1;
+            bool isRelated = node.Method.Name == nameof(QuerySource<object>.JoinRelated);
+            // Join / JoinRelated 都是 QuerySource<T1> 上的实例方法，左源在 Object 上，on 是唯一参数
+            bool hasExplicitOn = node.Arguments.Count > 0;
 
             LogicExpr? autoRelated = null;
             if (isRelated)
@@ -1412,7 +1535,7 @@ namespace LiteOrm.Common
 
             if (!hasExplicitOn) return autoRelated;
 
-            LambdaExpression on = UnwrapLambda(node.Arguments[1]);
+            LambdaExpression on = UnwrapLambda(node.Arguments[node.Arguments.Count - 1]);
             ParameterExpression leftParam = on.Parameters[0];
             ParameterExpression rightParam = on.Parameters[1];
 
@@ -1423,6 +1546,10 @@ namespace LiteOrm.Common
             _parameterAliases[rightParam] = rightAlias;
             _parameterExprs[rightParam] = joinTable;
             _currentAlias = leftAliasName;
+
+            // 多级连接时左参数类型是元组（(A, B) 或 ((A, B), C)），登记元素树后才能解析 x.Item1.RegionId
+            TupleNode? leftTupleTree = IsTupleType(leftParam.Type) ? BuildTupleTree(from) : null;
+            if (leftTupleTree is not null) _tupleTrees[leftParam] = leftTupleTree;
 
             LogicExpr? explicitOn;
             try
@@ -1435,6 +1562,7 @@ namespace LiteOrm.Common
                 _parameterAliases.Remove(rightParam);
                 _parameterExprs.Remove(leftParam);
                 _parameterExprs.Remove(rightParam);
+                if (leftTupleTree is not null) _tupleTrees.Remove(leftParam);
                 _currentAlias = lastAlias!;
             }
 
@@ -1451,7 +1579,7 @@ namespace LiteOrm.Common
 #endif
         private static TableJoinType ResolveJoinType(string methodName, TableExpr? leftTable, Type rightType)
         {
-            if (methodName == nameof(ExprExtensions.JoinRelated) && leftTable?.Type != null)
+            if (methodName == nameof(QuerySource<object>.JoinRelated) && leftTable?.Type != null)
             {
                 var view = TableInfoProvider.Instance.GetTableView(leftTable.Type);
                 if (view != null)
@@ -1617,6 +1745,13 @@ namespace LiteOrm.Common
                 // Expr.From / Expr.FromRelated 是纯占位方法，调用即抛异常，必须交给 ConvertMethodCall 解析而非本地求值
                 if (node.Method.DeclaringType == typeof(Expr)
                     && (node.Method.Name == nameof(Expr.From) || node.Method.Name == nameof(Expr.FromRelated)))
+                {
+                    _result = false;
+                    return node; // 直接返回原节点，避免继续访问子表达式影响结果
+                }
+                // QuerySource<T>.Join / JoinRelated 同为占位方法
+                if (node.Method.DeclaringType is Type declaring && declaring.IsGenericType
+                    && declaring.GetGenericTypeDefinition() == typeof(QuerySource<>))
                 {
                     _result = false;
                     return node; // 直接返回原节点，避免继续访问子表达式影响结果

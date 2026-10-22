@@ -386,7 +386,7 @@ var matureItUsers = await objectViewDAO.Search(
 |------|------|----------------|
 | `ExistsRelated` | WHERE 条件 | 生成的 `EXISTS(...)` 子查询内层 |
 | `FromRelated<T>` | Lambda 查询源 | 解析成 `WhereExpr`，作为该表的过滤条件 |
-| `JoinRelated<T1, T2>` | Lambda 连接 | 解析成 `TableJoinExpr.On` |
+| `JoinRelated<T2>` | Lambda 连接（`From<T1>().JoinRelated<T2>()`） | 解析成 `TableJoinExpr.On` |
 
 三者共用同一套推断逻辑，实现是 `Expr.BuildRelatedLogic(rootType, rootAlias, foreignType, foreignAlias)`：先看主表的 `JoinedTables` 里有没有目标类型，找不到再反向查目标表的 `JoinedTables`。推断不到时 `ExistsRelated` 与 `FromRelated` 退化为不带关联条件的写法，`JoinRelated` 则直接抛异常，提示改用带显式条件的 `Join`。需要自己拼关联条件时可以直接调用这个方法，返回的是一段带表别名的 `LogicExpr`。
 

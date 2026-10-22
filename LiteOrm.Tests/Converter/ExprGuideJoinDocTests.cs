@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
 using LiteOrm;
 using LiteOrm.Common;
 using LiteOrm.Tests.Models;
@@ -8,7 +10,8 @@ using Xunit;
 namespace LiteOrm.Common.UnitTests
 {
     /// <summary>
-    /// 校验文档 core-usage/expr-guide 中新增的 Join / JoinRelated 示例可以真实编译并生成预期 SQL。
+    /// 校验文档 core-usage/lambda-guide 5.4 的 Join / JoinRelated 示例可以真实编译并生成预期 SQL。
+    /// lambda 连接只有 <c>Expr.From&lt;T1&gt;().Join&lt;T2&gt;(...)</c> 一种入口。
     /// </summary>
     public class ExprGuideJoinDocTests
     {
@@ -18,10 +21,10 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Join_WithExplicitCondition_MatchesDocumentedShape()
         {
-            // 对应文档 1.3 节第一段示例
+            // 对应文档 5.4 节第一段示例
             var query = Expr.Query<TestUser, IEnumerable<(TestUser, TestDepartment)>>(u =>
                 Expr.From<TestUser>()
-                    .Join<TestUser, TestDepartment>((x, d) => x.DeptId == d.Id)
+                    .Join<TestDepartment>((x, d) => x.DeptId == d.Id)
                     .Where(t => t.Item1.Age > 100 && t.Item2.Name != null));
 
             var where = Assert.IsType<WhereExpr>(query);
@@ -48,9 +51,9 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void JoinRelated_WithoutCondition_InfersOn()
         {
-            // 对应文档 1.3 节第二段示例
+            // 对应文档 5.4 节第二段示例
             var query = Expr.Query<TestUser, IEnumerable<(TestUser, TestDepartment)>>(u =>
-                Expr.From<TestUser>().JoinRelated<TestUser, TestDepartment>());
+                Expr.From<TestUser>().JoinRelated<TestDepartment>());
 
             var from = Assert.IsType<FromExpr>(query);
             Assert.NotNull(from.Joins[0].On);
@@ -60,9 +63,9 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void JoinRelated_WithCondition_MergesByAnd()
         {
-            // 对应文档 1.3 节第三段示例
+            // 对应文档 5.4 节第三段示例
             var query = Expr.Query<TestUser, IEnumerable<(TestUser, TestDepartment)>>(u =>
-                Expr.From<TestUser>().JoinRelated<TestUser, TestDepartment>((x, d) => d.Name != null));
+                Expr.From<TestUser>().JoinRelated<TestDepartment>((x, d) => d.Name != null));
 
             var from = Assert.IsType<FromExpr>(query);
             var on = Assert.IsType<AndExpr>(from.Joins[0].On);
@@ -73,17 +76,32 @@ namespace LiteOrm.Common.UnitTests
         public void Select_OnTupleElement_ResolvesJoinedTableAlias()
         {
             // 文档 5.4 节的 Select 写法：x.Item1.Id / x.Item2.Name 必须各自带正确别名
-            var expr = Expr.Query<TestUser, IEnumerable<object>>(q =>
-                q.Join<TestUser, TestDepartment>((u, d) => u.DeptId == d.Id)
-                 .Select(x => new { x.Item1.Id, x.Item2.Name }));
+            var converter = new LambdaExprConverter(
+                (Expression<Func<IQueryable<TestUser>, IEnumerable<object>>>)(
+                    u => Expr.From<TestUser>()
+                        .Join<TestDepartment>((x, d) => x.DeptId == d.Id)
+                        .Select(x => new { x.Item1.Id, x.Item2.Name })));
 
-            string sql = ToSql(expr).Sql;
+            var select = Assert.IsType<SelectExpr>(converter.ToSqlSegment());
+            var from = Assert.IsType<FromExpr>(select.Source);
 
-            // 早期版本会渲染成 Id("T0"."Item1")，必须已修正为直接列引用
+            // 别名按分配顺序生成，不写死 T0/T1，从表达式实际别名断言
+            string mainAlias = from.Source!.Alias!;
+            string joinAlias = from.Joins[0].Source!.Alias!;
+            Assert.NotEqual(mainAlias, joinAlias);
+
+            var idColumn = Assert.IsType<PropertyExpr>(select.Selects[0].Value);
+            var nameColumn = Assert.IsType<PropertyExpr>(select.Selects[1].Value);
+            Assert.Equal("Id", idColumn.PropertyName);
+            Assert.Equal("Name", nameColumn.PropertyName);
+            // 主表别名与当前别名一致时省略；连接表别名必须显式带上
+            Assert.True(idColumn.TableAlias == null || idColumn.TableAlias == mainAlias);
+            Assert.Equal(joinAlias, nameColumn.TableAlias);
+
+            // 不能出现把 Item1 / Item2 当作列名的渲染
+            string sql = ToSql(select).Sql;
             Assert.DoesNotContain("Item1", sql);
             Assert.DoesNotContain("Item2", sql);
-            Assert.Contains("\"T0\".\"Id\"", sql);
-            Assert.Contains("\"T1\".\"Name\"", sql);
         }
 
         [Fact]
@@ -99,8 +117,8 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal("AVG", ((FunctionExpr)((SelectExpr)avgAge).Selects[0].Value!).FunctionName);
 
             // 标量子查询示例：From<T>() 写在 Lambda 内
-            Expr scalar = Expr.Lambda<TestUser>(u => u.Age > Expr.From<TestUser>().Average(x => x.Age));
-            Assert.Contains("(SELECT AVG(", ToSql(scalar).Sql);
+            Expr? scalar = Expr.Lambda<TestUser>(u => u.Age > Expr.From<TestUser>().Average(x => x.Age));
+            Assert.Contains("(SELECT AVG(", ToSql(scalar!).Sql);
         }
     }
 }

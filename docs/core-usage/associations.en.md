@@ -367,7 +367,7 @@ This metadata does not only serve `ExistsRelated`; it also drives the behavior o
 |------|------|----------------|
 | `ExistsRelated` | WHERE condition | Inside the generated `EXISTS(...)` subquery |
 | `FromRelated<T>` | Lambda query source | Resolves to a `WhereExpr` filtering that table |
-| `JoinRelated<T1, T2>` | Lambda join | Resolves to `TableJoinExpr.On` |
+| `JoinRelated<T2>` | Lambda join (`From<T1>().JoinRelated<T2>()`) | Resolves to `TableJoinExpr.On` |
 
 All three share the same inference, implemented as `Expr.BuildRelatedLogic(rootType, rootAlias, foreignType, foreignAlias)`: first look for the target type among the main table's `JoinedTables`, then search the target table's `JoinedTables` in reverse. When no relation is found, `ExistsRelated` and `FromRelated` degrade to a version without a relation condition, while `JoinRelated` throws and asks you to use `Join` with an explicit condition. You can call the method directly when you need to build the relation condition yourself; it returns a `LogicExpr` with both table aliases applied.
 

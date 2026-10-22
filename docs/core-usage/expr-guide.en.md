@@ -64,37 +64,6 @@ var aboveAverage = Expr.Query<Order>(q => q.Amount > Expr.From<Order>().Average(
 
 Without a selector, `Count()` renders `COUNT(1)`; with one, the whole selector expression becomes the aggregate argument, so arithmetic such as `x => x.Amount * x.Rate` works too. Both `Average` and `Avg` map to `AVG`. The resulting `SelectExpr` carries no column alias, so a scalar subquery does not emit a redundant `AS`.
 
-Multi-table queries use `Join` / `JoinRelated`. The result is a `FromExpr` that yields element tuples and keeps chaining:
-
-```csharp
-using static LiteOrm.Common.Expr;
-
-// Explicit join condition
-var query = Expr.Query<Order, IEnumerable<(Order, Customer)>>(o =>
-    From<Order>()
-        .Join<Order, Customer>((x, c) => x.CustomerId == c.Id)
-        .Where(t => t.Item1.Amount > 100 && t.Item2.Name != null));
-
-// Inferred from foreign-key metadata
-var related = Expr.Query<Order, IEnumerable<(Order, Customer)>>(o =>
-    From<Order>().JoinRelated<Order, Customer>());
-
-// Inferred condition combined with an explicit one by AND
-var merged = Expr.Query<Order, IEnumerable<(Order, Customer)>>(o =>
-    From<Order>().JoinRelated<Order, Customer>((x, c) => c.Name != null));
-```
-
-Access tuple elements as `Item1` and `Item2`; each carries the correct table alias. Join aliases are assigned in order, so read them from `from.Source.Alias` and `from.Joins[0].Source.Alias` when writing `Select` rather than hard-coding `T1`, because the outer query may already have used that number.
-
-An existing `FromExpr` can also be handed straight to `Select`. Note that `From<T>()` only works inside a lambda; the snippet below reads the resolved result instead of building a new one:
-
-```csharp
-var from = (FromExpr)((WhereExpr)query).Source!;
-var select = ((WhereExpr)query).Select(
-    Prop(from.Source!.Alias!, "Id").As("OrderId"),
-    Prop(from.Joins[0].Source!.Alias!, "Name").As("CustomerName"));
-```
-
 ### 1.4 Type conversion and conditional values
 
 ```csharp

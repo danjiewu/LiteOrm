@@ -226,38 +226,40 @@ LambdaExprConverter.RegisterMethodHandler("ExistsIn", (node, converter) =>
 
 ### 5.4 连接查询 `Join` 与 `JoinRelated`
 
-`Join<T1, T2>` 显式给出连接条件，`JoinRelated<T1, T2>` 按外键元数据自动推断：
+`Join<T2>` 显式给出连接条件，`JoinRelated<T2>` 按外键元数据自动推断。两者都是 `From<T1>()` 返回的 `QuerySource<T1>` 上的实例方法，左表类型已经定住，所以只写右表类型：
 
 ```csharp
 using static LiteOrm.Common.Expr;
 
 // 显式条件
 var expr = Query<Order, IEnumerable<(Order, Customer)>>(
-    q => q.Join<Order, Customer>((o, c) => o.CustomerId == c.Id)
+    q => From<Order>()
+          .Join<Customer>((o, c) => o.CustomerId == c.Id)
           .Where(x => x.Item2.Name == "VIP")
           .Select(x => new { x.Item1.Id, x.Item2.Name })
 );
 
 // 自动推断外键条件
 var related = Query<Order, IEnumerable<(Order, Customer)>>(
-    q => q.JoinRelated<Order, Customer>()
+    q => From<Order>().JoinRelated<Customer>()
 );
 
 // 自动条件 + 附加条件，两者按 AND 合并
 var merged = Query<Order, IEnumerable<(Order, Customer)>>(
-    q => q.JoinRelated<Order, Customer>((o, c) => o.Amount > 0)
+    q => From<Order>().JoinRelated<Customer>((o, c) => o.Amount > 0)
 );
 ```
 
-返回的是元素元组序列，可以继续用现有的 `Where` / `Select` / `OrderBy` 链式调用。元组元素用 `Item1`、`Item2` 访问，分别对应左表和右表，解析时各自带上正确的表别名。
+返回的是元素元组序列，可以继续用 `Where` / `Select` / `OrderBy` 链式调用。元组元素用 `Item1`、`Item2` 访问，分别对应左表和右表，解析时各自带上正确的表别名。
 
 几处要点：
 
 - `Join` 生成的 SQL 形如 `FROM Orders T0 LEFT JOIN Customers T1 ON T0.CustomerId = T1.Id`，连接类型默认左连接。
 - `JoinRelated` 推断不到关联关系时抛 `InvalidOperationException`，提示改用带条件的 `Join`。这类表需要先用 `[ForeignType]` 或 `[TableJoin]` 声明关联。
-- 支持多级连接，`From<A>().Join<B>(...).Join<C>(...)` 会连续追加两条 JOIN，第二级左源是 `(A, B)` 元组。
+- 支持多级连接，`From<A>().Join<B>(...).Join<C>(...)` 会连续追加 JOIN。连接结果仍是 `QuerySource`，所以能一路接下去；第二级 ON 里用 `x.Item1.Column` 引用左侧已有的表，第三级的左参数是 `((A, B), C)`，写法是 `y.Item2.Column` 与 `y.Item1.Item1.Column`。
+- 多级时 `JoinRelated` 推断的左表始终是最内层主表，不是上一级的连接表。要按上一级表连接，用带显式条件的 `Join`。
 - 连接表别名按分配顺序生成，需要按别名手工拼 `SelectItemExpr` 时从 `from.Source.Alias` 与 `from.Joins[i].Source.Alias` 读取，不要写死 `T1`，外层查询可能已经占用过该编号。
-- `Select(x => x.Item1)` 这种整表投影不支持，`Select` 里请写具体列，例如 `Select(x => new { x.Item1.Id, x.Item2.Name })`。
+- `Select(x => x.Item1)` 这种整表投影不支持，`Select` 里请写具体列，例如 `Select(x => new { x.Item1.Id, x.Item2.Name })`。嵌套元组上的 `x.Item1` 直接当列用会抛 `NotSupportedException`。
 
 ## 6. 投影查询（`SearchAs` / `SearchOneAs`）
 

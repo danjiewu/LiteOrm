@@ -64,37 +64,6 @@ var aboveAverage = Expr.Query<Order>(q => q.Amount > Expr.From<Order>().Average(
 
 `Count()` 不带选择器时生成 `COUNT(1)`；带选择器则把选择器表达式整体作为聚合参数，因此 `x => x.Amount * x.Rate` 这类算式也可用。`Average` 与 `Avg` 都映射到 `AVG`。聚合生成的 `SelectExpr` 不带列别名，作为标量子查询使用时不会输出多余的 `AS`。
 
-多表连接用 `Join` / `JoinRelated`，产物是 `FromExpr`，返回元素元组，可以继续链式处理：
-
-```csharp
-using static LiteOrm.Common.Expr;
-
-// 显式连接条件
-var query = Expr.Query<Order, IEnumerable<(Order, Customer)>>(o =>
-    From<Order>()
-        .Join<Order, Customer>((x, c) => x.CustomerId == c.Id)
-        .Where(t => t.Item1.Amount > 100 && t.Item2.Name != null));
-
-// 按外键元数据自动推断连接条件
-var related = Expr.Query<Order, IEnumerable<(Order, Customer)>>(o =>
-    From<Order>().JoinRelated<Order, Customer>());
-
-// 自动条件与显式条件按 AND 合并
-var merged = Expr.Query<Order, IEnumerable<(Order, Customer)>>(o =>
-    From<Order>().JoinRelated<Order, Customer>((x, c) => c.Name != null));
-```
-
-元组元素用 `Item1`、`Item2` 访问，解析时各自带正确的表别名。`FromExpr` 侧拿到的连接表别名按分配顺序生成，写 `Select` 时从 `from.Source.Alias` 与 `from.Joins[0].Source.Alias` 读取，不要硬编码成 `T1`，因为外层查询可能已经占用过该编号。
-
-已生成的 `FromExpr` 也可以直接拼 `Select`。注意 `From<T>()` 只能写在 Lambda 里，下面这段取的是解析后的结果，不是重新构造：
-
-```csharp
-var from = (FromExpr)((WhereExpr)query).Source!;
-var select = ((WhereExpr)query).Select(
-    Prop(from.Source!.Alias!, "Id").As("OrderId"),
-    Prop(from.Joins[0].Source!.Alias!, "Name").As("CustomerName"));
-```
-
 ### 1.4 类型转换与条件值
 
 ```csharp

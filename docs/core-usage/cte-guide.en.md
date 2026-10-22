@@ -125,7 +125,7 @@ var anchor = From<Category>()
 
 // Recursive part: join children via self-referencing alias
 var selfRef = new CommonTableExpr { Alias = "CategoryTree" };
-var recursive = From<Category>()
+var recursive = Expr.From(typeof(Category))
     .Join(selfRef, Prop("ParentId") == Prop("CategoryTree", "Id"))
     .Select(
         Prop("Id").As("Id"),

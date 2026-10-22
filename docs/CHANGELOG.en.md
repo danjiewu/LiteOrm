@@ -4,7 +4,7 @@
 
 ### Breaking changes
 
-- **`Expr.From<T>()` becomes a lambda-only placeholder** (`LiteOrm.Common`): the return type changes from `TableExpr` to `IEnumerable<T>` and the method body throws `InvalidOperationException`.
+- **`Expr.From<T>()` becomes a lambda-only placeholder** (`LiteOrm.Common`): the return type changes from `TableExpr` to `QuerySource<T>` (which implements `IEnumerable<T>`) and the method body throws `InvalidOperationException`.
 
 - **Redundant generic lambda overloads are removed** (`LiteOrm.Common`): `Expr.Exists<T>(LogicExpr, ...)` and `Expr.ExistsRelated<T>(LogicExpr?, ...)` are deleted, and `ISourceAnchor.Where<T>(Expression<Func<T, bool>>)` is deleted as well.
 
@@ -14,7 +14,7 @@
 
 - **Root-level aggregate functions in lambdas** (`LiteOrm.Common`): `Count`, `LongCount`, `Sum`, `Average`, `Avg`, `Max` and `Min` now convert inside `Expr.Query`.
 
-- **`Join<T1, T2>` / `JoinRelated<T1, T2>` extension methods** (`LiteOrm.Common`): joins another entity table and returns element tuples `IEnumerable<(T1, T2)>`, so the existing `Where` / `Select` / `OrderBy` chains keep working; tuple element access is resolved alongside, so `x.Item1` / `x.Item2` map to the correct aliases instead of being treated as columns named `Item1`.
+- **`Join` / `JoinRelated` are added** (`LiteOrm.Common`): `Expr.From<T1>()` returns `QuerySource<T1>`, which exposes `Join<T2>`, `JoinRelated<T2>()` and `JoinRelated<T2>(on)`, so only the right table type is named. The result stays a `QuerySource<(T1, T2)>`, so `.Join<T3>()` keeps chaining for multi-level joins while `Where` / `Select` / `OrderBy` still work through `IEnumerable<(T1, T2)>`. `x.Item1` / `x.Item2` resolve to the correct aliases, and nested tuples are reached stepwise with `x.Item1.Item2`, instead of being treated as columns named `Item1`. This is the only lambda entry point: no `IQueryable<T1>` extension form is provided.
 
 - **`LambdaExprConverter` supports nested parameter contexts** (`LiteOrm.Common`): a constructor overload accepts a parent converter, letting a child inherit the parent's parameter mappings and share its alias sequence; the constructor registers every lambda parameter, with `param[0]` as the root table aliased `T0` and the rest getting fresh aliases `T{n}`.
 

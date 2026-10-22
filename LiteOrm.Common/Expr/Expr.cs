@@ -478,11 +478,14 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 创建 From 表达式，支持动态表名参数。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
+        /// 返回的 <see cref="QuerySource{T}"/> 可作为 <c>Join&lt;T2&gt;</c> / <c>JoinRelated&lt;T2&gt;</c> 的接收者；
+        /// 连接结果为 <see cref="QuerySource{T}"/>（<c>T</c> 为 <c>(T1, T2)</c> 元组），可继续 <c>Join&lt;T3&gt;</c> 追加多级连接，
+        /// 也可当作 <c>IEnumerable&lt;T&gt;</c> 参与 Where / Select 等链式调用。
         /// </summary>
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>查询源表达式。</returns>
-        public static IEnumerable<T> From<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(params string[] tableArgs)
+        public static QuerySource<T> From<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(params string[] tableArgs)
         {
             throw new InvalidOperationException("The Expr.From method is only used for parsing lambda expressions and cannot be called directly.");
         }

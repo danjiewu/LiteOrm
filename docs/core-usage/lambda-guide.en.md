@@ -226,26 +226,27 @@ For the full extension mechanism, see [Expression Extension](../extensibility/ex
 
 ### 5.4 Joins with `Join` and `JoinRelated`
 
-`Join<T1, T2>` takes an explicit condition, while `JoinRelated<T1, T2>` infers one from foreign-key metadata:
+`Join<T2>` takes an explicit condition, while `JoinRelated<T2>` infers one from foreign-key metadata. Both are instance methods on the `QuerySource<T1>` returned by `From<T1>()`, so the left table type is already pinned and you only name the right one:
 
 ```csharp
 using static LiteOrm.Common.Expr;
 
 // Explicit condition
 var expr = Query<Order, IEnumerable<(Order, Customer)>>(
-    q => q.Join<Order, Customer>((o, c) => o.CustomerId == c.Id)
+    q => From<Order>()
+          .Join<Customer>((o, c) => o.CustomerId == c.Id)
           .Where(x => x.Item2.Name == "VIP")
           .Select(x => new { x.Item1.Id, x.Item2.Name })
 );
 
 // Inferred foreign-key condition
 var related = Query<Order, IEnumerable<(Order, Customer)>>(
-    q => q.JoinRelated<Order, Customer>()
+    q => From<Order>().JoinRelated<Customer>()
 );
 
 // Inferred condition combined with an extra one by AND
 var merged = Query<Order, IEnumerable<(Order, Customer)>>(
-    q => q.JoinRelated<Order, Customer>((o, c) => o.Amount > 0)
+    q => From<Order>().JoinRelated<Customer>((o, c) => o.Amount > 0)
 );
 ```
 
@@ -255,9 +256,10 @@ A few points worth knowing:
 
 - `Join` produces SQL like `FROM Orders T0 LEFT JOIN Customers T1 ON T0.CustomerId = T1.Id`; the join type defaults to left.
 - `JoinRelated` throws `InvalidOperationException` when no relation can be inferred, telling you to use `Join` with an explicit condition. Declare such relations with `[ForeignType]` or `[TableJoin]`.
-- Multi-level joins are supported: `From<A>().Join<B>(...).Join<C>(...)` appends two JOINs, and the second level joins from the `(A, B)` tuple.
+- Multi-level joins are supported: `From<A>().Join<B>(...).Join<C>(...)` appends JOINs. The result stays a `QuerySource`, so the chain continues; the second-level ON refers to the earlier tables with `x.Item1.Column`, and at the third level the left parameter is `((A, B), C)`, written as `y.Item2.Column` and `y.Item1.Item1.Column`.
+- At multiple levels, `JoinRelated` always infers against the innermost main table, not the previous join table. Use `Join` with an explicit condition to join from an earlier joined table.
 - Join aliases are assigned in order. When you build `SelectItemExpr` by alias, read them from `from.Source.Alias` and `from.Joins[i].Source.Alias` instead of hard-coding `T1`, since the outer query may already have used that number.
-- Whole-table projections such as `Select(x => x.Item1)` are not supported; list specific columns inside `Select`, for example `Select(x => new { x.Item1.Id, x.Item2.Name })`.
+- Whole-table projections such as `Select(x => x.Item1)` are not supported; list specific columns inside `Select`, for example `Select(x => new { x.Item1.Id, x.Item2.Name })`. Using `x.Item1` on a nested tuple directly as a column throws `NotSupportedException`.
 
 ## 6. Projection Queries (`SearchAs` / `SearchOneAs`)
 
