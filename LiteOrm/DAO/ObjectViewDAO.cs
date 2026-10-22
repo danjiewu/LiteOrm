@@ -213,6 +213,7 @@ namespace LiteOrm
         /// </summary>
         /// <param name="expr">Lambda 表达式，用于生成 SQL 查询。</param>
         /// <returns>符合条件的对象集合。</returns>
+        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public virtual EnumerableResult<T> Search(Expression<Func<IQueryable<T>, IQueryable<T>>> expr)
         {
             var seg = LambdaExprConverter.ToSqlSegment(expr);
@@ -241,6 +242,7 @@ namespace LiteOrm
         /// <param name="expr">Lambda 表达式，用于生成 SQL 查询</param>
         /// <param name="readerFunc">用于从 IDataReader 读取结果的函数，为空时默认使用 <see cref="DataReaderConverter.GetConverterByTable{TResult}(IDbConverter)"/></param>
         /// <returns></returns>
+        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public virtual EnumerableResult<TResult> SearchAs<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<AutoLockDataReader, TResult>? readerFunc = null)
         {
             var seg = LambdaExprConverter.ToSqlSegment(expr);

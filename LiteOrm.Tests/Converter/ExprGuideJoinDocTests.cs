@@ -7,6 +7,10 @@ using LiteOrm.Common;
 using LiteOrm.Tests.Models;
 using Xunit;
 
+// Join / JoinRelated / 根级聚合只在 Lambda 内被解析，脱离 Lambda 会抛异常，
+// 因此这些文档形态仍需通过 Expr.Query 构造表达式树
+#pragma warning disable CS0618
+
 namespace LiteOrm.Common.UnitTests
 {
     /// <summary>
@@ -119,6 +123,12 @@ namespace LiteOrm.Common.UnitTests
             // 标量子查询示例：From<T>() 写在 Lambda 内
             Expr? scalar = Expr.Lambda<TestUser>(u => u.Age > Expr.From<TestUser>().Average(x => x.Age));
             Assert.Contains("(SELECT AVG(", ToSql(scalar!).Sql);
+
+            // 不写 Lambda 时用结构性 Select 拼聚合段，等价于只保留聚合列的查询
+            Expr structural = Expr.From(typeof(TestUser)).Select(Expr.Aggregate("COUNT", Expr.Const(1)));
+            string structuralSql = ToSql(structural).Sql;
+            Assert.Contains("COUNT(1)", structuralSql);
+            Assert.Contains("FROM ", structuralSql);
         }
     }
 }

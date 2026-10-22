@@ -17,11 +17,10 @@
     <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
       8.1.13:
-      - 破坏性变更：Expr.From&lt;T&gt;() 返回新增的 QuerySource&lt;T&gt;（实现 IOrderedQueryable&lt;T&gt;）；新增 Expr.FromRelated&lt;T&gt;()。
-      - 新增 QuerySource&lt;T&gt; 查询源：可传 IQuerySourceExecutor&lt;T&gt; 直接取数，Where/Select 之后用 AsSource() 收窄后可用异步方法。
-      - 方法处理器支持泛型定义：LambdaExprConverter 先按特化类型、后按泛型定义查找。
+      - 破坏性变更：Expr.From&lt;T&gt;() / Expr.FromRelated&lt;T&gt;() 返回新增的 QuerySource&lt;T&gt;（实现 IOrderedQueryable&lt;T&gt;）；Expr.Query 与 LambdaExprExtensions 的 IQueryable Lambda 查询方法标记过期，改为传入 Expr.From&lt;T&gt;() 拼好的 IQueryable&lt;T&gt;。
+      - 新增 QuerySource&lt;T&gt; 查询源：可传 IQuerySourceExecutor&lt;T&gt; 直接取数，Where/Select 之后用 AsSource() 收窄后可用异步方法；GetQueryExpr() 把查询链转成 Expr，不需要执行器。
       - 破坏性变更：删除 Expr.Exists/Expr.ExistsRelated 的 LogicExpr 泛型重载与 Where&lt;T&gt; Lambda 扩展方法；删除 TableRef 抽象类，JoinedTable 改为直接继承 SqlObject。
-      - Lambda 支持根级聚合：Count/Sum/Average/Max/Min 等可在 Expr.Query 内直接解析。
+      - Lambda 支持根级聚合：Count/Sum/Average/Max/Min 等可在 IQueryable Lambda 内直接解析。
       - 新增 Join&lt;T2&gt; / JoinRelated&lt;T2&gt;：Expr.From&lt;T1&gt;() 返回 QuerySource&lt;T1&gt;，只写右表类型即可连接；返回 QuerySource&lt;(T1, T2)&gt; 可继续 Join&lt;T3&gt;() 做多级连接，也能按 IEnumerable&lt;(T1, T2)&gt; 接 Where/Select/OrderBy；x.Item1 / x.Item2 能还原表别名，嵌套元组用 x.Item1.Item2 逐级访问；lambda 连接不提供 IQueryable 扩展方法入口。
       - LambdaExprConverter 参数作用域改按 ParameterExpression 引用键控，支持嵌套参数上下文与多参数 Lambda 全量注册；修复内层同名参数遮蔽外层参数。
       - AOT 下 [TableJoin]/[ForeignType]/[ForeignColumn] 与 [Column(Constant = ...)] 由 TableInfoGenerator 编译期写入 TableInfo，CommonTableInfoProvider 装配出完整的 TableView 与 TableDefinition.ConstFilter。
@@ -68,7 +67,7 @@
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Text.Json" Version="8.0.0" />
-    <!-- netstandard2.0 不内置 IAsyncEnumerable<T>，QuerySource<T> 需要实现它 -->
+    <!-- netstandard2.0 不内置 IAsyncEnumerable<T>，QuerySource<T> 的异步取数方法需要它 -->
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>

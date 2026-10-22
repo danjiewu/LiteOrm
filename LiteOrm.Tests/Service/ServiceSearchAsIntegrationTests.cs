@@ -24,7 +24,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "AsLambda 2", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await userService.InsertAsync(new TestUser { Name = "AsLambda 3", Age = 40, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var result = viewService.SearchAs(q => q.Where(u => u.Age >= 30).Select(u => new UserNameAge { Name = u.Name, Age = u.Age }));
+            var result = viewService.SearchAs(Expr.From<TestUser>().Where(u => u.Age >= 30).Select(u => new UserNameAge { Name = u.Name, Age = u.Age }));
 
             Assert.Equal(2, result.Count);
             Assert.All(result, r => Assert.True(r.Age >= 30));
@@ -39,7 +39,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "AsOne 1", Age = 20, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await userService.InsertAsync(new TestUser { Name = "AsOne 2", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var result = viewService.SearchOneAs(q => q.Where(u => u.Name == "AsOne 2").Select(u => new UserNameAge { Name = u.Name, Age = u.Age }));
+            var result = viewService.SearchOneAs(Expr.From<TestUser>().Where(u => u.Name == "AsOne 2").Select(u => new UserNameAge { Name = u.Name, Age = u.Age }));
 
             Assert.NotNull(result);
             Assert.Equal("AsOne 2", result.Name);
@@ -55,7 +55,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "AsNoProj 2", Age = 35, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
             // TResult 推断为 TestUser（Where 后无 Select，走 ToSelectExpr 包装默认列）
-            var result = viewService.SearchAs(q => q.Where(u => u.Age >= 30));
+            var result = viewService.SearchAs(Expr.From<TestUser>().Where(u => u.Age >= 30));
 
             Assert.Single(result);
             Assert.Equal("AsNoProj 2", result[0].Name);
@@ -70,7 +70,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "AsAsync 2", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await userService.InsertAsync(new TestUser { Name = "AsAsync 3", Age = 40, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var result = await viewService.SearchAsAsync(q => q.Where(u => u.Age >= 30).Select(u => new UserNameAge { Name = u.Name, Age = u.Age }), cancellationToken: TestContext.Current.CancellationToken);
+            var result = await viewService.SearchAsAsync(Expr.From<TestUser>().Where(u => u.Age >= 30).Select(u => new UserNameAge { Name = u.Name, Age = u.Age }), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(2, result.Count);
             Assert.All(result, r => Assert.True(r.Age >= 30));
@@ -84,7 +84,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "AsOneAsync 1", Age = 20, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await userService.InsertAsync(new TestUser { Name = "AsOneAsync 2", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var result = await viewService.SearchOneAsAsync(q => q.Where(u => u.Name == "AsOneAsync 2").Select(u => new UserNameAge { Name = u.Name, Age = u.Age }), cancellationToken: TestContext.Current.CancellationToken);
+            var result = await viewService.SearchOneAsAsync(Expr.From<TestUser>().Where(u => u.Name == "AsOneAsync 2").Select(u => new UserNameAge { Name = u.Name, Age = u.Age }), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.NotNull(result);
             Assert.Equal("AsOneAsync 2", result.Name);
@@ -139,7 +139,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "Anon 2", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await userService.InsertAsync(new TestUser { Name = "Anon 3", Age = 40, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var result = viewService.SearchAs(q => q.Where(u => u.Age >= 30).Select(u => new { u.Name, u.Age }));
+            var result = viewService.SearchAs(Expr.From<TestUser>().Where(u => u.Age >= 30).Select(u => new { u.Name, u.Age }));
 
             Assert.Equal(2, result.Count);
             Assert.All(result, r => Assert.True(r.Age >= 30));
@@ -154,7 +154,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "AnonOne 1", Age = 20, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await userService.InsertAsync(new TestUser { Name = "AnonOne 2", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var result = viewService.SearchOneAs(q => q.Where(u => u.Name == "AnonOne 2").Select(u => new { u.Name, u.Age }));
+            var result = viewService.SearchOneAs(Expr.From<TestUser>().Where(u => u.Name == "AnonOne 2").Select(u => new { u.Name, u.Age }));
 
             Assert.NotNull(result);
             Assert.Equal("AnonOne 2", result.Name);
@@ -170,7 +170,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "AnonAsync 2", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await userService.InsertAsync(new TestUser { Name = "AnonAsync 3", Age = 40, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var result = await viewService.SearchAsAsync(q => q.Where(u => u.Age >= 30).Select(u => new { u.Name, u.Age }), cancellationToken: TestContext.Current.CancellationToken);
+            var result = await viewService.SearchAsAsync(Expr.From<TestUser>().Where(u => u.Age >= 30).Select(u => new { u.Name, u.Age }), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(2, result.Count);
             Assert.All(result, r => Assert.True(r.Age >= 30));
@@ -185,7 +185,7 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "AnonOneAsync 1", Age = 20, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await userService.InsertAsync(new TestUser { Name = "AnonOneAsync 2", Age = 30, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var result = await viewService.SearchOneAsAsync(q => q.Where(u => u.Name == "AnonOneAsync 2").Select(u => new { u.Name, u.Age }), cancellationToken: TestContext.Current.CancellationToken);
+            var result = await viewService.SearchOneAsAsync(Expr.From<TestUser>().Where(u => u.Name == "AnonOneAsync 2").Select(u => new { u.Name, u.Age }), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.NotNull(result);
             Assert.Equal("AnonOneAsync 2", result.Name);

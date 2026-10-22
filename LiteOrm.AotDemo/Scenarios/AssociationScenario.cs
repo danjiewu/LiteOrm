@@ -50,7 +50,7 @@ namespace LiteOrm.AotDemo.Scenarios
             DemoOutput.LastSql();
 
             DemoOutput.Section("2.3 Lambda 写法访问关联字段");
-            var lambdaResult = await orderService.SearchAsync(q => q.Where(x => x.DeptName == "研发部"));
+            var lambdaResult = await orderService.SearchAsync(Expr.From<AotOrderView>().Where(x => x.DeptName == "研发部"));
             DemoOutput.Pair("Lambda Where(DeptName == 研发部)", lambdaResult.Count);
             DemoOutput.LastSql();
 

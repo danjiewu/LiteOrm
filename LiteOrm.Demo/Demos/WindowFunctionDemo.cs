@@ -94,7 +94,7 @@ namespace LiteOrm.Demo.Demos
 
                 var results = await factory.SalesDAO
                     .WithArgs([tableMonth])
-                    .SearchAs(q => q
+                    .SearchAs(Expr.From<SalesRecord>()
                         .OrderBy(s => s.ProductId)
                         .Select(s => new SalesWindowView
                         {

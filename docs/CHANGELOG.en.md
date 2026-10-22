@@ -4,7 +4,9 @@
 
 ### Breaking changes
 
-- **`Expr.From<T>()` returns `QuerySource<T>`** (`LiteOrm.Common`): the return type changes from `TableExpr` to the new `QuerySource<T>`. `Expr.From(Type)` and `Expr.FromRelated<T>()` are unchanged.
+- **`Expr.From<T>()` / `Expr.FromRelated<T>()` return `QuerySource<T>`** (`LiteOrm.Common`): the return types change from `TableExpr` and `IEnumerable<T>` to the new `QuerySource<T>`. `Expr.From(Type)` is unchanged.
+
+- **`Expr.Query<T>(...)` and the query methods taking IQueryable lambdas are marked obsolete** (`LiteOrm.Common` / `LiteOrm`): both `Expr.Query` overloads, the lambda overloads of `ObjectViewDAO<T>.Search` / `SearchAs`, the three `Search` extensions in `DAOExtensions`, and `Search` / `SearchOne` / `SearchAsync` / `SearchOneAsync` / `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` in `LambdaExprExtensions` now carry `[Obsolete]`; pass the `IQueryable<T>` composed with `Expr.From<T>()` instead. Shapes the lambda resolver must own, such as Join and root-level aggregates, keep their current form and are not removed in this release.
 
 - **Redundant generic lambda overloads are removed** (`LiteOrm.Common`): `Expr.Exists<T>(LogicExpr, ...)` and `Expr.ExistsRelated<T>(LogicExpr?, ...)` are deleted, and `ISourceAnchor.Where<T>(Expression<Func<T, bool>>)` is deleted as well.
 
@@ -12,11 +14,11 @@
 
 ### New Features
 
-- **New `QuerySource<T>` query source** (`LiteOrm.Common` / `LiteOrm`): implements `IOrderedQueryable<T>`, so queries can be composed outside a lambda; pass an executor (`IQuerySourceExecutor<T>`, implemented by `ObjectViewDAO<T>`) to run them directly. After `Where` / `Select`, call `AsSource()` to narrow back to `QuerySource<T>` and use the async methods. `ObjectViewDAO<T>` gains matching `SearchAs(IQueryable<TResult>)` and `Search(IQueryable<T>)` overloads.
+- **New `QuerySource<T>` query source** (`LiteOrm.Common` / `LiteOrm`): implements `IOrderedQueryable<T>`, so queries can be composed outside a lambda; pass an executor (`IQuerySourceExecutor<T>`, implemented by `ObjectViewDAO<T>`) to run them directly. After `Where` / `Select`, call `AsSource()` to narrow back to `QuerySource<T>` and use the async methods. `GetQueryExpr()` turns a composed chain into an `Expr` without an executor, and a same-named extension on `IQueryable<T>` covers the static types after `OrderBy`. `ObjectViewDAO<T>` gains matching `SearchAs(IQueryable<TResult>)` and `Search(IQueryable<T>)` overloads.
 
 - **Method handlers support generic definitions** (`LiteOrm.Common`): `LambdaExprConverter` looks up registered handlers by specialized type first, then by the generic type definition.
 
-- **Root-level aggregate functions in lambdas** (`LiteOrm.Common`): `Count`, `LongCount`, `Sum`, `Average`, `Avg`, `Max` and `Min` now convert inside `Expr.Query`.
+- **Root-level aggregate functions in lambdas** (`LiteOrm.Common`): `Count`, `LongCount`, `Sum`, `Average`, `Avg`, `Max` and `Min` now convert directly inside an IQueryable lambda.
 
 - **`Join` / `JoinRelated` are added** (`LiteOrm.Common`): `Expr.From<T1>()` returns `QuerySource<T1>`, which exposes `Join<T2>`, `JoinRelated<T2>()` and `JoinRelated<T2>(on)`, so only the right table type is named. The result stays a `QuerySource<(T1, T2)>`, so `.Join<T3>()` keeps chaining for multi-level joins while `Where` / `Select` / `OrderBy` still work through `IEnumerable<(T1, T2)>`. `x.Item1` / `x.Item2` resolve to the correct aliases, and nested tuples are reached stepwise with `x.Item1.Item2`, instead of being treated as columns named `Item1`. This is the only lambda entry point: no `IQueryable<T1>` extension form is provided.
 

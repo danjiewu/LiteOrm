@@ -31,10 +31,14 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
-        public void FromRelated_Generic_ThrowsWhenCalledDirectly()
+        public void FromRelated_Generic_ReturnsUnboundQuerySource()
         {
-            var ex = Assert.Throws<InvalidOperationException>(() => Expr.FromRelated<AggOrder>());
-            Assert.Contains("only used for parsing lambda expressions", ex.Message);
+            // 与 From<T>() 一致：返回没有执行器的 QuerySource，可直接拼装查询
+            var source = Expr.FromRelated<AggOrder>();
+            Assert.IsType<QuerySource<AggOrder>>(source);
+
+            var ex = Assert.Throws<InvalidOperationException>(() => source.ToList());
+            Assert.Contains("no executor", ex.Message);
         }
 
         [Fact]

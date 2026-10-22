@@ -818,7 +818,7 @@ namespace LiteOrm.Tests
 
             // Act - 方式二：IQueryable 链式查询（支持排序、分页等）
             var logs = await viewService.SearchAsync(
-                q => q.Where(l => l.Amount >= 200 && l.UserID == user.Id)
+                Expr.From<TestLog>().Where(l => l.Amount >= 200 && l.UserID == user.Id)
                       .OrderBy(l => l.Amount),
                 tableArgs: new[] { "202401" },
                 cancellationToken: TestContext.Current.CancellationToken

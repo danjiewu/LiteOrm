@@ -40,8 +40,9 @@ namespace LiteOrm.Tests
             }, TestContext.Current.CancellationToken);
 
             var view = ServiceProvider.GetRequiredService<IObjectViewDAO<TestJsonEntity>>();
-            var query = Expr.Query<TestJsonEntity, IQueryable<TestJsonEntity>>(q => q
-                .Where(e => e.Data!["name"]!.GetValue<string>() == "Lite"));
+            var query = Expr.From<TestJsonEntity>()
+                .Where(e => e.Data!["name"]!.GetValue<string>() == "Lite")
+                .GetQueryExpr();
 
             var rows = await view.Search(query).ToListAsync(TestContext.Current.CancellationToken);
 
@@ -49,8 +50,9 @@ namespace LiteOrm.Tests
             Assert.Equal("Lite", rows[0].Data?["name"]?.GetValue<string>());
 
             // 反向确认：不匹配条件不应命中
-            var none = await view.Search(Expr.Query<TestJsonEntity, IQueryable<TestJsonEntity>>(q => q
-                .Where(e => e.Data!["name"]!.GetValue<string>() == "NotExist"))).ToListAsync(TestContext.Current.CancellationToken);
+            var none = await view.Search(Expr.From<TestJsonEntity>()
+                .Where(e => e.Data!["name"]!.GetValue<string>() == "NotExist")
+                .GetQueryExpr()).ToListAsync(TestContext.Current.CancellationToken);
             Assert.Empty(none);
         }
 
@@ -64,8 +66,9 @@ namespace LiteOrm.Tests
             }, TestContext.Current.CancellationToken);
 
             var view = ServiceProvider.GetRequiredService<IObjectViewDAO<TestJsonEntity>>();
-            var query = Expr.Query<TestJsonEntity, IQueryable<TestJsonEntity>>(q => q
-                .Where(e => e.Data!["user"]!["name"]!.GetValue<string>() == "Alice"));
+            var query = Expr.From<TestJsonEntity>()
+                .Where(e => e.Data!["user"]!["name"]!.GetValue<string>() == "Alice")
+                .GetQueryExpr();
 
             var rows = await view.Search(query).ToListAsync(TestContext.Current.CancellationToken);
 
@@ -81,8 +84,9 @@ namespace LiteOrm.Tests
             await dao.InsertAsync(new TestJsonEntity { Data = node }, TestContext.Current.CancellationToken);
 
             var view = ServiceProvider.GetRequiredService<IObjectViewDAO<TestJsonEntity>>();
-            var all = await view.Search(Expr.Query<TestJsonEntity, IQueryable<TestJsonEntity>>(q => q
-                .Where(e => e.Data != null))).ToListAsync(TestContext.Current.CancellationToken);
+            var all = await view.Search(Expr.From<TestJsonEntity>()
+                .Where(e => e.Data != null)
+                .GetQueryExpr()).ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.NotEmpty(all);
             Assert.Equal(19.9m, all[0].Data?["price"]!.GetValue<decimal>());

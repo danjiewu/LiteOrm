@@ -44,7 +44,7 @@ namespace LiteOrm.Demo.Demos
                 var searchName = "王";
                 LogicExpr? expr = null;
                 var result = userSvc.Search(
-                    q => q.Where(a => a.UserName!.Contains(searchName) && expr!.To<bool>())
+                    Expr.From<UserView>().Where(a => a.UserName!.Contains(searchName) && expr!.To<bool>())
                     .Take(20)
                     );
                 DemoHelper.PrintSection("📋 场景说明",
@@ -52,13 +52,14 @@ namespace LiteOrm.Demo.Demos
 
                 DemoHelper.PrintSection("📝 代码实现",
                     "var results = await userSvc.SearchAsync(\n" +
-                    "    q => q.Where(u => u.Age >= minAge && u.UserName.Contains(searchName))\n" +
-                    "          .OrderByDescending(u => u.Id)\n" +
-                    "          .Skip(0).Take(10)\n" +
+                    "    Expr.From<UserView>()\n" +
+                    "        .Where(u => u.Age >= minAge && u.UserName.Contains(searchName))\n" +
+                    "        .OrderByDescending(u => u.Id)\n" +
+                    "        .Skip(0).Take(10)\n" +
                     ");");
 
                 var results = await userSvc.SearchAsync(
-                    q => q.Where(u => u.Age >= minAge + 1 && u.UserName!.Contains(searchName))
+                    Expr.From<UserView>().Where(u => u.Age >= minAge + 1 && u.UserName!.Contains(searchName))
                           .OrderByDescending(u => u.Id)
                           .Skip(0).Take(10)
                 );
@@ -218,15 +219,16 @@ namespace LiteOrm.Demo.Demos
 
                 DemoHelper.PrintSection("📝 代码实现",
                     "var results = await userSvc.SearchAsync(\n" +
-                    "    q => q.Where(u => u.Age >= minAge && u.Age <= maxAge)\n" +
-                    "          .Where(u => u.UserName.Contains(searchName))\n" +
-                    "          .OrderBy(u => u.Age)\n" +
-                    "          .ThenBy(u => u.UserName)\n" +
-                    "          .Skip(0).Take(5)\n" +
+                    "    Expr.From<UserView>()\n" +
+                    "        .Where(u => u.Age >= minAge && u.Age <= maxAge)\n" +
+                    "        .Where(u => u.UserName.Contains(searchName))\n" +
+                    "        .OrderBy(u => u.Age)\n" +
+                    "        .ThenBy(u => u.UserName)\n" +
+                    "        .Skip(0).Take(5)\n" +
                     ");");
 
                 var results = await userSvc.SearchAsync(
-                    q => q.Where(u => u.Age >= minAge && (Prop(nameof(User.Age)) <= maxAge).To<bool>())
+                    Expr.From<UserView>().Where(u => u.Age >= minAge && (Prop(nameof(User.Age)) <= maxAge).To<bool>())
                           .Where(u => u.UserName!.Contains(searchName))
                           .OrderBy(u => u.Age)
                           .ThenBy(u => u.UserName)

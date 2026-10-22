@@ -50,16 +50,20 @@ var currentUserFilter = Sql("CurrentUserFilter");
 - `Aggregate(name, expr, isDistinct)`：聚合函数包装
 - `Sql(key, arg)`：注册式动态 SQL 片段，适合运行时上下文过滤
 
-Lambda 里的 `Count`、`Sum`、`Average`、`Max`、`Min` 也能直接解析成聚合查询，根级与子查询内写法一致：
+`Count`、`Sum`、`Average`、`Max`、`Min` 在 `QuerySource<T>` 上有两条路：写在查询里由解析器接管成聚合 SQL，绑定了执行器则直接取数。
 
 ```csharp
-// SELECT COUNT(1) FROM Orders T0 WHERE ...
-var total = Expr.Query<Order, int>(q => q.Count());
-var amountSum = Expr.Query<Order, decimal>(q => q.Sum(o => o.Amount));
-var avgAmount = Expr.Query<Order, decimal>(q => q.Average(o => o.Amount));
+// 只要聚合段本身，用结构性 Select 拼，不必写 Lambda
+var countExpr = Expr.From(typeof(Order)).Select(Expr.Aggregate("COUNT", Expr.Const(1)));
+var sumExpr = Expr.From(typeof(Order)).Select(Expr.Aggregate("SUM", Expr.Prop("Amount")));
 
 // 标量子查询，参与比较时会自动加括号
-var aboveAverage = Expr.Query<Order>(q => q.Amount > Expr.From<Order>().Average(o => o.Amount));
+var aboveAverage = Expr.From<Order>()
+    .Where(o => o.Amount > Expr.From<Order>().Average(x => x.Amount))
+    .GetQueryExpr();
+
+// 绑定了执行器的查询源可以直接算
+var total = new QuerySource<Order>(dao).Where(o => o.Status == 1).Count();
 ```
 
 `Count()` 不带选择器时生成 `COUNT(1)`；带选择器则把选择器表达式整体作为聚合参数，因此 `x => x.Amount * x.Rate` 这类算式也可用。`Average` 与 `Avg` 都映射到 `AVG`。聚合生成的 `SelectExpr` 不带列别名，作为标量子查询使用时不会输出多余的 `AS`。
@@ -214,7 +218,8 @@ var query = From(typeof(User))
 `From` 有两个重载，分工不同：
 
 - `Expr.From(type, tableArgs)` 接受 `Type`，返回 `TableExpr`，是唯一可以真实调用的工厂方法。
-- `Expr.From<T>(tableArgs)` 返回 `QuerySource<T>`，实现 `IQueryable<T>`。在 Lambda 表达式里由解析器接管；在 Lambda 外可以继续拼 `Where` / `Select` 等查询，再交给 `QuerySourceExprConverter` 或 `ObjectViewDAO.SearchAs(IQueryable<T>)` 转成 SQL。未提供执行器时不能取数，枚举会抛 `InvalidOperationException`。
+- `Expr.From<T>(tableArgs)` 返回 `QuerySource<T>`，实现 `IQueryable<T>`。在 Lambda 表达式里由解析器接管；在 Lambda 外可以继续拼 `Where` / `Select` 等查询，链尾用 `GetQueryExpr()` 得到 `Expr`。未提供执行器时不能取数，枚举会抛 `InvalidOperationException`。
+- `Expr.FromRelated<T>(tableArgs)` 同样返回 `QuerySource<T>`，区别是写在 Lambda 里时会补上自动关联条件。
 
 ## 5. Expr 类型总览
 
@@ -292,6 +297,7 @@ var query = From(typeof(User))
 | `Expr.Null` | SQL NULL | `Expr.Null` |
 | `Expr.From(type)` | 创建链式查询起点（可真实调用） | `Expr.From(typeof(User))` |
 | `Expr.From<T>()` | 构造 `QuerySource<T>`，可作 Lambda 占位或拼 IQueryable 查询；无执行器时不能取数 | `Expr.From<User>()` |
+| `Expr.FromRelated<T>()` | 同 `Expr.From<T>()` 返回 `QuerySource<T>`，在 Lambda 内额外补上关联条件 | `Expr.FromRelated<Department>()` |
 | `Expr.Update<T>()` | 创建 UPDATE 表达式 | `Expr.Update<User>()` |
 | `Expr.Delete<T>()` | 创建 DELETE 表达式 | `Expr.Delete<User>()` |
 | `Expr.Exists(type, innerExpr)` | 创建 EXISTS 子查询 | `Expr.Exists(typeof(Department), ...)` |
@@ -304,8 +310,9 @@ var query = From(typeof(User))
 | `Expr.Now()` | 当前时间戳 | `Expr.Now()` |
 | `Expr.Today()` | 当前日期 | `Expr.Today()` |
 | `Expr.Sql(key, arg)` | 动态 SQL 片段，结果可隐式转换为 `ValueTypeExpr` | `Expr.Sql("CurrentUserFilter")` |
-| `Expr.Query<T>(expression)` | IQueryable Lambda 转 Expr | `Expr.Query<User>(...)` |
-| `Expr.Query<T, TResult>(expression)` | 带返回值的 IQueryable Lambda 转 Expr | `Expr.Query<User, int>(...)` |
+| `QuerySource<T>.GetQueryExpr()` | 把拼好的 IQueryable 查询链转成 `Expr`，不需要执行器 | `Expr.From<User>().Where(u => u.Age > 18).GetQueryExpr()` |
+| `Expr.Query<T>(expression)` | 已过期，改用 `Expr.From<T>()...GetQueryExpr()`；只剩 Join、根级聚合这类必须由 Lambda 解析器接管的形态 | `Expr.Query<User>(...)` |
+| `Expr.Query<T, TResult>(expression)` | 已过期，带返回值的 IQueryable Lambda 转 Expr | `Expr.Query<User, int>(...)` |
 
 ## 7. 运算符重载与隐式类型转换
 
@@ -503,8 +510,9 @@ Lambda 中的三目运算符 `a ? b : c` 会自动解析成 `Expr.If(...)` 并�
 await dao.Search(u => Regex.IsMatch(u.Name!, @"\d+"));
 
 // SELECT REGEXP_REPLACE(Name, '\d+', '#')
-await dao.Search(Expr.Query<TestUser, IQueryable<object>>(q => q
-    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })));
+await dao.Search(Expr.From<TestUser>()
+    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })
+    .GetQueryExpr());
 
 // SELECT REGEXP_SUBSTR(Name, '\d+')  -- 提取首个匹配
 // SELECT REGEXP_INSTR(Name, '\d+') - 1  -- 匹配位置（0 基）

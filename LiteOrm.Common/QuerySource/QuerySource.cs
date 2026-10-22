@@ -36,7 +36,7 @@ namespace LiteOrm.Common
         internal const string NoExecutorMessage =
             "This QuerySource has no executor and cannot run queries. " +
             "Construct it with an executor (new QuerySource<T>(dao)) or use it only inside a lambda " +
-            "parsed by Expr.Query / Expr.Lambda / ObjectViewDAO.Search(...).";
+            "parsed by Expr.Lambda / ObjectViewDAO.Search(...).";
 
         private readonly IQuerySourceExecutor? _executor;
         private readonly Expression _expression;
@@ -152,18 +152,19 @@ namespace LiteOrm.Common
 
         #endregion
 
-        #region 内部支持
+        #region 查询表达式
 
         /// <summary>
-        /// 取得执行器，未设置时抛异常。
+        /// 把当前累积的查询表达式转换为 <see cref="SqlSegment"/>，可直接传给 <c>ObjectViewDAO.Search</c> / <c>SearchAs</c>。
         /// </summary>
-        internal IQuerySourceExecutor GetExecutor()
-            => _executor ?? throw new InvalidOperationException(NoExecutorMessage);
-
-        /// <summary>
-        /// 把当前累积的查询表达式转换为 <see cref="SqlSegment"/>。
-        /// </summary>
-        internal SqlSegment GetQueryExpr() => QuerySourceExprConverter.ToExpr(_expression);
+        /// <remarks>
+        /// 不需要执行器也可调用，未连接数据库时同样可用，适合把查询拼装与执行拆成两处。
+        /// 与已过期的 <c>Expr.Query</c> 对应的写法是 <c>Expr.From&lt;T&gt;().Where(...).GetQueryExpr()</c>。
+        /// <see cref="Queryable"/> 算子之后的静态类型是 <see cref="IQueryable{T}"/>，链尾请改用
+        /// <see cref="QuerySourceExtensions.GetQueryExpr{T}(IQueryable{T})"/>，行为一致。
+        /// </remarks>
+        /// <returns>已解析的查询段。</returns>
+        public SqlSegment GetQueryExpr() => QuerySourceExprConverter.ToExpr(_expression);
 
         /// <summary>
         /// 构造 COUNT(1) 查询，源本身是 SelectExpr 时取其 Source 避免嵌套 Select。
@@ -174,6 +175,16 @@ namespace LiteOrm.Common
             if (source is SelectExpr select && select.Source is not null) source = select.Source;
             return new SelectExpr(source as SqlSegment, new SelectItemExpr(Expr.Aggregate("COUNT", Expr.Const(1))));
         }
+
+        #endregion
+
+        #region 内部支持
+
+        /// <summary>
+        /// 取得执行器，未设置时抛异常。
+        /// </summary>
+        internal IQuerySourceExecutor GetExecutor()
+            => _executor ?? throw new InvalidOperationException(NoExecutorMessage);
 
         string[]? IQuerySource.TableArgs => TableArgs;
 

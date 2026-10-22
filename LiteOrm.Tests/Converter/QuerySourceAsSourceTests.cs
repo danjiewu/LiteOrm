@@ -38,6 +38,21 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void AsSource_WithoutExecutor_StillBuildsQueryExpr()
+        {
+            // Expr.From<T>() 的链没有执行器，AsSource 仍应收窄成功，用于继续拼装表达式
+            IOrderedQueryable<TestUser> ordered = Expr.From<TestUser>()
+                .Where(u => u.Age > 18)
+                .OrderBy(u => u.Id);
+
+            QuerySource<TestUser> source = ordered.AsSource();
+
+            Assert.IsType<OrderByExpr>(source.GetQueryExpr());
+            // 取数仍然需要执行器
+            Assert.Throws<InvalidOperationException>(() => source.ToList());
+        }
+
+        [Fact]
         public void AsSource_OnNonLiteOrmQueryable_Throws()
         {
             IQueryable<int> query = new List<int> { 1, 2, 3 }.AsQueryable();

@@ -30,7 +30,7 @@ namespace LiteOrm.AotDemo.Scenarios
             DemoOutput.LastSql();
 
             DemoOutput.Section("4.2 JSON 路径过滤（Lambda 写法）");
-            var goldUsers = await userService.SearchAsync(q => q.Where(x => x.Info!["Level"]!.GetValue<string>() == "gold"));
+            var goldUsers = await userService.SearchAsync(Expr.From<AotUserView>().Where(x => x.Info!["Level"]!.GetValue<string>() == "gold"));
             DemoOutput.Pair("Info['Level'] == 'gold'", goldUsers.Count);
             foreach (var user in goldUsers)
             {

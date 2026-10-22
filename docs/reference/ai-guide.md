@@ -492,13 +492,13 @@ services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
 | `Expr.Case(cases, elseExpr)`                     | `FunctionExpr`    | CASE 表达式（元组数组形式）                          |
 | `Expr.Case(params (LogicExpr, ValueTypeExpr)[])` | `FunctionExpr`    | CASE 表达式（元组数组形式，无 ELSE）                  |
 | `Expr.Case(params Expr[])`                       | `FunctionExpr`    | CASE 表达式（交替参数形式）                          |
-| `Expr.Query<T>(expression)`                      | `Expr`            | IQueryable Lambda 转 Expr                    |
-| `Expr.Query<T, TResult>(expression)`             | `Expr`            | 带返回值的 IQueryable Lambda 转 Expr              |
+| `Expr.Query<T>(expression)`                      | `Expr`            | 已过期，改用 `Expr.From<T>()` 拼链后调 `GetQueryExpr()`  |
+| `Expr.Query<T, TResult>(expression)`             | `Expr`            | 已过期，带返回值的 IQueryable Lambda 转 Expr           |
 | `Expr.Exists(type, innerExpr, tableArgs)`        | `ForeignExpr`     | 关联表 EXISTS 查询                               |
 | `Expr.ExistsRelated(type, innerExpr, tableArgs)` | `ForeignExpr`     | 自动关联的 EXISTS 查询                             |
 | `Expr.Exists<T>(lambda)`                         | `bool`            | 仅用于 Lambda 表达式中构造 EXISTS 查询（直接调用会抛出异常）      |
 | `Expr.ExistsRelated<T>(lambda)`                  | `bool`            | 仅用于 Lambda 表达式中构造自动关联的 EXISTS 查询（直接调用会抛出异常） |
-| `Expr.FromRelated<T>(tableArgs)`                 | `IEnumerable<T>`  | 仅用于 Lambda 表达式中构造自动关联的查询源（直接调用会抛出异常）       |
+| `Expr.FromRelated<T>(tableArgs)`                 | `QuerySource<T>`  | 同 `Expr.From<T>()`，Lambda 内额外补上自动关联条件                     |
 
 补充规则：
 

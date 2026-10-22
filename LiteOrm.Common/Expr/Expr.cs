@@ -492,14 +492,17 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 创建关联表的 From 表达式，自动根据当前查询上下文推断关联条件。仅用于 Lambda 表达式中构造 Expr，无实际执行逻辑。
+        /// 创建关联表的 From 表达式，自动根据当前查询上下文推断关联条件。
+        /// 返回的 <see cref="QuerySource{T}"/> 与 <see cref="From{T}(string[])"/> 一致，在 Lambda 内由解析器接管；
+        /// 在 Lambda 外可继续拼 Where / Select 等查询，再交给 <see cref="QuerySourceExprConverter"/> 转成 SQL。
+        /// 推断关联条件需要外层查询的根表，脱离 Lambda 时退化为普通 From。
         /// </summary>
         /// <typeparam name="T">关联外部实体的类型</typeparam>
         /// <param name="tableArgs">动态表名参数</param>
         /// <returns>查询源表达式。</returns>
-        public static IEnumerable<T> FromRelated<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(params string[] tableArgs)
+        public static QuerySource<T> FromRelated<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(params string[] tableArgs)
         {
-            throw new InvalidOperationException("The Expr.FromRelated method is only used for parsing lambda expressions and cannot be called directly.");
+            return new QuerySource<T> { TableArgs = tableArgs };
         }
 
         /// <summary>
@@ -564,6 +567,7 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="expression">定义查询的 IQueryable Lambda 表达式</param>
         /// <returns>SQL 片段实例</returns>
+        [Obsolete("Use Expr.From<T>() which returns QuerySource<T>, compose the query, then call GetQueryExpr() (or ObjectViewDAO.SearchAs). Expr.Query will be removed in a future release.")]
         public static Expr Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>> expression) => LambdaExprConverter.ToSqlSegment(expression);
 
         /// <summary>
@@ -573,6 +577,7 @@ namespace LiteOrm.Common
         /// <typeparam name="TResult">返回结果类型</typeparam>
         /// <param name="expression">定义查询的 IQueryable Lambda 表达式</param>
         /// <returns>SQL 片段实例</returns>
+        [Obsolete("Use Expr.From<T>() which returns QuerySource<T>, compose the query, then call GetQueryExpr() (or ObjectViewDAO.SearchAs). Expr.Query will be removed in a future release.")]
         public static Expr Query<T, TResult>(Expression<Func<IQueryable<T>, TResult>> expression) => LambdaExprConverter.ToSqlSegment(expression);
 
         /// <summary>

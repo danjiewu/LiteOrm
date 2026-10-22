@@ -4,7 +4,9 @@
 
 ### 破坏性变更
 
-- **`Expr.From<T>()` 返回 `QuerySource<T>`**（`LiteOrm.Common`）：返回类型由 `TableExpr` 改为本版新增的 `QuerySource<T>`；`Expr.From(Type)` 与 `Expr.FromRelated<T>()` 行为不变。
+- **`Expr.From<T>()` / `Expr.FromRelated<T>()` 返回 `QuerySource<T>`**（`LiteOrm.Common`）：返回类型由 `TableExpr` / `IEnumerable<T>` 改为本版新增的 `QuerySource<T>`；`Expr.From(Type)` 行为不变。
+
+- **`Expr.Query<T>(...)` 与 IQueryable Lambda 参数的查询方法标记过期**（`LiteOrm.Common` / `LiteOrm`）：`Expr.Query` 两个重载、`ObjectViewDAO<T>.Search` / `SearchAs` 的 Lambda 重载、`DAOExtensions` 的三个 `Search` 扩展，以及 `LambdaExprExtensions` 的 `Search` / `SearchOne` / `SearchAsync` / `SearchOneAsync` / `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` 全部加 `[Obsolete]`，改为传入 `Expr.From<T>()` 拼好的 `IQueryable<T>`。Join、根级聚合这类必须由 Lambda 解析器接管的形态仍保留原写法，本版不移除。
 
 - **删除冗余的 Lambda 泛型重载**（`LiteOrm.Common`）：`Expr.Exists<T>(LogicExpr, ...)` 与 `Expr.ExistsRelated<T>(LogicExpr?, ...)` 删除，`ISourceAnchor.Where<T>(Expression<Func<T, bool>>)` 一并删除。
 
@@ -12,11 +14,11 @@
 
 ### 新特性
 
-- **新增 `QuerySource<T>` 查询源**（`LiteOrm.Common` / `LiteOrm`）：实现 `IOrderedQueryable<T>`，可在 Lambda 外拼查询；传入执行器（`IQuerySourceExecutor<T>`，由 `ObjectViewDAO<T>` 实现）即可直接取数。`Where` / `Select` 之后用 `AsSource()` 收窄回 `QuerySource<T>` 可继续调用异步方法。`ObjectViewDAO<T>` 相应新增 `SearchAs(IQueryable<TResult>)` / `Search(IQueryable<T>)` 重载。
+- **新增 `QuerySource<T>` 查询源**（`LiteOrm.Common` / `LiteOrm`）：实现 `IOrderedQueryable<T>`，可在 Lambda 外拼查询；传入执行器（`IQuerySourceExecutor<T>`，由 `ObjectViewDAO<T>` 实现）即可直接取数。`Where` / `Select` 之后用 `AsSource()` 收窄回 `QuerySource<T>` 可继续调用异步方法。`GetQueryExpr()` 把拼好的查询链转成 `Expr`，不需要执行器，`IQueryable<T>` 上另有同名扩展覆盖 `OrderBy` 之后的静态类型。`ObjectViewDAO<T>` 相应新增 `SearchAs(IQueryable<TResult>)` / `Search(IQueryable<T>)` 重载。
 
 - **方法处理器支持泛型定义**（`LiteOrm.Common`）：`LambdaExprConverter` 先按特化类型、后按泛型定义查找已注册的处理器。
 
-- **Lambda 支持根级聚合函数**（`LiteOrm.Common`）：`Count`、`LongCount`、`Sum`、`Average`、`Avg`、`Max`、`Min` 在 `Expr.Query` 内直接解析。
+- **Lambda 支持根级聚合函数**（`LiteOrm.Common`）：`Count`、`LongCount`、`Sum`、`Average`、`Avg`、`Max`、`Min` 在 IQueryable Lambda 内直接解析。
 
 - **新增 `Join` / `JoinRelated`**（`LiteOrm.Common`）：`Expr.From<T1>()` 返回 `QuerySource<T1>`，其上提供 `Join<T2>`、`JoinRelated<T2>()` 与 `JoinRelated<T2>(on)`，只写右表类型。连接结果仍是 `QuerySource<(T1, T2)>`，可以一路 `.Join<T3>()` 做多级连接，也能按 `IEnumerable<(T1, T2)>` 接 `Where` / `Select` / `OrderBy`。`x.Item1` / `x.Item2` 还原到左右表别名，嵌套元组用 `x.Item1.Item2` 逐级访问，不再被当成名为 `Item1` 的列。lambda 连接只保留这一种入口，不提供 `IQueryable<T1>` 上的扩展方法形式。
 

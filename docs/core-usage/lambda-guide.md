@@ -292,26 +292,26 @@ var result = await dao.SearchAs(
 
 ## 6. 投影查询（`SearchAs` / `SearchOneAs`）
 
-`SearchAs` / `SearchOneAs` 支持 IQueryable 形式的 Lambda，把结果投影为指定类型（自定义类、匿名类均可），适合「只取部分列」或「组装成视图 / 摘要对象」：
+`SearchAs` / `SearchOneAs` 接收已拼好的 `IQueryable<T>`，把结果投影为指定类型（自定义类、匿名类均可），适合「只取部分列」或「组装成视图 / 摘要对象」。查询用 `Expr.From<T>()` 起链，`Where` 之后静态类型就是 `IQueryable<T>`，链尾直接传进来：
 
 ```csharp
 // 投影为自定义类
 List<UserSummary> summaries = userService.SearchAs(
-    q => q.Where(u => u.Age >= 18)
+    Expr.From<User>().Where(u => u.Age >= 18)
           .Select(u => new UserSummary { UserName = u.UserName, Age = u.Age })
 );
 
 // 投影为匿名类（列别名与匿名成员名一一对应）
 var anon = userService.SearchAs(
-    q => q.Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
+    Expr.From<User>().Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
 );
 
 // 只过滤不投影：TResult 推断为实体类型
-List<User> adults = userService.SearchAs(q => q.Where(u => u.Age >= 18));
+List<User> adults = userService.SearchAs(Expr.From<User>().Where(u => u.Age >= 18));
 
 // 单条
 UserSummary? one = userService.SearchOneAs(
-    q => q.Where(u => u.Id == 1).Select(u => new UserSummary { UserName = u.UserName, Age = u.Age })
+    Expr.From<User>().Where(u => u.Id == 1).Select(u => new UserSummary { UserName = u.UserName, Age = u.Age })
 );
 ```
 
@@ -319,11 +319,11 @@ UserSummary? one = userService.SearchOneAs(
 
 ```csharp
 var list = await userService.SearchAsAsync(
-    q => q.Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
+    Expr.From<User>().Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
 );
 ```
 
-> `SearchAs` 的 Lambda 会被转换为 `SelectExpr` 后执行（等价于 [查询总览](./query-overview.md#3-search-vs-searchas) 中的 `SelectExpr` 用法）。结果映射由 `DataReaderConverter` 完成：未注册的普通类 / 匿名类按「成员名 ↔ 列别名」匹配，注册过的实体类型按位置匹配，建议优先使用 DTO / 匿名类投影。分表时通过 `tableArgs` 参数指定分表名。
+> `SearchAs` 会把查询转成 `SelectExpr` 后执行（等价于 [查询总览](./query-overview.md#3-search-vs-searchas) 中的 `SelectExpr` 用法）。结果映射由 `DataReaderConverter` 完成：未注册的普通类 / 匿名类按「成员名 ↔ 列别名」匹配，注册过的实体类型按位置匹配，建议优先使用 DTO / 匿名类投影。分表时通过 `tableArgs` 参数指定分表名，缺省取查询根上的分表参数。
 
 ## 7. JsonNode 查询
 

@@ -506,8 +506,9 @@ var users = await userService.SearchAsync(u => u.CreateTime.AddDays(7) > DateTim
 // Regex match (REGEXP_LIKE)
 var users = await userService.SearchAsync(u => Regex.IsMatch(u.UserName!, @"\d+"));
 // Regex replace (REGEXP_REPLACE)
-var dt = await dao.Search(Expr.Query<TestUser, IQueryable<object>>(q => q
-    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })));
+var dt = await dao.Search(Expr.From<TestUser>()
+    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })
+    .GetQueryExpr());
 ```
 
 ## 11. Default Registered SqlFunctions (Cross-Database)

@@ -50,16 +50,20 @@ var currentUserFilter = Sql("CurrentUserFilter");
 - `Aggregate(name, expr, isDistinct)`: aggregate wrapper
 - `Sql(key, arg)`: registered dynamic SQL fragment for runtime-context filters
 
-`Count`, `Sum`, `Average`, `Max`, and `Min` inside lambdas also convert to aggregate queries, with the same behavior at root level and inside subqueries:
+`Count`, `Sum`, `Average`, `Max`, and `Min` take two routes on `QuerySource<T>`: written into a query they convert to aggregate SQL, and with an executor bound they fetch data directly.
 
 ```csharp
-// SELECT COUNT(1) FROM Orders T0 WHERE ...
-var total = Expr.Query<Order, int>(q => q.Count());
-var amountSum = Expr.Query<Order, decimal>(q => q.Sum(o => o.Amount));
-var avgAmount = Expr.Query<Order, decimal>(q => q.Average(o => o.Amount));
+// Aggregate segment only: compose it with a structural Select, no lambda needed
+var countExpr = Expr.From(typeof(Order)).Select(Expr.Aggregate("COUNT", Expr.Const(1)));
+var sumExpr = Expr.From(typeof(Order)).Select(Expr.Aggregate("SUM", Expr.Prop("Amount")));
 
 // Scalar subquery; parentheses are added automatically when used in a comparison
-var aboveAverage = Expr.Query<Order>(q => q.Amount > Expr.From<Order>().Average(o => o.Amount));
+var aboveAverage = Expr.From<Order>()
+    .Where(o => o.Amount > Expr.From<Order>().Average(x => x.Amount))
+    .GetQueryExpr();
+
+// A query source with an executor can compute directly
+var total = new QuerySource<Order>(dao).Where(o => o.Status == 1).Count();
 ```
 
 Without a selector, `Count()` renders `COUNT(1)`; with one, the whole selector expression becomes the aggregate argument, so arithmetic such as `x => x.Amount * x.Rate` works too. Both `Average` and `Avg` map to `AVG`. The resulting `SelectExpr` carries no column alias, so a scalar subquery does not emit a redundant `AS`.
@@ -218,7 +222,8 @@ This is the most complete `Expr` style: start from `FROM`, then build `WHERE / G
 `From` has two overloads with different roles:
 
 - `Expr.From(type, tableArgs)` takes a `Type` and returns `TableExpr`. It is the only factory that can be called directly.
-- `Expr.From<T>(tableArgs)` returns `IEnumerable<T>` and exists only for building query sources inside lambda expressions; calling it directly throws `InvalidOperationException`. When the lambda is converted, the resolver turns `From<T>()` into a table reference for the inner query, so `Expr.From<User>().Where(Prop("Age") > 18)` inside `Expr.Query` becomes a subquery.
+- `Expr.From<T>(tableArgs)` returns `QuerySource<T>`, which implements `IQueryable<T>`. Inside a lambda the resolver takes it over; outside a lambda you can keep composing `Where` / `Select` and finish the chain with `GetQueryExpr()`. Without an executor it cannot fetch data and enumeration throws `InvalidOperationException`.
+- `Expr.FromRelated<T>(tableArgs)` also returns `QuerySource<T>`; the difference is that inside a lambda it adds the automatic relation condition.
 
 ## 5. Expr type map
 
@@ -295,7 +300,8 @@ In day-to-day query code, the most common ones are usually:
 | `Expr.Const(value)` | Create an inline constant | `Expr.Const("Enabled")` |
 | `Expr.Null` | SQL NULL | `Expr.Null` |
 | `Expr.From(type)` | Create a chained-query starting point (callable directly) | `Expr.From(typeof(User))` |
-| `Expr.From<T>()` | Only for building query sources inside lambdas (throws when called directly) | `Expr.From<User>()` |
+| `Expr.From<T>()` | Builds a `QuerySource<T>`: a lambda placeholder, or a composable IQueryable chain that cannot fetch data without an executor | `Expr.From<User>()` |
+| `Expr.FromRelated<T>()` | Same as `Expr.From<T>()` but adds the relation condition inside a lambda | `Expr.FromRelated<Department>()` |
 | `Expr.Update<T>()` | Create an UPDATE expression | `Expr.Update<User>()` |
 | `Expr.Delete<T>()` | Create a DELETE expression | `Expr.Delete<User>()` |
 | `Expr.Exists(type, innerExpr)` | Create an EXISTS subquery | `Expr.Exists(typeof(Department), ...)` |
@@ -308,8 +314,9 @@ In day-to-day query code, the most common ones are usually:
 | `Expr.Now()` | Current timestamp | `Expr.Now()` |
 | `Expr.Today()` | Current date | `Expr.Today()` |
 | `Expr.Sql(key, arg)` | Dynamic SQL fragment; the result implicitly converts to `ValueTypeExpr` | `Expr.Sql("CurrentUserFilter")` |
-| `Expr.Query<T>(expression)` | Convert IQueryable Lambda to Expr | `Expr.Query<User>(...)` |
-| `Expr.Query<T, TResult>(expression)` | Convert IQueryable Lambda with scalar result to Expr | `Expr.Query<User, int>(...)` |
+| `QuerySource<T>.GetQueryExpr()` | Convert a composed IQueryable chain to `Expr`, no executor needed | `Expr.From<User>().Where(u => u.Age > 18).GetQueryExpr()` |
+| `Expr.Query<T>(expression)` | Obsolete; use `Expr.From<T>()...GetQueryExpr()`. Left only for shapes the lambda resolver must own, such as Join and root-level aggregates | `Expr.Query<User>(...)` |
+| `Expr.Query<T, TResult>(expression)` | Obsolete; converts an IQueryable Lambda with a return value to Expr | `Expr.Query<User, int>(...)` |
 
 ## 7. Operator overloads and implicit conversions
 
@@ -507,8 +514,9 @@ Additional note: `Contains` / `StartsWith` / `EndsWith` / `Like` still use param
 await dao.Search(u => Regex.IsMatch(u.Name!, @"\d+"));
 
 // SELECT REGEXP_REPLACE(Name, '\d+', '#')
-await dao.Search(Expr.Query<TestUser, IQueryable<object>>(q => q
-    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })));
+await dao.Search(Expr.From<TestUser>()
+    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })
+    .GetQueryExpr());
 
 // SELECT REGEXP_SUBSTR(Name, '\d+')  -- extract first match
 // SELECT REGEXP_INSTR(Name, '\d+') - 1  -- match position (0-based)

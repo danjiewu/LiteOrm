@@ -103,8 +103,8 @@ namespace LiteOrm.Tests
             await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             var results = await dao.SearchAs(
-                q => q.Where(u => u.Age > 20)
-                      .Where(u => u.Name!.StartsWith("QueryFilterTest")))
+                Expr.From<TestUser>().Where(u => u.Age > 20)
+                .Where(u => u.Name!.StartsWith("QueryFilterTest")))
                 .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Equal(2, results.Count);
@@ -126,8 +126,8 @@ namespace LiteOrm.Tests
             await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var results = await dao.SearchAs(
-                q => q.Where(u => u.Name == "AnonProjTest")
-                      .Select(u => new { u.Name, u.Age }))
+                Expr.From<TestUser>().Where(u => u.Name == "AnonProjTest")
+                .Select(u => new { u.Name, u.Age }))
                 .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Single(results);
@@ -149,8 +149,8 @@ namespace LiteOrm.Tests
             await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var result = await dao.SearchAs(
-                q => q.Where(u => u.Name == "AsyncAnonTest")
-                      .Select(u => new { u.Name, u.Age }))
+                Expr.From<TestUser>().Where(u => u.Name == "AsyncAnonTest")
+                .Select(u => new { u.Name, u.Age }))
                 .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(result);
@@ -175,8 +175,8 @@ namespace LiteOrm.Tests
             };
             await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
-            var results = await dao.SearchAs<TestUser>(
-                q => q.Where(u => u.Name!.StartsWith("QueryTopTest"))
+            var results = await dao.SearchAs(
+                Expr.From<TestUser>().Where(u => u.Name!.StartsWith("QueryTopTest"))
                       .OrderBy(u => u.Age)
                       .Take(2))
                 .ToListAsync(TestContext.Current.CancellationToken);
@@ -205,8 +205,8 @@ namespace LiteOrm.Tests
             await service.BatchInsertAsync(users, TestContext.Current.CancellationToken);
 
             var names = await dao.SearchAs(
-                q => q.Where(u => u.Name!.StartsWith("ScalarProjTest"))
-                      .OrderBy(u => u.Name)
+                Expr.From<TestUser>().Where(u => u.Name!.StartsWith("ScalarProjTest"))
+                .OrderBy(u => u.Name)
                       .Select(u => u.Name))
                 .ToListAsync(TestContext.Current.CancellationToken);
 
@@ -233,8 +233,8 @@ namespace LiteOrm.Tests
             await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var results = await dao.SearchAs(
-                q => q.Where(u => u.Name == "MixedTypeTest")
-                      .Select(u => new { u.Id, u.Name, u.Age, u.CreateTime }))
+                Expr.From<TestUser>().Where(u => u.Name == "MixedTypeTest")
+                .Select(u => new { u.Id, u.Name, u.Age, u.CreateTime }))
                 .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Single(results);
@@ -259,8 +259,8 @@ namespace LiteOrm.Tests
             await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var results = await dao.SearchAs(
-                q => q.Where(u => u.Name == "OrderIndepTest")
-                      .Select(u => new { u.Age, u.Name }))   // Age first, then Name
+                Expr.From<TestUser>().Where(u => u.Name == "OrderIndepTest")
+                .Select(u => new { u.Age, u.Name }))   // Age first, then Name
                 .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Single(results);
@@ -287,8 +287,8 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var results = await dao.SearchAs(
-                q => q.Where(u => u.Name == "JoinViewTest")
-                      .Select(u => new { u.Name, u.DeptName }))
+                Expr.From<TestUserView>().Where(u => u.Name == "JoinViewTest")
+                .Select(u => new { u.Name, u.DeptName }))
                 .ToListAsync(TestContext.Current.CancellationToken);
 
             Assert.Single(results);
@@ -353,8 +353,8 @@ namespace LiteOrm.Tests
             await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var result = await dao.SearchAs(
-                q => q.Where(u => u.Name == "ByteArrayScalarTest")
-                      .Select(u => u.Avatar))
+                Expr.From<TestUser>().Where(u => u.Name == "ByteArrayScalarTest")
+                .Select(u => u.Avatar))
                 .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
 
             Assert.Equal(avatar, result);
@@ -375,8 +375,8 @@ namespace LiteOrm.Tests
             await service.InsertAsync(user, TestContext.Current.CancellationToken);
 
             var result = await dao.SearchAs(
-                q => q.Where(u => u.Name == "ByteArrayAnonTest")
-                      .Select(u => new { u.Name, u.Avatar }))
+                Expr.From<TestUser>().Where(u => u.Name == "ByteArrayAnonTest")
+                .Select(u => new { u.Name, u.Avatar }))
                 .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
 
             Assert.NotNull(result);
@@ -408,7 +408,8 @@ namespace LiteOrm.Tests
             await service.InsertAsync(new TestUser { Name = "ObjectViewQueryable_B", Age = 31, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await service.InsertAsync(new TestUser { Name = "ObjectViewFullSql", Age = 41, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var queryableResults = await dao.Search(q => q.Where(u => u.Name!.StartsWith("ObjectViewQueryable_"))
+            var queryableResults = await dao.Search(Expr.From<TestUser>()
+                .Where(u => u.Name!.StartsWith("ObjectViewQueryable_"))
                 .OrderByDescending(u => u.Age)).ToListAsync(TestContext.Current.CancellationToken);
 
             var exprStringResults = await dao.Search($"WHERE {Expr.Prop("Name").Like("ObjectViewQueryable_%")}").ToListAsync(TestContext.Current.CancellationToken);

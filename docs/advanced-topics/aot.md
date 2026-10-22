@@ -178,7 +178,7 @@ var expr = Expr.From(typeof(AotOrderView))
     .OrderBy(Expr.Prop(nameof(AotOrder.Amount)).Desc())
     .Section(0, 2);
 var page = await orderService.SearchAsync(expr);
-var lambda = await orderService.SearchAsync(q => q.Where(x => x.DeptName == "研发部"));
+var lambda = await orderService.SearchAsync(Expr.From<AotOrderView>().Where(x => x.DeptName == "研发部"));
 ```
 
 生成的 SQL：

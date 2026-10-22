@@ -76,7 +76,7 @@ public class User
 }
 
 // 4. Business layer continues querying in a unified way
-var users = await userService.SearchAsync(q => q.Where(u => u.Age >= 18).Skip(0).Take(20));
+var users = await userService.SearchAsync(Expr.From<User>().Where(u => u.Age >= 18).Skip(0).Take(20));
 ```
 
 This pattern is suitable for encapsulating compatibility logic in the infrastructure layer, so business code doesn't need to be aware of database version differences.

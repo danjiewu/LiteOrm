@@ -292,26 +292,26 @@ An instance returned by `Expr.From<T>()` carries no executor and can only build 
 
 ## 6. Projection Queries (`SearchAs` / `SearchOneAs`)
 
-`SearchAs` / `SearchOneAs` accept IQueryable-style lambdas and project the result into a target type (custom classes or anonymous types), which is convenient for "select only some columns" or "assemble view / summary objects":
+`SearchAs` / `SearchOneAs` accept an already composed `IQueryable<T>` and project the result into a target type (custom classes or anonymous types), which is convenient for "select only some columns" or "assemble view / summary objects". Start the chain with `Expr.From<T>()`; after `Where` the static type is `IQueryable<T>`, so pass it straight in:
 
 ```csharp
 // Project to a custom class
 List<UserSummary> summaries = userService.SearchAs(
-    q => q.Where(u => u.Age >= 18)
+    Expr.From<User>().Where(u => u.Age >= 18)
           .Select(u => new UserSummary { UserName = u.UserName, Age = u.Age })
 );
 
 // Project to an anonymous type (column aliases match the anonymous member names)
 var anon = userService.SearchAs(
-    q => q.Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
+    Expr.From<User>().Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
 );
 
 // Filter without projection: TResult is inferred as the entity type
-List<User> adults = userService.SearchAs(q => q.Where(u => u.Age >= 18));
+List<User> adults = userService.SearchAs(Expr.From<User>().Where(u => u.Age >= 18));
 
 // Single record
 UserSummary? one = userService.SearchOneAs(
-    q => q.Where(u => u.Id == 1).Select(u => new UserSummary { UserName = u.UserName, Age = u.Age })
+    Expr.From<User>().Where(u => u.Id == 1).Select(u => new UserSummary { UserName = u.UserName, Age = u.Age })
 );
 ```
 
@@ -319,7 +319,7 @@ Async versions are `SearchAsAsync` / `SearchOneAsAsync`:
 
 ```csharp
 var list = await userService.SearchAsAsync(
-    q => q.Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
+    Expr.From<User>().Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
 );
 ```
 

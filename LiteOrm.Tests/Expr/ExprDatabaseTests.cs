@@ -879,9 +879,10 @@ namespace LiteOrm.Tests
 
             // 通过 Lambda 表达式转换后执行，验证端到端流程
             var lambdaDt = await dataViewDAO.Search(
-                Expr.Query<TestUser, IQueryable<object>>(q => q
+                Expr.From<TestUser>()
                     .Where(u => u.Name == "DateDiffTest")
-                    .Select(u => new { Days = (u.CreateTime - originTime).TotalDays }))
+                    .Select(u => new { Days = (u.CreateTime - originTime).TotalDays })
+                    .GetQueryExpr()
             ).GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(lambdaDt);
             Assert.Single(lambdaDt.Rows);
@@ -981,10 +982,12 @@ namespace LiteOrm.Tests
 
             // Regex.Replace 在 Select 中 → REGEXP_REPLACE
             var replaceDt = await dataViewDAO.Search(
-                Expr.Query<TestUser, IQueryable<object>>(q => q
+                Expr.From<TestUser>()
                     .Where(u => u.Name!.StartsWith("RegexTest"))
                     .OrderBy(u => u.Name)
-                    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") }))
+                    .Select(u => new { Replaced = Regex.Replace(u.Name!, @"\d+", "#") })
+                    .AsSource()
+                    .GetQueryExpr()
             ).GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(replaceDt);
             Assert.Equal(3, replaceDt.Rows.Count);
@@ -993,10 +996,12 @@ namespace LiteOrm.Tests
 
             // Regex.Match().Value 在 Select 中 → REGEXP_SUBSTR
             var valueDt = await dataViewDAO.Search(
-                Expr.Query<TestUser, IQueryable<object>>(q => q
+                Expr.From<TestUser>()
                     .Where(u => u.Name!.StartsWith("RegexTest"))
                     .OrderBy(u => u.Name)
-                    .Select(u => new { Matched = Regex.Match(u.Name!, @"\d+").Value }))
+                    .Select(u => new { Matched = Regex.Match(u.Name!, @"\d+").Value })
+                    .AsSource()
+                    .GetQueryExpr()
             ).GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(valueDt);
             Assert.Equal(3, valueDt.Rows.Count);
@@ -1006,10 +1011,12 @@ namespace LiteOrm.Tests
 
             // Regex.Match().Index 在 Select 中 → REGEXP_INSTR
             var indexDt = await dataViewDAO.Search(
-                Expr.Query<TestUser, IQueryable<object>>(q => q
+                Expr.From<TestUser>()
                     .Where(u => u.Name!.StartsWith("RegexTest"))
                     .OrderBy(u => u.Name)
-                    .Select(u => new { Position = Regex.Match(u.Name!, @"\d+").Index }))
+                    .Select(u => new { Position = Regex.Match(u.Name!, @"\d+").Index })
+                    .AsSource()
+                    .GetQueryExpr()
             ).GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(indexDt);
             Assert.Equal(3, indexDt.Rows.Count);
@@ -1019,10 +1026,12 @@ namespace LiteOrm.Tests
             // Regex.Replace（闭包变量实例形式）在 Select 中
             var reRegex = new Regex(@"\d+");
             var closureReplaceDt = await dataViewDAO.Search(
-                Expr.Query<TestUser, IQueryable<object>>(q => q
+                Expr.From<TestUser>()
                     .Where(u => u.Name!.StartsWith("RegexTest"))
                     .OrderBy(u => u.Name)
-                    .Select(u => new { Replaced = reRegex.Replace(u.Name!, "#") }))
+                    .Select(u => new { Replaced = reRegex.Replace(u.Name!, "#") })
+                    .AsSource()
+                    .GetQueryExpr()
             ).GetResultAsync(TestContext.Current.CancellationToken);
             Assert.NotNull(closureReplaceDt);
             Assert.Equal(3, closureReplaceDt.Rows.Count);

@@ -709,7 +709,7 @@ namespace LiteOrm.Benchmark
             using (var scope = _serviceProvider.CreateScope())
             {
                 var service = scope.ServiceProvider.GetRequiredService<IEntityViewServiceAsync<BenchmarkLogView>>();
-                var list = await service.SearchAsync(q => q.Where(l => l.Age < 30)
+                var list = await service.SearchAsync(Expr.From<BenchmarkLogView>().Where(l => l.Age < 30)
                           .OrderByDescending(l => l.Id)
                           .Skip(0).Take(BatchCount)
                 );

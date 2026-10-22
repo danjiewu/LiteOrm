@@ -126,7 +126,55 @@ namespace LiteOrm.Common.UnitTests
 
         #endregion
 
+        #region GetQueryExpr 公开入口
+
+        [Fact]
+        public void GetQueryExpr_OnQuerySource_ReturnsQuerySegment()
+        {
+            QuerySource<TestUser> source = Expr.From<TestUser>();
+
+            var table = Assert.IsType<TableExpr>(source.GetQueryExpr());
+            Assert.Equal(typeof(TestUser), table.Type);
+        }
+
+        [Fact]
+        public void GetQueryExpr_OnChain_ReturnsWhereOverTable()
+        {
+            IQueryable<TestUser> query = Expr.From<TestUser>().Where(u => u.Age > 18);
+
+            var where = Assert.IsType<WhereExpr>(query.GetQueryExpr());
+            Assert.IsType<TableExpr>(where.Source);
+            Assert.NotNull(where.Where);
+        }
+
+        [Fact]
+        public void GetQueryExpr_AfterOrderBy_Works()
+        {
+            // OrderBy 的静态返回类型是 IOrderedQueryable<T>，链尾靠同名扩展方法收口
+            SqlSegment segment = Expr.From<TestUser>()
+                .Where(u => u.Age > 18)
+                .OrderBy(u => u.Id)
+                .GetQueryExpr();
+
+            Assert.IsType<OrderByExpr>(segment);
+        }
+
+        [Fact]
+        public void GetQueryExpr_FromRelatedOutsideLambda_BehavesLikeFrom()
+        {
+            // FromRelated 只在 Lambda 内补关联条件，直接使用等价于 From<T>()
+            SqlSegment segment = Expr.FromRelated<TestUser>().GetQueryExpr();
+
+            Assert.Equal(typeof(TestUser), Assert.IsType<TableExpr>(segment).Type);
+        }
+
+        #endregion
+
         #region Lambda 内终端方法解析
+
+        // 终端方法（Count / FirstOrDefault / ToList）没有执行器时会抛异常，
+        // 只有在 Lambda 内才被预注册 handler 接管，因此这里仍需 Expr.Query
+#pragma warning disable CS0618
 
         [Fact]
         public void Lambda_FromThenCount_ParsesToAggregate()
@@ -172,6 +220,8 @@ namespace LiteOrm.Common.UnitTests
             Assert.Contains("LEFT JOIN", sql);
             Assert.Contains("COUNT(1)", sql);
         }
+
+#pragma warning restore CS0618
 
         #endregion
 

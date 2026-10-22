@@ -155,7 +155,7 @@ WindowFunctionDemo.RegisterHandlers();
 // 查询时直接在投影里使用窗口函数扩展
 var results = await factory.SalesDAO
     .WithArgs([tableMonth])
-    .SearchAs(q => q
+    .SearchAs(Expr.From<SalesRecord>()
         .OrderBy(s => s.ProductId)
         .Select(s => new SalesWindowView
         {

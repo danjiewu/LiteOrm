@@ -943,9 +943,10 @@ namespace LiteOrm.Tests
             await userService.InsertAsync(new TestUser { Name = "LambdaUser1", Age = 25, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
             await userService.InsertAsync(new TestUser { Name = "LambdaUser2", Age = 35, CreateTime = DateTime.Now }, TestContext.Current.CancellationToken);
 
-            var query = Expr.Query<TestUser, IQueryable<object>>(q => q
+            var query = Expr.From<TestUser>()
                 .Where(u => u.Age > 20)
-                .Select(u => new { u.Name, u.Age }));
+                .Select(u => new { u.Name, u.Age })
+                .GetQueryExpr();
 
             var dt = await dataViewDAO.Search(query).GetResultAsync(TestContext.Current.CancellationToken);
 
@@ -969,9 +970,10 @@ namespace LiteOrm.Tests
                 }, TestContext.Current.CancellationToken);
             }
 
-            var query = Expr.Query<TestUser, IQueryable<object>>(q => q
+            var query = Expr.From<TestUser>()
                 .GroupBy(u => u.Age)
-                .Select(g => new { Age = g.Key, Count = g.Count() }));
+                .Select(g => new { Age = g.Key, Count = g.Count() })
+                .GetQueryExpr();
 
             var dt = await dataViewDAO.Search(query).GetResultAsync(TestContext.Current.CancellationToken);
 

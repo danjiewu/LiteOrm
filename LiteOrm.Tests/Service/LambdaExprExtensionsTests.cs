@@ -35,10 +35,32 @@ namespace LiteOrm.Common.UnitTests
             var service = new Mock<IEntityViewService<TestEntity>>();
             service.Setup(s => s.Search(It.IsAny<Expr>(), tableArgs)).Returns(expected);
 
-            var result = service.Object.Search(q => q.Where(x => x.Id > 0), tableArgs);
+            var result = service.Object.Search(Expr.From<TestEntity>().Where(x => x.Id > 0), tableArgs);
 
             Assert.Same(expected, result);
             service.Verify(s => s.Search(It.IsAny<Expr>(), tableArgs), Times.Once);
+        }
+
+        [Fact]
+        public void Search_WithQueryable_ForwardsTableArgs()
+        {
+            var expected = new List<TestEntity>();
+            var tableArgs = new[] { "Shard1" };
+            var service = new Mock<IEntityViewService<TestEntity>>();
+            service.Setup(s => s.Search(It.IsAny<Expr>(), tableArgs)).Returns(expected);
+
+            var result = service.Object.Search(Expr.From<TestEntity>().Where(x => x.Id > 0), tableArgs);
+
+            Assert.Same(expected, result);
+            service.Verify(s => s.Search(It.IsAny<Expr>(), tableArgs), Times.Once);
+        }
+
+        [Fact]
+        public void Search_WithNullQueryable_ThrowsArgumentNullException()
+        {
+            var service = new Mock<IEntityViewService<TestEntity>>();
+
+            Assert.Throws<ArgumentNullException>(() => service.Object.Search((IQueryable<TestEntity>)null!));
         }
 
         [Fact]
@@ -98,7 +120,7 @@ namespace LiteOrm.Common.UnitTests
             var service = new Mock<IEntityViewServiceAsync<TestEntity>>();
             service.Setup(s => s.SearchOneAsync(It.IsAny<Expr>(), tableArgs, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
-            var result = await service.Object.SearchOneAsync(q => q.Take(1), tableArgs, CancellationToken.None);
+            var result = await service.Object.SearchOneAsync(Expr.From<TestEntity>().Take(1), tableArgs, CancellationToken.None);
 
             Assert.Same(expected, result);
             service.Verify(s => s.SearchOneAsync(It.IsAny<Expr>(), tableArgs, CancellationToken.None), Times.Once);
@@ -220,7 +242,7 @@ namespace LiteOrm.Common.UnitTests
             var service = new Mock<IEntityViewService<TestEntity>>();
             service.Setup(s => s.SearchAs<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>())).Returns(expected);
 
-            var result = service.Object.SearchAs(q => q.Select(x => x.Name));
+            var result = service.Object.SearchAs(Expr.From<TestEntity>().Select(x => x.Name));
 
             Assert.Same(expected, result);
             service.Verify(s => s.SearchAs<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>()), Times.Once);
@@ -233,7 +255,7 @@ namespace LiteOrm.Common.UnitTests
             var service = new Mock<IEntityViewService<TestEntity>>();
             service.Setup(s => s.SearchOneAs<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>())).Returns(expected);
 
-            var result = service.Object.SearchOneAs(q => q.Where(x => x.Id > 0).Select(x => x.Name));
+            var result = service.Object.SearchOneAs(Expr.From<TestEntity>().Where(x => x.Id > 0).Select(x => x.Name));
 
             Assert.Equal(expected, result);
             service.Verify(s => s.SearchOneAs<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>()), Times.Once);
@@ -246,7 +268,7 @@ namespace LiteOrm.Common.UnitTests
             var service = new Mock<IEntityViewServiceAsync<TestEntity>>();
             service.Setup(s => s.SearchAsAsync<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>(), It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
-            var result = await service.Object.SearchAsAsync(q => q.Select(x => x.Name), cancellationToken: TestContext.Current.CancellationToken);
+            var result = await service.Object.SearchAsAsync(Expr.From<TestEntity>().Select(x => x.Name), cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Same(expected, result);
             service.Verify(s => s.SearchAsAsync<string>(It.IsAny<SelectExpr>(), It.IsAny<string[]>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -260,7 +282,7 @@ namespace LiteOrm.Common.UnitTests
             var service = new Mock<IEntityViewServiceAsync<TestEntity>>();
             service.Setup(s => s.SearchOneAsAsync<string>(It.IsAny<SelectExpr>(), tableArgs, It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 
-            var result = await service.Object.SearchOneAsAsync(q => q.Select(x => x.Name), tableArgs, cancellationToken: TestContext.Current.CancellationToken);
+            var result = await service.Object.SearchOneAsAsync(Expr.From<TestEntity>().Select(x => x.Name), tableArgs, cancellationToken: TestContext.Current.CancellationToken);
 
             Assert.Equal(expected, result);
             service.Verify(s => s.SearchOneAsAsync<string>(It.IsAny<SelectExpr>(), tableArgs, It.IsAny<CancellationToken>()), Times.Once);

@@ -492,13 +492,13 @@ Event subscribers are resolved lazily: constructing an entity service instance n
 | `Expr.Case(cases, elseExpr)` | `FunctionExpr` | CASE expression (tuple array form) |
 | `Expr.Case(params (LogicExpr, ValueTypeExpr)[])` | `FunctionExpr` | CASE expression (tuple array form, no ELSE) |
 | `Expr.Case(params Expr[])` | `FunctionExpr` | CASE expression (alternating argument form) |
-| `Expr.Query<T>(expression)` | `Expr` | Converts an IQueryable Lambda to Expr |
-| `Expr.Query<T, TResult>(expression)` | `Expr` | Converts an IQueryable Lambda with a return value to Expr |
+| `Expr.Query<T>(expression)` | `Expr` | Obsolete; compose with `Expr.From<T>()` and call `GetQueryExpr()` instead |
+| `Expr.Query<T, TResult>(expression)` | `Expr` | Obsolete; converts an IQueryable Lambda with a return value to Expr |
 | `Expr.Exists(type, innerExpr, tableArgs)` | `ForeignExpr` | EXISTS query on a related table |
 | `Expr.ExistsRelated(type, innerExpr, tableArgs)` | `ForeignExpr` | EXISTS query using automatic relation discovery |
 | `Expr.Exists<T>(lambda)` | `bool` | Used only inside Lambda expressions to build EXISTS queries (direct calls throw an exception) |
 | `Expr.ExistsRelated<T>(lambda)` | `bool` | Used only inside Lambda expressions to build automatic-related EXISTS queries (direct calls throw an exception) |
-| `Expr.FromRelated<T>(tableArgs)` | `IEnumerable<T>` | Used only inside Lambda expressions to build automatic-related query sources (direct calls throw an exception) |
+| `Expr.FromRelated<T>(tableArgs)` | `QuerySource<T>` | Same as `Expr.From<T>()`, plus the automatic relation condition inside a lambda |
 
 Additional rule:
 
