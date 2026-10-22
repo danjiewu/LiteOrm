@@ -69,7 +69,9 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - `Count` / `CountAsync`
 - `Expr`、`LogicExpr`、`SelectExpr`、`Expr.Query`
 - `QuerySource<T>`（`Expr.From<T>()` 的返回类型，实现 `IQueryable<T>` / `IOrderedQueryable<T>`）与 `IQuerySourceExecutor<T>`
-- `QuerySource<T>.GetQueryExpr()` / `Join` / `JoinRelated` 与 `IQueryable<T>.GetQueryExpr()` / `AsSource()`
+- 多表查询源 `QuerySource<T1, T2>` … `QuerySource<T1, …, T7>`，每次 `Join<TNext>` 追加一张右表
+- `QuerySource<T>.Join<T2>(Expression<Func<T1, T2, bool>>, TableJoinType?)` / `JoinRelated<T2>(...)`；多表版本的条件参数按「已连接各表 + 新右表」顺序一表一个
+- `QuerySource<T>.GetQueryExpr()` 与 `IQueryable<T>.GetQueryExpr()` / `AsSource()`
 - `LambdaExprExtensions` 的 `IQueryable<T>` 重载（`Search` / `SearchOne` / `SearchAsync` / `SearchOneAsync` / `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync`）
 - `DAOExtensions` 为 `IDataViewDAO<TInput>` 提供的 `IQueryable<TResult>` `Search` 重载
 - `SelectAll()` / `Cast(DbValueType)`

@@ -48,7 +48,7 @@ ExprString  ───────────┘ ──(ToSql)──▶  参数�
 
 ## 2. Service 与 DAO 查询入口
 
-LiteOrm 的查询入口分两层：**Service 层**面向业务，**DAO 层**面向更底层的能力。
+LiteOrm 的查询入口分两层：**Service 层**面向业务，**DAO 层**面向更底层的能力。在入口之上，`QuerySource<T>` 负责组合查询链，`Join` / `JoinRelated` 负责多表连接。
 
 ### 2.1 Service
 
@@ -84,6 +84,70 @@ var users3 = await userViewDAO.Search($"WHERE {Prop("Age")} > {minAge}").ToListA
 
 - DAO 除了支持 Lambda / `Expr`，还支持 `ExprString`，因此更适合自定义 SQL 片段、完整 SQL、复杂投影查询和 DataTable 查询。
 - 需要 `ExprString` 版 `SearchAs(...)`、`Query(...)`、`Execute(...)`、`GetValue(...)` 这类更底层能力时，也应该直接使用 DAO。
+
+### 2.3 `QuerySource<T>`：可组合的查询源
+
+`Expr.From<T>()` 返回 `QuerySource<T>`，它实现 `IQueryable<T>` / `IOrderedQueryable<T>`，因此 `Where` / `Select` / `OrderBy` 等 Linq 算子都能直接使用。它有两种用法：
+
+- **在 Lambda 里当查询占位**：`Query<T, TResult>(q => q.Where(...))`，由解析器接管并生成 SQL。
+- **在 Lambda 外拼查询**：链尾用 `GetQueryExpr()` 转成 `Expr`，或直接交给 Service / DAO 的 `IQueryable<T>` 重载执行。
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// 1. 只拼表达式：不需要执行器
+SqlSegment expr = From<User>()
+    .Where(u => u.Age >= 18)
+    .OrderBy(u => u.UserName)
+    .Select(u => u.UserName)
+    .GetQueryExpr();
+
+// 2. 从容器取已绑定执行器的查询源，直接取数
+var users = serviceProvider.GetRequiredService<QuerySource<User>>();
+List<User> adults = await users.Where(u => u.Age >= 18).AsSource().ToListAsync();
+
+// 3. 交给 DAO 执行任意 IQueryable 查询
+var userDAO = serviceProvider.GetRequiredService<ObjectViewDAO<User>>();
+var rows = await userDAO.SearchAs(
+    users.Where(u => u.Age >= 18).Select(u => new { u.Id, u.UserName })).ToListAsync();
+```
+
+要点：
+
+- `Where` / `Select` / `OrderBy` 的静态返回类型是 `IQueryable<T>` / `IOrderedQueryable<T>`；想继续调用 `QuerySource` 的异步实例方法（`ToListAsync`、`CountAsync`、`ToAsyncEnumerable` 等），用 `.AsSource()` 收窄。
+- `Expr.From<T>()` 返回的实例不带执行器，只适合拼表达式，直接枚举会抛 `InvalidOperationException`。需要取数时从容器取 `QuerySource<T>`（已绑定执行器），或交给 DAO。
+- `QuerySource<T>` 与 DAO 生命周期一致，不要缓存到单例或静态字段。
+
+### 2.4 多表连接：`Join` / `JoinRelated`
+
+`Join<T2>` 显式写连接条件，`JoinRelated<T2>` 按 `[ForeignType]` / `[TableJoin]` 元数据自动推断。两者都是 `QuerySource<T1>` 上的实例方法，左表已确定，所以只写右表类型：
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// 显式条件
+var joined = From<Order>()
+    .Join<Customer>((o, c) => o.CustomerId == c.Id)
+    .Where(x => x.Item2.Name == "VIP");
+
+// 自动推断；可指定连接类型（默认 Left，可选 Inner / Right / Full）
+var related = From<Order>().JoinRelated<Customer>(TableJoinType.Inner);
+
+// 链式追加：每次只加一张右表，连接条件参数一表一个
+var multi = From<Order>()
+    .Join<Customer>((o, c) => o.CustomerId == c.Id)
+    .Join<Region>((o, c, r) => c.RegionId == r.Id)
+    .Where(x => x.Item3.Name == "North")
+    .Select(x => new { x.Item1.Id, x.Item2.Name, x.Item3.Name });
+```
+
+- 返回 `QuerySource<T1, T2>`、`QuerySource<T1, T2, T3>` …，元素类型是**扁平元组** `(T1, T2)`、`(T1, T2, T3)`，用 `x.Item1` … `x.Item7` 访问，解析时会带上各自表的别名。
+- 第二段及以后连接的 `on` 参数按「已连接的各表 + 新右表」顺序排列，直接按参数名引用，例如 `(o, c, r) => c.RegionId == r.Id`。
+- `Join` 默认左连接；`JoinRelated` 使用元数据声明的连接类型，推断不到关联时抛 `InvalidOperationException`，提示改用带条件的 `Join`。
+- 连接需在 `Where` / `Select` **之前**完成；如果已经 `Where`，可先用 `.AsSource()` 收窄再继续 `Join<TNext>`。
+- 链式连接最多 7 张表。`Join` 之后接 `Select` 且写在 Lambda 里时，`Expr.Query<T, TResult>` 的 `TResult` 写 `IEnumerable<object>`。
+
+完整规则、连接类型与别名细节见 [Lambda 查询指南 §5.4](./lambda-guide.md#54-连接查询-join-与-joinrelated)。
 
 ## 3. `Search` vs `SearchAs`
 

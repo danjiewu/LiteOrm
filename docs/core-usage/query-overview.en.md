@@ -48,7 +48,7 @@ Do you need to handwrite a SQL fragment or full SQL?
 
 ## 2. Service vs DAO query entry points
 
-LiteOrm's query entry points are split into two layers: the **Service layer** for business, and the **DAO layer** for lower-level capabilities.
+LiteOrm's query entry points are split into two layers: the **Service layer** for business, and the **DAO layer** for lower-level capabilities. On top of them, `QuerySource<T>` composes query chains and `Join` / `JoinRelated` handle multi-table joins.
 
 ### 2.1 Service
 
@@ -84,6 +84,70 @@ var users3 = await userViewDAO.Search($"WHERE {Prop("Age")} > {minAge}").ToListA
 
 - The DAO supports Lambda / `Expr`, plus `ExprString`, so it is more suitable for custom SQL fragments, full SQL, complex projection queries, and DataTable queries.
 - When you need `ExprString` `SearchAs(...)`, `Query(...)`, `Execute(...)`, `GetValue(...)`, or similar lower-level capabilities, use the DAO directly.
+
+### 2.3 `QuerySource<T>`: a composable query source
+
+`Expr.From<T>()` returns `QuerySource<T>`, which implements `IQueryable<T>` / `IOrderedQueryable<T>`, so standard LINQ operators such as `Where` / `Select` / `OrderBy` work directly. It has two usage modes:
+
+- **As a query placeholder inside a Lambda**: `Query<T, TResult>(q => q.Where(...))`, handled by the parser and translated to SQL.
+- **Composing outside a Lambda**: call `GetQueryExpr()` at the end to get an `Expr`, or pass it straight to the `IQueryable<T>` overloads of Service / DAO.
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// 1. Expression only: no executor needed
+SqlSegment expr = From<User>()
+    .Where(u => u.Age >= 18)
+    .OrderBy(u => u.UserName)
+    .Select(u => u.UserName)
+    .GetQueryExpr();
+
+// 2. Resolve an executor-bound source from the container and query directly
+var users = serviceProvider.GetRequiredService<QuerySource<User>>();
+List<User> adults = await users.Where(u => u.Age >= 18).AsSource().ToListAsync();
+
+// 3. Hand any IQueryable query to a DAO
+var userDAO = serviceProvider.GetRequiredService<ObjectViewDAO<User>>();
+var rows = await userDAO.SearchAs(
+    users.Where(u => u.Age >= 18).Select(u => new { u.Id, u.UserName })).ToListAsync();
+```
+
+Key points:
+
+- `Where` / `Select` / `OrderBy` statically return `IQueryable<T>` / `IOrderedQueryable<T>`; use `.AsSource()` to narrow back when you want the async instance methods of `QuerySource` (`ToListAsync`, `CountAsync`, `ToAsyncEnumerable`, ...).
+- `Expr.From<T>()` returns an executor-less instance meant for composing expressions; enumerating it directly throws `InvalidOperationException`. To execute, resolve `QuerySource<T>` from the container (executor-bound) or use a DAO.
+- A `QuerySource<T>` shares the DAO lifetime; do not cache it in singletons or static fields.
+
+### 2.4 Multi-table joins: `Join` / `JoinRelated`
+
+`Join<T2>` takes an explicit condition, while `JoinRelated<T2>` infers it from `[ForeignType]` / `[TableJoin]` metadata. Both are instance methods on `QuerySource<T1>`; the left table is already fixed, so you only specify the right table type:
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// Explicit condition
+var joined = From<Order>()
+    .Join<Customer>((o, c) => o.CustomerId == c.Id)
+    .Where(x => x.Item2.Name == "VIP");
+
+// Inferred condition; optionally pick the join type (Left by default, or Inner / Right / Full)
+var related = From<Order>().JoinRelated<Customer>(TableJoinType.Inner);
+
+// Chained appends: one right table per call, one condition parameter per table
+var multi = From<Order>()
+    .Join<Customer>((o, c) => o.CustomerId == c.Id)
+    .Join<Region>((o, c, r) => c.RegionId == r.Id)
+    .Where(x => x.Item3.Name == "North")
+    .Select(x => new { x.Item1.Id, x.Item2.Name, x.Item3.Name });
+```
+
+- Results are `QuerySource<T1, T2>`, `QuerySource<T1, T2, T3>`, ..., with a **flat tuple** element type `(T1, T2)`, `(T1, T2, T3)`, accessed through `x.Item1` ... `x.Item7`; each element resolves to its own table alias.
+- For the second join and later, the `on` parameters follow the order "already-joined tables first, new right table last"; reference them by parameter name, e.g. `(o, c, r) => c.RegionId == r.Id`.
+- `Join` defaults to a left join; `JoinRelated` uses the join type declared in metadata, and throws `InvalidOperationException` when no relation can be inferred, suggesting an explicit `Join`.
+- Complete all joins **before** `Where` / `Select`; if you already applied `Where`, narrow it back with `.AsSource()` before calling `Join<TNext>`.
+- Up to 7 tables can be chained. When a `Select` follows a `Join` inside a Lambda, use `IEnumerable<object>` as `TResult` of `Expr.Query<T, TResult>`.
+
+For full rules, join types, and alias details, see [Lambda Query Guide §5.4](./lambda-guide.en.md#54-joins-with-join-and-joinrelated).
 
 ## 3. `Search` vs `SearchAs`
 
