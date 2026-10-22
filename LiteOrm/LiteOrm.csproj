@@ -18,7 +18,8 @@
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
       8.1.13:
-      - 同步 LiteOrm.Common 8.1.13。
+      - 破坏性变更：Expr.From&lt;T&gt;() 返回 QuerySource&lt;T&gt;；同步 LiteOrm.Common 8.1.13。
+      - ObjectViewDAO&lt;T&gt; 实现 IQuerySourceExecutor&lt;T&gt;，新增 SearchAs(IQueryable&lt;TResult&gt;) / Search(IQueryable&lt;T&gt;) 重载；查询源可直接从容器解析。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

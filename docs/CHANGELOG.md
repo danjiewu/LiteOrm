@@ -1,16 +1,20 @@
 # 变更日志 (Changelog)
 
-## v8.1.13 (2026-10-21)
+## v8.1.13 (2026-10-22)
 
 ### 破坏性变更
 
-- **`Expr.From<T>()` 返回 `QuerySource<T>`**（`LiteOrm.Common`）：返回类型由 `TableExpr` 改为 `QuerySource<T>`。`QuerySource<T>` 实现 `IQueryable<T>`，既可作 Lambda 表达式占位，也可在 Lambda 外拼查询；构造参数为 `IQuerySourceExecutor<T>`（`ObjectViewDAO<T>` 实现该接口，已注册进容器，可直接解析），有执行器时可直接枚举、`ToList`、`Count`、`ToListAsync`，没有执行器时取数抛 `InvalidOperationException`。`ObjectViewDAO<T>` 新增 `SearchAs(IQueryable<TResult>)` / `Search(IQueryable<T>)` 重载，接受任意 `IQueryable` 源。新增 `AsSource()` 扩展，把 `Where` / `Select` 之后静态类型为 `IQueryable<T>` 的查询收窄回 `QuerySource<T>`，从而能接着调用 `ToListAsync` / `CountAsync` / `ToAsyncEnumerable`。
+- **`Expr.From<T>()` 返回 `QuerySource<T>`**（`LiteOrm.Common`）：返回类型由 `TableExpr` 改为本版新增的 `QuerySource<T>`；`Expr.From(Type)` 与 `Expr.FromRelated<T>()` 行为不变。
 
 - **删除冗余的 Lambda 泛型重载**（`LiteOrm.Common`）：`Expr.Exists<T>(LogicExpr, ...)` 与 `Expr.ExistsRelated<T>(LogicExpr?, ...)` 删除，`ISourceAnchor.Where<T>(Expression<Func<T, bool>>)` 一并删除。
 
 - **删除 `TableRef` 抽象类**（`LiteOrm.Common`）：`JoinedTable` 改为直接继承 `SqlObject`，`ColumnRef.Table` 与双参构造函数的参数类型由 `TableRef?` 改为 `JoinedTable?`。
 
 ### 新特性
+
+- **新增 `QuerySource<T>` 查询源**（`LiteOrm.Common` / `LiteOrm`）：实现 `IOrderedQueryable<T>`，可在 Lambda 外拼查询；传入执行器（`IQuerySourceExecutor<T>`，由 `ObjectViewDAO<T>` 实现）即可直接取数。`Where` / `Select` 之后用 `AsSource()` 收窄回 `QuerySource<T>` 可继续调用异步方法。`ObjectViewDAO<T>` 相应新增 `SearchAs(IQueryable<TResult>)` / `Search(IQueryable<T>)` 重载。
+
+- **方法处理器支持泛型定义**（`LiteOrm.Common`）：`LambdaExprConverter` 先按特化类型、后按泛型定义查找已注册的处理器。
 
 - **Lambda 支持根级聚合函数**（`LiteOrm.Common`）：`Count`、`LongCount`、`Sum`、`Average`、`Avg`、`Max`、`Min` 在 `Expr.Query` 内直接解析。
 

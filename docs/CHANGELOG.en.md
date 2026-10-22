@@ -1,16 +1,20 @@
 # Changelog
 
-## v8.1.13 (2026-10-21)
+## v8.1.13 (2026-10-22)
 
 ### Breaking changes
 
-- **`Expr.From<T>()` returns `QuerySource<T>`** (`LiteOrm.Common`): the return type changes from `TableExpr` to `QuerySource<T>`. `QuerySource<T>` implements `IQueryable<T>`, so it works both as a lambda placeholder and as a query composed outside a lambda. Its constructor takes an optional `IQuerySourceExecutor<T>` (implemented by `ObjectViewDAO<T>` and registered in the container): with an executor it can be enumerated directly and supports `ToList`, `Count` and `ToListAsync`; without one, running it throws `InvalidOperationException`. `ObjectViewDAO<T>` gains `SearchAs(IQueryable<TResult>)` and `Search(IQueryable<T>)` overloads that accept any `IQueryable` source. A new `AsSource()` extension narrows an `IQueryable<T>` (the static type after `Where` / `Select`) back to `QuerySource<T>`, so `ToListAsync`, `CountAsync` and `ToAsyncEnumerable` remain reachable.
+- **`Expr.From<T>()` returns `QuerySource<T>`** (`LiteOrm.Common`): the return type changes from `TableExpr` to the new `QuerySource<T>`. `Expr.From(Type)` and `Expr.FromRelated<T>()` are unchanged.
 
 - **Redundant generic lambda overloads are removed** (`LiteOrm.Common`): `Expr.Exists<T>(LogicExpr, ...)` and `Expr.ExistsRelated<T>(LogicExpr?, ...)` are deleted, and `ISourceAnchor.Where<T>(Expression<Func<T, bool>>)` is deleted as well.
 
 - **The `TableRef` abstract class is removed** (`LiteOrm.Common`): `JoinedTable` now derives from `SqlObject`; `ColumnRef.Table` and the two-argument constructor take `JoinedTable?` instead of `TableRef?`.
 
 ### New Features
+
+- **New `QuerySource<T>` query source** (`LiteOrm.Common` / `LiteOrm`): implements `IOrderedQueryable<T>`, so queries can be composed outside a lambda; pass an executor (`IQuerySourceExecutor<T>`, implemented by `ObjectViewDAO<T>`) to run them directly. After `Where` / `Select`, call `AsSource()` to narrow back to `QuerySource<T>` and use the async methods. `ObjectViewDAO<T>` gains matching `SearchAs(IQueryable<TResult>)` and `Search(IQueryable<T>)` overloads.
+
+- **Method handlers support generic definitions** (`LiteOrm.Common`): `LambdaExprConverter` looks up registered handlers by specialized type first, then by the generic type definition.
 
 - **Root-level aggregate functions in lambdas** (`LiteOrm.Common`): `Count`, `LongCount`, `Sum`, `Average`, `Avg`, `Max` and `Min` now convert inside `Expr.Query`.
 

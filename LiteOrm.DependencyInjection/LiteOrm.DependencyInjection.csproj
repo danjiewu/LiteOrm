@@ -20,7 +20,7 @@
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
       8.1.13:
-      - 同步 LiteOrm.Common 8.1.13 / LiteOrm 8.1.13。
+      - 同步 LiteOrm.Common 8.1.13 / LiteOrm 8.1.13；注册 QuerySource&lt;&gt; 与 IQuerySourceExecutor&lt;&gt;。
     </PackageReleaseNotes>
 	</PropertyGroup>
 	<PropertyGroup>
