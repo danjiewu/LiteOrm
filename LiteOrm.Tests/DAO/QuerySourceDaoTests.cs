@@ -227,12 +227,19 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
-        public async Task QuerySource_FromContainer_JoinAtRuntime_Throws()
+        public void QuerySource_FromContainer_JoinAtRuntime_BuildsJoinExpression()
         {
-            await SeedAsync("QsJoin", 1);
+            // 实例方法在 Lambda 外直接拼装真实 JOIN 表达式，不再抛异常
+            SqlSegment expr = Query
+                .Join<TestDepartment>((u, d) => u.DeptId == d.Id)
+                .GetQueryExpr();
 
-            Assert.Throws<InvalidOperationException>(() =>
-                Query.Join<TestDepartment>((u, d) => u.DeptId == d.Id));
+            var from = Assert.IsType<FromExpr>(expr);
+            var join = Assert.Single(from.Joins);
+            Assert.Equal(TableJoinType.Left, join.JoinType);
+            Assert.IsType<TableExpr>(join.Source);
+            Assert.Equal(typeof(TestDepartment), ((TableExpr)join.Source!).Type);
+            Assert.NotNull(join.On);
         }
     }
 }

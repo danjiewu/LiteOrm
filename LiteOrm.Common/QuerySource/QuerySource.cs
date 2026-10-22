@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -28,7 +29,7 @@ namespace LiteOrm.Common
 #if NET8_0_OR_GREATER
     [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "T1 flows from Expr.From<T>, whose generic parameter already carries the required annotations; execution is delegated to the executor at runtime.")]
 #endif
-    public sealed class QuerySource<T1> : IOrderedQueryable<T1>, IQuerySource
+    public class QuerySource<T1> : IOrderedQueryable<T1>, IQuerySource
     {
         /// <summary>
         /// 未提供执行器时的异常消息。
@@ -186,6 +187,16 @@ namespace LiteOrm.Common
         internal IQuerySourceExecutor GetExecutor()
             => _executor ?? throw new InvalidOperationException(NoExecutorMessage);
 
+        /// <summary>
+        /// 关联的执行器，供多值泛型查询源复用。
+        /// </summary>
+        internal IQuerySourceExecutor? Executor => _executor;
+
+        /// <summary>
+        /// 已累积的查询表达式，供多值泛型查询源在其上追加连接。
+        /// </summary>
+        internal Expression QueryExpression => _expression;
+
         string[]? IQuerySource.TableArgs => TableArgs;
 
         #endregion
@@ -193,134 +204,82 @@ namespace LiteOrm.Common
         #region Join / JoinRelated
 
         /// <summary>
-        /// 连接另一个实体表，并使用显式的连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// 连接另一个实体表，并使用显式的连接条件。返回 <see cref="QuerySource{T1,T2}"/>，可继续调用 <c>Join&lt;T3&gt;</c> 追加连接。
         /// </summary>
         /// <typeparam name="T2">右表实体类型。</typeparam>
         /// <param name="on">连接条件表达式。</param>
-        /// <returns>连接结果查询源，元素为左右两表的元组，可继续 <c>Join&lt;T3&gt;</c> 追加多级连接。</returns>
-        public QuerySource<(T1, T2)> Join<T2>(Expression<Func<T1, T2, bool>> on)
-            => throw new InvalidOperationException("Join is only used for parsing lambda expressions and cannot run as a runtime query.");
+        /// <param name="joinType">连接类型，为 null 时使用左连接。</param>
+        /// <returns>元素为左右两表元组的查询源。</returns>
+        public QuerySource<T1, T2> Join<T2>(Expression<Func<T1, T2, bool>> on, TableJoinType? joinType = null)
+        {
+            if (on is null) throw new ArgumentNullException(nameof(on));
+            Func<Expression<Func<T1, T2, bool>>, TableJoinType?, QuerySource<T1, T2>> target = Join;
+            return new QuerySource<T1, T2>(_executor,
+                QuerySourceExpressionBuilder.BuildJoinCall(_expression, target.Method, Expression.Quote(on), QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
+        }
 
         /// <summary>
-        /// 连接另一个实体表，并按外键元数据自动推断连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// 连接另一个实体表，并按外键元数据自动推断连接条件。
         /// </summary>
         /// <typeparam name="T2">右表实体类型。</typeparam>
-        /// <returns>连接结果查询源，元素为左右两表的元组，可继续 <c>Join&lt;T3&gt;</c> 追加多级连接。</returns>
-        public QuerySource<(T1, T2)> JoinRelated<T2>()
-            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
+        /// <param name="joinType">连接类型，为 null 时沿用元数据中声明的连接方式。</param>
+        /// <returns>元素为左右两表元组的查询源。</returns>
+        public QuerySource<T1, T2> JoinRelated<T2>(TableJoinType? joinType = null)
+        {
+            Func<TableJoinType?, QuerySource<T1, T2>> target =
+                new Func<TableJoinType?, QuerySource<T1, T2>>(JoinRelated<T2>);
+            return new QuerySource<T1, T2>(_executor,
+                QuerySourceExpressionBuilder.BuildJoinCall(_expression, target.Method, QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
+        }
 
         /// <summary>
-        /// 连接另一个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
+        /// 连接另一个实体表，自动推断的连接条件与显式条件按 AND 合并。
         /// </summary>
         /// <typeparam name="T2">右表实体类型。</typeparam>
         /// <param name="on">附加的连接条件，与自动推断的关联条件取 AND。</param>
-        /// <returns>连接结果查询源，元素为左右两表的元组，可继续 <c>Join&lt;T3&gt;</c> 追加多级连接。</returns>
-        public QuerySource<(T1, T2)> JoinRelated<T2>(Expression<Func<T1, T2, bool>> on)
-            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，并使用覆盖所有新增表的显式连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        /// <typeparam name="T2">第一个右表实体类型。</typeparam>
-        /// <typeparam name="T3">第二个右表实体类型。</typeparam>
-        /// <param name="on">连接条件表达式，参数依次为左表和各个右表。</param>
-        /// <returns>连接结果查询源，元素为按顺序排列的三元组。</returns>
-        public QuerySource<(T1, T2, T3)> Join<T2, T3>(Expression<Func<T1, T2, T3, bool>> on)
-            => throw new InvalidOperationException("Join is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，并使用覆盖所有新增表的显式连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        public QuerySource<(T1, T2, T3, T4)> Join<T2, T3, T4>(Expression<Func<T1, T2, T3, T4, bool>> on)
-            => throw new InvalidOperationException("Join is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，并使用覆盖所有新增表的显式连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        public QuerySource<(T1, T2, T3, T4, T5)> Join<T2, T3, T4, T5>(Expression<Func<T1, T2, T3, T4, T5, bool>> on)
-            => throw new InvalidOperationException("Join is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，并使用覆盖所有新增表的显式连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        public QuerySource<(T1, T2, T3, T4, T5, T6)> Join<T2, T3, T4, T5, T6>(Expression<Func<T1, T2, T3, T4, T5, T6, bool>> on)
-            => throw new InvalidOperationException("Join is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，并使用覆盖所有新增表的显式连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        public QuerySource<(T1, T2, T3, T4, T5, T6, T7)> Join<T2, T3, T4, T5, T6, T7>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, bool>> on)
-            => throw new InvalidOperationException("Join is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，并按外键元数据自动推断每个右表与来源表的连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        /// <typeparam name="T2">第一个右表实体类型。</typeparam>
-        /// <typeparam name="T3">第二个右表实体类型。</typeparam>
-        /// <returns>连接结果查询源，元素为按顺序排列的三元组。</returns>
-        public QuerySource<(T1, T2, T3)> JoinRelated<T2, T3>()
-            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，并按外键元数据自动推断每个右表与来源表的连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        public QuerySource<(T1, T2, T3, T4)> JoinRelated<T2, T3, T4>()
-            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，并按外键元数据自动推断每个右表与来源表的连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        public QuerySource<(T1, T2, T3, T4, T5)> JoinRelated<T2, T3, T4, T5>()
-            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，并按外键元数据自动推断每个右表与来源表的连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        public QuerySource<(T1, T2, T3, T4, T5, T6)> JoinRelated<T2, T3, T4, T5, T6>()
-            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，并按外键元数据自动推断每个右表与来源表的连接条件。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        public QuerySource<(T1, T2, T3, T4, T5, T6, T7)> JoinRelated<T2, T3, T4, T5, T6, T7>()
-            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        /// <typeparam name="T2">第一个右表实体类型。</typeparam>
-        /// <typeparam name="T3">第二个右表实体类型。</typeparam>
-        /// <param name="on">附加的连接条件，参数依次为左表和各个右表。</param>
-        /// <returns>连接结果查询源，元素为按顺序排列的三元组。</returns>
-        public QuerySource<(T1, T2, T3)> JoinRelated<T2, T3>(Expression<Func<T1, T2, T3, bool>> on)
-            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        public QuerySource<(T1, T2, T3, T4)> JoinRelated<T2, T3, T4>(Expression<Func<T1, T2, T3, T4, bool>> on)
-            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        public QuerySource<(T1, T2, T3, T4, T5)> JoinRelated<T2, T3, T4, T5>(Expression<Func<T1, T2, T3, T4, T5, bool>> on)
-            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        public QuerySource<(T1, T2, T3, T4, T5, T6)> JoinRelated<T2, T3, T4, T5, T6>(Expression<Func<T1, T2, T3, T4, T5, T6, bool>> on)
-            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
-
-        /// <summary>
-        /// 一次连接多个实体表，自动推断的连接条件与显式条件按 AND 合并。仅用于 Lambda 表达式中构造 Expr，运行时不可执行。
-        /// </summary>
-        public QuerySource<(T1, T2, T3, T4, T5, T6, T7)> JoinRelated<T2, T3, T4, T5, T6, T7>(Expression<Func<T1, T2, T3, T4, T5, T6, T7, bool>> on)
-            => throw new InvalidOperationException("JoinRelated is only used for parsing lambda expressions and cannot run as a runtime query.");
+        /// <param name="joinType">连接类型，为 null 时沿用元数据中声明的连接方式。</param>
+        /// <returns>元素为左右两表元组的查询源。</returns>
+        public QuerySource<T1, T2> JoinRelated<T2>(Expression<Func<T1, T2, bool>> on, TableJoinType? joinType = null)
+        {
+            if (on is null) throw new ArgumentNullException(nameof(on));
+            Func<Expression<Func<T1, T2, bool>>, TableJoinType?, QuerySource<T1, T2>> target = JoinRelated<T2>;
+            return new QuerySource<T1, T2>(_executor,
+                QuerySourceExpressionBuilder.BuildJoinCall(_expression, target.Method, Expression.Quote(on), QuerySourceExpressionBuilder.JoinTypeArgument(joinType)));
+        }
 
         #endregion
     }
+
+    /// <summary>
+    /// 拼接连接查询表达式，供各元数（arity）的查询源共用。
+    /// </summary>
+    internal static class QuerySourceExpressionBuilder
+    {
+        /// <summary>
+        /// 把实例方法调用拼成表达式节点；源表达式静态类型不是方法声明类型时插入一次引用转换。
+        /// </summary>
+        /// <param name="source">左源表达式。</param>
+        /// <param name="method">连接方法。</param>
+        /// <param name="arguments">除接收者以外的方法参数。</param>
+        /// <returns>方法调用表达式。</returns>
+        internal static Expression BuildJoinCall(Expression source, MethodInfo method, params Expression[] arguments)
+        {
+            Type declaringType = method.DeclaringType!;
+            Expression instance = declaringType.IsAssignableFrom(source.Type)
+                ? source
+                : Expression.Convert(source, declaringType);
+            return Expression.Call(instance, method, arguments);
+        }
+
+        /// <summary>
+        /// 把连接类型包成可放进表达式树的常量；null 表示沿用默认规则。
+        /// </summary>
+        /// <param name="joinType">连接类型。</param>
+        /// <returns>连接类型常量。</returns>
+        internal static ConstantExpression JoinTypeArgument(TableJoinType? joinType)
+            => Expression.Constant(joinType, typeof(TableJoinType?));
+    }
+
 
     /// <summary>
     /// 非泛型视图：让解析器无需反射即可拿到查询根的元数据。

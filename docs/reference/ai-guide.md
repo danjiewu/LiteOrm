@@ -499,8 +499,8 @@ services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
 | `Expr.From(type, tableArgs)`                     | `TableExpr`       | 按 `Type` 构造链式查询起点；泛型场景用 `Expr.From<T>()` 获取 `QuerySource<T>` |
 | `Expr.From<T>(tableArgs)`                        | `QuerySource<T>`  | 构造查询源；Lambda 内由解析器接管，Lambda 外可拼 IQueryable 查询，无执行器时不能取数 |
 | `Expr.From<T>()...GetQueryExpr()`                | `Expr`            | 把 IQueryable 查询链转成 Expr，不需要执行器            |
-| `QuerySource<T>.Join<T2>(on)` / `JoinRelated<T2>()` | `QuerySource<(T1, T2)>` | Lambda 内连接右表，可继续 `Join<T3>()` 做多级连接 |
-| `QuerySource<T>.Join<T2,...,Tn>(on)` / `JoinRelated<T2,...,Tn>()` | `QuerySource<(T1,...,Tn)>` | 一次连接多表，n 最多 7，结果元组平铺；显式条件按各分支引用的右表拆分 |
+| `QuerySource<T1>.Join<T2>(on)` / `JoinRelated<T2>()` | `QuerySource<T1, T2>` | 连接一张右表，返回元素为 `(T1, T2)` 的查询源 |
+| `QuerySource<T1,...,Tn>.Join<Tn+1>(on)` / `JoinRelated<Tn+1>()` | `QuerySource<T1,...,Tn+1>` | 链式追加右表，n 最多 7，结果元组始终平铺；每步只写一张右表类型 |
 | `IQueryable<T>.AsSource()`                       | `QuerySource<T>`  | 把 `IQueryable<T>` 静态类型收窄回查询源，继续调用异步方法 |
 | `Expr.Sql("key", arg)`                           | `GenericSqlExpr`  | 动态 SQL 片段                                   |
 | `Expr.Delete<T>(tableArgs)`                      | `DeleteExpr`      | 创建 DELETE 表达式                               |

@@ -335,12 +335,22 @@ namespace LiteOrm.Common
         /// <summary>
         /// 解包 IQueryable&lt;T&gt; / IEnumerable&lt;T&gt; / QuerySource&lt;T&gt; 形式的源参数，取其元素类型。
         /// </summary>
-        private static Type UnwrapSourceType(Type type) =>
-            type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(IQueryable<>)
-                || type.GetGenericTypeDefinition() == typeof(IEnumerable<>)
-                || type.GetGenericTypeDefinition() == typeof(QuerySource<>))
-                ? type.GetGenericArguments()[0]
-                : type;
+        private static Type UnwrapSourceType(Type type)
+        {
+            if (type.IsGenericType)
+            {
+                Type definition = type.GetGenericTypeDefinition();
+                if (definition == typeof(IQueryable<>) || definition == typeof(IEnumerable<>))
+                    return type.GetGenericArguments()[0];
+            }
+            // QuerySource<T1> / QuerySource<T1,T2> ... 的元素类型由基类 QuerySource<TElement> 的类型实参给出
+            for (Type? current = type; current is not null; current = current.BaseType)
+            {
+                if (current.IsGenericType && current.GetGenericTypeDefinition() == typeof(QuerySource<>))
+                    return current.GetGenericArguments()[0];
+            }
+            return type;
+        }
 
         /// <summary>
         /// 转换表达式节点为 Expr 对象。
@@ -1030,7 +1040,7 @@ namespace LiteOrm.Common
                 return HandleExists(node);
             else if (type == typeof(Expr) && (method.Name == nameof(Expr.From) || method.Name == nameof(Expr.FromRelated)))
                 return HandleFrom(node);
-            else if (type != null && type.IsGenericType && type.GetGenericTypeDefinition() == typeof(QuerySource<>)
+            else if (type != null && typeof(IQuerySource).IsAssignableFrom(type)
                 && (method.Name == nameof(QuerySource<object>.Join) || method.Name == nameof(QuerySource<object>.JoinRelated)))
                 return HandleJoin(node);
 
@@ -1578,9 +1588,18 @@ namespace LiteOrm.Common
         {
             // 右表类型从返回类型 QuerySource<(T1, T2, ...)> 解析，不依赖泛型参数个数与顺序
             IReadOnlyList<Type> rightTypes = ResolveJoinRightTypes(node);
-            // Join / JoinRelated 是 QuerySource<T1> 上的实例方法，接收者一定在 Object 上
-            Expr left = ConvertInternal(node.Object
-                ?? throw new ArgumentException($"Join source is missing on {node.Method.Name}.", nameof(node)));
+            // 实例方法的接收者在 Object 上；扩展方法的接收者是第一个参数
+            Expression sourceExpression = node.Object
+                ?? (node.Arguments.Count > 0 ? node.Arguments[0] : throw new ArgumentException($"Join source is missing on {node.Method.Name}.", nameof(node)));
+            Expr left = ConvertInternal(sourceExpression);
+
+            // Where 先于 Join 时源已变成 WhereExpr，沿 Source 回溯到表/连接链，连接完成后再把筛选包回外层
+            var filters = new List<WhereExpr>();
+            while (left is WhereExpr { Source: not null } where)
+            {
+                filters.Add(where);
+                left = where.Source;
+            }
 
             // 左源统一收敛到 FromExpr：TableExpr 作为主表新建，FromExpr 直接复用以便追加后续连接
             FromExpr from;
@@ -1596,7 +1615,9 @@ namespace LiteOrm.Common
             }
 
             // 先构造所有右表别名并计算 ON，再统一追加，令元组树只包含左参数对应的表
-            LogicExpr?[] conditions = BuildJoinConditions(node, from, joinTables);
+            LambdaExpression? on = GetJoinLambda(node);
+            LogicExpr?[] conditions = BuildJoinConditions(node, from, joinTables, on);
+            TableJoinType? explicitJoinType = GetJoinTypeArgument(node);
             for (int i = 0; i < joinTables.Count; i++)
             {
                 TableExpr joinTable = joinTables[i];
@@ -1606,46 +1627,43 @@ namespace LiteOrm.Common
                     // 没有条件的连接段使用 CROSS JOIN，避免生成缺少 ON 的 LEFT JOIN
                     JoinType = condition is null
                         ? TableJoinType.Cross
-                        : ResolveJoinType(node.Method.Name, from.Source as TableExpr, joinTable.Type!)
+                        : ResolveJoinType(node.Method.Name, explicitJoinType, from.Source as TableExpr, joinTable.Type!)
                 };
                 from.Joins.Add(joinExpr);
             }
-            return from;
+
+            // 把 Join 之前累积的筛选重新包回连接结果之上
+            Expr result = from;
+            for (int i = filters.Count - 1; i >= 0; i--)
+            {
+                filters[i].Source = (SqlSegment)result;
+                result = filters[i];
+            }
+            return result;
         }
 
         /// <summary>
-        /// 从 Join / JoinRelated 的返回类型中解析全部右表类型。
-        /// 支持 <c>QuerySource&lt;(T1, T2, ...)&gt;</c> 与 <c>IEnumerable&lt;(T1, T2, ...)&gt;</c> 两种返回形态。
+        /// 从 Join / JoinRelated 的方法泛型实参解析右表类型。
         /// </summary>
         private static IReadOnlyList<Type> ResolveJoinRightTypes(MethodCallExpression node)
         {
-            Type returnType = node.Method.ReturnType;
-            Type? element = null;
-            if (returnType.IsGenericType)
-            {
-                Type definition = returnType.GetGenericTypeDefinition();
-                if (definition == typeof(IEnumerable<>) || definition == typeof(QuerySource<>))
-                    element = returnType.GetGenericArguments()[0];
-            }
-            if (element is not null && IsTupleType(element))
-            {
-                // 元组第一个类型参数是左源，其余按顺序对应各个右表
-                return element.GetGenericArguments().Skip(1).ToArray();
-            }
-            throw new ArgumentException(
-                $"Cannot resolve the joined table types from the return type of {node.Method.Name}. " +
-                $"Expected QuerySource<(T1, T2, ...)> or IEnumerable<(T1, T2, ...)>, but got {returnType.Name}.");
+            // 连接方法只追加一张表，右表类型即方法自身的泛型实参
+            Type[] typeArguments = node.Method.GetGenericArguments();
+            if (typeArguments.Length == 0)
+                throw new ArgumentException(
+                    $"Cannot resolve the joined table type from {node.Method.Name}: the join method has no generic argument.",
+                    nameof(node));
+            return typeArguments;
         }
 
         /// <summary>
         /// 构造 Join 的 ON 条件数组。Join 使用显式条件，并按条件中引用到的右表拆分到对应的 JOIN 段；
         /// JoinRelated 使用自动推断的关联条件，若同时提供了显式条件则两者按 AND 合并。
         /// </summary>
-        private LogicExpr?[] BuildJoinConditions(MethodCallExpression node, FromExpr from, IReadOnlyList<TableExpr> joinTables)
+        private LogicExpr?[] BuildJoinConditions(MethodCallExpression node, FromExpr from, IReadOnlyList<TableExpr> joinTables, LambdaExpression? on)
         {
             bool isRelated = node.Method.Name == nameof(QuerySource<object>.JoinRelated);
-            // Join / JoinRelated 都是 QuerySource<T1> 上的实例方法，左源在 Object 上，on 是唯一参数
-            bool hasExplicitOn = node.Arguments.Count > 0;
+            bool hasExplicitOn = on is not null;
             var conditions = new LogicExpr?[joinTables.Count];
 
             if (isRelated)
@@ -1667,9 +1685,8 @@ namespace LiteOrm.Common
                 }
             }
 
-            if (!hasExplicitOn) return conditions;
+            if (on is null) return conditions;
 
-            LambdaExpression on = UnwrapLambda(node.Arguments[node.Arguments.Count - 1]);
             if (on.Parameters.Count != joinTables.Count + 1)
                 throw new ArgumentException(
                     $"The join condition for {node.Method.Name} expects {joinTables.Count + 1} parameters (left source plus each joined table), " +
@@ -1803,13 +1820,43 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 解析连接类型：JoinRelated 优先沿用元数据中声明的连接方式，其余情况使用左连接。
+        /// 提取 Join / JoinRelated 的显式条件 Lambda。
+        /// 实例方法的条件从第一个参数开始，扩展方法的第一个参数是接收者，条件位于其后。
+        /// </summary>
+        private static LambdaExpression? GetJoinLambda(MethodCallExpression node)
+        {
+            int start = node.Object is null ? 1 : 0;
+            for (int i = start; i < node.Arguments.Count; i++)
+            {
+                Expression argument = node.Arguments[i];
+                if (argument is UnaryExpression { NodeType: ExpressionType.Quote } || argument is LambdaExpression)
+                    return UnwrapLambda(argument);
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 读取连接类型的可选参数；未指定或显式传 null 时返回 null，交由默认规则决定。
+        /// </summary>
+        private static TableJoinType? GetJoinTypeArgument(MethodCallExpression node)
+        {
+            if (node.Arguments.Count == 0) return null;
+            Expression last = node.Arguments[node.Arguments.Count - 1];
+            // 显式传入非 nullable 枚举时，编译器会插入到 Nullable<T> 的转换节点
+            while (last is UnaryExpression unary && (unary.NodeType == ExpressionType.Convert || unary.NodeType == ExpressionType.ConvertChecked))
+                last = unary.Operand;
+            return last is ConstantExpression { Value: TableJoinType joinType } ? joinType : null;
+        }
+
+        /// <summary>
+        /// 解析连接类型：显式指定的连接类型优先，JoinRelated 其次沿用元数据中声明的连接方式，其余情况使用左连接。
         /// </summary>
 #if NET8_0_OR_GREATER
         [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = "Type comes from the lambda's generic arguments; entity metadata is preserved via [Table] under AOT.")]
 #endif
-        private static TableJoinType ResolveJoinType(string methodName, TableExpr? leftTable, Type rightType)
+        private static TableJoinType ResolveJoinType(string methodName, TableJoinType? explicitJoinType, TableExpr? leftTable, Type rightType)
         {
+            if (explicitJoinType.HasValue) return explicitJoinType.Value;
             if (methodName == nameof(QuerySource<object>.JoinRelated) && leftTable?.Type != null)
             {
                 var view = TableInfoProvider.Instance.GetTableView(leftTable.Type);
@@ -1995,9 +2042,8 @@ namespace LiteOrm.Common
                     _result = false;
                     return node; // 直接返回原节点，避免继续访问子表达式影响结果
                 }
-                // QuerySource<T>.Join / JoinRelated 同为占位方法
-                if (node.Method.DeclaringType is Type declaring && declaring.IsGenericType
-                    && declaring.GetGenericTypeDefinition() == typeof(QuerySource<>))
+                // QuerySource 各元数（QuerySource<T1> / QuerySource<T1,T2> ...）上的连接方法都必须交给 ConvertMethodCall 解析
+                if (node.Method.DeclaringType is Type declaring && typeof(IQuerySource).IsAssignableFrom(declaring))
                 {
                     _result = false;
                     return node; // 直接返回原节点，避免继续访问子表达式影响结果

@@ -124,10 +124,10 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
-        public void Convert_NestedJoin_AppendsSecondJoin()
+        public void Convert_ChainedJoin_AppendsSecondJoin()
         {
             var converter = new LambdaExprConverter(
-                (Expression<Func<IQueryable<JoinOrder>, IEnumerable<((JoinOrder, JoinCustomer), JoinRegion)>>>)(
+                (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer, JoinRegion)>>>)(
                     q => Expr.From<JoinOrder>()
                           .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
                           .Join<JoinRegion>((x, r) => x.Item1.RegionId == r.Id)));
@@ -215,21 +215,6 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal("Name", select.Selects[1].Alias);
         }
 
-        [Fact]
-        public void Convert_NestedTuple_AccessingBranchThrows()
-        {
-            // ((A,B),C) 上的 x.Item1 指向嵌套元组，不能当作列
-            var converter = new LambdaExprConverter(
-                (Expression<Func<IQueryable<JoinOrder>, IEnumerable<object>>>)(
-                    q => Expr.From<JoinOrder>()
-                          .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
-                          .Join<JoinRegion>((x, r) => x.Item1.RegionId == r.Id)
-                          .Select(y => new { y.Item1 })));
-
-            var ex = Assert.Throws<NotSupportedException>(() => converter.ToSqlSegment());
-            Assert.Contains("nested tuple", ex.Message);
-        }
-
         #endregion
 
         #region 多级连接
@@ -238,11 +223,11 @@ namespace LiteOrm.Common.UnitTests
         public void QuerySource_TripleJoin_AppendsThreeJoins()
         {
             var converter = new LambdaExprConverter(
-                (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(((JoinOrder, JoinCustomer), JoinRegion), JoinZone)>>>)(
+                (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer, JoinRegion, JoinZone)>>>)(
                     q => Expr.From<JoinOrder>()
                           .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
                           .Join<JoinRegion>((x, r) => x.Item1.RegionId == r.Id)
-                          .Join<JoinZone>((y, z) => y.Item2.Id == z.RegionId)));
+                          .Join<JoinZone>((y, z) => y.Item3.Id == z.RegionId)));
 
             var from = Assert.IsType<FromExpr>(converter.ToSqlSegment());
 
@@ -251,7 +236,7 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal(typeof(JoinRegion), ((TableExpr)from.Joins[1].Source!).Type);
             Assert.Equal(typeof(JoinZone), ((TableExpr)from.Joins[2].Source!).Type);
 
-            // 第三段的 Item2 指向上一次的右表 JoinRegion
+            // 第三段的 Item3 指向第二段连接的表 JoinRegion
             string on = from.Joins[2].On!.ToString()!;
             Assert.Contains("RegionId", on);
             Assert.DoesNotContain("Item1", on);
@@ -285,8 +270,8 @@ namespace LiteOrm.Common.UnitTests
             var converter = new LambdaExprConverter(
                 (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer, JoinRegion)>>>)(
                     q => Expr.From<JoinOrder>()
-                          .Join<JoinCustomer, JoinRegion>((o, c, r) =>
-                              o.CustomerId == c.Id && c.Id == r.Id)));
+                          .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                          .Join<JoinRegion>((x, r) => x.Item2.Id == r.Id)));
 
             var from = Assert.IsType<FromExpr>(converter.ToSqlSegment());
 
@@ -314,8 +299,8 @@ namespace LiteOrm.Common.UnitTests
             var converter = new LambdaExprConverter(
                 (Expression<Func<IQueryable<JoinOrder>, IEnumerable<object>>>)(
                     q => Expr.From<JoinOrder>()
-                          .Join<JoinCustomer, JoinRegion>((o, c, r) =>
-                              o.CustomerId == c.Id && c.Id == r.Id)
+                          .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                          .Join<JoinRegion>((x, r) => x.Item2.Id == r.Id)
                           .Where(x => x.Item3.Name == "North")
                           .Select(x => new { CustomerName = x.Item2.Name, RegionName = x.Item3.Name })));
 
@@ -338,7 +323,7 @@ namespace LiteOrm.Common.UnitTests
         {
             var converter = new LambdaExprConverter(
                 (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer, JoinRegion)>>>)(
-                    q => Expr.From<JoinOrder>().JoinRelated<JoinCustomer, JoinRegion>()));
+                    q => Expr.From<JoinOrder>().JoinRelated<JoinCustomer>().JoinRelated<JoinRegion>()));
 
             var from = Assert.IsType<FromExpr>(converter.ToSqlSegment());
 
@@ -354,8 +339,8 @@ namespace LiteOrm.Common.UnitTests
             var converter = new LambdaExprConverter(
                 (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer, JoinRegion)>>>)(
                     q => Expr.From<JoinOrder>()
-                          .JoinRelated<JoinCustomer, JoinRegion>((o, c, r) =>
-                              o.Amount > 10 && r.Name != null)));
+                          .JoinRelated<JoinCustomer>((o, c) => o.Amount > 10)
+                          .JoinRelated<JoinRegion>((x, r) => r.Name != null)));
 
             var from = Assert.IsType<FromExpr>(converter.ToSqlSegment());
 
@@ -376,14 +361,12 @@ namespace LiteOrm.Common.UnitTests
             var converter = new LambdaExprConverter(
                 (Expression<Func<IQueryable<JoinOrder>, IEnumerable<object>>>)(
                     q => Expr.From<JoinOrder>()
-                          .Join<JoinCustomer, JoinRegion, JoinZone, JoinStore, JoinCity, JoinCountry>(
-                              (o, c, r, z, s, ci, co) =>
-                                  o.CustomerId == c.Id
-                                  && c.Id == r.Id
-                                  && r.Id == z.RegionId
-                                  && z.Id == s.RegionId
-                                  && s.Id == ci.StoreId
-                                  && ci.Id == co.CityId)
+                          .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                          .Join<JoinRegion>((x, r) => x.Item2.Id == r.Id)
+                          .Join<JoinZone>((x, z) => x.Item3.Id == z.RegionId)
+                          .Join<JoinStore>((x, s) => x.Item4.Id == s.RegionId)
+                          .Join<JoinCity>((x, ci) => x.Item5.Id == ci.StoreId)
+                          .Join<JoinCountry>((x, co) => x.Item6.Id == co.CityId)
                           .Where(x => x.Item7.Id > 0)
                           .Select(x => new { x.Item7.Id })));
 
@@ -401,6 +384,85 @@ namespace LiteOrm.Common.UnitTests
             Assert.Equal(6, System.Text.RegularExpressions.Regex.Matches(sql, "JOIN").Count);
             Assert.Contains("JoinCountries", sql);
             Assert.DoesNotContain("Item7", sql);
+        }
+
+        #endregion
+
+        #region 实例方法与连接类型
+
+        [Fact]
+        public void Convert_ExplicitJoinType_RendersRequestedJoin()
+        {
+            AssertJoinType(
+                q => Expr.From<JoinOrder>().Join<JoinCustomer>((o, c) => o.CustomerId == c.Id, TableJoinType.Inner),
+                TableJoinType.Inner);
+
+            AssertJoinType(
+                q => Expr.From<JoinOrder>().Join<JoinCustomer>((o, c) => o.CustomerId == c.Id, TableJoinType.Right),
+                TableJoinType.Right);
+
+            AssertJoinType(
+                q => Expr.From<JoinOrder>().Join<JoinCustomer>((o, c) => o.CustomerId == c.Id, TableJoinType.Full),
+                TableJoinType.Full);
+        }
+
+        [Fact]
+        public void Convert_JoinRelatedWithExplicitJoinType_OverridesMetadata()
+        {
+            var from = Assert.IsType<FromExpr>(new LambdaExprConverter(
+                (Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer)>>>)(
+                    q => Expr.From<JoinOrder>().JoinRelated<JoinCustomer>(TableJoinType.Right)))
+                .ToSqlSegment());
+
+            var join = Assert.Single(from.Joins);
+            Assert.Equal(TableJoinType.Right, join.JoinType);
+            Assert.NotNull(join.On);
+        }
+
+        [Fact]
+        public void InstanceJoin_BuildsJoinExpressionAtRuntime()
+        {
+            // Lambda 外直接调用实例方法拼装连接，GetQueryExpr 得到真实 FromExpr
+            QuerySource<JoinOrder, JoinCustomer> source = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id, TableJoinType.Inner);
+
+            var from = Assert.IsType<FromExpr>(source.GetQueryExpr());
+            var join = Assert.Single(from.Joins);
+
+            Assert.Equal(TableJoinType.Inner, join.JoinType);
+            Assert.Equal(typeof(JoinCustomer), ((TableExpr)join.Source!).Type);
+            Assert.NotNull(join.On);
+        }
+
+        [Fact]
+        public void InstanceJoin_ChainsAfterWhereAtRuntime()
+        {
+            // Where 之后静态类型退回 IQueryable<T>，先 AsSource 收窄再继续连接
+            var source = Expr.From<JoinOrder>()
+                .Where(o => o.Amount > 0)
+                .AsSource()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((x, r) => x.Item1.RegionId == r.Id);
+
+            var where = Assert.IsType<WhereExpr>(source.GetQueryExpr());
+            var from = Assert.IsType<FromExpr>(where.Source);
+
+            Assert.Equal(2, from.Joins.Count);
+            Assert.Equal(typeof(JoinCustomer), ((TableExpr)from.Joins[0].Source!).Type);
+            Assert.Equal(typeof(JoinRegion), ((TableExpr)from.Joins[1].Source!).Type);
+            Assert.Contains("Amount", where.Where!.ToString());
+            Assert.DoesNotContain("Item1", from.Joins[1].On!.ToString());
+        }
+
+        private static void AssertJoinType(
+            Expression<Func<IQueryable<JoinOrder>, IEnumerable<(JoinOrder, JoinCustomer)>>> query,
+            TableJoinType expected)
+        {
+            var from = Assert.IsType<FromExpr>(new LambdaExprConverter(query).ToSqlSegment());
+            var join = Assert.Single(from.Joins);
+
+            Assert.Equal(expected, join.JoinType);
+            Assert.Contains(expected.ToString().ToUpperInvariant() + " JOIN", ToSql(from).Sql);
         }
 
         #endregion

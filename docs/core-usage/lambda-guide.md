@@ -255,33 +255,32 @@ var merged = Query<Order, IEnumerable<(Order, Customer)>>(
     q => From<Order>().JoinRelated<Customer>((o, c) => o.Amount > 0)
 );
 
-// 一次连接多张表：结果平铺为 (Order, Customer, Region)，最多 7 个元素
+// 多表连接：每次只写一张右表，结果逐级平铺为 (Order, Customer, Region)
 var multiple = Query<Order, IEnumerable<(Order, Customer, Region)>>(
     q => From<Order>()
-          .Join<Customer, Region>((o, c, r) =>
-              o.CustomerId == c.Id && c.RegionId == r.Id)
+          .Join<Customer>((o, c) => o.CustomerId == c.Id)
+          .Join<Region>((x, r) => x.Item2.RegionId == r.Id)
           .Where(x => x.Item3.Name == "North")
 );
 
-// 多表自动推断：每个右表都按最内层主表寻找关联
+// 多表自动推断：每次 JoinRelated 同样只写一张右表
 var multipleRelated = Query<Order, IEnumerable<(Order, Customer, Region)>>(
-    q => From<Order>().JoinRelated<Customer, Region>()
+    q => From<Order>().JoinRelated<Customer>().JoinRelated<Region>()
 );
 ```
 
-返回的是元素元组序列，`Where` / `OrderBy` 会保持元素元组类型，`Select` 则会把元素类型改成投影结果。元组元素用 `Item1`、`Item2`……`Item7` 访问，分别对应左表和各个右表，解析时各自带上正确的表别名。`Join<T2, ..., Tn>` / `JoinRelated<T2, ..., Tn>` 的 `n` 最多到 7，结果元组按顺序平铺；显式条件写在一个 lambda 中，参数依次是左表和各个右表，转换器会按每个 `&&` 分支引用到的最右侧右表，把条件拆到对应的 JOIN 段。
+返回的是元素元组序列，`Where` / `OrderBy` 会保持元素元组类型，`Select` 则会把元素类型改成投影结果。元组元素用 `Item1`、`Item2`……`Item7` 访问，分别对应左表和各个右表，解析时各自带上正确的表别名。多表连接采用链式调用：`From<T1>()` 返回 `QuerySource<T1>`，`Join<T2>` 返回 `QuerySource<T1, T2>`，再调用 `Join<T3>` 得到 `QuerySource<T1, T2, T3>`，依次最多到 7 个元素。结果元组始终按顺序平铺，链式调用的 `on` 参数是「已连接的元组 + 新右表」。
 
-`Join` / `JoinRelated` 只能在 Lambda 内解析，所以上面用 `Expr.Query` 构造；`Expr.Query` 未标记过期，与 `Expr.From<T>()` 链式写法一样是受支持的入口。
+`Join` / `JoinRelated` 是实例方法，既能在 Lambda 内解析，也能在 Lambda 外直接拼表达式；`Expr.Query` 与 `Expr.From<T>()` 链式写法都是受支持的入口。
 
 几处要点：
 
 - `Join` 生成的 SQL 形如 `FROM Orders T0 LEFT JOIN Customers T1 ON T0.CustomerId = T1.Id`，连接类型默认左连接。
 - `JoinRelated` 推断不到关联关系时抛 `InvalidOperationException`，提示改用带条件的 `Join`。这类表需要先用 `[ForeignType]` 或 `[TableJoin]` 声明关联。
-- 支持多级连接，`From<A>().Join<B>(...).Join<C>(...)` 会连续追加 JOIN。连接结果仍是 `QuerySource`，所以能一路接下去；第二级 ON 里用 `x.Item1.Column` 引用左侧已有的表，第三级的左参数是 `((A, B), C)`，写法是 `y.Item2.Column` 与 `y.Item1.Item1.Column`。
-- 多表 `Join<T2, ..., Tn>` 的单个显式条件会按 `&&` 拆分；如果某个新增表没有任何条件落点，该 JOIN 段会生成 `CROSS JOIN`。多表 `JoinRelated<T2, ..., Tn>` 的每个右表都按最内层主表推断关联，与链式 `JoinRelated` 的行为一致；显式条件按同样的规则拆到各段，并与自动条件取 AND。
-- 从已经是元组的 `QuerySource<T>` 再调用多表重载时，左侧元组会作为结果的 `Item1` 保留，整体仍是嵌套结构。要得到完全平铺的 3–7 元组，请从单表源一次写全右表类型。
+- 支持多级连接，`From<A>().Join<B>(...).Join<C>(...)` 会连续追加 JOIN。第二级连接的 `on` 参数是 `(A, B)` 元组，用 `x.Item1` / `x.Item2` 引用已连接的表；第三级连接的 `on` 参数是 `(A, B, C)`，用 `x.Item3` 引用刚连接的第三张表。
+- 链式连接中每个 `Join` / `JoinRelated` 只负责追加一张表，显式条件只需描述该段与已连接表的关联；`JoinRelated` 仍按外键元数据推断条件，显式条件与自动条件取 AND。
 - 连接表别名按分配顺序生成，需要按别名手工拼 `SelectItemExpr` 时从 `from.Source.Alias` 与 `from.Joins[i].Source.Alias` 读取，不要写死 `T1`，外层查询可能已经占用过该编号。
-- `Select(x => x.Item1)` 这种整表投影不支持，`Select` 里请写具体列，例如 `Select(x => new { x.Item1.Id, x.Item2.Name })`。嵌套元组上的 `x.Item1` 直接当列用会抛 `NotSupportedException`。
+- `Select(x => x.Item1)` 这种整表投影不支持，`Select` 里请写具体列，例如 `Select(x => new { x.Item1.Id, x.Item2.Name })`。元组元素 `x.Item1` 直接当列用会抛 `NotSupportedException`。
 - `Join` / `JoinRelated` 后接 `Select` 时元素类型已经变化，`Expr.Query<T, TResult>` 的 `TResult` 不能再写连接结果的元组类型，应改为 `IEnumerable<object>`（或与投影结果类型兼容的接口）。
 
 `QuerySource<T>` 实现 `IQueryable<T>`，所以在 Lambda 之外也能拼查询，再交给 DAO 转成 SQL 执行：

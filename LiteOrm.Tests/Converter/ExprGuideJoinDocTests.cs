@@ -7,8 +7,8 @@ using LiteOrm.Common;
 using LiteOrm.Tests.Models;
 using Xunit;
 
-// Join / JoinRelated / 根级聚合只在 Lambda 内被解析，脱离 Lambda 会抛异常，
-// 因此这些文档形态仍需通过 Expr.Query 构造表达式树
+// Join / JoinRelated 现在在 Lambda 外也能直接调用实例方法拼装表达式，
+// 以下按文档示例仍以 Expr.Query 的 Lambda 形态验证
 
 namespace LiteOrm.Common.UnitTests
 {

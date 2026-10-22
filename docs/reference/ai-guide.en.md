@@ -499,8 +499,8 @@ Event subscribers are resolved lazily: constructing an entity service instance n
 | `Expr.From(type, tableArgs)` | `TableExpr` | Builds a chained-query starting point from a `Type`; use `Expr.From<T>()` for a `QuerySource<T>` |
 | `Expr.From<T>(tableArgs)` | `QuerySource<T>` | Builds a query source; handled by the lambda parser inside a lambda, composes IQueryable queries outside it, needs an executor to run |
 | `Expr.From<T>()...GetQueryExpr()` | `Expr` | Turns a composed IQueryable chain into an Expr, no executor needed |
-| `QuerySource<T>.Join<T2>(on)` / `JoinRelated<T2>()` | `QuerySource<(T1, T2)>` | Joins the right table inside a lambda; chain `Join<T3>()` for multi-level joins |
-| `QuerySource<T>.Join<T2,...,Tn>(on)` / `JoinRelated<T2,...,Tn>()` | `QuerySource<(T1,...,Tn)>` | Joins several tables at once (n up to 7) into a flat tuple; explicit conditions are split by the right tables they reference |
+| `QuerySource<T1>.Join<T2>(on)` / `JoinRelated<T2>()` | `QuerySource<T1, T2>` | Joins one right table and returns a query source whose element is `(T1, T2)` |
+| `QuerySource<T1,...,Tn>.Join<Tn+1>(on)` / `JoinRelated<Tn+1>()` | `QuerySource<T1,...,Tn+1>` | Appends one right table per call, chaining up to seven elements; the tuple stays flat and each step names only the new right table |
 | `IQueryable<T>.AsSource()` | `QuerySource<T>` | Narrows the `IQueryable<T>` static type back to the query source for async methods |
 | `Expr.Sql("key", arg)` | `GenericSqlExpr` | Dynamic SQL fragment |
 | `Expr.Delete<T>(tableArgs)` | `DeleteExpr` | Creates a DELETE expression |
