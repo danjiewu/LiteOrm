@@ -50,10 +50,15 @@ var currentUserFilter = Sql("CurrentUserFilter");
 - `Aggregate(name, expr, isDistinct)`: aggregate wrapper
 - `Sql(key, arg)`: registered dynamic SQL fragment for runtime-context filters
 
-`Count`, `Sum`, `Average`, `Max`, and `Min` take two routes on `QuerySource<T>`: written into a query they convert to aggregate SQL, and with an executor bound they fetch data directly.
+`Count`, `Sum`, `Average`, `Max`, and `Min` can be parsed from an IQueryable Lambda into aggregate SQL, or composed directly on `QuerySource<T>`:
 
 ```csharp
-// Aggregate segment only: compose it with a structural Select, no lambda needed
+// Parse aggregate SQL directly from an IQueryable Lambda
+var total = Expr.Query<Order, int>(q => q.Count());
+var amountSum = Expr.Query<Order, decimal>(q => q.Sum(o => o.Amount));
+var avgAmount = Expr.Query<Order, decimal>(q => q.Average(o => o.Amount));
+
+// Or build the aggregate segment with a structural Select, no lambda needed
 var countExpr = Expr.From(typeof(Order)).Select(Expr.Aggregate("COUNT", Expr.Const(1)));
 var sumExpr = Expr.From(typeof(Order)).Select(Expr.Aggregate("SUM", Expr.Prop("Amount")));
 
@@ -63,8 +68,10 @@ var aboveAverage = Expr.From<Order>()
     .GetQueryExpr();
 
 // A query source with an executor can compute directly
-var total = new QuerySource<Order>(dao).Where(o => o.Status == 1).Count();
+var count = new QuerySource<Order>(dao).Where(o => o.Status == 1).Count();
 ```
+
+Both `Expr.Query` and `Expr.From<T>()...GetQueryExpr()` are supported: the former fits shapes the lambda resolver must own, such as Join and root-level aggregates; the latter fits query composition across layers.
 
 Without a selector, `Count()` renders `COUNT(1)`; with one, the whole selector expression becomes the aggregate argument, so arithmetic such as `x => x.Amount * x.Rate` works too. Both `Average` and `Avg` map to `AVG`. The resulting `SelectExpr` carries no column alias, so a scalar subquery does not emit a redundant `AS`.
 
@@ -315,8 +322,8 @@ In day-to-day query code, the most common ones are usually:
 | `Expr.Today()` | Current date | `Expr.Today()` |
 | `Expr.Sql(key, arg)` | Dynamic SQL fragment; the result implicitly converts to `ValueTypeExpr` | `Expr.Sql("CurrentUserFilter")` |
 | `QuerySource<T>.GetQueryExpr()` | Convert a composed IQueryable chain to `Expr`, no executor needed | `Expr.From<User>().Where(u => u.Age > 18).GetQueryExpr()` |
-| `Expr.Query<T>(expression)` | Obsolete; use `Expr.From<T>()...GetQueryExpr()`. Left only for shapes the lambda resolver must own, such as Join and root-level aggregates | `Expr.Query<User>(...)` |
-| `Expr.Query<T, TResult>(expression)` | Obsolete; converts an IQueryable Lambda with a return value to Expr | `Expr.Query<User, int>(...)` |
+| `Expr.Query<T>(expression)` | Converts an IQueryable Lambda to Expr | `Expr.Query<User>(...)` |
+| `Expr.Query<T, TResult>(expression)` | Converts an IQueryable Lambda with a return value to Expr | `Expr.Query<User, int>(...)` |
 
 ## 7. Operator overloads and implicit conversions
 

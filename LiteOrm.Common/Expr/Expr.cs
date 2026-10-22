@@ -567,7 +567,6 @@ namespace LiteOrm.Common
         /// <typeparam name="T">实体类型</typeparam>
         /// <param name="expression">定义查询的 IQueryable Lambda 表达式</param>
         /// <returns>SQL 片段实例</returns>
-        [Obsolete("Use Expr.From<T>() which returns QuerySource<T>, compose the query, then call GetQueryExpr() (or ObjectViewDAO.SearchAs). Expr.Query will be removed in a future release.")]
         public static Expr Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>> expression) => LambdaExprConverter.ToSqlSegment(expression);
 
         /// <summary>
@@ -577,7 +576,6 @@ namespace LiteOrm.Common
         /// <typeparam name="TResult">返回结果类型</typeparam>
         /// <param name="expression">定义查询的 IQueryable Lambda 表达式</param>
         /// <returns>SQL 片段实例</returns>
-        [Obsolete("Use Expr.From<T>() which returns QuerySource<T>, compose the query, then call GetQueryExpr() (or ObjectViewDAO.SearchAs). Expr.Query will be removed in a future release.")]
         public static Expr Query<T, TResult>(Expression<Func<IQueryable<T>, TResult>> expression) => LambdaExprConverter.ToSqlSegment(expression);
 
         /// <summary>

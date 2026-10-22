@@ -68,7 +68,8 @@ var users3 = await userService.SearchAsAsync<UserSummary>(
 );
 ```
 
-- Service 查询入口以 Lambda / `Expr` 为主，同时支持基于 `SelectExpr` 的 `SearchAs(...)` / `SearchAsAsync(...)` 投影查询，适合业务语义清晰、需要事务/AOP/服务封装的场景。
+- Service 查询入口以 Lambda / `Expr` 为主，同时支持基于 `SelectExpr` 的 `SearchAs(...)` / `SearchAsAsync(...)` 投影查询，以及接收 `IQueryable<T>` 的查询重载；适合业务语义清晰、需要事务/AOP/服务封装的场景。
+- 需要跨层拼装查询时，可以用 `Expr.From<T>()` 起链（返回 `QuerySource<T>`），链尾调用 `GetQueryExpr()` 转成 `Expr`，或直接传给 `Search` / `SearchAs` 的 `IQueryable<T>` 重载。`Expr.Query` 与 IQueryable Lambda 写法同样保持可用。
 - Service **不提供** `ExprString` 查询重载；如果需求已经变成"手写 SQL"，就应该切到 DAO。
 
 ### 2.2 DAO
@@ -91,7 +92,7 @@ var users3 = await userViewDAO.Search($"WHERE {Prop("Age")} > {minAge}").ToListA
 | 维度 | `Search` / `SearchAsync` | `SearchAs<TResult>` / `SearchAsAsync<TResult>` |
 |------|--------------------------|------------------------------------------------|
 | 返回类型 | 实体类型 `T`（或视图 `TView`） | **任意** `TResult`：实体、匿名类型、标量、自定义投影类 |
-| 查询构造 | `Expr` / Lambda / `ExprString`（仅 DAO） | `SelectExpr`（Service+DAO）/ Lambda 投影 / `ExprString`（仅 DAO） |
+| 查询构造 | `Expr` / Lambda / `IQueryable<T>` / `ExprString`（仅 DAO） | `SelectExpr`（Service+DAO）/ Lambda 投影 / `IQueryable<T>` / `ExprString`（仅 DAO） |
 | 字段映射 | 按 `TableInfoProvider` 注册的 `SelectColumns` 位置映射 | 见下方注意事项 |
 | 典型场景 | 「查这张表的数据」 | 「跨表投影、聚合、计算列、换类型」 |
 

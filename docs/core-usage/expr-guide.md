@@ -50,10 +50,15 @@ var currentUserFilter = Sql("CurrentUserFilter");
 - `Aggregate(name, expr, isDistinct)`：聚合函数包装
 - `Sql(key, arg)`：注册式动态 SQL 片段，适合运行时上下文过滤
 
-`Count`、`Sum`、`Average`、`Max`、`Min` 在 `QuerySource<T>` 上有两条路：写在查询里由解析器接管成聚合 SQL，绑定了执行器则直接取数。
+`Count`、`Sum`、`Average`、`Max`、`Min` 既可以在 IQueryable Lambda 里由解析器接管成聚合 SQL，也可以直接在 `QuerySource<T>` 上拼装或取数：
 
 ```csharp
-// 只要聚合段本身，用结构性 Select 拼，不必写 Lambda
+// 用 IQueryable Lambda 直接解析成聚合 SQL
+var total = Expr.Query<Order, int>(q => q.Count());
+var amountSum = Expr.Query<Order, decimal>(q => q.Sum(o => o.Amount));
+var avgAmount = Expr.Query<Order, decimal>(q => q.Average(o => o.Amount));
+
+// 只要聚合段本身，也可以不用 Lambda，直接用结构性 Select 拼
 var countExpr = Expr.From(typeof(Order)).Select(Expr.Aggregate("COUNT", Expr.Const(1)));
 var sumExpr = Expr.From(typeof(Order)).Select(Expr.Aggregate("SUM", Expr.Prop("Amount")));
 
@@ -63,8 +68,10 @@ var aboveAverage = Expr.From<Order>()
     .GetQueryExpr();
 
 // 绑定了执行器的查询源可以直接算
-var total = new QuerySource<Order>(dao).Where(o => o.Status == 1).Count();
+var count = new QuerySource<Order>(dao).Where(o => o.Status == 1).Count();
 ```
+
+`Expr.Query` 与 `Expr.From<T>()...GetQueryExpr()` 都是受支持的写法：前者适合 Join、根级聚合这类必须由 Lambda 解析器接管的形态，后者适合跨层拼装查询链。
 
 `Count()` 不带选择器时生成 `COUNT(1)`；带选择器则把选择器表达式整体作为聚合参数，因此 `x => x.Amount * x.Rate` 这类算式也可用。`Average` 与 `Avg` 都映射到 `AVG`。聚合生成的 `SelectExpr` 不带列别名，作为标量子查询使用时不会输出多余的 `AS`。
 
@@ -311,8 +318,8 @@ var query = From(typeof(User))
 | `Expr.Today()` | 当前日期 | `Expr.Today()` |
 | `Expr.Sql(key, arg)` | 动态 SQL 片段，结果可隐式转换为 `ValueTypeExpr` | `Expr.Sql("CurrentUserFilter")` |
 | `QuerySource<T>.GetQueryExpr()` | 把拼好的 IQueryable 查询链转成 `Expr`，不需要执行器 | `Expr.From<User>().Where(u => u.Age > 18).GetQueryExpr()` |
-| `Expr.Query<T>(expression)` | 已过期，改用 `Expr.From<T>()...GetQueryExpr()`；只剩 Join、根级聚合这类必须由 Lambda 解析器接管的形态 | `Expr.Query<User>(...)` |
-| `Expr.Query<T, TResult>(expression)` | 已过期，带返回值的 IQueryable Lambda 转 Expr | `Expr.Query<User, int>(...)` |
+| `Expr.Query<T>(expression)` | IQueryable Lambda 转 Expr | `Expr.Query<User>(...)` |
+| `Expr.Query<T, TResult>(expression)` | 带返回值的 IQueryable Lambda 转 Expr | `Expr.Query<User, int>(...)` |
 
 ## 7. 运算符重载与隐式类型转换
 

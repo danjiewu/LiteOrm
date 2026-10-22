@@ -264,26 +264,34 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 
 | 方法                                                                                                                                             | 返回类型                |
 | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| `Delete(Expression<Func<T, bool>> expression, params string[] tableArgs)`                                                                      | `int`               |
-| `DeleteAsync(Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                                 | `Task<int>`         |
+| `DeleteAll(Expression<Func<T, bool>> expression, params string[] tableArgs)`                                                                   | `int`               |
+| `DeleteAllAsync(Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                              | `Task<int>`         |
 | `Search(Expression<Func<TView, bool>> expression, string[] tableArgs = null)`                                                                  | `List<TView>`       |
 | `Search(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null)`                                         | `List<TView>`       |
+| `Search(IQueryable<TView> query, string[] tableArgs = null)`                                                                                   | `List<TView>`       |
 | `SearchOne(Expression<Func<TView, bool>> expression, string[] tableArgs = null)`                                                               | `TView`             |
 | `SearchOne(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null)`                                      | `TView`             |
+| `SearchOne(IQueryable<TView> query, string[] tableArgs = null)`                                                                                | `TView`             |
 | `Exists(Expression<Func<TView, bool>> expression, params string[] tableArgs)`                                                                  | `bool`              |
 | `Count(Expression<Func<TView, bool>> expression, params string[] tableArgs)`                                                                   | `int`               |
 | `SearchAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                             | `Task<List<TView>>` |
 | `SearchAsync(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null, CancellationToken ct = default)`    | `Task<List<TView>>` |
+| `SearchAsync(IQueryable<TView> query, string[] tableArgs = null, CancellationToken ct = default)`                                              | `Task<List<TView>>` |
 | `SearchOneAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                          | `Task<TView>`       |
 | `SearchOneAsync(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TView>`       |
+| `SearchOneAsync(IQueryable<TView> query, string[] tableArgs = null, CancellationToken ct = default)`                                           | `Task<TView>`       |
 | `ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                             | `Task<bool>`        |
 | `CountAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)`                              | `Task<int>`         |
 | `SearchAs(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)`                                     | `List<TResult>`     |
+| `SearchAs(IQueryable<TResult> query, string[] tableArgs = null)`                                                                               | `List<TResult>`     |
 | `SearchOneAs(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)`                                  | `TResult`           |
-| `SearchAsAsync(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)`                               | `Task<List<TResult>>` |
-| `SearchOneAsAsync(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)`                            | `Task<TResult>`     |
+| `SearchOneAs(IQueryable<TResult> query, string[] tableArgs = null)`                                                                            | `TResult`           |
+| `SearchAsAsync(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<List<TResult>>` |
+| `SearchAsAsync(IQueryable<TResult> query, string[] tableArgs = null, CancellationToken ct = default)`                                          | `Task<List<TResult>>` |
+| `SearchOneAsAsync(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TResult>`     |
+| `SearchOneAsAsync(IQueryable<TResult> query, string[] tableArgs = null, CancellationToken ct = default)`                                       | `Task<TResult>`     |
 
-> 补充说明：Service 查询公开入口包括 `Expr`、其 Lambda 扩展（含 `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` 投影），以及基于 `SelectExpr` 的 `SearchAs(...)` / `SearchAsAsync(...)`；如果需要 `ExprString`、完整 SQL 或 DataTable 查询，请切换到 DAO。
+> 补充说明：Service 查询公开入口包括 `Expr`、其 Lambda 扩展（含 `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` 投影）、接收 `IQueryable<T>` 的重载，以及基于 `SelectExpr` 的 `SearchAs(...)` / `SearchAsAsync(...)`；`Expr.Query` 与 IQueryable Lambda 写法均保持可用。如果需要 `ExprString`、完整 SQL 或 DataTable 查询，请切换到 DAO。
 
 ### ObjectDAO<T>（仅增删改）
 
@@ -322,9 +330,11 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
 | `Search(Expr expr = null)`                                                                                                    | `EnumerableResult<T>`       |
 | `Search(Expression<Func<IQueryable<T>, IQueryable<T>>> expr)`                                                                 | `EnumerableResult<T>`       |
+| `Search(IQueryable<T> query)`                                                                                                 | `EnumerableResult<T>`       |
 | `Search(ref ExprString sqlBody, bool isFull = false)`                                                                         | `EnumerableResult<T>`       |
-| `SearchAs<TResult>(SelectExpr selectExpr, Func<DbDataReader, TResult> readerFunc = null)`                                     | `EnumerableResult<TResult>` |
-| `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)` | `EnumerableResult<TResult>` |
+| `SearchAs<TResult>(SelectExpr selectExpr, Func<AutoLockDataReader, TResult> readerFunc = null)`                               | `EnumerableResult<TResult>` |
+| `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<AutoLockDataReader, TResult> readerFunc = null)` | `EnumerableResult<TResult>` |
+| `SearchAs<TResult>(IQueryable<TResult> query, Func<AutoLockDataReader, TResult> readerFunc = null)`                           | `EnumerableResult<TResult>` |
 | `SearchAs<TResult>(ref ExprString sqlBody)`                                                                                  | `EnumerableResult<TResult>` |
 | `GetObject(params object[] keys)`                                                                                             | `EnumerableResult<T>`       |
 | `Count(Expr expr)`                                                                                                            | `ValueResult<int>`          |
@@ -341,6 +351,8 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `Search(Expr expr)`                                   | `DataTableResult` |
 | `Search(string[] propertyNames, Expr expr)`           | `DataTableResult` |
 | `Search(ref ExprString sqlBody, bool isFull = false)` | `DataTableResult` |
+| `Search<TInput, TResult>(IQueryable<TResult> query)`（扩展） | `DataTableResult` |
+| `Search<TInput, TResult>(string[] propertyNames, IQueryable<TResult> query)`（扩展） | `DataTableResult` |
 
 ### DataDAO<T>（按列值批量更新）
 
@@ -484,16 +496,19 @@ services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
 | `Expr.Aggregate("SUM", expr, isDistinct)`        | `FunctionExpr`    | 聚合函数（IsAggregate=true）                      |
 | `Expr.Concat(e1, e2)`                            | `ValueSet`        | CONCAT 字符串拼接（扩展方法）                          |
 | `Expr.Lambda<T>(u => u.Age > 18)`                | `LogicExpr`       | Lambda 转 Expr                               |
-| `Expr.From(type, tableArgs)`                     | `TableExpr`       | 链式查询起点（唯一可真实调用的工厂方法）                         |
+| `Expr.From(type, tableArgs)`                     | `TableExpr`       | 按 `Type` 构造链式查询起点；泛型场景用 `Expr.From<T>()` 获取 `QuerySource<T>` |
 | `Expr.From<T>(tableArgs)`                        | `QuerySource<T>`  | 构造查询源；Lambda 内由解析器接管，Lambda 外可拼 IQueryable 查询，无执行器时不能取数 |
+| `Expr.From<T>()...GetQueryExpr()`                | `Expr`            | 把 IQueryable 查询链转成 Expr，不需要执行器            |
+| `QuerySource<T>.Join<T2>(on)` / `JoinRelated<T2>()` | `QuerySource<(T1, T2)>` | Lambda 内连接右表，可继续 `Join<T3>()` 做多级连接 |
+| `IQueryable<T>.AsSource()`                       | `QuerySource<T>`  | 把 `IQueryable<T>` 静态类型收窄回查询源，继续调用异步方法 |
 | `Expr.Sql("key", arg)`                           | `GenericSqlExpr`  | 动态 SQL 片段                                   |
 | `Expr.Delete<T>(tableArgs)`                      | `DeleteExpr`      | 创建 DELETE 表达式                               |
 | `Expr.If(condition, thenExpr, elseExpr)`         | `FunctionExpr`    | IF 表达式                                      |
 | `Expr.Case(cases, elseExpr)`                     | `FunctionExpr`    | CASE 表达式（元组数组形式）                          |
 | `Expr.Case(params (LogicExpr, ValueTypeExpr)[])` | `FunctionExpr`    | CASE 表达式（元组数组形式，无 ELSE）                  |
 | `Expr.Case(params Expr[])`                       | `FunctionExpr`    | CASE 表达式（交替参数形式）                          |
-| `Expr.Query<T>(expression)`                      | `Expr`            | 已过期，改用 `Expr.From<T>()` 拼链后调 `GetQueryExpr()`  |
-| `Expr.Query<T, TResult>(expression)`             | `Expr`            | 已过期，带返回值的 IQueryable Lambda 转 Expr           |
+| `Expr.Query<T>(expression)`                      | `Expr`            | IQueryable Lambda 转 Expr                    |
+| `Expr.Query<T, TResult>(expression)`             | `Expr`            | 带返回值的 IQueryable Lambda 转 Expr              |
 | `Expr.Exists(type, innerExpr, tableArgs)`        | `ForeignExpr`     | 关联表 EXISTS 查询                               |
 | `Expr.ExistsRelated(type, innerExpr, tableArgs)` | `ForeignExpr`     | 自动关联的 EXISTS 查询                             |
 | `Expr.Exists<T>(lambda)`                         | `bool`            | 仅用于 Lambda 表达式中构造 EXISTS 查询（直接调用会抛出异常）      |

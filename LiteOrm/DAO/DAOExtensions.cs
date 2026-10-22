@@ -34,13 +34,10 @@ namespace LiteOrm
         /// <param name="dataViewDao">IDataViewDAO 实例。</param>
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
         /// <returns>查询结果数据表。</returns>
-        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public static DataTableResult Search<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TInput,
             [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(this IDataViewDAO<TInput> dataViewDao, Expression<Func<IQueryable<TInput>, IQueryable<TResult>>> expression)
         {
-#pragma warning disable CS0618
             return dataViewDao.Search(Expr.Query(expression));
-#pragma warning restore CS0618
         }
 
         /// <summary>
@@ -80,13 +77,10 @@ namespace LiteOrm
         /// <param name="propertyNames">要查询的字段名称列表。</param>
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
         /// <returns>查询结果数据表。</returns>
-        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public static DataTableResult Search<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TInput,
             [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(this IDataViewDAO<TInput> dataViewDao, string[] propertyNames, Expression<Func<IQueryable<TInput>, IQueryable<TResult>>> expression)
         {
-#pragma warning disable CS0618
             return dataViewDao.Search(propertyNames, Expr.Query(expression));
-#pragma warning restore CS0618
         }
 
         /// <summary>
@@ -128,12 +122,9 @@ namespace LiteOrm
         /// <param name="objectViewDao">IObjectViewDAO 实例。</param>
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
         /// <returns>符合条件的对象枚举。</returns>
-        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public static EnumerableResult<T> Search<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IObjectViewDAO<T> objectViewDao, Expression<Func<IQueryable<T>, IQueryable<T>>> expression)
         {
-#pragma warning disable CS0618
             return objectViewDao.Search(Expr.Query(expression));
-#pragma warning restore CS0618
         }
 
         /// <summary>

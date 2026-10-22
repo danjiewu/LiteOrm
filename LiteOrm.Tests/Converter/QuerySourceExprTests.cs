@@ -174,7 +174,6 @@ namespace LiteOrm.Common.UnitTests
 
         // 终端方法（Count / FirstOrDefault / ToList）没有执行器时会抛异常，
         // 只有在 Lambda 内才被预注册 handler 接管，因此这里仍需 Expr.Query
-#pragma warning disable CS0618
 
         [Fact]
         public void Lambda_FromThenCount_ParsesToAggregate()
@@ -220,8 +219,6 @@ namespace LiteOrm.Common.UnitTests
             Assert.Contains("LEFT JOIN", sql);
             Assert.Contains("COUNT(1)", sql);
         }
-
-#pragma warning restore CS0618
 
         #endregion
 

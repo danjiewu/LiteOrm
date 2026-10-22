@@ -159,7 +159,7 @@ namespace LiteOrm.Common
         /// </summary>
         /// <remarks>
         /// 不需要执行器也可调用，未连接数据库时同样可用，适合把查询拼装与执行拆成两处。
-        /// 与已过期的 <c>Expr.Query</c> 对应的写法是 <c>Expr.From&lt;T&gt;().Where(...).GetQueryExpr()</c>。
+        /// 与 <c>Expr.Query</c> 对应的写法是 <c>Expr.From&lt;T&gt;().Where(...).GetQueryExpr()</c>。
         /// <see cref="Queryable"/> 算子之后的静态类型是 <see cref="IQueryable{T}"/>，链尾请改用
         /// <see cref="QuerySourceExtensions.GetQueryExpr{T}(IQueryable{T})"/>，行为一致。
         /// </remarks>

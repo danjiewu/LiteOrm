@@ -236,6 +236,12 @@ var expr = Query<Order, IEnumerable<(Order, Customer)>>(
     q => From<Order>()
           .Join<Customer>((o, c) => o.CustomerId == c.Id)
           .Where(x => x.Item2.Name == "VIP")
+);
+
+// 需要投影时，结果类型写 IEnumerable<object>（匿名类型无法写进泛型实参）
+var projected = Query<Order, IEnumerable<object>>(
+    q => From<Order>()
+          .Join<Customer>((o, c) => o.CustomerId == c.Id)
           .Select(x => new { x.Item1.Id, x.Item2.Name })
 );
 
@@ -250,7 +256,9 @@ var merged = Query<Order, IEnumerable<(Order, Customer)>>(
 );
 ```
 
-返回的是元素元组序列，可以继续用 `Where` / `Select` / `OrderBy` 链式调用。元组元素用 `Item1`、`Item2` 访问，分别对应左表和右表，解析时各自带上正确的表别名。
+返回的是元素元组序列，`Where` / `OrderBy` 会保持元素元组类型，`Select` 则会把元素类型改成投影结果。元组元素用 `Item1`、`Item2` 访问，分别对应左表和右表，解析时各自带上正确的表别名。
+
+`Join` / `JoinRelated` 只能在 Lambda 内解析，所以上面用 `Expr.Query` 构造；`Expr.Query` 未标记过期，与 `Expr.From<T>()` 链式写法一样是受支持的入口。
 
 几处要点：
 
@@ -260,6 +268,7 @@ var merged = Query<Order, IEnumerable<(Order, Customer)>>(
 - 多级时 `JoinRelated` 推断的左表始终是最内层主表，不是上一级的连接表。要按上一级表连接，用带显式条件的 `Join`。
 - 连接表别名按分配顺序生成，需要按别名手工拼 `SelectItemExpr` 时从 `from.Source.Alias` 与 `from.Joins[i].Source.Alias` 读取，不要写死 `T1`，外层查询可能已经占用过该编号。
 - `Select(x => x.Item1)` 这种整表投影不支持，`Select` 里请写具体列，例如 `Select(x => new { x.Item1.Id, x.Item2.Name })`。嵌套元组上的 `x.Item1` 直接当列用会抛 `NotSupportedException`。
+- `Join` / `JoinRelated` 后接 `Select` 时元素类型已经变化，`Expr.Query<T, TResult>` 的 `TResult` 不能再写 `IEnumerable<(T1, T2)>`，应改为 `IEnumerable<object>`（或与投影结果类型兼容的接口）。
 
 `QuerySource<T>` 实现 `IQueryable<T>`，所以在 Lambda 之外也能拼查询，再交给 DAO 转成 SQL 执行：
 
@@ -282,6 +291,9 @@ List<string> names = await users.Where(u => u.Age >= 18)
     .AsSource()
     .ToListAsync();
 
+// 链尾调用 GetQueryExpr() 把查询转成 Expr，不需要执行器
+var expr = users.Where(u => u.Age >= 18).Select(u => new { u.Id, u.Name }).GetQueryExpr();
+
 // 也可以交给 DAO 执行，任意 IQueryable 源都接受
 var dao = serviceProvider.GetRequiredService<ObjectViewDAO<User>>();
 var result = await dao.SearchAs(
@@ -292,16 +304,16 @@ var result = await dao.SearchAs(
 
 ## 6. 投影查询（`SearchAs` / `SearchOneAs`）
 
-`SearchAs` / `SearchOneAs` 接收已拼好的 `IQueryable<T>`，把结果投影为指定类型（自定义类、匿名类均可），适合「只取部分列」或「组装成视图 / 摘要对象」。查询用 `Expr.From<T>()` 起链，`Where` 之后静态类型就是 `IQueryable<T>`，链尾直接传进来：
+`SearchAs` / `SearchOneAs` 有两组重载：接收 IQueryable Lambda，或接收已拼好的 `IQueryable<T>`。两者都把结果投影为指定类型（自定义类、匿名类均可），适合「只取部分列」或「组装成视图 / 摘要对象」。
 
 ```csharp
-// 投影为自定义类
+// IQueryable Lambda 形式
 List<UserSummary> summaries = userService.SearchAs(
-    Expr.From<User>().Where(u => u.Age >= 18)
+    q => q.Where(u => u.Age >= 18)
           .Select(u => new UserSummary { UserName = u.UserName, Age = u.Age })
 );
 
-// 投影为匿名类（列别名与匿名成员名一一对应）
+// 也可以先用 Expr.From<T>() 拼好查询，再直接传入
 var anon = userService.SearchAs(
     Expr.From<User>().Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
 );
@@ -319,11 +331,15 @@ UserSummary? one = userService.SearchOneAs(
 
 ```csharp
 var list = await userService.SearchAsAsync(
+    q => q.Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
+);
+
+var list2 = await userService.SearchAsAsync(
     Expr.From<User>().Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
 );
 ```
 
-> `SearchAs` 会把查询转成 `SelectExpr` 后执行（等价于 [查询总览](./query-overview.md#3-search-vs-searchas) 中的 `SelectExpr` 用法）。结果映射由 `DataReaderConverter` 完成：未注册的普通类 / 匿名类按「成员名 ↔ 列别名」匹配，注册过的实体类型按位置匹配，建议优先使用 DTO / 匿名类投影。分表时通过 `tableArgs` 参数指定分表名，缺省取查询根上的分表参数。
+> `SearchAs` 会把 Lambda 或 `IQueryable<T>` 查询转成 `SelectExpr` 后执行（等价于 [查询总览](./query-overview.md#3-search-vs-searchas) 中的 `SelectExpr` 用法）。结果映射由 `DataReaderConverter` 完成：未注册的普通类 / 匿名类按「成员名 ↔ 列别名」匹配，注册过的实体类型按位置匹配，建议优先使用 DTO / 匿名类投影。分表时通过 `tableArgs` 参数指定分表名，缺省取查询根上的分表参数。
 
 ## 7. JsonNode 查询
 

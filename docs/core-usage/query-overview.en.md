@@ -68,7 +68,8 @@ var users3 = await userService.SearchAsAsync<UserSummary>(
 );
 ```
 
-- Service query entry points are primarily Lambda / `Expr`, and also support `SelectExpr`-based `SearchAs(...)` / `SearchAsAsync(...)` projection queries, suitable for scenarios that need clear business semantics, transactions, AOP, or service encapsulation.
+- Service query entry points are primarily Lambda / `Expr`, and also support `SelectExpr`-based `SearchAs(...)` / `SearchAsAsync(...)` projection queries plus query overloads that accept `IQueryable<T>`; suitable for scenarios that need clear business semantics, transactions, AOP, or service encapsulation.
+- To compose a query across layers, start with `Expr.From<T>()` (returns `QuerySource<T>`), then call `GetQueryExpr()` at the end to turn it into an `Expr`, or pass it straight to the `IQueryable<T>` overloads of `Search` / `SearchAs`. `Expr.Query` and the IQueryable Lambda form remain available.
 - The Service **does not** provide `ExprString` query overloads; if the requirement has become "handwrite SQL", switch to the DAO.
 
 ### 2.2 DAO
@@ -91,7 +92,7 @@ Both `Search` and `SearchAs` are query entry points, but with different responsi
 | Aspect | `Search` / `SearchAsync` | `SearchAs<TResult>` / `SearchAsAsync<TResult>` |
 |--------|--------------------------|------------------------------------------------|
 | Return type | Entity type `T` (or view `TView`) | **Any** `TResult`: entity, anonymous type, scalar, custom projection class |
-| Construction | `Expr` / Lambda / `ExprString` (DAO only) | `SelectExpr` (Service+DAO) / Lambda projection / `ExprString` (DAO only) |
+| Construction | `Expr` / Lambda / `IQueryable<T>` / `ExprString` (DAO only) | `SelectExpr` (Service+DAO) / Lambda projection / `IQueryable<T>` / `ExprString` (DAO only) |
 | Field mapping | Positional mapping by `SelectColumns` registered in `TableInfoProvider` | See notes below |
 | Typical scenario | "query rows of this table" | "cross-table projection, aggregation, computed columns, type switching" |
 

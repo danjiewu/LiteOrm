@@ -61,13 +61,17 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 
 ### 查询接口
 
-- `Search` / `SearchAsync`
-- `SearchAs` / `SearchAsAsync`（含 `Expression<Func<IQueryable<T>, IQueryable<TResult>>>` Lambda 投影扩展）
+- `Search` / `SearchAsync`（含 IQueryable Lambda 与 `IQueryable<T>` 重载）
+- `SearchAs` / `SearchAsAsync`（含 `Expression<Func<IQueryable<T>, IQueryable<TResult>>>` Lambda 投影扩展与 `IQueryable<TResult>` 重载）
 - `SearchOne` / `SearchOneAsync`
 - `SearchOneAs` / `SearchOneAsAsync`
 - `Exists` / `ExistsAsync`
 - `Count` / `CountAsync`
-- `Expr`、`LogicExpr`、`SelectExpr`
+- `Expr`、`LogicExpr`、`SelectExpr`、`Expr.Query`
+- `QuerySource<T>`（`Expr.From<T>()` 的返回类型，实现 `IQueryable<T>` / `IOrderedQueryable<T>`）与 `IQuerySourceExecutor<T>`
+- `QuerySource<T>.GetQueryExpr()` / `Join` / `JoinRelated` 与 `IQueryable<T>.GetQueryExpr()` / `AsSource()`
+- `LambdaExprExtensions` 的 `IQueryable<T>` 重载（`Search` / `SearchOne` / `SearchAsync` / `SearchOneAsync` / `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync`）
+- `DAOExtensions` 为 `IDataViewDAO<TInput>` 提供的 `IQueryable<TResult>` `Search` 重载
 - `SelectAll()` / `Cast(DbValueType)`
 - Lambda 三目运算符 `?:`（转为 `CASE`）
 - 表达式名称与别名忽略大小写

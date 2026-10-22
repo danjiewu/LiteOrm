@@ -9,7 +9,6 @@ using Xunit;
 
 // Join / JoinRelated / 根级聚合只在 Lambda 内被解析，脱离 Lambda 会抛异常，
 // 因此这些文档形态仍需通过 Expr.Query 构造表达式树
-#pragma warning disable CS0618
 
 namespace LiteOrm.Common.UnitTests
 {

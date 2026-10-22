@@ -114,7 +114,7 @@ var summary = await userService.SearchAsAsync<UserSummary>(
 
 - `ObjectDAO<T>` 负责实体写操作，本身**没有** `Search(...)` 查询入口。
 - `ObjectViewDAO<T>` 提供最完整的查询能力，包括 `Search(...)`、`SearchAs(...)` 以及 `ExprString` 入口。
-- Service 查询侧同样提供 `Search(...)`，并支持基于 `SelectExpr` 的 `SearchAs(...)` / `SearchAsAsync(...)`，以及接收 `IQueryable<T>` 的投影重载 `SearchAs(...)` / `SearchOneAs(...)` / `SearchAsAsync(...)` / `SearchOneAsAsync(...)`，适合在服务层做结果投影。查询用 `Expr.From<T>()` 起链，链尾直接传入。
+- Service 查询侧同样提供 `Search(...)`，并支持基于 `SelectExpr` 的 `SearchAs(...)` / `SearchAsAsync(...)`，以及接收 `IQueryable<T>` 的投影重载 `SearchAs(...)` / `SearchOneAs(...)` / `SearchAsAsync(...)` / `SearchOneAsAsync(...)`，适合在服务层做结果投影。查询可以用 `Expr.From<T>()` 起链后直接传入，也可以继续使用 IQueryable Lambda 形式。
 - 如果你既要写入实体，又要读取视图，通常会在 Service 里同时组合 `ObjectDAO<T>` 和 `ObjectViewDAO<TView>`。
 
 ## 什么时候该用哪一种

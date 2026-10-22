@@ -264,26 +264,34 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 
 | Method | Return type |
 | --- | --- |
-| `Delete(Expression<Func<T, bool>> expression, params string[] tableArgs)` | `int` |
-| `DeleteAsync(Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<int>` |
+| `DeleteAll(Expression<Func<T, bool>> expression, params string[] tableArgs)` | `int` |
+| `DeleteAllAsync(Expression<Func<T, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<int>` |
 | `Search(Expression<Func<TView, bool>> expression, string[] tableArgs = null)` | `List<TView>` |
 | `Search(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null)` | `List<TView>` |
+| `Search(IQueryable<TView> query, string[] tableArgs = null)` | `List<TView>` |
 | `SearchOne(Expression<Func<TView, bool>> expression, string[] tableArgs = null)` | `TView` |
 | `SearchOne(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null)` | `TView` |
+| `SearchOne(IQueryable<TView> query, string[] tableArgs = null)` | `TView` |
 | `Exists(Expression<Func<TView, bool>> expression, params string[] tableArgs)` | `bool` |
 | `Count(Expression<Func<TView, bool>> expression, params string[] tableArgs)` | `int` |
 | `SearchAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<List<TView>>` |
 | `SearchAsync(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<List<TView>>` |
+| `SearchAsync(IQueryable<TView> query, string[] tableArgs = null, CancellationToken ct = default)` | `Task<List<TView>>` |
 | `SearchOneAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TView>` |
 | `SearchOneAsync(Expression<Func<IQueryable<TView>, IQueryable<TView>>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TView>` |
+| `SearchOneAsync(IQueryable<TView> query, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TView>` |
 | `ExistsAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<bool>` |
 | `CountAsync(Expression<Func<TView, bool>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<int>` |
 | `SearchAs(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)` | `List<TResult>` |
+| `SearchAs(IQueryable<TResult> query, string[] tableArgs = null)` | `List<TResult>` |
 | `SearchOneAs(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)` | `TResult` |
-| `SearchAsAsync(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)` | `Task<List<TResult>>` |
-| `SearchOneAsAsync(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null)` | `Task<TResult>` |
+| `SearchOneAs(IQueryable<TResult> query, string[] tableArgs = null)` | `TResult` |
+| `SearchAsAsync(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<List<TResult>>` |
+| `SearchAsAsync(IQueryable<TResult> query, string[] tableArgs = null, CancellationToken ct = default)` | `Task<List<TResult>>` |
+| `SearchOneAsAsync(Expression<Func<IQueryable<TView>, IQueryable<TResult>>> expression, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TResult>` |
+| `SearchOneAsAsync(IQueryable<TResult> query, string[] tableArgs = null, CancellationToken ct = default)` | `Task<TResult>` |
 
-> Additional note: Service query APIs include the `Expr` overloads, these Lambda extensions (including the `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` projections), and `SearchAs(...)` / `SearchAsAsync(...)` based on `SelectExpr`. If you need `ExprString`, full SQL, or DataTable-oriented queries, switch to DAO.
+> Additional note: Service query APIs include the `Expr` overloads, these Lambda extensions (including the `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync` projections), the `IQueryable<T>` overloads, and `SearchAs(...)` / `SearchAsAsync(...)` based on `SelectExpr`; `Expr.Query` and the IQueryable Lambda form both remain available. If you need `ExprString`, full SQL, or DataTable-oriented queries, switch to DAO.
 
 ### ObjectDAO<T> (create, update, delete only)
 
@@ -322,9 +330,11 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | --- | --- |
 | `Search(Expr expr = null)` | `EnumerableResult<T>` |
 | `Search(Expression<Func<IQueryable<T>, IQueryable<T>>> expr)` | `EnumerableResult<T>` |
+| `Search(IQueryable<T> query)` | `EnumerableResult<T>` |
 | `Search(ref ExprString sqlBody, bool isFull = false)` | `EnumerableResult<T>` |
-| `SearchAs<TResult>(SelectExpr selectExpr, Func<DbDataReader, TResult> readerFunc = null)` | `EnumerableResult<TResult>` |
-| `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<DbDataReader, TResult> readerFunc = null)` | `EnumerableResult<TResult>` |
+| `SearchAs<TResult>(SelectExpr selectExpr, Func<AutoLockDataReader, TResult> readerFunc = null)` | `EnumerableResult<TResult>` |
+| `SearchAs<TResult>(Expression<Func<IQueryable<T>, IQueryable<TResult>>> expr, Func<AutoLockDataReader, TResult> readerFunc = null)` | `EnumerableResult<TResult>` |
+| `SearchAs<TResult>(IQueryable<TResult> query, Func<AutoLockDataReader, TResult> readerFunc = null)` | `EnumerableResult<TResult>` |
 | `SearchAs<TResult>(ref ExprString sqlBody)` | `EnumerableResult<TResult>` |
 | `GetObject(params object[] keys)` | `EnumerableResult<T>` |
 | `Count(Expr expr)` | `ValueResult<int>` |
@@ -341,6 +351,8 @@ public class UserService : EntityService<User, UserView>, IUserService { }
 | `Search(Expr expr)` | `DataTableResult` |
 | `Search(string[] propertyNames, Expr expr)` | `DataTableResult` |
 | `Search(ref ExprString sqlBody, bool isFull = false)` | `DataTableResult` |
+| `Search<TInput, TResult>(IQueryable<TResult> query)` (extension) | `DataTableResult` |
+| `Search<TInput, TResult>(string[] propertyNames, IQueryable<TResult> query)` (extension) | `DataTableResult` |
 
 ### DataDAO<T> (column-value bulk update)
 
@@ -484,16 +496,19 @@ Event subscribers are resolved lazily: constructing an entity service instance n
 | `Expr.Aggregate("SUM", expr, isDistinct)` | `FunctionExpr` | Aggregate function (`IsAggregate=true`) |
 | `Expr.Concat(e1, e2)` | `ValueSet` | CONCAT string composition (extension method) |
 | `Expr.Lambda<T>(u => u.Age > 18)` | `LogicExpr` | Converts Lambda to Expr |
-| `Expr.From(type, tableArgs)` | `TableExpr` | Starting point for chained queries (the only factory that can be called directly) |
+| `Expr.From(type, tableArgs)` | `TableExpr` | Builds a chained-query starting point from a `Type`; use `Expr.From<T>()` for a `QuerySource<T>` |
 | `Expr.From<T>(tableArgs)` | `QuerySource<T>` | Builds a query source; handled by the lambda parser inside a lambda, composes IQueryable queries outside it, needs an executor to run |
+| `Expr.From<T>()...GetQueryExpr()` | `Expr` | Turns a composed IQueryable chain into an Expr, no executor needed |
+| `QuerySource<T>.Join<T2>(on)` / `JoinRelated<T2>()` | `QuerySource<(T1, T2)>` | Joins the right table inside a lambda; chain `Join<T3>()` for multi-level joins |
+| `IQueryable<T>.AsSource()` | `QuerySource<T>` | Narrows the `IQueryable<T>` static type back to the query source for async methods |
 | `Expr.Sql("key", arg)` | `GenericSqlExpr` | Dynamic SQL fragment |
 | `Expr.Delete<T>(tableArgs)` | `DeleteExpr` | Creates a DELETE expression |
 | `Expr.If(condition, thenExpr, elseExpr)` | `FunctionExpr` | IF expression |
 | `Expr.Case(cases, elseExpr)` | `FunctionExpr` | CASE expression (tuple array form) |
 | `Expr.Case(params (LogicExpr, ValueTypeExpr)[])` | `FunctionExpr` | CASE expression (tuple array form, no ELSE) |
 | `Expr.Case(params Expr[])` | `FunctionExpr` | CASE expression (alternating argument form) |
-| `Expr.Query<T>(expression)` | `Expr` | Obsolete; compose with `Expr.From<T>()` and call `GetQueryExpr()` instead |
-| `Expr.Query<T, TResult>(expression)` | `Expr` | Obsolete; converts an IQueryable Lambda with a return value to Expr |
+| `Expr.Query<T>(expression)` | `Expr` | Converts an IQueryable Lambda to Expr |
+| `Expr.Query<T, TResult>(expression)` | `Expr` | Converts an IQueryable Lambda with a return value to Expr |
 | `Expr.Exists(type, innerExpr, tableArgs)` | `ForeignExpr` | EXISTS query on a related table |
 | `Expr.ExistsRelated(type, innerExpr, tableArgs)` | `ForeignExpr` | EXISTS query using automatic relation discovery |
 | `Expr.Exists<T>(lambda)` | `bool` | Used only inside Lambda expressions to build EXISTS queries (direct calls throw an exception) |

@@ -58,6 +58,8 @@ LambdaExprConverter.RegisterMethodHandler(typeof(string), null, handler);  // Ha
 
 `"Format"` is just an example method name. In real projects, prefer `nameof(SomeType.SomeMethod)` so refactoring stays safer.
 
+Type-based registrations support open generics: resolution matches the specialized type first (for example `QuerySource<User>`), then falls back to the generic type definition (for example `typeof(QuerySource<>)`), so one registration covers every constructed form of that generic type.
+
 **Parameter Description:**
 
 | Parameter | Type | Description |

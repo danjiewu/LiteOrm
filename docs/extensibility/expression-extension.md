@@ -61,6 +61,8 @@ LambdaExprConverter.RegisterMethodHandler(typeof(string));
 
 这里的 `"Format"` 只是一个示例方法名。实际项目里更推荐写成 `nameof(SomeType.SomeMethod)`，这样重构时不容易漏改。
 
+按声明类型注册时支持开放泛型：解析会先匹配特化类型（如 `QuerySource<User>`），未命中再回退到泛型定义（如 `typeof(QuerySource<>)`），因此同一泛型类型注册一次即可覆盖它的所有构造类型。
+
 **参数说明**：
 
 | 参数           | 类型                                                      | 说明   |

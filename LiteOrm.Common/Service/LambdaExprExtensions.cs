@@ -50,12 +50,9 @@ namespace LiteOrm.Common
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>符合条件的实体对象列表。</returns>
-        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public static List<T> Search<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewService<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[]? tableArgs = null)
         {
-#pragma warning disable CS0618 // Expr.Query 已标记过期，本方法同样已过期，仅保留旧写法
             return entityViewService.Search(Expr.Query(expression), tableArgs);
-#pragma warning restore CS0618
         }
 
         /// <summary>
@@ -93,12 +90,9 @@ namespace LiteOrm.Common
         /// <param name="expression">定义查询条件的 IQueryable Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>第一个符合条件的实体对象；如果没有找到则返回 null。</returns>
-        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public static T SearchOne<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewService<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[]? tableArgs = null)
         {
-#pragma warning disable CS0618
             return entityViewService.SearchOne(Expr.Query(expression), tableArgs);
-#pragma warning restore CS0618
         }
 
         /// <summary>
@@ -211,12 +205,9 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消操作的令牌。</param>
         /// <returns>表示异步搜索操作的任务，结果包含符合条件的实体对象列表。</returns>
-        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public static Task<List<T>> SearchAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
-#pragma warning disable CS0618
             return entityViewService.SearchAsync(Expr.Query(expression), tableArgs, cancellationToken);
-#pragma warning restore CS0618
         }
 
         /// <summary>
@@ -257,12 +248,9 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消操作的令牌。</param>
         /// <returns>表示异步搜索操作的任务，结果包含符合条件的单个实体对象，未找到则返回 null。</returns>
-        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public static Task<T> SearchOneAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IEntityViewServiceAsync<T> entityViewService, Expression<Func<IQueryable<T>, IQueryable<T>>> expression, string[]? tableArgs = null, CancellationToken cancellationToken = default)
         {
-#pragma warning disable CS0618
             return entityViewService.SearchOneAsync(Expr.Query(expression), tableArgs, cancellationToken);
-#pragma warning restore CS0618
         }
 
         /// <summary>
@@ -303,7 +291,6 @@ namespace LiteOrm.Common
         /// <param name="expression">定义查询与投影的 IQueryable Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>投影后的结果列表。</returns>
-        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public static List<TResult> SearchAs<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(
             this IEntityViewService<T> entityViewService,
             Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
@@ -339,7 +326,6 @@ namespace LiteOrm.Common
         /// <param name="expression">定义查询与投影的 IQueryable Lambda 表达式。</param>
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <returns>第一个符合条件的投影结果；未找到时返回默认值。</returns>
-        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public static TResult SearchOneAs<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(
             this IEntityViewService<T> entityViewService,
             Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
@@ -376,7 +362,6 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步查询的任务，结果包含投影后的列表。</returns>
-        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public static Task<List<TResult>> SearchAsAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(
             this IEntityViewServiceAsync<T> entityViewService,
             Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,
@@ -416,7 +401,6 @@ namespace LiteOrm.Common
         /// <param name="tableArgs">动态表名参数（可选）。</param>
         /// <param name="cancellationToken">取消令牌。</param>
         /// <returns>表示异步查询的任务，结果包含第一个符合条件的投影结果；未找到时返回默认值。</returns>
-        [Obsolete(ObsoleteMessages.PreferIQueryableOverload)]
         public static Task<TResult> SearchOneAsAsync<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T, [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(
             this IEntityViewServiceAsync<T> entityViewService,
             Expression<Func<IQueryable<T>, IQueryable<TResult>>> expression,

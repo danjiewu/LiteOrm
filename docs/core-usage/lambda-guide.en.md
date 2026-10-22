@@ -236,6 +236,12 @@ var expr = Query<Order, IEnumerable<(Order, Customer)>>(
     q => From<Order>()
           .Join<Customer>((o, c) => o.CustomerId == c.Id)
           .Where(x => x.Item2.Name == "VIP")
+);
+
+// When projecting, use IEnumerable<object> as the result type (anonymous types cannot be generic arguments)
+var projected = Query<Order, IEnumerable<object>>(
+    q => From<Order>()
+          .Join<Customer>((o, c) => o.CustomerId == c.Id)
           .Select(x => new { x.Item1.Id, x.Item2.Name })
 );
 
@@ -250,7 +256,9 @@ var merged = Query<Order, IEnumerable<(Order, Customer)>>(
 );
 ```
 
-The result is a sequence of element tuples, so the existing `Where` / `Select` / `OrderBy` chains keep working. Access the tuple elements as `Item1` and `Item2`; each resolves to the correct table alias during conversion.
+The result is a sequence of element tuples; `Where` / `OrderBy` preserve the tuple element type, while `Select` changes it to the projection result. Access the tuple elements as `Item1` and `Item2`; each resolves to the correct table alias during conversion.
+
+`Join` / `JoinRelated` can only be resolved inside a lambda, which is why the examples above use `Expr.Query`. `Expr.Query` is not obsolete; it is a supported entry point alongside the `Expr.From<T>()` chain.
 
 A few points worth knowing:
 
@@ -260,6 +268,7 @@ A few points worth knowing:
 - At multiple levels, `JoinRelated` always infers against the innermost main table, not the previous join table. Use `Join` with an explicit condition to join from an earlier joined table.
 - Join aliases are assigned in order. When you build `SelectItemExpr` by alias, read them from `from.Source.Alias` and `from.Joins[i].Source.Alias` instead of hard-coding `T1`, since the outer query may already have used that number.
 - Whole-table projections such as `Select(x => x.Item1)` are not supported; list specific columns inside `Select`, for example `Select(x => new { x.Item1.Id, x.Item2.Name })`. Using `x.Item1` on a nested tuple directly as a column throws `NotSupportedException`.
+- After `Join` / `JoinRelated`, a following `Select` changes the element type, so the `TResult` of `Expr.Query<T, TResult>` can no longer be `IEnumerable<(T1, T2)>`; use `IEnumerable<object>` (or an interface compatible with the projection result) instead.
 
 `QuerySource<T>` implements `IQueryable<T>`, so a query can also be composed outside a lambda and handed to a DAO:
 
@@ -282,6 +291,9 @@ List<string> names = await users.Where(u => u.Age >= 18)
     .AsSource()
     .ToListAsync();
 
+// Finish with GetQueryExpr() to turn the query into an Expr, no executor needed
+var expr = users.Where(u => u.Age >= 18).Select(u => new { u.Id, u.Name }).GetQueryExpr();
+
 // Or hand it to the DAO, which accepts any IQueryable source
 var dao = serviceProvider.GetRequiredService<ObjectViewDAO<User>>();
 var result = await dao.SearchAs(
@@ -292,16 +304,16 @@ An instance returned by `Expr.From<T>()` carries no executor and can only build 
 
 ## 6. Projection Queries (`SearchAs` / `SearchOneAs`)
 
-`SearchAs` / `SearchOneAs` accept an already composed `IQueryable<T>` and project the result into a target type (custom classes or anonymous types), which is convenient for "select only some columns" or "assemble view / summary objects". Start the chain with `Expr.From<T>()`; after `Where` the static type is `IQueryable<T>`, so pass it straight in:
+`SearchAs` / `SearchOneAs` have two overload families: one takes an IQueryable Lambda, the other an already composed `IQueryable<T>`. Both project the result into a target type (custom classes or anonymous types), which is convenient for "select only some columns" or "assemble view / summary objects".
 
 ```csharp
-// Project to a custom class
+// IQueryable Lambda form
 List<UserSummary> summaries = userService.SearchAs(
-    Expr.From<User>().Where(u => u.Age >= 18)
+    q => q.Where(u => u.Age >= 18)
           .Select(u => new UserSummary { UserName = u.UserName, Age = u.Age })
 );
 
-// Project to an anonymous type (column aliases match the anonymous member names)
+// Or compose the query with Expr.From<T>() and pass it straight in
 var anon = userService.SearchAs(
     Expr.From<User>().Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
 );
@@ -319,11 +331,15 @@ Async versions are `SearchAsAsync` / `SearchOneAsAsync`:
 
 ```csharp
 var list = await userService.SearchAsAsync(
+    q => q.Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
+);
+
+var list2 = await userService.SearchAsAsync(
     Expr.From<User>().Where(u => u.Age >= 18).Select(u => new { u.UserName, u.Age })
 );
 ```
 
-> The `SearchAs` lambda is converted into a `SelectExpr` before execution (equivalent to the `SelectExpr` usage in [Query Overview](./query-overview.en.md#3-search-vs-searchas)). Result mapping is handled by `DataReaderConverter`: unregistered plain classes / anonymous types match by "member name ↔ column alias", while registered entity types match positionally — prefer DTO / anonymous-type projections. For sharded tables, pass the shard name via the `tableArgs` parameter.
+> `SearchAs` converts either the Lambda or the `IQueryable<T>` query into a `SelectExpr` before execution (equivalent to the `SelectExpr` usage in [Query Overview](./query-overview.en.md#3-search-vs-searchas)). Result mapping is handled by `DataReaderConverter`: unregistered plain classes / anonymous types match by "member name ↔ column alias", while registered entity types match positionally — prefer DTO / anonymous-type projections. For sharded tables, pass the shard name via the `tableArgs` parameter.
 
 ## 7. JsonNode Queries
 

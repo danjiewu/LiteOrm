@@ -61,13 +61,17 @@ Related guides:
 
 ### Query APIs
 
-- `Search` / `SearchAsync`
-- `SearchAs` / `SearchAsAsync` (including the `Expression<Func<IQueryable<T>, IQueryable<TResult>>>` Lambda projection extension)
+- `Search` / `SearchAsync` (including IQueryable Lambda and `IQueryable<T>` overloads)
+- `SearchAs` / `SearchAsAsync` (including the `Expression<Func<IQueryable<T>, IQueryable<TResult>>>` Lambda projection extension and `IQueryable<TResult>` overloads)
 - `SearchOne` / `SearchOneAsync`
 - `SearchOneAs` / `SearchOneAsAsync`
 - `Exists` / `ExistsAsync`
 - `Count` / `CountAsync`
-- `Expr`, `LogicExpr`, `SelectExpr`
+- `Expr`, `LogicExpr`, `SelectExpr`, `Expr.Query`
+- `QuerySource<T>` (returned by `Expr.From<T>()`; implements `IQueryable<T>` / `IOrderedQueryable<T>`) and `IQuerySourceExecutor<T>`
+- `QuerySource<T>.GetQueryExpr()` / `Join` / `JoinRelated`, and `IQueryable<T>.GetQueryExpr()` / `AsSource()`
+- `LambdaExprExtensions` IQueryable overloads (`Search` / `SearchOne` / `SearchAsync` / `SearchOneAsync` / `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync`)
+- `DAOExtensions` IQueryable `Search` overloads for `IDataViewDAO<TInput>`
 - `SelectAll()` / `Cast(DbValueType)`
 - Lambda conditional operator `?:` (rendered as `CASE`)
 - case-insensitive expression names and aliases
