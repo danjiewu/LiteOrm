@@ -17,13 +17,12 @@
     <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
       8.1.13:
-      - 破坏性变更：Expr.From&lt;T&gt;() / Expr.FromRelated&lt;T&gt;() 返回新增的 QuerySource&lt;T&gt;（实现 IOrderedQueryable&lt;T&gt;）；Expr.Query 与 LambdaExprExtensions 的 IQueryable Lambda 查询方法继续可用。
       - 新增 QuerySource&lt;T&gt; 查询源：可传 IQuerySourceExecutor&lt;T&gt; 直接取数，Where/Select 之后用 AsSource() 收窄后可用异步方法；GetQueryExpr() 把查询链转成 Expr，不需要执行器。
-      - 新增接收 IQueryable 的查询重载：LambdaExprExtensions 新增 8 个，DAOExtensions 为 IDataViewDAO 新增 2 个；Expr.Query 与 IQueryable Lambda 写法继续可用，未标记过期。
+      - 新增 Service 和 DAO 的 IQueryable 的查询重载。
       - 破坏性变更：删除 Expr.Exists/Expr.ExistsRelated 的 LogicExpr 泛型重载与 Where&lt;T&gt; Lambda 扩展方法；删除 TableRef 抽象类，JoinedTable 改为直接继承 SqlObject。
+      - 新增 Expr.From&lt;T1&gt;() 返回 QuerySource&lt;T1&gt;。      
+      - 新增 Join&lt;T2&gt; / JoinRelated&lt;T2&gt;，另提供 Join&lt;T2,...,T7&gt; / JoinRelated&lt;T2,...,T7&gt; 多表重载。
       - Lambda 支持根级聚合：Count/Sum/Average/Max/Min 等可在 IQueryable Lambda 内直接解析。
-      - 新增 Join&lt;T2&gt; / JoinRelated&lt;T2&gt;：Expr.From&lt;T1&gt;() 返回 QuerySource&lt;T1&gt;，只写右表类型即可连接；返回 QuerySource&lt;(T1, T2)&gt; 可继续 Join&lt;T3&gt;() 做多级连接，也能按 IEnumerable&lt;(T1, T2)&gt; 接 Where/OrderBy；接 Select 时 TResult 需写成与投影结果兼容的类型（如 IEnumerable&lt;object&gt;）；x.Item1 / x.Item2 能还原表别名，嵌套元组用 x.Item1.Item2 逐级访问；另提供 Join&lt;T2,...,T7&gt; / JoinRelated&lt;T2,...,T7&gt; 多表重载，结果元组平铺，显式条件按右表引用拆分；lambda 连接不提供 IQueryable 扩展方法入口。
-      - LambdaExprConverter 参数作用域改按 ParameterExpression 引用键控，支持嵌套参数上下文与多参数 Lambda 全量注册；修复内层同名参数遮蔽外层参数。
       - AOT 下 [TableJoin]/[ForeignType]/[ForeignColumn] 与 [Column(Constant = ...)] 由 TableInfoGenerator 编译期写入 TableInfo，CommonTableInfoProvider 装配出完整的 TableView 与 TableDefinition.ConstFilter。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
