@@ -116,6 +116,55 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void ToExpr_TableArgsConditionOnJoinTupleElement_BackfillsMainTable()
+        {
+            // Join 场景：TableArgs 赋值目标可以是元组元素 x.Item1
+            var segment = QuerySourceExprConverter.ToExpr(
+                Expr.From<ShardJoinOrder>()
+                    .JoinRelated<ShardJoinUser>()
+                    .Where(x => ((IArged)x.Item1).TableArgs == new[] { "202401" }));
+
+            var from = Assert.IsType<FromExpr>(segment);
+            var main = Assert.IsType<TableExpr>(from.Source);
+            Assert.Equal(new[] { "202401" }, main.TableArgs);
+
+            string sql = ToSql(new SelectExpr(from, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("ShardJoinOrders_202401", sql);
+        }
+
+        [Fact]
+        public void ToExpr_TableArgsConditionOnJoinTupleElements_BackfillsEachTable()
+        {
+            var segment = QuerySourceExprConverter.ToExpr(
+                Expr.From<ShardJoinOrder>()
+                    .JoinRelated<ShardJoinUser>()
+                    .Where(x => ((IArged)x.Item1).TableArgs == new[] { "202401" }
+                             && ((IArged)x.Item2).TableArgs == new[] { "202402" }));
+
+            var from = Assert.IsType<FromExpr>(segment);
+            Assert.Equal(new[] { "202401" }, Assert.IsType<TableExpr>(from.Source).TableArgs);
+            Assert.Equal(new[] { "202402" }, Assert.IsType<TableExpr>(from.Joins[0].Source!).TableArgs);
+
+            string sql = ToSql(new SelectExpr(from, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("ShardJoinOrders_202401", sql);
+            Assert.Contains("ShardJoinUsers_202402", sql);
+        }
+
+        [Fact]
+        public void ToExpr_TableArgsConditionOnJoinTupleElementWithPredicate_KeepsPredicate()
+        {
+            var segment = QuerySourceExprConverter.ToExpr(
+                Expr.From<ShardJoinOrder>()
+                    .JoinRelated<ShardJoinUser>()
+                    .Where(x => ((IArged)x.Item1).TableArgs == new[] { "202401" } && x.Item2.Id > 0));
+
+            var where = Assert.IsType<WhereExpr>(segment);
+            var from = Assert.IsType<FromExpr>(where.Source);
+            Assert.Equal(new[] { "202401" }, Assert.IsType<TableExpr>(from.Source).TableArgs);
+            Assert.Contains("Id", where.Where!.ToString());
+        }
+
+        [Fact]
         public void ToExpr_NonQuerySourceRoot_Works()
         {
             // 不限制源类型：任意 IQueryable 都能作为查询根
@@ -311,6 +360,34 @@ namespace LiteOrm.Common.UnitTests
             var converter = new LambdaExprConverter(
                 (System.Linq.Expressions.Expression<Func<TestUser, int>>)(u => GenericProbe<int>.Probe()));
             return Assert.IsType<FunctionExpr>(converter.ToValueExpr());
+        }
+
+        #endregion
+
+        #region TableArgs 分表测试模型
+
+        [Table("ShardJoinOrders_{0}")]
+        private class ShardJoinOrder : IArged
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("UserId")]
+            [ForeignType(typeof(ShardJoinUser), Alias = "User")]
+            public int UserId { get; set; }
+
+            [Column(false)]
+            public string[] TableArgs => Array.Empty<string>();
+        }
+
+        [Table("ShardJoinUsers_{0}")]
+        private class ShardJoinUser : IArged
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column(false)]
+            public string[] TableArgs => Array.Empty<string>();
         }
 
         #endregion

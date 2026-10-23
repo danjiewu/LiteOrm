@@ -267,6 +267,8 @@ var sales = await salesService.SearchAsync(s =>
 
 > 该写法同样适用于 `QuerySource`：`Expr.From<SalesRecord>().Where(s => s.TableArgs == new[] { "202412" })` 会把分表参数回填到查询根表。
 
+Join 场景可以按元组元素指定到具体表：`From<Order>().JoinRelated<Customer>().Where(x => ((IArged)x.Item1).TableArgs == new[] { "202412" } && ((IArged)x.Item2).TableArgs == new[] { "202401" })`。
+
 ### 6.2 显式传入 `tableArgs`
 
 ```csharp

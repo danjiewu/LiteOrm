@@ -474,6 +474,7 @@ namespace LiteOrm.Common
         protected Expr ConvertBinary(BinaryExpression node)
         {
             // 特殊处理 TableArgs 赋值：u => ((IArged)u).TableArgs == ["202401"]
+            // Join 场景可指定到具体表：x => ((IArged)x.Item1).TableArgs == ["202401"]
             if (node.NodeType == ExpressionType.Equal)
             {
                 // 检查左边或右边是否是 TableArgs 属性访问
@@ -493,31 +494,40 @@ namespace LiteOrm.Common
 
                 if (tableArgsMember != null && valueExpr != null)
                 {
-                    // 提取参数表达式（可能有类型转换）
+                    // 提取赋值目标（可能有类型转换）
                     var targetExpr = tableArgsMember.Expression;
                     while (targetExpr is UnaryExpression unary && (unary.NodeType == ExpressionType.Convert || unary.NodeType == ExpressionType.TypeAs))
                     {
                         targetExpr = unary.Operand;
                     }
 
-                    // 如果是参数表达式
+                    // 赋值目标可以是普通参数（单表），也可以是 Join 元组元素（x.Item1 / x.Item1.Item2）
+                    TableExpr? tableExpr = null;
+                    ForeignExpr? foreignExpr = null;
+                    bool isTableArgsTarget = false;
+
                     if (targetExpr is ParameterExpression paramExpr && _parameterAliases.ContainsKey(paramExpr))
+                    {
+                        isTableArgsTarget = true;
+                        if (_parameterExprs.TryGetValue(paramExpr, out var paramArg))
+                        {
+                            if (paramArg is TableExpr te) tableExpr = te;
+                            else if (paramArg is ForeignExpr fe) foreignExpr = fe;
+                        }
+                    }
+                    else if (targetExpr is MemberExpression tupleMember
+                        && ResolveTupleNode(tupleMember)?.Table is TableExpr tupleTable)
+                    {
+                        isTableArgsTarget = true;
+                        tableExpr = tupleTable;
+                    }
+
+                    if (isTableArgsTarget)
                     {
                         // 解析赋值的值（数组或集合）
                         var tableArgs = EvaluateTableArgs(valueExpr);
-
-                        // 设置 TableExpr 或 ForeignExpr 的 TableArgs
-                        if (_parameterExprs.TryGetValue(paramExpr, out var paramArg))
-                        {
-                            if (paramArg is TableExpr tableExpr)
-                            {
-                                tableExpr.TableArgs = tableArgs;
-                            }
-                            else if (paramArg is ForeignExpr foreignExpr)
-                            {
-                                foreignExpr.TableArgs = tableArgs;
-                            }
-                        }
+                        if (tableExpr is not null) tableExpr.TableArgs = tableArgs;
+                        else if (foreignExpr is not null) foreignExpr.TableArgs = tableArgs;
 
                         // 返回 null 表示这个赋值条件不产生额外的 SQL 条件
                         return null!;
@@ -1233,8 +1243,7 @@ namespace LiteOrm.Common
             // 如果源已经是 WhereExpr，将新条件与现有条件用 AND 合并
             if (source is WhereExpr existingWhere)
             {
-                var combinedCondition = new AndExpr(existingWhere.Where!, newCondition);
-                existingWhere.Where = combinedCondition;
+                existingWhere.Where &= newCondition;
                 return existingWhere;
             }
 

@@ -267,6 +267,8 @@ Suitable for quickly querying a fixed month or a fixed shard.
 
 > The same syntax works with `QuerySource`: `Expr.From<SalesRecord>().Where(s => s.TableArgs == new[] { "202412" })` backfills the shard arguments onto the query root table.
 
+In a join, target a specific table through the tuple element: `From<Order>().JoinRelated<Customer>().Where(x => ((IArged)x.Item1).TableArgs == new[] { "202412" } && ((IArged)x.Item2).TableArgs == new[] { "202401" })`.
+
 ### 6.2 Explicitly Pass `tableArgs`
 
 ```csharp

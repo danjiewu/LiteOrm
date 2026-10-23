@@ -225,8 +225,10 @@ namespace LiteOrm.Common
             if (expr.Source == null) return;
 
             string joinAlias = expr.Source.Alias ?? NextAlias(context);
-            TableDefinition? joinTable = null;
-            if (expr.Source is TableExpr tbe) joinTable = TableInfoProvider.Instance.GetTableDefinition(tbe.Type!);
+            TableExpr? joinTableExpr = expr.Source as TableExpr;
+            TableDefinition? joinTable = joinTableExpr?.Type is { } joinType
+                ? TableInfoProvider.Instance.GetTableDefinition(joinType)
+                : null;
             context.AddTableAlias(joinAlias, joinTable);
 
             LogicExpr? onExpr = expr.On;
@@ -236,7 +238,13 @@ namespace LiteOrm.Common
             if (joinTable != null)
             {
                 onExpr &= GetAliasedConstFilter(joinTable.ConstFilter, joinAlias);
-                sb.Append(context.SqlBuilder.ToSqlName(context.FormatTableName(joinTable.Name!)));
+                // 连接表自身带分表参数时，仅在该表名格式化期间生效，避免影响后续片段
+                string[]? lastTableArgs = context.TableArgs;
+                if (joinTableExpr?.TableArgs is { Length: > 0 })
+                    context.TableArgs = joinTableExpr.TableArgs;
+                string joinTableName = context.FormatTableName(joinTable.Name!);
+                context.TableArgs = lastTableArgs;
+                sb.Append(context.SqlBuilder.ToSqlName(joinTableName));
                 sb.Append(" ");
                 sb.Append(context.SqlBuilder.ToSqlName(joinAlias));
             }
