@@ -50,6 +50,22 @@
   - `Like`
   - 动态 DTO 转 `Expr`
 
+### 复杂查询：同表多关系、动态排序、树形方言与条件持久化
+
+- 文档入口：[复杂查询实战](../typical-applications/complex-queries.md)
+- 代码来源：
+  - `LiteOrm.Tests\Converter\JoinExprTests.cs`
+  - `LiteOrm.Tests\Expr\GenericSqlExprTests.cs`
+  - `LiteOrm.Tests\Expr\RawSqlExprStringTests.cs`
+  - `LiteOrm.Tests\SqlBuilder\SqlGenTests.cs`
+- 重点内容：
+  - 同一实体派生类型区分同表多角色，`JoinRelated` 一次连接多个角色
+  - 表头点击驱动排序：`OrderByExpr` 由 `Expr` 动态拼装
+  - 同一 `LogicExpr` 条件取 `count` 与当页数据
+  - 自定义 Lambda 方法处理器 + `GenericSqlExpr` 生成方言 `CONNECT BY` / 递归 CTE
+  - `Expr` 保存为 JSON 并重新加载，`DateTime.Now` 解析为函数还是参数
+  - Lambda / `Expr` / `ExprString` 混用，以及 `SqlGen` 调试生成的 SQL
+
 ## 3. 写入与批处理示例
 
 ### 批量插入、批量更新、批量删除

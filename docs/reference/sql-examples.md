@@ -214,6 +214,7 @@ FROM [Sales_202411] [T0]
 
 - 从 `SessionManager.Current?.SqlStack` 可获取当前会话执行的 SQL。
 - `SqlStack`最多保留最后10条SQL，每次调用 `Service` 方法后 `SqlStack` 会清空。
+- 不连数据库、直接查看某份查询或片段会生成什么 SQL：见[复杂查询实战 · 用 SqlGen 调试查询](../typical-applications/complex-queries.md#8-用-sqlgen-调试查询)。
 
 ## 相关链接
 

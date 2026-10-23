@@ -50,6 +50,22 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
   - `Like`
   - converting a dynamic DTO into `Expr`
 
+### Complex queries: multi-role joins, dynamic sorting, dialect trees and saved conditions
+
+- Entry doc: [Complex Queries in Practice](../typical-applications/complex-queries.en.md)
+- Code sources:
+  - `LiteOrm.Tests\Converter\JoinExprTests.cs`
+  - `LiteOrm.Tests\Expr\GenericSqlExprTests.cs`
+  - `LiteOrm.Tests\Expr\RawSqlExprStringTests.cs`
+  - `LiteOrm.Tests\SqlBuilder\SqlGenTests.cs`
+- Focus:
+  - derived entity types for several roles on one table, joined in one go with `JoinRelated`
+  - header-click sorting: building `OrderByExpr` dynamically from `Expr`
+  - one `LogicExpr` filter driving both `count` and the current page
+  - a custom Lambda method handler plus `GenericSqlExpr` emitting dialect `CONNECT BY` or a recursive CTE
+  - persisting `Expr` as JSON and reloading it, and when `DateTime.Now` becomes a function vs. a parameter
+  - mixing Lambda, `Expr` and `ExprString`, and debugging generated SQL with `SqlGen`
+
 ## 3. Write and batch examples
 
 ### Batch insert, update, and delete

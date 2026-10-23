@@ -79,6 +79,7 @@ This is the main index of the LiteOrm documentation set. For deeper coverage, fo
 |[Computed Columns in Practice](./typical-applications/computed-columns.md)|Three worked examples — tier discounts, listing status bits, cross-table display names — with generated SQL|
 |[Concurrency and Read/Write Splitting](./typical-applications/concurrency-and-read-write-splitting.md)|Timestamp optimistic concurrency, transaction boundaries, read-only replicas and consistency|
 |[Projection on Demand: Entity-First or Query-Time](./typical-applications/query-projection.md)|Four requirements comparing entity-first projection with query-time projection: list pages, exports, detail pages and grouped aggregation|
+|[Complex Queries in Practice: Multi-Role Joins, Dynamic Sorting, Paging, Dialect Trees and Saved Conditions](./typical-applications/complex-queries.md)|Derived entity types for multiple roles on one table, `JoinRelated`, header-driven dynamic sorting, count and page from one filter, custom Lambda handling plus dialect `CONNECT BY`, persisted and reloaded Expr filters, `DateTime.Now` as function vs. parameter, and SqlGen debugging|
 
 ### Reference
 
@@ -111,5 +112,5 @@ This is the main index of the LiteOrm documentation set. For deeper coverage, fo
 4. Integrating via `LiteOrm.DependencyInjection` (Autofac, AOP): read the [Config Reference](./reference/configuration-reference.md) first, then the transactions, logging and service authorization topics in DI Extension.
 5. Sharding, performance or dialect differences: continue with Advanced Topics.
 6. Extending the framework itself: see Extensibility.
-7. Landing a concrete business scenario (tenant isolation, data permissions, soft delete and archiving, auditing, sensitive field encryption, JSON columns for objects, concurrency and read/write splitting, projection on demand): see Use Cases — every topic ships a requirement description plus copy-paste-ready code.
+7. Landing a concrete business scenario (tenant isolation, data permissions, soft delete and archiving, auditing, sensitive field encryption, JSON columns for objects, concurrency and read/write splitting, projection on demand, complex queries with multi-role joins, dynamic sorting, dialect trees and saved conditions): see Use Cases — every topic ships a requirement description plus copy-paste-ready code.
 8. Need to confirm a configuration key, an interface name or a term: go straight to Reference.
