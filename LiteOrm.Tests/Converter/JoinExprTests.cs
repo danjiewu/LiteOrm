@@ -356,6 +356,54 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void Convert_ChainedJoinRelated_MatchesFromLastJoinedTableFirst()
+        {
+            // 主表 JoinChainOrders 只直接关联 JoinChainUsers；JoinChainUsers 再关联 JoinChainDepts。
+            // 第二个 JoinRelated 必须优先用最近加入的 JoinChainUsers 推断，而不是回退到主表。
+            var converter = new LambdaExprConverter(
+                (Expression<Func<IQueryable<JoinChainOrder>, IEnumerable<(JoinChainOrder, JoinChainUser, JoinChainDept)>>>)(
+                    q => Expr.From<JoinChainOrder>()
+                          .JoinRelated<JoinChainUser>()
+                          .JoinRelated<JoinChainDept>()));
+
+            var from = Assert.IsType<FromExpr>(converter.ToSqlSegment());
+
+            Assert.Equal(2, from.Joins.Count);
+            string userAlias = ((TableExpr)from.Joins[0].Source!).Alias!;
+            string deptAlias = ((TableExpr)from.Joins[1].Source!).Alias!;
+            string deptOn = from.Joins[1].On!.ToString()!;
+
+            // 第二段 ON 必须落在 User -> Dept 的外键上，而不是主表
+            Assert.Contains(userAlias, deptOn);
+            Assert.Contains(deptAlias, deptOn);
+            Assert.Contains("DeptId", deptOn);
+
+            string sql = ToSql(from).Sql;
+            Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(sql, "JOIN").Count);
+            Assert.Contains("JoinChainDepts", sql);
+        }
+
+        [Fact]
+        public void QuerySource_ChainedJoinRelated_OutsideLambda_MatchesFromLastJoinedTableFirst()
+        {
+            // 同样的多级推断在 Lambda 外的 QuerySource 实例链路上也必须生效
+            var from = Assert.IsType<FromExpr>(
+                Expr.From<JoinChainOrder>()
+                    .JoinRelated<JoinChainUser>()
+                    .JoinRelated<JoinChainDept>()
+                    .GetQueryExpr());
+
+            Assert.Equal(2, from.Joins.Count);
+            string userAlias = ((TableExpr)from.Joins[0].Source!).Alias!;
+            string deptAlias = ((TableExpr)from.Joins[1].Source!).Alias!;
+            string deptOn = from.Joins[1].On!.ToString()!;
+
+            Assert.Contains(userAlias, deptOn);
+            Assert.Contains(deptAlias, deptOn);
+            Assert.Contains("DeptId", deptOn);
+        }
+
+        [Fact]
         public void Convert_SevenTableJoin_SupportsItem7InWhereAndSelect()
         {
             var converter = new LambdaExprConverter(
@@ -552,6 +600,38 @@ namespace LiteOrm.Common.UnitTests
 
             [Column("CityId")]
             public int CityId { get; set; }
+        }
+
+        [Table("JoinChainOrders")]
+        private class JoinChainOrder
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("UserId")]
+            [ForeignType(typeof(JoinChainUser), Alias = "User", AutoExpand = true)]
+            public int UserId { get; set; }
+        }
+
+        [Table("JoinChainUsers")]
+        private class JoinChainUser
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("DeptId")]
+            [ForeignType(typeof(JoinChainDept), Alias = "Dept", AutoExpand = true)]
+            public int DeptId { get; set; }
+        }
+
+        [Table("JoinChainDepts")]
+        private class JoinChainDept
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("Name")]
+            public string? Name { get; set; }
         }
 
         #endregion

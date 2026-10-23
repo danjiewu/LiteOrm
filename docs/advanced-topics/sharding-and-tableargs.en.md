@@ -265,6 +265,8 @@ var sales = await salesService.SearchAsync(s =>
 
 Suitable for quickly querying a fixed month or a fixed shard.
 
+> The same syntax works with `QuerySource`: `Expr.From<SalesRecord>().Where(s => s.TableArgs == new[] { "202412" })` backfills the shard arguments onto the query root table.
+
 ### 6.2 Explicitly Pass `tableArgs`
 
 ```csharp

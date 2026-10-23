@@ -220,6 +220,7 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 连接另一个实体表，并按外键元数据自动推断连接条件。
+        /// 推断时按关联顺序从后向前匹配：优先使用最近一次连接的表，找不到关系时再逐级向前回退，最后才使用主表。
         /// </summary>
         /// <typeparam name="T2">右表实体类型。</typeparam>
         /// <param name="joinType">连接类型，为 null 时沿用元数据中声明的连接方式。</param>

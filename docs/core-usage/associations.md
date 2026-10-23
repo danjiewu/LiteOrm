@@ -390,6 +390,8 @@ var matureItUsers = await objectViewDAO.Search(
 
 三者共用同一套推断逻辑，实现是 `Expr.BuildRelatedLogic(rootType, rootAlias, foreignType, foreignAlias)`：先看主表的 `JoinedTables` 里有没有目标类型，找不到再反向查目标表的 `JoinedTables`。推断不到时 `ExistsRelated` 与 `FromRelated` 退化为不带关联条件的写法，`JoinRelated` 则直接抛异常，提示改用带显式条件的 `Join`。需要自己拼关联条件时可以直接调用这个方法，返回的是一段带表别名的 `LogicExpr`。
 
+`JoinRelated` 在已有连接链上追加表时，会按关联顺序**从后向前**选择推断的起点：先尝试最近一次连接的表，再逐级向前回退，最后才使用主表。因此 `From<Order>().JoinRelated<User>().JoinRelated<Dept>()` 会用 `User` 到 `Dept` 的关系，而不是要求 `Order` 与 `Dept` 直接相关。
+
 实现上，LiteOrm 会在元数据阶段合并 ForeignType 与 TableJoin 的信息，生成 JoinedTable / ForeignTable 结构。固定筛选相关的元数据与 SQL 注入细节，见[权限过滤与用户范围控制](../advanced-topics/permission-filtering.md)。
 
 ---

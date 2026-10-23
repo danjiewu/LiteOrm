@@ -265,6 +265,8 @@ var sales = await salesService.SearchAsync(s =>
 
 适合“查询固定月份或固定分片”的快速写法。
 
+> 该写法同样适用于 `QuerySource`：`Expr.From<SalesRecord>().Where(s => s.TableArgs == new[] { "202412" })` 会把分表参数回填到查询根表。
+
 ### 6.2 显式传入 `tableArgs`
 
 ```csharp

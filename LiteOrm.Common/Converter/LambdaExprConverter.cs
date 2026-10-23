@@ -1191,7 +1191,7 @@ namespace LiteOrm.Common
 
                 if (src is HavingExpr existingHaving)
                 {
-                    existingHaving.Having = new AndExpr(existingHaving.Having!, havingLogic);
+                    existingHaving.Having &= havingLogic;
                     return existingHaving;
                 }
 
@@ -1203,6 +1203,18 @@ namespace LiteOrm.Common
             ParameterExpression parameter = lambda.Parameters[0];
             string lastAlias = _currentAlias;
             _parameterAliases[parameter] = _currentAlias;
+            // Where 的谓词参数没有独立的 FromExpr，这里把它映射到源链上的单表，
+            // 使 ((IArged)x).TableArgs == [...] 这类分表条件能落到正确的表。
+            bool registeredParamExpr = false;
+            if (!_parameterExprs.ContainsKey(parameter))
+            {
+                TableExpr? predicateTable = GetSingleTable(source);
+                if (predicateTable is not null && predicateTable.Alias == _currentAlias)
+                {
+                    _parameterExprs[parameter] = predicateTable;
+                    registeredParamExpr = true;
+                }
+            }
             // Join 产生的元组参数需要按 Item1..ItemN 还原到各表，才能解析 x.Item2.Name
             ParameterExpression? tupleParam = RegisterTupleElements(lambda, src);
 
@@ -1211,6 +1223,7 @@ namespace LiteOrm.Common
 
             if (tupleParam is not null) _tupleTrees.Remove(tupleParam);
             _parameterAliases.Remove(parameter);
+            if (registeredParamExpr) _parameterExprs.Remove(parameter);
             _currentAlias = lastAlias;
 
             // 条件为 null 时（如纯 TableArgs 赋值），直接返回源不添加 WHERE
@@ -1227,6 +1240,34 @@ namespace LiteOrm.Common
 
             // 否则创建新的 WhereExpr，需要转换为 ISourceAnchor
             return (source as ISourceAnchor).Where(newCondition);
+        }
+
+        /// <summary>
+        /// 从查询源链中取出唯一的表表达式（跳过 Where / OrderBy 等包装）。
+        /// 用于把 Where 谓词参数映射到对应的表，从而支持 TableArgs 分表条件。
+        /// </summary>
+        /// <param name="source">查询源。</param>
+        /// <returns>源是单表查询时返回该表，否则返回 null。</returns>
+        private static TableExpr? GetSingleTable(SqlSegment? source)
+        {
+            SqlSegment? current = source;
+            while (current is not null)
+            {
+                switch (current)
+                {
+                    case TableExpr tableExpr:
+                        return tableExpr;
+                    case WhereExpr whereExpr:
+                        current = whereExpr.Source;
+                        break;
+                    case OrderByExpr orderByExpr:
+                        current = orderByExpr.Source;
+                        break;
+                    default:
+                        return null;
+                }
+            }
+            return null;
         }
 
         /// <summary>
@@ -1616,7 +1657,7 @@ namespace LiteOrm.Common
 
             // 先构造右表别名并计算 ON 条件，再统一追加到连接链
             LambdaExpression? on = GetJoinLambda(node);
-            LogicExpr?[] conditions = BuildJoinConditions(node, from, joinTables, on);
+            LogicExpr?[] conditions = BuildJoinConditions(node, from, joinTables, on, out TableExpr?[] relatedLeftTables);
             TableJoinType? explicitJoinType = GetJoinTypeArgument(node);
             for (int i = 0; i < joinTables.Count; i++)
             {
@@ -1627,7 +1668,7 @@ namespace LiteOrm.Common
                     // 没有条件的连接段使用 CROSS JOIN，避免生成缺少 ON 的 LEFT JOIN
                     JoinType = condition is null
                         ? TableJoinType.Cross
-                        : ResolveJoinType(node.Method.Name, explicitJoinType, from.Source as TableExpr, joinTable.Type!)
+                        : ResolveJoinType(node.Method.Name, explicitJoinType, relatedLeftTables[i] ?? from.Source as TableExpr, joinTable.Type!)
                 };
                 from.Joins.Add(joinExpr);
             }
@@ -1660,28 +1701,55 @@ namespace LiteOrm.Common
         /// 构造 Join 的 ON 条件数组。Join 使用显式条件，并按条件中引用到的右表拆分到对应的 JOIN 段；
         /// JoinRelated 使用自动推断的关联条件，若同时提供了显式条件则两者按 AND 合并。
         /// </summary>
-        private LogicExpr?[] BuildJoinConditions(MethodCallExpression node, FromExpr from, IReadOnlyList<TableExpr> joinTables, LambdaExpression? on)
+        /// <param name="node">Join / JoinRelated 方法调用。</param>
+        /// <param name="from">当前连接链。</param>
+        /// <param name="joinTables">本次要追加的右表。</param>
+        /// <param name="on">显式连接条件，可能为 null。</param>
+        /// <param name="relatedLeftTables">JoinRelated 推断出关联关系的左表；Join 时为 null。</param>
+        /// <returns>每个右表对应的 ON 条件。</returns>
+        private LogicExpr?[] BuildJoinConditions(MethodCallExpression node, FromExpr from, IReadOnlyList<TableExpr> joinTables, LambdaExpression? on, out TableExpr?[] relatedLeftTables)
         {
             bool isRelated = node.Method.Name == nameof(QuerySource<object>.JoinRelated);
             bool hasExplicitOn = on is not null;
             var conditions = new LogicExpr?[joinTables.Count];
+            relatedLeftTables = new TableExpr?[joinTables.Count];
 
             if (isRelated)
             {
-                Type? leftType = (from.Source as TableExpr)?.Type;
-                string? leftAlias = (from.Source as TableExpr)?.Alias;
-                if (leftType is null || leftAlias is null)
+                // 按关联顺序从后向前匹配：优先用最近加入的连接表推断，最后才回退到主表
+                var leftCandidates = new List<TableExpr>(from.Joins.Count + 1);
+                for (int i = from.Joins.Count - 1; i >= 0; i--)
+                {
+                    if (from.Joins[i].Source is TableExpr joinedTable)
+                        leftCandidates.Add(joinedTable);
+                }
+                if (from.Source is TableExpr rootTable)
+                    leftCandidates.Add(rootTable);
+
+                if (leftCandidates.Count == 0)
                     throw new InvalidOperationException($"{node.Method.Name} requires a table as the join source.");
 
                 for (int i = 0; i < joinTables.Count; i++)
                 {
                     TableExpr joinTable = joinTables[i];
-                    LogicExpr? autoRelated = Expr.BuildRelatedLogic(leftType, leftAlias, joinTable.Type!, joinTable.Alias!);
+                    LogicExpr? autoRelated = null;
+                    TableExpr? matchedLeftTable = null;
+                    foreach (TableExpr candidate in leftCandidates)
+                    {
+                        if (candidate.Type is null || candidate.Alias is null) continue;
+                        autoRelated = Expr.BuildRelatedLogic(candidate.Type, candidate.Alias, joinTable.Type!, joinTable.Alias!);
+                        if (autoRelated is not null)
+                        {
+                            matchedLeftTable = candidate;
+                            break;
+                        }
+                    }
                     if (autoRelated is null && !hasExplicitOn)
                         throw new InvalidOperationException(
-                            $"No relation between {leftType.Name} and {joinTable.Type!.Name} is found in metadata. " +
+                            $"No relation between the joined tables and {joinTable.Type!.Name} is found in metadata. " +
                             $"Annotate the association with [ForeignType] / [TableJoin], or use Join with an explicit condition.");
                     conditions[i] = autoRelated;
+                    relatedLeftTables[i] = matchedLeftTable;
                 }
             }
 

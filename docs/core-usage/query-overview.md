@@ -143,7 +143,7 @@ var multi = From<Order>()
 
 - 返回 `QuerySource<T1, T2>`、`QuerySource<T1, T2, T3>` …，元素类型是**扁平元组** `(T1, T2)`、`(T1, T2, T3)`，用 `x.Item1` … `x.Item7` 访问，解析时会带上各自表的别名。
 - 第二段及以后连接的 `on` 参数按「已连接的各表 + 新右表」顺序排列，直接按参数名引用，例如 `(o, c, r) => c.RegionId == r.Id`。
-- `Join` 默认左连接；`JoinRelated` 使用元数据声明的连接类型，推断不到关联时抛 `InvalidOperationException`，提示改用带条件的 `Join`。
+- `Join` 默认左连接；`JoinRelated` 使用元数据声明的连接类型，推断不到关联时抛 `InvalidOperationException`，提示改用带条件的 `Join`。在链式调用中，`JoinRelated` 按关联顺序从后向前匹配，优先用最近一次连接的表推断（例如 `JoinRelated<User>().JoinRelated<Dept>()` 走 `User → Dept`，回退到最后才用主表）。
 - 连接需在 `Where` / `Select` **之前**完成；如果已经 `Where`，可先用 `.AsSource()` 收窄再继续 `Join<TNext>`。
 - 链式连接最多 7 张表。`Join` 之后接 `Select` 且写在 Lambda 里时，`Expr.Query<T, TResult>` 的 `TResult` 写 `IEnumerable<object>`。
 

@@ -371,6 +371,8 @@ This metadata does not only serve `ExistsRelated`; it also drives the behavior o
 
 All three share the same inference, implemented as `Expr.BuildRelatedLogic(rootType, rootAlias, foreignType, foreignAlias)`: first look for the target type among the main table's `JoinedTables`, then search the target table's `JoinedTables` in reverse. When no relation is found, `ExistsRelated` and `FromRelated` degrade to a version without a relation condition, while `JoinRelated` throws and asks you to use `Join` with an explicit condition. You can call the method directly when you need to build the relation condition yourself; it returns a `LogicExpr` with both table aliases applied.
 
+When appending a table to an existing join chain, `JoinRelated` picks the inference starting point **from back to front** in association order: it tries the most recently joined table first, falls back one level at a time, and only uses the main table last. So `From<Order>().JoinRelated<User>().JoinRelated<Dept>()` uses the `User` to `Dept` relation instead of requiring `Order` to relate to `Dept` directly.
+
 In implementation, LiteOrm merges ForeignType and TableJoin information during the metadata phase to generate JoinedTable / ForeignTable structures. For fixed-filter metadata and SQL injection details, see [Permission Filtering and User Scope Control](../advanced-topics/permission-filtering.en.md).
 
 ---

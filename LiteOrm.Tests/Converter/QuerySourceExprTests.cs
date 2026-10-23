@@ -73,6 +73,49 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void ToExpr_TableArgsCondition_BackfillsRootTable()
+        {
+            // Where 里的 TableArgs 赋值条件必须落到根表，并且不产生 WHERE
+            var segment = QuerySourceExprConverter.ToExpr(
+                Expr.From<TestLog>().Where(l => l.TableArgs == new[] { "202401" }));
+
+            var table = Assert.IsType<TableExpr>(segment);
+            Assert.Equal(new[] { "202401" }, table.TableArgs);
+
+            string sql = ToSql(new SelectExpr(table, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("TestLog_202401", sql);
+        }
+
+        [Fact]
+        public void ToExpr_TableArgsConditionWithPredicate_AppliesBoth()
+        {
+            var segment = QuerySourceExprConverter.ToExpr(
+                Expr.From<TestLog>().Where(l => l.TableArgs == new[] { "202401" } && l.Amount > 10));
+
+            var where = Assert.IsType<WhereExpr>(segment);
+            var table = Assert.IsType<TableExpr>(where.Source);
+            Assert.Equal(new[] { "202401" }, table.TableArgs);
+            Assert.Contains("Amount", where.Where!.ToString());
+
+            string sql = ToSql(new SelectExpr(where, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("TestLog_202401", sql);
+        }
+
+        [Fact]
+        public void ToExpr_TableArgsConditionAfterWhere_BackfillsRootTable()
+        {
+            var segment = QuerySourceExprConverter.ToExpr(
+                Expr.From<TestLog>()
+                    .Where(l => l.Amount > 10)
+                    .Where(l => l.TableArgs == new[] { "202401" }));
+
+            var where = Assert.IsType<WhereExpr>(segment);
+            var table = Assert.IsType<TableExpr>(where.Source);
+            Assert.Equal(new[] { "202401" }, table.TableArgs);
+            Assert.Contains("Amount", where.Where!.ToString());
+        }
+
+        [Fact]
         public void ToExpr_NonQuerySourceRoot_Works()
         {
             // 不限制源类型：任意 IQueryable 都能作为查询根

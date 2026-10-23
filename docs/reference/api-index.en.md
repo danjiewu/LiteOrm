@@ -70,7 +70,7 @@ Related guides:
 - `Expr`, `LogicExpr`, `SelectExpr`, `Expr.Query`
 - `QuerySource<T>` (returned by `Expr.From<T>()`; implements `IQueryable<T>` / `IOrderedQueryable<T>`) and `IQuerySourceExecutor<T>`
 - Multi-table sources `QuerySource<T1, T2>` ... `QuerySource<T1, ..., T7>`, each `Join<TNext>` appends one right table
-- `QuerySource<T>.Join<T2>(Expression<Func<T1, T2, bool>>, TableJoinType?)` / `JoinRelated<T2>(...)`; multi-table overloads take one condition parameter per table in the order "already-joined tables first, then the new right table"
+- `QuerySource<T>.Join<T2>(Expression<Func<T1, T2, bool>>, TableJoinType?)` / `JoinRelated<T2>(...)`; multi-table overloads take one condition parameter per table in the order "already-joined tables first, then the new right table"; `JoinRelated` matches from back to front in join order, with the main table last
 - `QuerySource<T>.GetQueryExpr()`, and `IQueryable<T>.GetQueryExpr()` / `AsSource()`
 - `LambdaExprExtensions` IQueryable overloads (`Search` / `SearchOne` / `SearchAsync` / `SearchOneAsync` / `SearchAs` / `SearchOneAs` / `SearchAsAsync` / `SearchOneAsAsync`)
 - `DAOExtensions` IQueryable `Search` overloads for `IDataViewDAO<TInput>`
