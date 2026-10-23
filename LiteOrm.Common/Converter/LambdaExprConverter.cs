@@ -324,6 +324,11 @@ namespace LiteOrm.Common
         /// </summary>
         protected readonly Dictionary<ParameterExpression, TupleNode> _tupleTrees = new Dictionary<ParameterExpression, TupleNode>();
         /// <summary>
+        /// 分组表达式到匿名键成员名序列的映射，用于解析 <c>g.Key.Member</c>。
+        /// 按 <see cref="GroupByExpr"/> 引用键控，避免值相等导致不同分组互相覆盖。
+        /// </summary>
+        private readonly Dictionary<GroupByExpr, string[]> _groupKeyNames = new Dictionary<GroupByExpr, string[]>(ReferenceComparer<GroupByExpr>.Instance);
+        /// <summary>
         /// 别名编号序列，父子转换器共享同一实例以避免嵌套作用域分配到重复别名
         /// </summary>
         protected readonly AliasSequence _aliasCounter;
@@ -1212,20 +1217,35 @@ namespace LiteOrm.Common
             var src = ConvertInternal(node.Arguments[0]);
             var lambda = UnwrapLambda(node.Arguments[1]);
 
-            // 如果源是 GroupByExpr 或 HavingExpr，则这是一个 Having 筛选，否则是普通的 Where 筛选
-            if (src is GroupByExpr or HavingExpr)
-            {
-                var havingAnchor = (IHavingAnchor)src;
-                var groupBySource = src as GroupByExpr ?? (src as HavingExpr)?.Source as GroupByExpr;
-                var havingLogic = ConvertHavingLambda(lambda, groupBySource?.GroupBys.ToArray());
+            // LINQ 允许在 OrderBy 之后继续调用 Where/Having；SQL 中 WHERE/HAVING 必须位于 ORDER BY 之前。
+            // 因此先跳过 OrderBy 包装识别分组语义，再把条件放回 OrderBy 的内层。
+            var orderByWrapper = src as OrderByExpr;
+            var innerSource = orderByWrapper?.Source ?? src;
 
-                if (src is HavingExpr existingHaving)
+            // 如果（跳过 OrderBy 后的）源是 GroupByExpr 或 HavingExpr，则这是一个 Having 筛选，否则是普通的 Where 筛选
+            if (innerSource is GroupByExpr or HavingExpr)
+            {
+                var groupBySource = innerSource as GroupByExpr ?? (innerSource as HavingExpr)?.Source as GroupByExpr;
+                var havingLogic = ConvertHavingLambda(lambda, groupBySource?.GroupBys.ToArray(), GetGroupKeyNames(groupBySource), groupBySource?.Source);
+
+                HavingExpr havingExpr;
+                if (innerSource is HavingExpr existingHaving)
                 {
                     existingHaving.Having &= havingLogic;
-                    return existingHaving;
+                    havingExpr = existingHaving;
+                }
+                else
+                {
+                    havingExpr = ((IHavingAnchor)innerSource).Having(havingLogic);
                 }
 
-                return havingAnchor.Having(havingLogic);
+                if (orderByWrapper is not null)
+                {
+                    orderByWrapper.Source = havingExpr;
+                    return orderByWrapper;
+                }
+
+                return havingExpr;
             }
 
             SqlSegment? source = src as SqlSegment;
@@ -1267,8 +1287,22 @@ namespace LiteOrm.Common
                 return existingWhere;
             }
 
+            // OrderBy 之后的 Where：把条件下推到排序源，保持 SQL 中 WHERE 在 ORDER BY 之前
+            if (source is OrderByExpr orderBySource)
+            {
+                if (orderBySource.Source is ISourceAnchor anchor)
+                {
+                    orderBySource.Source = anchor.Where(newCondition);
+                    return orderBySource;
+                }
+                throw new NotSupportedException("Where after OrderBy requires the OrderBy source to support Where.");
+            }
+
             // 否则创建新的 WhereExpr，需要转换为 ISourceAnchor
-            return (source as ISourceAnchor).Where(newCondition);
+            if (source is ISourceAnchor sourceAnchor)
+                return sourceAnchor.Where(newCondition);
+
+            throw new NotSupportedException($"The query source '{source?.GetType().Name ?? "null"}' does not support Where.");
         }
 
         /// <summary>
@@ -1308,7 +1342,11 @@ namespace LiteOrm.Common
             LambdaExpression lambda = UnwrapLambda(node.Arguments[1]);
             // Join 产生的元组参数需要按 Item1..ItemN 还原到各表，才能解析 x.Item2.Name
             ParameterExpression? tupleParam = RegisterTupleElements(lambda, source);
-            Expr key = ConvertInternal(node.Arguments[1]);
+            // GroupBy 之后按 g.Key / 聚合结果排序时，需要走分组表达式转换
+            GroupByExpr? groupBySource = GetGroupBySource(source);
+            Expr key = groupBySource is not null
+                ? ConvertGroupedExpr(lambda.Body, lambda.Parameters[0], groupBySource.GroupBys.ToArray(), GetGroupKeyNames(groupBySource), groupBySource.Source)
+                : ConvertInternal(node.Arguments[1]);
             if (tupleParam is not null) _tupleTrees.Remove(tupleParam);
             return (source as IOrderByAnchor).OrderBy((key.AsValue(), asc));
         }
@@ -1325,13 +1363,37 @@ namespace LiteOrm.Common
             {
                 LambdaExpression lambda = UnwrapLambda(node.Arguments[1]);
                 ParameterExpression? tupleParam = RegisterTupleElements(lambda, ob);
-                Expr key = ConvertInternal(node.Arguments[1]);
+                // OrderBy 的源可能是 GroupByExpr / HavingExpr，ThenBy 仍需按分组语义转换
+                GroupByExpr? groupBySource = GetGroupBySource(ob.Source);
+                Expr key = groupBySource is not null
+                    ? ConvertGroupedExpr(lambda.Body, lambda.Parameters[0], groupBySource.GroupBys.ToArray(), GetGroupKeyNames(groupBySource), groupBySource.Source)
+                    : ConvertInternal(node.Arguments[1]);
                 if (tupleParam is not null) _tupleTrees.Remove(tupleParam);
                 ob.OrderBys.Add((key.AsValue(), asc));
                 return ob;
             }
             throw new InvalidOperationException("ThenBy must follow OrderBy.");
         }
+
+        /// <summary>
+        /// 从查询源中取出直接或经 Having 包装的分组表达式。
+        /// </summary>
+        private static GroupByExpr? GetGroupBySource(Expr? source)
+        {
+            while (true)
+            {
+                if (source is OrderByExpr orderBy) { source = orderBy.Source; continue; }
+                if (source is SectionExpr section) { source = section.Source; continue; }
+                break;
+            }
+            return source as GroupByExpr ?? (source as HavingExpr)?.Source as GroupByExpr;
+        }
+
+        /// <summary>
+        /// 取出分组表达式的匿名键成员名序列。
+        /// </summary>
+        private string[]? GetGroupKeyNames(GroupByExpr? groupByExpr)
+            => groupByExpr is not null && _groupKeyNames.TryGetValue(groupByExpr, out var names) ? names : null;
 
         /// <summary>
         /// 处理 Skip 调用，转换为 SectionExpr 的 Skip 部分或 Section 方法。
@@ -1373,7 +1435,17 @@ namespace LiteOrm.Common
             ParameterExpression? tupleParam = RegisterTupleElements(lambda, source);
             Expr k = ConvertInternal(node.Arguments[1]);
             if (tupleParam is not null) _tupleTrees.Remove(tupleParam);
-            return s.GroupBy(k is ValueSet vs ? vs.Cast<ValueTypeExpr>().ToArray() : new[] { k.AsValue() });
+            var groupByExpr = s.GroupBy(k is ValueSet vs ? vs.Cast<ValueTypeExpr>().ToArray() : new[] { k.AsValue() });
+
+            // 匿名键的分组字段名与 GroupBys 顺序一致，记录下来以支持后续 g.Key.Member 访问
+            if (groupByExpr is GroupByExpr gbe && lambda.Body is NewExpression newExpr && newExpr.Members is not null)
+            {
+                var names = new string[newExpr.Members.Count];
+                for (int i = 0; i < names.Length; i++) names[i] = newExpr.Members[i].Name;
+                _groupKeyNames[gbe] = names;
+            }
+
+            return groupByExpr;
         }
 
         /// <summary>
@@ -1381,10 +1453,12 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="lambda">要转换的 Lambda 表达式</param>
         /// <param name="groupKeys">分组键集合</param>
+        /// <param name="groupKeyNames">匿名分组键的成员名序列，可为 null</param>
+        /// <param name="groupSource">分组前的查询源，用于解析聚合字段中的元组元素</param>
         /// <returns>转换后的 LogicExpr</returns>
-        private LogicExpr ConvertHavingLambda(LambdaExpression lambda, ValueTypeExpr[]? groupKeys)
+        private LogicExpr ConvertHavingLambda(LambdaExpression lambda, ValueTypeExpr[]? groupKeys, string[]? groupKeyNames = null, Expr? groupSource = null)
         {
-            var expr = ConvertGroupedExpr(lambda.Body, lambda.Parameters[0], groupKeys);
+            var expr = ConvertGroupedExpr(lambda.Body, lambda.Parameters[0], groupKeys, groupKeyNames, groupSource);
             return expr.AsLogic()!;
         }
 
@@ -1399,12 +1473,12 @@ namespace LiteOrm.Common
             var source = rawSource as ISelectAnchor;
             var lambda = UnwrapLambda(node.Arguments[1]);
 
-            // 检查是否是 GroupBy 后的 Select
-            var groupBySource = source as GroupByExpr;
+            // 检查是否是 GroupBy 后的 Select（源可能被 Having / OrderBy 包装）
+            var groupBySource = GetGroupBySource(rawSource);
 
             // 转换 Select 的选择表达式；Join 产生的元组参数需按 Item1..ItemN 还原到各表
             ParameterExpression? tupleParam = RegisterTupleElements(lambda, rawSource);
-            var selectItems = ConvertSelectLambda(lambda, groupBySource?.GroupBys.ToArray());
+            var selectItems = ConvertSelectLambda(lambda, groupBySource?.GroupBys.ToArray(), GetGroupKeyNames(groupBySource), groupBySource?.Source);
             if (tupleParam is not null) _tupleTrees.Remove(tupleParam);
 
             var selectExpr = (SelectExpr)source.Select(selectItems);
@@ -1420,8 +1494,10 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="lambda">要转换的 Lambda 表达式</param>
         /// <param name="groupKeys">用于分组时的键集合</param>
+        /// <param name="groupKeyNames">匿名分组键的成员名序列，可为 null</param>
+        /// <param name="groupSource">分组前的查询源，用于解析聚合字段中的元组元素</param>
         /// <returns>SelectItemExpr 数组</returns>
-        private SelectItemExpr[] ConvertSelectLambda(LambdaExpression lambda, ValueTypeExpr[]? groupKeys)
+        private SelectItemExpr[] ConvertSelectLambda(LambdaExpression lambda, ValueTypeExpr[]? groupKeys, string[]? groupKeyNames = null, Expr? groupSource = null)
         {
             var body = lambda.Body;
             var lambdaParam = lambda.Parameters[0];
@@ -1433,7 +1509,7 @@ namespace LiteOrm.Common
                 for (int i = 0; i < newExpr.Arguments.Count; i++)
                 {
                     var arg = newExpr.Arguments[i];
-                    var item = ConvertGroupedExpr(arg, lambdaParam, groupKeys);
+                    var item = ConvertGroupedExpr(arg, lambdaParam, groupKeys, groupKeyNames, groupSource);
                     if (item is not null)
                     {
                         var selectItem = new SelectItemExpr(item.AsValue());
@@ -1455,7 +1531,7 @@ namespace LiteOrm.Common
                 {
                     if (binding is MemberAssignment assignment)
                     {
-                        var item = ConvertGroupedExpr(assignment.Expression, lambdaParam, groupKeys);
+                        var item = ConvertGroupedExpr(assignment.Expression, lambdaParam, groupKeys, groupKeyNames, groupSource);
                         if (item is not null)
                             items.Add(new SelectItemExpr(item.AsValue(), assignment.Member.Name));
                     }
@@ -1464,7 +1540,7 @@ namespace LiteOrm.Common
             }
 
             // 处理单个选择
-            var singleItem = ConvertGroupedExpr(body, lambdaParam, groupKeys);
+            var singleItem = ConvertGroupedExpr(body, lambdaParam, groupKeys, groupKeyNames, groupSource);
             return singleItem is not null ? new[] { new SelectItemExpr(singleItem.AsValue()) } : Array.Empty<SelectItemExpr>();
         }
 
@@ -1474,8 +1550,10 @@ namespace LiteOrm.Common
         /// <param name="arg">要转换的表达式节点</param>
         /// <param name="lambdaParam">Lambda 表达式的参数</param>
         /// <param name="groupKeys">分组键集合</param>
+        /// <param name="groupKeyNames">匿名分组键的成员名序列，可为 null</param>
+        /// <param name="groupSource">分组前的查询源，用于解析聚合字段中的元组元素</param>
         /// <returns>转换后的 Expr</returns>
-        private Expr ConvertGroupedExpr(Expression arg, ParameterExpression lambdaParam, ValueTypeExpr[]? groupKeys)
+        private Expr ConvertGroupedExpr(Expression arg, ParameterExpression lambdaParam, ValueTypeExpr[]? groupKeys, string[]? groupKeyNames = null, Expr? groupSource = null)
         {
             // 如果是 MemberAccess (如 g.Key) 
             if (arg is MemberExpression memberExpr)
@@ -1497,15 +1575,27 @@ namespace LiteOrm.Common
                         $"'{memberExpr}' refers to a nested tuple element and cannot be used as a column. " +
                         $"Access a concrete table element instead, for example x.Item1.Item2.Column.");
 
+                // g.Key.Member：匿名分组键按成员名映射到对应的分组键表达式
+                if (groupKeys is not null && groupKeyNames is not null
+                    && memberExpr.Expression is MemberExpression keyAccess
+                    && keyAccess.Member.Name == "Key"
+                    && IsParameterAccess(keyAccess.Expression, lambdaParam))
+                {
+                    int keyIndex = Array.IndexOf(groupKeyNames, memberExpr.Member.Name);
+                    if (keyIndex >= 0 && keyIndex < groupKeys.Length) return groupKeys[keyIndex];
+                }
+
                 // 检查是否是 lambda 参数的成员访问
                 if (IsParameterAccess(memberExpr.Expression, lambdaParam))
                 {
                     var memberName = memberExpr.Member.Name;
 
-                    // 检查是否是 Key 访问
+                    // 检查是否是 Key 访问；多字段分组键整体访问时返回值集合
                     if (memberName == "Key" && groupKeys?.Length > 0)
                     {
-                        return groupKeys[0];
+                        return groupKeys.Length == 1
+                            ? groupKeys[0]
+                            : new ValueSet(ValueJoinType.List, groupKeys);
                     }
 
                     // 其他成员访问
@@ -1545,7 +1635,27 @@ namespace LiteOrm.Common
                         {
                             if (fieldExpr is LambdaExpression fieldLambda)
                             {
-                                if (fieldLambda.Body is MemberExpression me) aggregateArg = Expr.Prop(me.Member.Name);
+                                // 分组元素可能是 Join 产生的元组，聚合选择器中的 x.ItemN.Column
+                                // 需要按分组前的查询源还原到对应表别名。
+                                ParameterExpression? aggregateTupleParam = null;
+                                if (groupSource is not null)
+                                    aggregateTupleParam = RegisterTupleElements(fieldLambda, groupSource);
+
+                                if (aggregateTupleParam is not null)
+                                {
+                                    try
+                                    {
+                                        aggregateArg = ConvertInternal(fieldLambda.Body).AsValue();
+                                    }
+                                    finally
+                                    {
+                                        _tupleTrees.Remove(aggregateTupleParam);
+                                    }
+                                }
+                                else if (fieldLambda.Body is MemberExpression me)
+                                {
+                                    aggregateArg = Expr.Prop(me.Member.Name);
+                                }
                             }
                             else if (fieldExpr is MemberExpression me2)
                             {
@@ -1561,8 +1671,8 @@ namespace LiteOrm.Common
             // 处理二元运算 (如 g.Count() > 1)
             if (arg is BinaryExpression binary)
             {
-                var left = ConvertGroupedExpr(binary.Left, lambdaParam, groupKeys);
-                var right = ConvertGroupedExpr(binary.Right, lambdaParam, groupKeys);
+                var left = ConvertGroupedExpr(binary.Left, lambdaParam, groupKeys, groupKeyNames, groupSource);
+                var right = ConvertGroupedExpr(binary.Right, lambdaParam, groupKeys, groupKeyNames, groupSource);
 
                 // Logic operation
                 if (binary.NodeType == ExpressionType.AndAlso || binary.NodeType == ExpressionType.And)
@@ -2203,6 +2313,18 @@ namespace LiteOrm.Common
                 }
                 return base.VisitMember(node);
             }
+        }
+
+        /// <summary>
+        /// 按引用比较的相等比较器，用于以可变表达式对象作为字典键。
+        /// </summary>
+        private sealed class ReferenceComparer<T> : IEqualityComparer<T> where T : class
+        {
+            public static readonly ReferenceComparer<T> Instance = new ReferenceComparer<T>();
+
+            public bool Equals(T? x, T? y) => ReferenceEquals(x, y);
+
+            public int GetHashCode(T obj) => RuntimeHelpers.GetHashCode(obj);
         }
 
         /// <summary>

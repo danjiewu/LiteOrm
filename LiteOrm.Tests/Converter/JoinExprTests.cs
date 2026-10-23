@@ -488,6 +488,323 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void QuerySource_GroupByThenOrderByKey_MatchesKey()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => o.CustomerId)
+                .OrderBy(g => g.Key)
+                .GetQueryExpr();
+
+            string sql = ToSql(new SelectExpr(query, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("ORDER BY", sql);
+            Assert.DoesNotContain("Key", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupByThenOrderByThenBy_MatchesKeyAndCount()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => o.CustomerId)
+                .OrderBy(g => g.Key)
+                .ThenByDescending(g => g.Count())
+                .GetQueryExpr();
+
+            string sql = ToSql(new SelectExpr(query, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("ORDER BY", sql);
+            Assert.Contains("COUNT", sql.ToUpperInvariant());
+            Assert.DoesNotContain("Key", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupByMultiKeyOrderByKeyMember_MatchesKeyMember()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => new { o.CustomerId, c.Name })
+                .OrderBy(g => g.Key.CustomerId)
+                .ThenBy(g => g.Key.Name)
+                .GetQueryExpr();
+
+            string sql = ToSql(new SelectExpr(query, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("ORDER BY", sql);
+            Assert.DoesNotContain("Key", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupByThenOrderByThenHaving_PushesHavingBelowOrderBy()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => o.CustomerId)
+                .OrderBy(g => g.Key)
+                .Where(g => g.Count() > 1)
+                .GetQueryExpr();
+
+            string sql = ToSql(new SelectExpr(query, new SelectItemExpr(Expr.Const(1)))).Sql;
+            int having = sql.IndexOf("HAVING");
+            int orderBy = sql.IndexOf("ORDER BY");
+            Assert.True(having >= 0, sql);
+            Assert.True(orderBy > having, sql);
+            Assert.DoesNotContain("Key", sql);
+        }
+
+        [Fact]
+        public void QuerySource_OrderByThenSelect_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .OrderBy((o, c) => o.Amount)
+                .Select((o, c) => new { o.Id, c.Name })
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .OrderBy(x => x.Item1.Amount)
+                .Select(x => new { x.Item1.Id, x.Item2.Name })
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(parameterized).Sql;
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_WhereAfterOrderByThenSelect_MatchesItemAccess()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .OrderBy((o, c) => o.Amount)
+                .Where((o, c) => c.Name == "VIP")
+                .Select((o, c) => new { o.Id, c.Name })
+                .GetQueryExpr();
+
+            string sql = ToSql(query).Sql;
+            int where = sql.IndexOf("WHERE");
+            int orderBy = sql.IndexOf("ORDER BY");
+            Assert.True(where >= 0, sql);
+            Assert.True(orderBy > where, sql);
+            Assert.Contains("VIP", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupByAnonymousKey_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => new { o.CustomerId, c.Name })
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy(x => new { x.Item1.CustomerId, x.Item2.Name })
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(new SelectExpr(parameterized, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("GROUP BY", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupByMultiKeyOrderByWholeKey_MapsAllKeys()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => new { o.CustomerId, c.Name })
+                .OrderBy(g => g.Key)
+                .GetQueryExpr();
+
+            string sql = ToSql(new SelectExpr(query, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("ORDER BY", sql);
+            Assert.DoesNotContain("Key", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupByMultiKeySelectWholeKey_MapsAllKeys()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => new { o.CustomerId, c.Name })
+                .Select(g => g.Key)
+                .GetQueryExpr();
+
+            string sql = ToSql(query).Sql;
+            Assert.DoesNotContain("Key", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupBySumTupleField_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => o.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.Item1.Amount) })
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy(x => x.Item1.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.Item1.Amount) })
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(parameterized).Sql;
+            Assert.Contains("\"T0\".\"Amount\"", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupBySumFirstTableTupleField_UsesFirstTableAlias()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => o.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.Item1.Id) })
+                .GetQueryExpr();
+
+            string sql = ToSql(query).Sql;
+            Assert.Contains("\"T0\".\"Id\"", sql);
+            Assert.DoesNotContain("Item1", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupBySumSecondTableTupleField_UsesSecondTableAlias()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => o.CustomerId)
+                .Select(g => new { g.Key, Total = g.Sum(x => x.Item2.Id) })
+                .GetQueryExpr();
+
+            string sql = ToSql(query).Sql;
+            Assert.Contains("Sum(\"T1\".\"Id\")", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupByHavingSumTupleField_UsesSecondTableAlias()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => o.CustomerId)
+                .Where(g => g.Sum(x => x.Item2.Id) > 0)
+                .GetQueryExpr();
+
+            string sql = ToSql(new SelectExpr(query, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("Sum(\"T1\".\"Id\")", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupByOrderBySumTupleField_UsesSecondTableAlias()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => o.CustomerId)
+                .OrderBy(g => g.Sum(x => x.Item2.Id))
+                .GetQueryExpr();
+
+            string sql = ToSql(new SelectExpr(query, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("Sum(\"T1\".\"Id\")", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupBySectionSelect_MapsKey()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => o.CustomerId)
+                .Skip(1)
+                .Take(10)
+                .Select(g => g.Key)
+                .GetQueryExpr();
+
+            string sql = ToSql(query).Sql;
+            Assert.DoesNotContain("Key", sql);
+            Assert.Contains("CustomerId", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupByMultiKeySelect_MapsKeyMembers()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => new { o.CustomerId, c.Name })
+                .Select(g => new { g.Key.CustomerId, g.Key.Name, Count = g.Count() })
+                .GetQueryExpr();
+
+            string sql = ToSql(query).Sql;
+            Assert.DoesNotContain("Key", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupByHavingSelect_MapsKeyMembers()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => new { o.CustomerId, c.Name })
+                .Where(g => g.Count() > 1)
+                .Select(g => new { g.Key.CustomerId, g.Key.Name, Count = g.Count() })
+                .GetQueryExpr();
+
+            string sql = ToSql(query).Sql;
+            Assert.Contains("HAVING", sql);
+            Assert.DoesNotContain("Key", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_GroupByOrderBySelect_MapsKeyMembers()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => new { o.CustomerId, c.Name })
+                .OrderBy(g => g.Key.CustomerId)
+                .Select(g => new { g.Key.CustomerId, g.Key.Name, Count = g.Count() })
+                .GetQueryExpr();
+
+            string sql = ToSql(query).Sql;
+            Assert.Contains("ORDER BY", sql);
+            Assert.DoesNotContain("Key", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_OrderByAnonymousKey_MatchesItemAccess()
+        {
+            var query = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .OrderBy((o, c) => new { o.Amount, c.Name })
+                .GetQueryExpr();
+
+            string sql = ToSql(new SelectExpr(query, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("ORDER BY", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
         public void Convert_JoinSelectAnonymousItems_CarriesAliases()
         {
             var converter = new LambdaExprConverter(
