@@ -857,10 +857,30 @@ namespace LiteOrm.Common
             ParameterExpression parameter = lambda.Parameters[0];
             if (!IsTupleType(parameter.Type)) return null;
 
-            // Join 之后若先接 Where/Having，源已变成 WhereExpr，需要沿 Source 逐层回溯到 FromExpr
+            // Join 之后若先接 Where/Having/OrderBy/Section，源已变成对应包装表达式，
+            // 需要沿 Source 逐层回溯到 FromExpr 才能还原元组元素与表的对应关系。
             Expr? current = source;
-            while (current is WhereExpr whereExpr) current = whereExpr.Source;
-            while (current is HavingExpr havingExpr) current = havingExpr.Source;
+            while (true)
+            {
+                switch (current)
+                {
+                    case WhereExpr whereExpr:
+                        current = whereExpr.Source;
+                        break;
+                    case HavingExpr havingExpr:
+                        current = havingExpr.Source;
+                        break;
+                    case OrderByExpr orderByExpr:
+                        current = orderByExpr.Source;
+                        break;
+                    case SectionExpr sectionExpr:
+                        current = sectionExpr.Source;
+                        break;
+                    default:
+                        goto unwrapped;
+                }
+            }
+        unwrapped:
             if (current is not FromExpr from) return null;
 
             var tree = BuildTupleTree(parameter.Type, from);
@@ -1282,7 +1302,16 @@ namespace LiteOrm.Common
         /// <summary>
         /// 处理 OrderBy/OrderByDescending 并返回 OrderByExpr 或更新现有表达式。
         /// </summary>
-        private Expr HandleOrderBy(MethodCallExpression node, bool asc) => (ConvertInternal(node.Arguments[0]) as IOrderByAnchor).OrderBy((ConvertInternal(node.Arguments[1]).AsValue(), asc));
+        private Expr HandleOrderBy(MethodCallExpression node, bool asc)
+        {
+            Expr source = ConvertInternal(node.Arguments[0]);
+            LambdaExpression lambda = UnwrapLambda(node.Arguments[1]);
+            // Join 产生的元组参数需要按 Item1..ItemN 还原到各表，才能解析 x.Item2.Name
+            ParameterExpression? tupleParam = RegisterTupleElements(lambda, source);
+            Expr key = ConvertInternal(node.Arguments[1]);
+            if (tupleParam is not null) _tupleTrees.Remove(tupleParam);
+            return (source as IOrderByAnchor).OrderBy((key.AsValue(), asc));
+        }
 
         /// <summary>
         /// 处理 ThenBy/ThenByDescending 并更新现有的 OrderByExpr。
@@ -1292,7 +1321,15 @@ namespace LiteOrm.Common
         /// <returns>更新后的 OrderByExpr</returns>
         private Expr HandleThenBy(MethodCallExpression node, bool asc)
         {
-            if (ConvertInternal(node.Arguments[0]) is OrderByExpr ob) { ob.OrderBys.Add((ConvertInternal(node.Arguments[1]).AsValue(), asc)); return ob; }
+            if (ConvertInternal(node.Arguments[0]) is OrderByExpr ob)
+            {
+                LambdaExpression lambda = UnwrapLambda(node.Arguments[1]);
+                ParameterExpression? tupleParam = RegisterTupleElements(lambda, ob);
+                Expr key = ConvertInternal(node.Arguments[1]);
+                if (tupleParam is not null) _tupleTrees.Remove(tupleParam);
+                ob.OrderBys.Add((key.AsValue(), asc));
+                return ob;
+            }
             throw new InvalidOperationException("ThenBy must follow OrderBy.");
         }
 
@@ -1329,8 +1366,13 @@ namespace LiteOrm.Common
         /// <returns>GroupByExpr</returns>
         private Expr HandleGroupBy(MethodCallExpression node)
         {
-            var s = ConvertInternal(node.Arguments[0]) as IGroupByAnchor;
-            var k = ConvertInternal(node.Arguments[1]);
+            Expr source = ConvertInternal(node.Arguments[0]);
+            var s = source as IGroupByAnchor;
+            LambdaExpression lambda = UnwrapLambda(node.Arguments[1]);
+            // Join 产生的元组参数需要按 Item1..ItemN 还原到各表，才能解析 x.Item2.Name
+            ParameterExpression? tupleParam = RegisterTupleElements(lambda, source);
+            Expr k = ConvertInternal(node.Arguments[1]);
+            if (tupleParam is not null) _tupleTrees.Remove(tupleParam);
             return s.GroupBy(k is ValueSet vs ? vs.Cast<ValueTypeExpr>().ToArray() : new[] { k.AsValue() });
         }
 

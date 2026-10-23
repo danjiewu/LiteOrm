@@ -275,6 +275,219 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void QuerySource_TwoParameterSelect_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Select((o, c) => new { OrderId = o.Id, CustomerName = c.Name })
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Select(x => new { OrderId = x.Item1.Id, CustomerName = x.Item2.Name })
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(parameterized).Sql;
+            Assert.Contains("OrderId", sql);
+            Assert.Contains("CustomerName", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_TwoParameterOrderByThenBy_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .OrderBy((o, c) => o.Amount)
+                .ThenByDescending((o, c) => c.Name)
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .OrderBy(x => x.Item1.Amount)
+                .ThenByDescending(x => x.Item2.Name)
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(new SelectExpr(parameterized, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("ORDER BY", sql);
+            Assert.Contains("Amount", sql);
+            Assert.Contains("Name", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_TwoParameterOrderByDescending_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .OrderByDescending((o, c) => o.Amount)
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .OrderByDescending(x => x.Item1.Amount)
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(new SelectExpr(parameterized, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("DESC", sql);
+            Assert.DoesNotContain("Item1", sql);
+        }
+
+        [Fact]
+        public void QuerySource_TwoParameterGroupBy_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => o.CustomerId)
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy(x => x.Item1.CustomerId)
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(new SelectExpr(parameterized, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("GROUP BY", sql);
+            Assert.Contains("CustomerId", sql);
+            Assert.DoesNotContain("Item1", sql);
+        }
+
+        [Fact]
+        public void QuerySource_TwoParameterGroupByThenSelect_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy((o, c) => o.CustomerId)
+                .Select(g => new { CustomerId = g.Key, Count = g.Count() })
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .GroupBy(x => x.Item1.CustomerId)
+                .Select(g => new { CustomerId = g.Key, Count = g.Count() })
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(parameterized).Sql;
+            Assert.Contains("GROUP BY", sql);
+            Assert.Contains("Count", sql);
+            Assert.DoesNotContain("Item1", sql);
+        }
+
+        [Fact]
+        public void QuerySource_ThreeParameterSelect_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                .Select((o, c, r) => new { OrderId = o.Id, CustomerName = c.Name, RegionId = r.Id })
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                .Select(x => new { OrderId = x.Item1.Id, CustomerName = x.Item2.Name, RegionId = x.Item3.Id })
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(parameterized).Sql;
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+            Assert.DoesNotContain("Item3", sql);
+        }
+
+        [Fact]
+        public void QuerySource_ThreeParameterOrderByThenBy_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                .OrderBy((o, c, r) => o.Amount)
+                .ThenBy((o, c, r) => r.Name)
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                .OrderBy(x => x.Item1.Amount)
+                .ThenBy(x => x.Item3.Name)
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(new SelectExpr(parameterized, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("ORDER BY", sql);
+            Assert.Contains("Amount", sql);
+            Assert.Contains("Name", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item3", sql);
+        }
+
+        [Fact]
+        public void QuerySource_ThreeParameterGroupBy_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                .GroupBy((o, c, r) => r.Id)
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                .GroupBy(x => x.Item3.Id)
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(new SelectExpr(parameterized, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("GROUP BY", sql);
+            Assert.DoesNotContain("Item3", sql);
+        }
+
+        [Fact]
+        public void QuerySource_SevenParameterSelect_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                .Join<JoinZone>((o, c, r, z) => r.Id == z.RegionId)
+                .Join<JoinStore>((o, c, r, z, s) => r.Id == s.RegionId)
+                .Join<JoinCity>((o, c, r, z, s, ci) => s.Id == ci.StoreId)
+                .Join<JoinCountry>((o, c, r, z, s, ci, co) => ci.Id == co.CityId)
+                .Select((o, c, r, z, s, ci, co) => new { OrderId = o.Id, CustomerName = c.Name, CountryId = co.Id })
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                .Join<JoinZone>((o, c, r, z) => r.Id == z.RegionId)
+                .Join<JoinStore>((o, c, r, z, s) => r.Id == s.RegionId)
+                .Join<JoinCity>((o, c, r, z, s, ci) => s.Id == ci.StoreId)
+                .Join<JoinCountry>((o, c, r, z, s, ci, co) => ci.Id == co.CityId)
+                .Select(x => new { OrderId = x.Item1.Id, CustomerName = x.Item2.Name, CountryId = x.Item7.Id })
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(parameterized).Sql;
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item7", sql);
+        }
+
+        [Fact]
         public void Convert_JoinSelectAnonymousItems_CarriesAliases()
         {
             var converter = new LambdaExprConverter(
