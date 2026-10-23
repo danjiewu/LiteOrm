@@ -279,6 +279,7 @@ var multipleRelated = Query<Order, IEnumerable<(Order, Customer, Region)>>(
 - `JoinRelated` 推断不到关联关系时抛 `InvalidOperationException`，提示改用带条件的 `Join`。这类表需要先用 `[ForeignType]` 或 `[TableJoin]` 声明关联。
 - 支持多级连接，`From<A>().Join<B>(...).Join<C>(...)` 会连续追加 JOIN。连接条件的 lambda 参数按「已连接的各表 + 新右表」顺序排列：第二级连接是 `(a, b, c) => ...`，第三级连接是 `(a, b, c, d) => ...`，直接按参数名引用对应的表即可。
 - 链式连接中每个 `Join` / `JoinRelated` 只负责追加一张表，显式条件只需描述该段与已连接表的关联；`JoinRelated` 仍按外键元数据推断条件，显式条件与自动条件取 AND。
+- 连接结果（2~7 张表）还可以用多参数 `Where` 直接按表写条件：`From<Order>().JoinRelated<Customer>().Where((o, c) => o.Amount > 10 && c.Name == "VIP")`；多表时依次写 `(o, c, r) => ...`。扩展方法会把各参数重写成 `x.Item1` ~ `x.Item7`，与 `x => x.Item1...` 写法等价。
 - 连接表别名按分配顺序生成，需要按别名手工拼 `SelectItemExpr` 时从 `from.Source.Alias` 与 `from.Joins[i].Source.Alias` 读取，不要写死 `T1`，外层查询可能已经占用过该编号。
 - `Select(x => x.Item1)` 这种整表投影不支持，`Select` 里请写具体列，例如 `Select(x => new { x.Item1.Id, x.Item2.Name })`。元组元素 `x.Item1` 直接当列用会抛 `NotSupportedException`。
 - `Join` / `JoinRelated` 后接 `Select` 时元素类型已经变化，`Expr.Query<T, TResult>` 的 `TResult` 不能再写连接结果的元组类型，应改为 `IEnumerable<object>`（或与投影结果类型兼容的接口）。

@@ -200,6 +200,81 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void QuerySource_TwoParameterWhere_MatchesItemAccess()
+        {
+            var twoParameter = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Where((o, c) => o.Amount > 10 && c.Name == "VIP")
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Where(x => x.Item1.Amount > 10 && x.Item2.Name == "VIP")
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), twoParameter.ToString());
+
+            string sql = ToSql(new SelectExpr(twoParameter, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.Contains("Amount", sql);
+            Assert.Contains("Name", sql);
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+        }
+
+        [Fact]
+        public void QuerySource_ThreeParameterWhere_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                .Where((o, c, r) => o.Amount > 10 && c.Name == "VIP" && r.Id > 0)
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                .Where(x => x.Item1.Amount > 10 && x.Item2.Name == "VIP" && x.Item3.Id > 0)
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(new SelectExpr(parameterized, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item2", sql);
+            Assert.DoesNotContain("Item3", sql);
+        }
+
+        [Fact]
+        public void QuerySource_SevenParameterWhere_MatchesItemAccess()
+        {
+            var parameterized = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                .Join<JoinZone>((o, c, r, z) => r.Id == z.RegionId)
+                .Join<JoinStore>((o, c, r, z, s) => r.Id == s.RegionId)
+                .Join<JoinCity>((o, c, r, z, s, ci) => s.Id == ci.StoreId)
+                .Join<JoinCountry>((o, c, r, z, s, ci, co) => ci.Id == co.CityId)
+                .Where((o, c, r, z, s, ci, co) => o.Amount > 0 && c.Name == "VIP" && co.Id > 0)
+                .GetQueryExpr();
+
+            var itemAccess = Expr.From<JoinOrder>()
+                .Join<JoinCustomer>((o, c) => o.CustomerId == c.Id)
+                .Join<JoinRegion>((o, c, r) => o.RegionId == r.Id)
+                .Join<JoinZone>((o, c, r, z) => r.Id == z.RegionId)
+                .Join<JoinStore>((o, c, r, z, s) => r.Id == s.RegionId)
+                .Join<JoinCity>((o, c, r, z, s, ci) => s.Id == ci.StoreId)
+                .Join<JoinCountry>((o, c, r, z, s, ci, co) => ci.Id == co.CityId)
+                .Where(x => x.Item1.Amount > 0 && x.Item2.Name == "VIP" && x.Item7.Id > 0)
+                .GetQueryExpr();
+
+            Assert.Equal(itemAccess.ToString(), parameterized.ToString());
+
+            string sql = ToSql(new SelectExpr(parameterized, new SelectItemExpr(Expr.Const(1)))).Sql;
+            Assert.DoesNotContain("Item1", sql);
+            Assert.DoesNotContain("Item7", sql);
+        }
+
+        [Fact]
         public void Convert_JoinSelectAnonymousItems_CarriesAliases()
         {
             var converter = new LambdaExprConverter(
