@@ -723,6 +723,67 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void Where_Repeated_MergesIntoExistingWhereExpr()
+        {
+            var source = new FromExpr(typeof(TestEntity));
+            var first = source.Where(Expr.Prop("Id") > 1);
+            var result = first.Where(Expr.Prop("Name") == "a");
+
+            Assert.Same(first, result);
+            var where = Assert.IsType<WhereExpr>(result);
+            Assert.IsType<AndExpr>(where.Where);
+        }
+
+        [Fact]
+        public void Having_Repeated_MergesIntoExistingHavingExpr()
+        {
+            var source = new GroupByExpr(new FromExpr(typeof(TestEntity)), Expr.Prop("DeptId"));
+            var first = source.Having(Expr.Prop("Count") > 1);
+            var result = first.Having(Expr.Prop("Count") < 10);
+
+            Assert.Same(first, result);
+            var having = Assert.IsType<HavingExpr>(result);
+            Assert.IsType<AndExpr>(having.Having);
+        }
+
+        [Fact]
+        public void GroupBy_Repeated_AppendsToExistingGroupByExpr()
+        {
+            var source = new FromExpr(typeof(TestEntity));
+            var first = source.GroupBy(Expr.Prop("DeptId"));
+            var result = first.GroupBy(Expr.Prop("Status"));
+
+            Assert.Same(first, result);
+            var groupBy = Assert.IsType<GroupByExpr>(result);
+            Assert.Equal(2, groupBy.GroupBys.Count);
+        }
+
+        [Fact]
+        public void Section_Repeated_UpdatesExistingSectionExpr()
+        {
+            var source = new FromExpr(typeof(TestEntity));
+            var first = source.Section(0, 10);
+            var result = first.Section(5, 20);
+
+            Assert.Same(first, result);
+            var section = Assert.IsType<SectionExpr>(result);
+            Assert.Equal(5, section.Skip);
+            Assert.Equal(20, section.Take);
+        }
+
+        [Fact]
+        public void OrderBy_Repeated_AppendsToExistingOrderByExpr()
+        {
+            var source = new FromExpr(typeof(TestEntity));
+            var first = source.OrderBy(Expr.Prop("Name").Asc());
+            var result = first.OrderBy(Expr.Prop("Id").Desc());
+
+            Assert.Same(first, result);
+            var orderBy = Assert.IsType<OrderByExpr>(result);
+            Assert.Equal(2, orderBy.OrderBys.Count);
+        }
+
+        [Fact]
         public void Where_OnUpdateExpr_ReturnsUpdateExprWithWhere()
         {
             var update = Expr.Update(typeof(TestEntity));

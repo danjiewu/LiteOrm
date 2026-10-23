@@ -9,7 +9,7 @@ namespace LiteOrm.Common
     /// 分组片段，表示 GROUP BY 语句
     /// </summary>
     [JsonConverter(typeof(ExprJsonConverterFactory))]
-    public class GroupByExpr : SqlSegment, IHavingAnchor
+    public class GroupByExpr : SqlSegment, IGroupByAnchor
     {
         /// <summary>
         /// 初始化 GroupByExpr 类的新实例

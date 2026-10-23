@@ -555,6 +555,15 @@ Supports static form `Regex.IsMatch(...)`, instance form `new Regex(pattern).IsM
 | `.Section(skip, take)` | paging |
 | `.Set(assignments)` | UPDATE SET |
 
+> Repeating a clause keeps editing the same expression instead of nesting a new one:
+> - `.Where(a).Where(b)` → the same `WhereExpr`, conditions combined with AND
+> - `.GroupBy(a).GroupBy(b)` → the same `GroupByExpr`, group fields appended
+> - `.Having(a).Having(b)` → the same `HavingExpr`, conditions combined with AND
+> - `.OrderBy(a).OrderBy(b)` → the same `OrderByExpr`, ordering items appended
+> - `.Section(0, 10).Section(5, 20)` → the same `SectionExpr`, `Skip` / `Take` updated in place
+>
+> `.Select(...)` is the exception: it marks a projection boundary, so repeating it creates a subquery; use `.SelectMore(...)` to append select items.
+
 ## 9. Equals and composition semantics
 
 ### 9.1 Names and aliases are case-insensitive

@@ -66,6 +66,22 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public void DoubleWhereAfterGroupBy_MergesIntoSingleHavingExpr()
+        {
+            Expression<Func<IQueryable<TestUser>, IQueryable<IGrouping<int, TestUser>>>> queryExpr = q => q
+                .GroupBy(u => u.DeptId)
+                .Where(g => g.Count() > 1)
+                .Where(g => g.Count() < 10);
+
+            var expr = LambdaExprConverter.ToSqlSegment(queryExpr);
+
+            var having = Assert.IsType<HavingExpr>(expr);
+            Assert.IsType<GroupByExpr>(having.Source);
+            var andExpr = Assert.IsType<AndExpr>(having.Having);
+            Assert.Equal(2, andExpr.Count);
+        }
+
+        [Fact]
         public void AnonymousSelect_Test()
         {
             Expression<Func<IQueryable<TestUser>, IQueryable<object>>> queryExpr = q => q

@@ -538,12 +538,21 @@ namespace LiteOrm.Common
         /// <param name="source">SQL 语句构建起点。</param>
         /// <param name="groupBys">分组表达式数组。</param>
         /// <returns>包含 GROUP BY 子句的 SQL 表达式。</returns>
+        /// <remarks>若 <paramref name="source"/> 已是 <see cref="GroupByExpr"/>，则把新的分组字段追加到原有表达式，不会嵌套新的子句。</remarks>
         /// <example>
         /// <code>
         /// var query = table.GroupBy(Expr.Prop("DepartmentId"));
         /// </code>
         /// </example>
-        public static GroupByExpr GroupBy(this IGroupByAnchor? source, params ValueTypeExpr[] groupBys) => new GroupByExpr(source as SqlSegment, groupBys);
+        public static GroupByExpr GroupBy(this IGroupByAnchor? source, params ValueTypeExpr[] groupBys)
+        {
+            if (source is GroupByExpr groupByExpr)
+            {
+                groupByExpr.GroupBys.AddRange(groupBys);
+                return groupByExpr;
+            }
+            return new GroupByExpr(source as SqlSegment, groupBys);
+        }
 
         /// <summary>
         /// 为 SQL 语句添加 GROUP BY 子句（属性名数组）。
@@ -560,13 +569,22 @@ namespace LiteOrm.Common
         /// <param name="source">SQL 语句构建起点。</param>
         /// <param name="having">HAVING 子句的逻辑表达式。</param>
         /// <returns>包含 HAVING 子句的 SQL 表达式。</returns>
+        /// <remarks>若 <paramref name="source"/> 已是 <see cref="HavingExpr"/>，则把新的条件与原条件按 AND 合并，不会嵌套新的子句。</remarks>
         /// <example>
         /// <code>
         /// var query = table.GroupBy(Expr.Prop("DepartmentId"))
         ///     .Having(Expr.Prop("Count").Count().GreaterThan(10));
         /// </code>
         /// </example>
-        public static HavingExpr Having(this IHavingAnchor? source, LogicExpr? having) => new HavingExpr(source as SqlSegment, having);
+        public static HavingExpr Having(this IHavingAnchor? source, LogicExpr? having)
+        {
+            if (source is HavingExpr havingExpr)
+            {
+                havingExpr.Having &= having;
+                return havingExpr;
+            }
+            return new HavingExpr(source as SqlSegment, having);
+        }
 
         /// <summary>
         /// 创建 SELECT 表达式，指定要选择的项。
@@ -825,12 +843,22 @@ namespace LiteOrm.Common
         /// <param name="skip">跳过的记录数。</param>
         /// <param name="take">获取的记录数。</param>
         /// <returns>包含分页子句的 SQL 表达式。</returns>
+        /// <remarks>若 <paramref name="source"/> 已是 <see cref="SectionExpr"/>，则直接更新其 <see cref="SectionExpr.Skip"/> 和 <see cref="SectionExpr.Take"/>，不会嵌套新的子句。</remarks>
         /// <example>
         /// <code>
         /// var query = table.Section(0, 20); // 获取前 20 条记录
         /// </code>
         /// </example>
-        public static SectionExpr Section(this ISectionAnchor? source, int skip, int take) => new SectionExpr(source as SqlSegment, skip, take);
+        public static SectionExpr Section(this ISectionAnchor? source, int skip, int take)
+        {
+            if (source is SectionExpr sectionExpr)
+            {
+                sectionExpr.Skip = skip;
+                sectionExpr.Take = take;
+                return sectionExpr;
+            }
+            return new SectionExpr(source as SqlSegment, skip, take);
+        }
 
         /// <summary>
         /// 将值表达式标记为升序排序。

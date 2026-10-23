@@ -551,6 +551,15 @@ await dao.Search(Expr.From<TestUser>()
 | `.Section(skip, take)` | 分页 |
 | `.Set(assignments)` | UPDATE SET |
 
+> 重复调用同一子句会在原表达式上继续编辑，而不是嵌套新的子句：
+> - `.Where(a).Where(b)` → 同一个 `WhereExpr`，条件按 AND 合并
+> - `.GroupBy(a).GroupBy(b)` → 同一个 `GroupByExpr`，分组字段追加
+> - `.Having(a).Having(b)` → 同一个 `HavingExpr`，条件按 AND 合并
+> - `.OrderBy(a).OrderBy(b)` → 同一个 `OrderByExpr`，排序项追加
+> - `.Section(0, 10).Section(5, 20)` → 同一个 `SectionExpr`，直接更新 `Skip` / `Take`
+>
+> `.Select(...)` 例外：它表示一次投影边界，重复调用会生成子查询；需要追加选择项时使用 `.SelectMore(...)`。
+
 ## 9. Equals 与组合语义
 
 ### 9.1 名称和别名比较忽略大小写
