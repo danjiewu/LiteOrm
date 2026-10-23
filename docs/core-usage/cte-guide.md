@@ -50,7 +50,7 @@ CTE 很适合先聚合、再过滤：
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var cteDef = From<User>()
+var cteDef = From(typeof(User))
     .Where(Prop("Age") >= 25)
     .GroupBy(Prop("DeptId"))
     .Select(
@@ -71,7 +71,7 @@ var query = cteDef.With("DeptAdultStats")
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var adultUsers = From<User>()
+var adultUsers = From(typeof(User))
     .Where(Prop("Age") >= 18)
     .Select(
         Prop("UserName").As("Name"),
@@ -115,7 +115,7 @@ LiteOrm 现在会先收集整棵表达式树里的 CTE，再按别名做校验�
 using static LiteOrm.Common.Expr;
 
 // 锚点部分：查询根节点
-var anchor = From<Category>()
+var anchor = From(typeof(Category))
     .Where(Prop("ParentId") == 0)
     .Select(
         Prop("Id").As("Id"),

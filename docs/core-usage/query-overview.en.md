@@ -32,7 +32,7 @@ ExprString  ──────────────┘ ──(ToSql)──▶
 
 ### 1.2 Heuristics
 
-- **Prefer Lambda**: most business queries are the most intuitive — strongly typed, best readability.
+- **Prefer Lambda / `QuerySource<T>`**: most business queries are the most intuitive — strongly typed, best readability; when `Where` / `Select` / `OrderBy` need to be composed into a chain, use `QuerySource<T>` (`Expr.From<T>()`).
 - **Use `Expr` when conditions must be accumulated dynamically**: e.g. admin filters, frontend query builders, cross-layer condition passing.
 - **Use `ExprString` only when the DAO needs handwritten SQL**: it can supplement a `Search` condition fragment or carry full SQL; the Service layer does not expose this entry point.
 
@@ -43,7 +43,7 @@ Do you need to handwrite a SQL fragment or full SQL?
 ├─ Yes ─▶ use ExprString (DAO only)
 └─ No  ─▶ must conditions be accumulated dynamically / passed across layers?
         ├─ Yes ─▶ use Expr
-        └─ No  ─▶ use Lambda
+        └─ No  ─▶ use Lambda (QuerySource<T> for a composed query chain)
 ```
 
 ## 2. Service vs DAO query entry points
@@ -55,10 +55,21 @@ LiteOrm's query entry points are split into two layers: the **Service layer** fo
 ```csharp
 using static LiteOrm.Common.Expr;
 
+// 1. Lambda filter (preferred)
 var users1 = await userService.SearchAsync(u => u.Age >= 18);
-var users2 = await userService.SearchAsync(Prop("Age") >= 18);
-var users3 = await userService.SearchAsAsync<UserSummary>(
-    From<UserView>()
+
+// 2. Lambda projection (preferred)
+var users2 = await userService.SearchAsAsync(
+    q => q.Where(u => u.Age >= 18)
+          .Select(u => new { u.UserName, u.Age })
+);
+
+// 3. Use Expr when conditions are built dynamically
+var users3 = await userService.SearchAsync(Prop("Age") >= 18);
+
+// 4. Use SelectExpr when you need Expr-only projection features such as If(...).As("Level")
+var users4 = await userService.SearchAsAsync<UserSummary>(
+    From(typeof(UserView))
         .Where(Prop("Age") >= 18)
         .Select(
             Prop("Id"),
@@ -68,7 +79,8 @@ var users3 = await userService.SearchAsAsync<UserSummary>(
 );
 ```
 
-- Service query entry points are primarily Lambda / `Expr`, and also support `SelectExpr`-based `SearchAs(...)` / `SearchAsAsync(...)` projection queries plus query overloads that accept `IQueryable<T>`; suitable for scenarios that need clear business semantics, transactions, AOP, or service encapsulation.
+- Service query entry points favor Lambda, with `Expr` as a supplement: write fixed conditions and projections as Lambda / `IQueryable<T>`; use `Expr` / `SelectExpr` only when conditions must be accumulated dynamically or when you need Expr-only features (such as `If(...).As(...)` column aliases). Suitable for scenarios that need clear business semantics, transactions, AOP, or service encapsulation.
+- `From<T>()` returns `QuerySource<T>` for IQueryable / Lambda chains; when you need an Expr chain such as `Where(Prop(...))` or `Select(...)`, use `From(typeof(T))`, which returns `TableExpr`. Do not mix the two forms.
 - To compose a query across layers, start with `Expr.From<T>()` (returns `QuerySource<T>`), then call `GetQueryExpr()` at the end to turn it into an `Expr`, or pass it straight to the `IQueryable<T>` overloads of `Search` / `SearchAs`. `Expr.Query` and the IQueryable Lambda form remain available.
 - The Service **does not** provide `ExprString` query overloads; if the requirement has become "handwrite SQL", switch to the DAO.
 
@@ -128,7 +140,7 @@ using static LiteOrm.Common.Expr;
 // Explicit condition
 var joined = From<Order>()
     .Join<Customer>((o, c) => o.CustomerId == c.Id)
-    .Where(x => x.Item2.Name == "VIP");
+    .Where((o, c) => c.Name == "VIP");
 
 // Inferred condition; optionally pick the join type (Left by default, or Inner / Right / Full)
 var related = From<Order>().JoinRelated<Customer>(TableJoinType.Inner);
@@ -137,11 +149,11 @@ var related = From<Order>().JoinRelated<Customer>(TableJoinType.Inner);
 var multi = From<Order>()
     .Join<Customer>((o, c) => o.CustomerId == c.Id)
     .Join<Region>((o, c, r) => c.RegionId == r.Id)
-    .Where(x => x.Item3.Name == "North")
-    .Select(x => new { x.Item1.Id, x.Item2.Name, x.Item3.Name });
+    .Where((o, c, r) => r.Name == "North")
+    .Select((o, c, r) => new { o.Id, c.Name, r.Name });
 ```
 
-- Results are `QuerySource<T1, T2>`, `QuerySource<T1, T2, T3>`, ..., with a **flat tuple** element type `(T1, T2)`, `(T1, T2, T3)`, accessed through `x.Item1` ... `x.Item7`; each element resolves to its own table alias.
+- Results are `QuerySource<T1, T2>`, `QuerySource<T1, T2, T3>`, ..., with a **flat tuple** element type `(T1, T2)`, `(T1, T2, T3)`. `Where` / `Select` / `OrderBy` / `GroupBy` can use multi-parameter lambdas such as `(o, c, r) => ...`, or the `x.Item1` ... `x.Item7` form; each element resolves to its own table alias.
 - For the second join and later, the `on` parameters follow the order "already-joined tables first, new right table last"; reference them by parameter name, e.g. `(o, c, r) => c.RegionId == r.Id`.
 - `Join` defaults to a left join; `JoinRelated` uses the join type declared in metadata, and throws `InvalidOperationException` when no relation can be inferred, suggesting an explicit `Join`. In a chain, `JoinRelated` matches from back to front in association order, preferring the most recently joined table (for example, `JoinRelated<User>().JoinRelated<Dept>()` follows `User → Dept` and only falls back to the main table last).
 - `Join` / `JoinRelated` are intended for entity tables; do not mix them with views. View models already generate association JOINs through `[ForeignColumn]`, so mixing the two duplicates joins and may cause alias conflicts. See [Lambda Query Guide §5.4](./lambda-guide.en.md#54-joins-with-join-and-joinrelated).
@@ -166,19 +178,18 @@ Both `Search` and `SearchAs` are query entry points, but with different responsi
 ```csharp
 using static LiteOrm.Common.Expr;
 
-// Search: returns a list of User entities
-List<User> users = await viewService.SearchAsync(Prop("Age") >= 18);
+// Search: returns a list of entities
+var users = await viewService.SearchAsync(u => u.Age >= 18);
 
-// SearchAs: project to an anonymous type
-var anonSummaries = await viewService.SearchAsAsync<dynamic>(
-    From<UserView>()
-        .Where(Prop("Age") >= 18)
-        .Select(Prop("UserName"), Prop("Age"))
+// SearchAs: Lambda projection to an anonymous type
+var anonSummaries = await viewService.SearchAsAsync(
+    q => q.Where(u => u.Age >= 18)
+          .Select(u => new { u.UserName, u.Age })
 );
 
-// SearchAs: project to a custom type
-var summaries = await viewService.SearchAsAsync<UserSummary>(
-    From<UserView>()
+// SearchAs: use SelectExpr only when you need Expr-only features (e.g. If(...).As("Level") for exact column aliases)
+var summaries2 = await viewService.SearchAsAsync<UserSummary>(
+    From(typeof(UserView))
         .Where(Prop("Age") >= 18)
         .Select(
             Prop("Id"),
@@ -187,6 +198,8 @@ var summaries = await viewService.SearchAsAsync<UserSummary>(
         )
 );
 ```
+
+- To project to a named type, prefer the Lambda `new T { ... }` form as well (requires a public parameterless constructor on `T`); use `SelectExpr` only when `T` has only parameterized constructors or when you need exact control over column aliases (e.g. `If(...).As("Level")`).
 
 ### 3.2 Caveats when using `SearchAs`
 
@@ -224,7 +237,7 @@ public class UserSummary
 
 // ✅ Column alias "Level" matches constructor parameter name "level"
 await viewService.SearchAsAsync<UserSummary>(
-    From<UserView>().Select(
+    From(typeof(UserView)).Select(
         Prop("UserName"),
         Expr.If(Prop("IsVip") == true, "VIP", "Normal").As("Level")
     )
@@ -241,7 +254,7 @@ Aggregate queries like `COUNT` / `SUM` / `MAX` return a single scalar value; use
 ```csharp
 // ✅ Scalar projection
 var count = await viewService.SearchAsAsync<int>(
-    From<UserView>().Select(Expr.Func("COUNT", Prop("Id")))
+    From(typeof(UserView)).Select(Expr.Func("COUNT", Prop("Id")))
 );
 ```
 

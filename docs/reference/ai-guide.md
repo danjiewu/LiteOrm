@@ -480,8 +480,8 @@ services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
 
 | 方式                           | 适用场景                  |
 | ---------------------------- | --------------------- |
-| Lambda 表达式 `u => u.Age > 18` | 简单条件，编译时类型安全          |
-| Expr 对象（运算符 / Fluent 方法）     | 复杂条件、动态条件累加、链式查询      |
+| Lambda 表达式 `u => u.Age > 18` | 常规固定条件（首选），编译时类型安全     |
+| Expr 对象（运算符 / Fluent 方法）     | 动态条件累加、跨层复用、需要 Expr 专属能力 |
 | ExprString 插值字符串             | 自定义 DAO 中的条件片段或完整 SQL |
 
 ### Expr 静态工厂方法
@@ -594,7 +594,7 @@ services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var query = From<User>()
+var query = From(typeof(User))
     .Where(Prop("Age") > 18)                         // WhereExpr
     .SelectAll()                                     // SelectExpr，等价于 SELECT *
     .Where(Prop("Status") == 1)
@@ -606,7 +606,7 @@ var query = From<User>()
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var query = From<User>()
+var query = From(typeof(User))
     .Where(Prop("Age") > 18)                         // WhereExpr
     .GroupBy(Prop("DeptId"))                         // GroupByExpr
     .Having(Prop("Id").Count() > 5)                  // HavingExpr
@@ -621,7 +621,7 @@ var query = From<User>()
 ```csharp
 using static LiteOrm.Common.Expr;
 // IN 子查询
-var subQuery = From<Department>()
+var subQuery = From(typeof(Department))
     .Where(Prop("Name") == "IT")
     .Select("Id");
 var expr = Prop("DeptId").In(subQuery);
@@ -631,10 +631,10 @@ UpdateExpr / DeleteExpr（用于 `ObjectDAO.Delete(LogicExpr)` / `ObjectDAO.Upda
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var update = new UpdateExpr(From<User>(), Prop("Id") == 1);
+var update = new UpdateExpr(From(typeof(User)), Prop("Id") == 1);
 update.Set(("UserName", Value("NewName")), ("Age", Value(30)));
 
-var delete = new DeleteExpr(From<User>(), Prop("Age") < 18);
+var delete = new DeleteExpr(From(typeof(User)), Prop("Age") < 18);
 ```
 
 ### ExprString
@@ -717,9 +717,16 @@ var expr = Exists<Department>(Prop("Name") == "IT");
 // 等价 Lambda 写法（在 Lambda 查询中）：
 var expr = Lambda<User>(u => Exists<Department>(d => d.Name == "IT"));
 
-// SearchAs 选择部分字段
+// SearchAs 选择部分字段（首选 Lambda 投影）
 var result = dao.SearchAs(
     From<User>()
+        .Where(u => u.Age > 18)
+        .Select(u => new { u.Id, u.UserName })
+).ToList();
+
+// 需要 SelectExpr 专属能力（按字符串动态选列、If(...).As("Level") 等）时再用它
+var result2 = dao.SearchAs(
+    From(typeof(User))
         .Where(Prop("Age") > 18)
         .Select("Id", "UserName")
 ).ToList();

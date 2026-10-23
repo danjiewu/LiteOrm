@@ -89,11 +89,11 @@ public abstract class EntityControllerBase<T, TView> : ControllerBase
         }
         else if (expr is LogicExpr logicExpr)
         {
-            expr = From<TView>().Where(logicExpr).Section(0, take);
+            expr = From(typeof(TView)).Where(logicExpr).Section(0, take);
         }
         else
         {
-            expr = From<TView>().Section(0, take);
+            expr = From(typeof(TView)).Section(0, take);
         }
 
         var countExpr = ExtractFilter(expr);
@@ -107,7 +107,7 @@ public abstract class EntityControllerBase<T, TView> : ControllerBase
     {
         var source = section.Source;
         var rebuilt = (source as ISectionAnchor)?.Section(skip, take)
-            ?? From<TView>().Section(skip, take);
+            ?? From(typeof(TView)).Section(skip, take);
         return (rebuilt as SectionExpr)!;
     }
 

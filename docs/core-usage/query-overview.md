@@ -32,7 +32,7 @@ ExprString  ───────────┘ ──(ToSql)──▶  参数�
 
 ### 1.2 经验性选择
 
-- **优先用 Lambda**：大部分业务查询最直观，强类型、可读性最好。
+- **优先用 Lambda / `QuerySource<T>`**：大部分业务查询最直观，强类型、可读性最好；需要把 `Where` / `Select` / `OrderBy` 组合成链时用 `QuerySource<T>`（`Expr.From<T>()`）。
 - **条件需要动态累加时用 `Expr`**：例如管理后台筛选、前端构造器、跨层传递过滤条件。
 - **只在 DAO 需要手写 SQL 时用 `ExprString`**：它既能补 `Search` 的条件片段，也能传完整 SQL；Service 层不提供这个入口。
 
@@ -43,7 +43,7 @@ ExprString  ───────────┘ ──(ToSql)──▶  参数�
 ├─ 是 ─▶ 用 ExprString（仅 DAO 层）
 └─ 否 ─▶ 条件是否需要动态累加 / 跨层传递？
         ├─ 是 ─▶ 用 Expr
-        └─ 否 ─▶ 用 Lambda
+        └─ 否 ─▶ 用 Lambda（组合查询链用 QuerySource<T>）
 ```
 
 ## 2. Service 与 DAO 查询入口
@@ -55,10 +55,21 @@ LiteOrm 的查询入口分两层：**Service 层**面向业务，**DAO 层**面�
 ```csharp
 using static LiteOrm.Common.Expr;
 
+// 1. Lambda 过滤（首选）
 var users1 = await userService.SearchAsync(u => u.Age >= 18);
-var users2 = await userService.SearchAsync(Prop("Age") >= 18);
-var users3 = await userService.SearchAsAsync<UserSummary>(
-    From<UserView>()
+
+// 2. Lambda 投影（首选）
+var users2 = await userService.SearchAsAsync(
+    q => q.Where(u => u.Age >= 18)
+          .Select(u => new { u.UserName, u.Age })
+);
+
+// 3. 条件需要动态累加时用 Expr
+var users3 = await userService.SearchAsync(Prop("Age") >= 18);
+
+// 4. 需要 If(...).As("Level") 这类 Expr 投影能力时用 SelectExpr
+var users4 = await userService.SearchAsAsync<UserSummary>(
+    From(typeof(UserView))
         .Where(Prop("Age") >= 18)
         .Select(
             Prop("Id"),
@@ -68,7 +79,8 @@ var users3 = await userService.SearchAsAsync<UserSummary>(
 );
 ```
 
-- Service 查询入口以 Lambda / `Expr` 为主，同时支持基于 `SelectExpr` 的 `SearchAs(...)` / `SearchAsAsync(...)` 投影查询，以及接收 `IQueryable<T>` 的查询重载；适合业务语义清晰、需要事务/AOP/服务封装的场景。
+- Service 查询入口以 Lambda 为主、`Expr` 为辅：固定条件、投影优先写 Lambda / `IQueryable<T>`；只有条件动态累加或需要 Expr 专属能力（如 `If(...).As(...)` 列别名）时才用 `Expr` / `SelectExpr`。适合业务语义清晰、需要事务/AOP/服务封装的场景。
+- `From<T>()` 返回 `QuerySource<T>`，用于 IQueryable / Lambda 链；需要 `Where(Prop(...))`、`Select(...)` 这类 Expr 链时用 `From(typeof(T))`，它返回 `TableExpr`。两者不要混用。
 - 需要跨层拼装查询时，可以用 `Expr.From<T>()` 起链（返回 `QuerySource<T>`），链尾调用 `GetQueryExpr()` 转成 `Expr`，或直接传给 `Search` / `SearchAs` 的 `IQueryable<T>` 重载。`Expr.Query` 与 IQueryable Lambda 写法同样保持可用。
 - Service **不提供** `ExprString` 查询重载；如果需求已经变成"手写 SQL"，就应该切到 DAO。
 
@@ -128,7 +140,7 @@ using static LiteOrm.Common.Expr;
 // 显式条件
 var joined = From<Order>()
     .Join<Customer>((o, c) => o.CustomerId == c.Id)
-    .Where(x => x.Item2.Name == "VIP");
+    .Where((o, c) => c.Name == "VIP");
 
 // 自动推断；可指定连接类型（默认 Left，可选 Inner / Right / Full）
 var related = From<Order>().JoinRelated<Customer>(TableJoinType.Inner);
@@ -137,11 +149,11 @@ var related = From<Order>().JoinRelated<Customer>(TableJoinType.Inner);
 var multi = From<Order>()
     .Join<Customer>((o, c) => o.CustomerId == c.Id)
     .Join<Region>((o, c, r) => c.RegionId == r.Id)
-    .Where(x => x.Item3.Name == "North")
-    .Select(x => new { x.Item1.Id, x.Item2.Name, x.Item3.Name });
+    .Where((o, c, r) => r.Name == "North")
+    .Select((o, c, r) => new { o.Id, c.Name, r.Name });
 ```
 
-- 返回 `QuerySource<T1, T2>`、`QuerySource<T1, T2, T3>` …，元素类型是**扁平元组** `(T1, T2)`、`(T1, T2, T3)`，用 `x.Item1` … `x.Item7` 访问，解析时会带上各自表的别名。
+- 返回 `QuerySource<T1, T2>`、`QuerySource<T1, T2, T3>` …，元素类型是**扁平元组** `(T1, T2)`、`(T1, T2, T3)`。`Where` / `Select` / `OrderBy` / `GroupBy` 可直接用多参数 Lambda（如 `(o, c, r) => ...`），也可用 `x.Item1` … `x.Item7` 访问，解析时会带上各自表的别名。
 - 第二段及以后连接的 `on` 参数按「已连接的各表 + 新右表」顺序排列，直接按参数名引用，例如 `(o, c, r) => c.RegionId == r.Id`。
 - `Join` 默认左连接；`JoinRelated` 使用元数据声明的连接类型，推断不到关联时抛 `InvalidOperationException`，提示改用带条件的 `Join`。在链式调用中，`JoinRelated` 按关联顺序从后向前匹配，优先用最近一次连接的表推断（例如 `JoinRelated<User>().JoinRelated<Dept>()` 走 `User → Dept`，回退到最后才用主表）。
 - `Join` / `JoinRelated` 面向实体表，不要与视图混用。视图模型已通过 `[ForeignColumn]` 自动生成关联 JOIN，混用会重复连接并可能产生别名冲突；详见 [Lambda 查询指南 §5.4](./lambda-guide.md#54-连接查询-join-与-joinrelated)。
@@ -166,19 +178,18 @@ var multi = From<Order>()
 ```csharp
 using static LiteOrm.Common.Expr;
 
-// Search：返回 User 实体列表
-List<User> users = await viewService.SearchAsync(Prop("Age") >= 18);
+// Search：Lambda 过滤，返回实体列表
+var users = await viewService.SearchAsync(u => u.Age >= 18);
 
-// SearchAs：投影到匿名类型
-var anonSummaries = await viewService.SearchAsAsync<dynamic>(
-    From<UserView>()
-        .Where(Prop("Age") >= 18)
-        .Select(Prop("UserName"), Prop("Age"))
+// SearchAs：Lambda 投影到匿名类型
+var anonSummaries = await viewService.SearchAsAsync(
+    q => q.Where(u => u.Age >= 18)
+          .Select(u => new { u.UserName, u.Age })
 );
 
-// SearchAs：投影到自定义类型
-var summaries = await viewService.SearchAsAsync<UserSummary>(
-    From<UserView>()
+// SearchAs：需要 Expr 专属能力（如 If(...).As("Level") 精确控制列别名）时才用 SelectExpr
+var summaries2 = await viewService.SearchAsAsync<UserSummary>(
+    From(typeof(UserView))
         .Where(Prop("Age") >= 18)
         .Select(
             Prop("Id"),
@@ -187,6 +198,8 @@ var summaries = await viewService.SearchAsAsync<UserSummary>(
         )
 );
 ```
+
+- 投影到具名类型时同样优先用 Lambda 的 `new T { ... }` 形式（要求 `T` 有公共无参构造函数）；`T` 只有带参构造函数、或需要精确控制列别名（如 `If(...).As("Level")`）时，再用 `SelectExpr`。
 
 ### 3.2 `SearchAs` 使用的注意事项
 
@@ -224,7 +237,7 @@ public class UserSummary
 
 // ✅ 列别名 "Level" 与构造函数参数名 level 匹配
 await viewService.SearchAsAsync<UserSummary>(
-    From<UserView>().Select(
+    From(typeof(UserView)).Select(
         Prop("UserName"),
         Expr.If(Prop("IsVip") == true, "VIP", "Normal").As("Level")
     )
@@ -240,7 +253,7 @@ await viewService.SearchAsAsync<UserSummary>(
 ```csharp
 // ✅ 标量投影
 var count = await viewService.SearchAsAsync<int>(
-    From<UserView>().Select(Expr.Func("COUNT", Prop("Id")))
+    From(typeof(UserView)).Select(Expr.Func("COUNT", Prop("Id")))
 );
 ```
 

@@ -480,8 +480,8 @@ Event subscribers are resolved lazily: constructing an entity service instance n
 
 | Style | Suitable for |
 | --- | --- |
-| Lambda expression `u => u.Age > 18` | Simple conditions with compile-time type safety |
-| Expr object (operators / fluent methods) | Complex conditions, dynamically accumulated conditions, and chained queries |
+| Lambda expression `u => u.Age > 18` | Regular fixed conditions (preferred) with compile-time type safety |
+| Expr object (operators / fluent methods) | Dynamically accumulated conditions, cross-layer reuse, and Expr-only capabilities |
 | ExprString interpolated string | Condition fragments or full SQL inside custom DAOs |
 
 ### Expr static factory methods
@@ -594,7 +594,7 @@ Additional notes:
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var query = From<User>()
+var query = From(typeof(User))
     .Where(Prop("Age") > 18)                         // WhereExpr
     .SelectAll()                                     // SelectExpr, equivalent to SELECT *
     .Where(Prop("Status") == 1)
@@ -606,7 +606,7 @@ You can also explicitly project selected fields when needed:
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var query = From<User>()
+var query = From(typeof(User))
     .Where(Prop("Age") > 18)                         // WhereExpr
     .GroupBy(Prop("DeptId"))                         // GroupByExpr
     .Having(Prop("Id").Count() > 5)                  // HavingExpr
@@ -621,7 +621,7 @@ var query = From<User>()
 ```csharp
 using static LiteOrm.Common.Expr;
 // IN subquery
-var subQuery = From<Department>()
+var subQuery = From(typeof(Department))
     .Where(Prop("Name") == "IT")
     .Select("Id");
 var expr = Prop("DeptId").In(subQuery);
@@ -631,10 +631,10 @@ UpdateExpr / DeleteExpr (used by `ObjectDAO.Delete(LogicExpr)` / `ObjectDAO.Upda
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var update = new UpdateExpr(From<User>(), Prop("Id") == 1);
+var update = new UpdateExpr(From(typeof(User)), Prop("Id") == 1);
 update.Set(("UserName", Value("NewName")), ("Age", Value(30)));
 
-var delete = new DeleteExpr(From<User>(), Prop("Age") < 18);
+var delete = new DeleteExpr(From(typeof(User)), Prop("Age") < 18);
 ```
 
 ### ExprString
@@ -717,9 +717,16 @@ var expr = Exists<Department>(Prop("Name") == "IT");
 // Equivalent Lambda form (inside a Lambda query):
 var expr = Lambda<User>(u => Exists<Department>(d => d.Name == "IT"));
 
-// SearchAs selects a subset of fields
+// SearchAs selects a subset of fields (prefer Lambda projection)
 var result = dao.SearchAs(
     From<User>()
+        .Where(u => u.Age > 18)
+        .Select(u => new { u.Id, u.UserName })
+).ToList();
+
+// Use SelectExpr only when you need SelectExpr-only features (runtime column names, If(...).As("Level"), etc.)
+var result2 = dao.SearchAs(
+    From(typeof(User))
         .Where(Prop("Age") > 18)
         .Select("Id", "UserName")
 ).ToList();

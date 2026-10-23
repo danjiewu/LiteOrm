@@ -50,7 +50,7 @@ CTE is a good fit for "aggregate first, filter later":
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var cteDef = From<User>()
+var cteDef = From(typeof(User))
     .Where(Prop("Age") >= 25)
     .GroupBy(Prop("DeptId"))
     .Select(
@@ -71,7 +71,7 @@ CTE can also be reused on both sides of a `UNION` / `UNION ALL` query:
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var adultUsers = From<User>()
+var adultUsers = From(typeof(User))
     .Where(Prop("Age") >= 18)
     .Select(
         Prop("UserName").As("Name"),
@@ -115,7 +115,7 @@ To write a recursive CTE, reference the CTE's own alias within its definition. C
 using static LiteOrm.Common.Expr;
 
 // Anchor part: query root nodes
-var anchor = From<Category>()
+var anchor = From(typeof(Category))
     .Where(Prop("ParentId") == 0)
     .Select(
         Prop("Id").As("Id"),

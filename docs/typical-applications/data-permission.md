@@ -103,7 +103,7 @@ public static class OrderScopes
 var user = CurrentUserContext.Current!;
 
 var page = await orderService.SearchAsync(
-    From<Order>()
+    From(typeof(Order))
         .Where(OrderScopes.For(user) & (Prop(nameof(Order.Status)) == 0))
         .OrderBy(Prop(nameof(Order.CreateTime)).Desc())
         .Section(0, 20));
@@ -194,7 +194,7 @@ public static class OrderScopeSetup
 
 ```csharp
 var page = await orderService.SearchAsync(
-    From<Order>()
+    From(typeof(Order))
         .Where(Prop(nameof(Order.Status)) == 0)
         .OrderBy(Prop(nameof(Order.CreateTime)).Desc())
         .Section(0, 20));

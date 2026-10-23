@@ -194,8 +194,8 @@ var pageResult = await userService.SearchAsync(
 
 // 直接使用 DAO
 var users = await objectViewDAO.Search(
-    From<User>()
-        .Where(u => u.Age >= 18)
+    From(typeof(User))
+        .Where(Prop("Age") >= 18)
         .OrderBy(nameof(User.Id))
         .Section(10, 20) // 跳过10条，取20条
 ).ToListAsync();
@@ -205,7 +205,7 @@ var users = await objectViewDAO.Search(
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var query = From<User>()
+var query = From(typeof(User))
     .Where(Prop("Age") > 18 & Prop("DeptId").In(1, 2, 3))
     .OrderByDescending("CreateTime")
     .Section(0, 10); // 第一页，10条记录

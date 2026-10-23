@@ -103,7 +103,7 @@ The list page carries it explicitly:
 var user = CurrentUserContext.Current!;
 
 var page = await orderService.SearchAsync(
-    From<Order>()
+    From(typeof(Order))
         .Where(OrderScopes.For(user) & (Prop(nameof(Order.Status)) == 0))
         .OrderBy(Prop(nameof(Order.CreateTime)).Desc())
         .Section(0, 20));
@@ -194,7 +194,7 @@ Call `OrderScopeSetup.Enable()` once at startup. From then on the list page writ
 
 ```csharp
 var page = await orderService.SearchAsync(
-    From<Order>()
+    From(typeof(Order))
         .Where(Prop(nameof(Order.Status)) == 0)
         .OrderBy(Prop(nameof(Order.CreateTime)).Desc())
         .Section(0, 20));

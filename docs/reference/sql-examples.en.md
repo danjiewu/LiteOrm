@@ -185,7 +185,7 @@ using static LiteOrm.Common.Expr;
 var amountSum = Func("SUM", Prop("Amount"))
     .Over([Prop("ProductId")], [Prop("SaleTime").Asc()]);
 
-var selectExpr = From<SalesRecord>("202411")
+var selectExpr = From(typeof(SalesRecord), "202411")
     .Select("Id", "ProductId", "ProductName", "Amount", "SaleTime")
     .SelectMore(new SelectItemExpr(amountSum, "ProductTotal"));
 

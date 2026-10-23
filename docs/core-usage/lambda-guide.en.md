@@ -235,14 +235,14 @@ using static LiteOrm.Common.Expr;
 var expr = Query<Order, IEnumerable<(Order, Customer)>>(
     q => From<Order>()
           .Join<Customer>((o, c) => o.CustomerId == c.Id)
-          .Where(x => x.Item2.Name == "VIP")
+          .Where((o, c) => c.Name == "VIP")
 );
 
 // When projecting, use IEnumerable<object> as the result type (anonymous types cannot be generic arguments)
 var projected = Query<Order, IEnumerable<object>>(
     q => From<Order>()
           .Join<Customer>((o, c) => o.CustomerId == c.Id)
-          .Select(x => new { x.Item1.Id, x.Item2.Name })
+          .Select((o, c) => new { o.Id, c.Name })
 );
 
 // Inferred foreign-key condition
@@ -260,16 +260,34 @@ var multiple = Query<Order, IEnumerable<(Order, Customer, Region)>>(
     q => From<Order>()
           .Join<Customer>((o, c) => o.CustomerId == c.Id)
           .Join<Region>((o, c, r) => c.RegionId == r.Id)
-          .Where(x => x.Item3.Name == "North")
+          .Where((o, c, r) => r.Name == "North")
 );
 
 // Inferred multi-table joins also name one right table per call
 var multipleRelated = Query<Order, IEnumerable<(Order, Customer, Region)>>(
     q => From<Order>().JoinRelated<Customer>().JoinRelated<Region>()
 );
+
+// Multi-parameter ordering / grouping
+var ordered = Query<Order, IEnumerable<object>>(
+    q => From<Order>()
+          .Join<Customer>((o, c) => o.CustomerId == c.Id)
+          .Where((o, c) => o.Amount > 10)
+          .OrderBy((o, c) => c.Name)
+          .ThenByDescending((o, c) => o.Amount)
+          .Select((o, c) => new { o.Id, c.Name, o.Amount })
+);
+
+var grouped = Query<Order, IEnumerable<object>>(
+    q => From<Order>()
+          .Join<Customer>((o, c) => o.CustomerId == c.Id)
+          .GroupBy((o, c) => c.Name)
+          .OrderBy(g => g.Key)
+          .Select(g => new { Name = g.Key, Count = g.Count() })
+);
 ```
 
-The result is a sequence of element tuples; `Where` / `OrderBy` preserve the tuple element type, while `Select` changes it to the projection result. Access the tuple elements as `Item1`, `Item2`, ..., `Item7`; each resolves to the correct table alias during conversion. Multi-table joins are chained: `From<T1>()` returns `QuerySource<T1>`, `Join<T2>` returns `QuerySource<T1, T2>`, and a further `Join<T3>` yields `QuerySource<T1, T2, T3>`, up to seven elements. The tuple is always flat; the `on` parameters of each chained call take one table each, with the already-joined tables first and the new right table last.
+The result is a sequence of element tuples; `Where` / `OrderBy` preserve the tuple element type, while `Select` changes it to the projection result. `Where` / `Select` / `OrderBy` / `GroupBy` can use multi-parameter lambdas such as `(o, c) => ...`, with parameters following the table order; the `x.Item1`, `x.Item2`, ..., `x.Item7` form also remains available. Each element resolves to the correct table alias during conversion. Multi-table joins are chained: `From<T1>()` returns `QuerySource<T1>`, `Join<T2>` returns `QuerySource<T1, T2>`, and a further `Join<T3>` yields `QuerySource<T1, T2, T3>`, up to seven elements. The tuple is always flat; the `on` parameters of each chained call take one table each, with the already-joined tables first and the new right table last.
 
 `Join` / `JoinRelated` are instance methods that build expressions both inside a lambda and outside one; `Expr.Query` and the `Expr.From<T>()` chain are both supported entry points.
 

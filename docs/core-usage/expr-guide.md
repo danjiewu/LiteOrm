@@ -3,6 +3,8 @@
 `Expr` 是 LiteOrm 的核心表达式对象模型，本文主要讲解如何构造、组合、复用和理解它的语义。
 如果你关心 Lambda / `Expr` / `ExprString` 的选型，请先看[查询总览](./query-overview.md)；Lambda 写法见 [Lambda 查询指南](./lambda-guide.md)，DAO 层手写 SQL 见 [ExprString 使用指南](./exprstring-guide.md)。
 
+> 日常固定条件优先写 Lambda / `QuerySource<T>`；本文的 `Expr` 示例面向动态拼装、跨层复用和需要 Expr 专属能力的场景。
+
 ## 1. 创建基础表达式
 
 ### 1.1 属性、值与常量

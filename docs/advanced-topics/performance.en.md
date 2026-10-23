@@ -96,7 +96,7 @@ var users = await userService.SearchAsync();
 
 // Recommended: use SearchAs to select specific fields
 var result = await userService.SearchAs<UserView>(
-    From<UserView>()
+    From(typeof(UserView))
         .Where(Prop("Age") > 18)
         .Select("Id", "UserName", "DeptName")
 );

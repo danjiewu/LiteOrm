@@ -184,7 +184,47 @@ Important behavior details:
 
 > For a complete example, see `LiteOrm.Tests\ObjectDAOTests.cs` and `LiteOrm.Tests\Models\TestTimestampUser.cs`.
 
-### Conditional Update
+### Update with Lambda Expressions (Recommended)
+
+For conditional updates, prefer the `UpdateAll` / `UpdateAllAsync` Lambda extension methods. They accept two Lambda expressions: the first defines which fields to update and the values to set, and the second defines the `WHERE` condition. The framework internally converts them to an `UpdateExpr` via `LambdaExprConverter`, so the syntax is closer to EF Core and benefits from compile-time type checking.
+
+```csharp
+// Equivalent to: UPDATE Users SET Age = 29 WHERE UserName = 'UpdateDemo_Alice'
+await userService.UpdateAllAsync(
+    u => new User { Age = 29 },
+    u => u.UserName == "UpdateDemo_Alice"
+);
+```
+
+The update expression can also reference the original entity fields for arithmetic (e.g. increment, string concatenation), and the `WHERE` condition supports logical combinations such as `&&` / `||`:
+
+```csharp
+// Equivalent to: UPDATE Users SET Age = Age + 1, CreateTime = @now WHERE Age >= 28
+await userService.UpdateAllAsync(
+    u => new User { Age = u.Age + 1, CreateTime = DateTime.Now },
+    u => u.Age >= 28
+);
+```
+
+Usage notes:
+
+- The first Lambda must be an `Expression<Func<T, T>>` whose body is a `new T { ... }` form (a `MemberInitExpression`). Each `=` binding is translated into a `SET` clause.
+- The second Lambda is an `Expression<Func<T, bool>>`, i.e. a regular WHERE condition. It can be omitted (when `whereExpression` is not provided, all rows are updated — use with caution).
+- Referencing the original field (e.g. `u.Age + 1`) is translated to `Prop("Age") + Const(1)`, corresponding to the SQL `Age = Age + 1`.
+- You can also pass dynamic table name arguments via `params string[] tableArgs`.
+
+```csharp
+// Sync version + dynamic table name
+userService.UpdateAll(
+    u => new User { Age = 30 },
+    u => u.UserName == "UpdateDemo_Bob",
+    "2026" // table name argument, fills {0} in [Table("Users_{0}")]
+);
+```
+
+### Conditional Update (Expr)
+
+Use `UpdateExpr` only when the `SET` clause must be assembled dynamically from runtime data:
 
 ```csharp
 using static LiteOrm.Common.Expr;
@@ -221,44 +261,6 @@ var rename = new UpdateExpr(new TableExpr(typeof(User)), Prop("UserName") == "Up
     .Set(("UserName", Func("CONCAT", Prop("UserName"), Const("_v2"))));
 ```
 
-### Update with Lambda Expressions (Recommended)
-
-If you don't want to assemble an `UpdateExpr` by hand, you can call the `UpdateAll` / `UpdateAllAsync` Lambda extension methods directly. They accept two Lambda expressions: the first defines which fields to update and the values to set, and the second defines the `WHERE` condition. The framework internally converts them to an `UpdateExpr` via `LambdaExprConverter`, so the syntax is closer to EF Core and benefits from compile-time type checking.
-
-```csharp
-// Equivalent to: UPDATE Users SET Age = 29 WHERE UserName = 'UpdateDemo_Alice'
-await userService.UpdateAllAsync(
-    u => new User { Age = 29 },
-    u => u.UserName == "UpdateDemo_Alice"
-);
-```
-
-The update expression can also reference the original entity fields for arithmetic (e.g. increment, string concatenation), and the `WHERE` condition supports logical combinations such as `&&` / `||`:
-
-```csharp
-// Equivalent to: UPDATE Users SET Age = Age + 1, CreateTime = @now WHERE Age >= 28
-await userService.UpdateAllAsync(
-    u => new User { Age = u.Age + 1, CreateTime = DateTime.Now },
-    u => u.Age >= 28
-);
-```
-
-Usage notes:
-
-- The first Lambda must be an `Expression<Func<T, T>>` whose body is a `new T { ... }` form (a `MemberInitExpression`). Each `=` binding is translated into a `SET` clause.
-- The second Lambda is an `Expression<Func<T, bool>>`, i.e. a regular WHERE condition. It can be omitted (when `whereExpression` is not provided, all rows are updated — use with caution).
-- Referencing the original field (e.g. `u.Age + 1`) is translated to `Prop("Age") + Const(1)`, corresponding to the SQL `Age = Age + 1`.
-- You can also pass dynamic table name arguments via `params string[] tableArgs`.
-
-```csharp
-// Sync version + dynamic table name
-userService.UpdateAll(
-    u => new User { Age = 30 },
-    u => u.UserName == "UpdateDemo_Bob",
-    "2026" // table name argument, fills {0} in [Table("Users_{0}")]
-);
-```
-
 ## 3. Delete
 
 ### Delete by Entity
@@ -286,7 +288,6 @@ await userService.BatchDeleteIDAsync(new[] { 1, 2, 3 });
 A complete validation cycle suitable for copying:
 
 ```csharp
-using static LiteOrm.Common.Expr;
 var users = new List<TestUser>
 {
     new TestUser { Name = "Batch 1", Age = 10, CreateTime = DateTime.Now },
@@ -295,7 +296,7 @@ var users = new List<TestUser>
 
 await service.BatchInsertAsync(users);
 
-var inserted = await viewService.SearchAsync(Lambda<TestUser>(u => u.Name!.StartsWith("Batch")));
+var inserted = await viewService.SearchAsync(u => u.Name!.StartsWith("Batch"));
 
 foreach (var user in inserted)
     user.Age += 5;

@@ -89,7 +89,7 @@ if (!IsAdmin(currentUser))
 }
 
 var result = await orderService.SearchAsync(
-    From<OrderView>()
+    From(typeof(OrderView))
         .Where(filter)
         .OrderBy(Prop(nameof(Order.CreatedTime)).Desc())
         .Section(0, 20)

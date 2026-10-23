@@ -235,14 +235,14 @@ using static LiteOrm.Common.Expr;
 var expr = Query<Order, IEnumerable<(Order, Customer)>>(
     q => From<Order>()
           .Join<Customer>((o, c) => o.CustomerId == c.Id)
-          .Where(x => x.Item2.Name == "VIP")
+          .Where((o, c) => c.Name == "VIP")
 );
 
 // 需要投影时，结果类型写 IEnumerable<object>（匿名类型无法写进泛型实参）
 var projected = Query<Order, IEnumerable<object>>(
     q => From<Order>()
           .Join<Customer>((o, c) => o.CustomerId == c.Id)
-          .Select(x => new { x.Item1.Id, x.Item2.Name })
+          .Select((o, c) => new { o.Id, c.Name })
 );
 
 // 自动推断外键条件
@@ -260,16 +260,34 @@ var multiple = Query<Order, IEnumerable<(Order, Customer, Region)>>(
     q => From<Order>()
           .Join<Customer>((o, c) => o.CustomerId == c.Id)
           .Join<Region>((o, c, r) => c.RegionId == r.Id)
-          .Where(x => x.Item3.Name == "North")
+          .Where((o, c, r) => r.Name == "North")
 );
 
 // 多表自动推断：每次 JoinRelated 同样只写一张右表
 var multipleRelated = Query<Order, IEnumerable<(Order, Customer, Region)>>(
     q => From<Order>().JoinRelated<Customer>().JoinRelated<Region>()
 );
+
+// 多参数排序 / 分组
+var ordered = Query<Order, IEnumerable<object>>(
+    q => From<Order>()
+          .Join<Customer>((o, c) => o.CustomerId == c.Id)
+          .Where((o, c) => o.Amount > 10)
+          .OrderBy((o, c) => c.Name)
+          .ThenByDescending((o, c) => o.Amount)
+          .Select((o, c) => new { o.Id, c.Name, o.Amount })
+);
+
+var grouped = Query<Order, IEnumerable<object>>(
+    q => From<Order>()
+          .Join<Customer>((o, c) => o.CustomerId == c.Id)
+          .GroupBy((o, c) => c.Name)
+          .OrderBy(g => g.Key)
+          .Select(g => new { Name = g.Key, Count = g.Count() })
+);
 ```
 
-返回的是元素元组序列，`Where` / `OrderBy` 会保持元素元组类型，`Select` 则会把元素类型改成投影结果。元组元素用 `Item1`、`Item2`……`Item7` 访问，分别对应左表和各个右表，解析时各自带上正确的表别名。多表连接采用链式调用：`From<T1>()` 返回 `QuerySource<T1>`，`Join<T2>` 返回 `QuerySource<T1, T2>`，再调用 `Join<T3>` 得到 `QuerySource<T1, T2, T3>`，依次最多到 7 个元素。结果元组始终按顺序平铺；链式调用的 `on` 参数按顺序一表一个，即已连接的每张表在前、新右表在最后。
+返回的是元素元组序列，`Where` / `OrderBy` 会保持元素元组类型，`Select` 则会把元素类型改成投影结果。`Where` / `Select` / `OrderBy` / `GroupBy` 等可直接用多参数 Lambda（如 `(o, c) => ...`），参数按表顺序对应；也仍可用 `x.Item1`、`x.Item2`……`x.Item7` 访问元组元素，分别对应左表和各个右表，解析时各自带上正确的表别名。多表连接采用链式调用：`From<T1>()` 返回 `QuerySource<T1>`，`Join<T2>` 返回 `QuerySource<T1, T2>`，再调用 `Join<T3>` 得到 `QuerySource<T1, T2, T3>`，依次最多到 7 个元素。结果元组始终按顺序平铺；链式调用的 `on` 参数按顺序一表一个，即已连接的每张表在前、新右表在最后。
 
 `Join` / `JoinRelated` 是实例方法，既能在 Lambda 内解析，也能在 Lambda 外直接拼表达式；`Expr.Query` 与 `Expr.From<T>()` 链式写法都是受支持的入口。
 

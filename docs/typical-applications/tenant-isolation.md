@@ -98,7 +98,7 @@ public static class OrderFilters
 
 ```csharp
 var page = await orderViewService.SearchAsync(
-    From<OrderView>().Where(OrderFilters.For(request)).OrderBy(Prop(nameof(Order.CreateTime)).Desc()).Section(0, 20));
+    From(typeof(OrderView)).Where(OrderFilters.For(request)).OrderBy(Prop(nameof(Order.CreateTime)).Desc()).Section(0, 20));
 
 var total = await orderViewService.CountAsync(OrderFilters.For(request));
 ```

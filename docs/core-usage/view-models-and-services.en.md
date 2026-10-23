@@ -76,14 +76,13 @@ public class UserWriteDao : ObjectDAO<User>
 ```
 
 ```csharp
-using static LiteOrm.Common.Expr;
 public class UserViewDao : ObjectViewDAO<UserView>
 {
     public UserViewDao(SessionManager sessionManager) : base(sessionManager) { }
 
     public Task<List<UserView>> GetActiveUsersAsync(CancellationToken cancellationToken = default)
     {
-        return Search(Prop("Age") >= 18).ToListAsync(cancellationToken);
+        return Search(u => u.Age >= 18).ToListAsync(cancellationToken);
     }
 }
 ```
@@ -105,8 +104,15 @@ public class UserService : EntityService<User>
 ```csharp
 using static LiteOrm.Common.Expr;
 
-var summary = await userService.SearchAsAsync<UserSummary>(
-    From<UserView>()
+// Preferred: Lambda projection
+var summary = await userService.SearchAsAsync(
+    q => q.Where(u => u.Age >= 18)
+          .Select(u => new { u.Id, u.UserName })
+);
+
+// Use SelectExpr only when you need SelectExpr-only features (runtime column names, If(...).As("Level"), etc.)
+var summary2 = await userService.SearchAsAsync<UserSummary>(
+    From(typeof(UserView))
         .Where(Prop("Age") >= 18)
         .Select("Id", "UserName")
 );

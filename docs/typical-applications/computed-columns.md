@@ -104,8 +104,10 @@ var bigOrders = await viewService.SearchAsync(
     o => o.Payable >= 1000, cancellationToken: ct);          // 按应付金额筛选
 
 var top = await viewDao.Search(
-        Expr.Prop(nameof(Order.Payable)).Desc())
-    .Section(1, 20).ToListAsync(ct);                          // 按应付金额取前 20
+        From(typeof(Order))
+            .OrderBy(Expr.Prop(nameof(Order.Payable)).Desc())
+            .Section(0, 20))
+    .ToListAsync(ct);                                        // 按应付金额取前 20
 ```
 
 ```sql

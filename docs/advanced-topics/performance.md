@@ -96,7 +96,7 @@ var users = await userService.SearchAsync();
 
 // 推荐：使用 SearchAs 选择字段
 var result = await userService.SearchAs<UserView>(
-    From<UserView>()
+    From(typeof(UserView))
         .Where(Prop("Age") > 18)
         .Select("Id", "UserName", "DeptName")
 );
