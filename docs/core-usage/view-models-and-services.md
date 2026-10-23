@@ -16,6 +16,8 @@ public class UserView : User
 
 这样查询 `UserView` 时，LiteOrm 能根据外键关系自动生成 JOIN。
 
+> 视图模型已经自带关联 JOIN，**不要再把视图作为 `Join` / `JoinRelated` 的查询源或右表**。显式多表连接请使用实体类型；需要按关联表过滤时使用 `ExistsRelated`。混用会导致视图的自动关联与显式连接重复，可能产生别名冲突或无法解析的列。
+
 `ForeignColumn` 支持声明自己的列级转换器：`[ForeignColumn(typeof(Department), Property = "Name", ConverterType = typeof(SomeValueConverter))]`。读取时**优先使用自身声明的 `ConverterType`，否则回退目标列的转换器**；`ConverterType` 用法与 `ColumnAttribute.ConverterType` 一致（提供实现 `IDbValueConverter` 的转换器类型）。
 
 外键列是否进 `SELECT` 只看属性可不可写：可写才有回填需求，读回来才有人接。写成只读属性（`=> ...`）时该列不进 `SELECT`，值由属性体自行计算。这条判定与目标列自身的定义无关，目标列是不可读的计算列也不影响本列取值（`ForeignColumnAttribute` 没有列模式参数，本来也没法在关联列上单独声明）。

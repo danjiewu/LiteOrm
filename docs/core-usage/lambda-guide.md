@@ -273,6 +273,8 @@ var multipleRelated = Query<Order, IEnumerable<(Order, Customer, Region)>>(
 
 `Join` / `JoinRelated` 是实例方法，既能在 Lambda 内解析，也能在 Lambda 外直接拼表达式；`Expr.Query` 与 `Expr.From<T>()` 链式写法都是受支持的入口。
 
+> **不要混用 `Join` / `JoinRelated` 与视图。** 这两个方法面向实体表。视图模型（`ObjectViewDAO<TView>`，或带 `[ForeignColumn]` 的类型）已经通过元数据自动生成关联 JOIN；若把视图作为查询源或 `Join` 的右表，视图自身的关联表会与显式连接重复，容易产生别名冲突或无法解析的列，当前版本不保证这种组合的行为。需要关联数据时，直接查询视图让 `ForeignColumn` 自动关联；需要按关联表过滤时使用 `ExistsRelated`；需要显式多表连接时使用实体类型。
+
 几处要点：
 
 - `Join` 生成的 SQL 形如 `FROM Orders T0 LEFT JOIN Customers T1 ON T0.CustomerId = T1.Id`，连接类型默认左连接。

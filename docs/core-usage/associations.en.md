@@ -383,6 +383,7 @@ In implementation, LiteOrm merges ForeignType and TableJoin information during t
 - Composite keys, joint primary keys, or joins that need to be reused: use TableJoin to pre-define at the type level, avoiding repeated declarations across multiple views.
 - AutoExpand: only enable for stable, clear, and predictable cascade paths. If the same target table has multiple relationships, prefer explicit modeling and use cautiously.
 - Alias: use Alias/AliasName to avoid column name conflicts, only declare necessary foreign columns in views to reduce network transmission.
+- Do not mix Join and View: a view's `[ForeignColumn]` already handles association JOINs, so do not use a view as the query source or the right table of `Join` / `JoinRelated`; use entity types for explicit multi-table joins and `ExistsRelated` for related-table filtering.
 - Performance verification: review generated SQL for complex views before production and use database execution plans (EXPLAIN) to check indexes and join order.
 
 ---

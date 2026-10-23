@@ -273,6 +273,8 @@ The result is a sequence of element tuples; `Where` / `OrderBy` preserve the tup
 
 `Join` / `JoinRelated` are instance methods that build expressions both inside a lambda and outside one; `Expr.Query` and the `Expr.From<T>()` chain are both supported entry points.
 
+> **Do not mix `Join` / `JoinRelated` with views.** These methods are intended for entity tables. View models (`ObjectViewDAO<TView>`, or types with `[ForeignColumn]`) already generate their association JOINs from metadata. Using a view as the query source or as the right table of a `Join` duplicates the view's own association joins and can lead to alias conflicts or unresolvable columns; this combination is not guaranteed to work in the current version. For related data, query the view directly and let `ForeignColumn` join automatically; for filtering by a related table, use `ExistsRelated`; for explicit multi-table joins, use entity types.
+
 A few points worth knowing:
 
 - `Join` produces SQL like `FROM Orders T0 LEFT JOIN Customers T1 ON T0.CustomerId = T1.Id`; the join type defaults to left.

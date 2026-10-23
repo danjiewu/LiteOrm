@@ -516,6 +516,8 @@ Event subscribers are resolved lazily: constructing an entity service instance n
 | `Expr.ExistsRelated<T>(lambda)` | `bool` | Used only inside Lambda expressions to build automatic-related EXISTS queries (direct calls throw an exception) |
 | `Expr.FromRelated<T>(tableArgs)` | `QuerySource<T>` | Same as `Expr.From<T>()`, plus the automatic relation condition inside a lambda |
 
+> `Join` / `JoinRelated` are intended for entity tables only. View models already generate association JOINs through `[ForeignColumn]`; do not mix them with views. Use entity types for explicit multi-table joins and `ExistsRelated` for related-table filtering.
+
 Additional rule:
 
 - Expression objects such as `PropertyExpr`, `TableExpr`, `ForeignExpr`, `FunctionExpr`, `SelectExpr`, `SelectItemExpr`, `CommonTableExpr`, and `GenericSqlExpr` treat names and aliases as **case-insensitive** when comparing objects and calculating hash codes.

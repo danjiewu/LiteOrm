@@ -144,6 +144,7 @@ var multi = From<Order>()
 - Results are `QuerySource<T1, T2>`, `QuerySource<T1, T2, T3>`, ..., with a **flat tuple** element type `(T1, T2)`, `(T1, T2, T3)`, accessed through `x.Item1` ... `x.Item7`; each element resolves to its own table alias.
 - For the second join and later, the `on` parameters follow the order "already-joined tables first, new right table last"; reference them by parameter name, e.g. `(o, c, r) => c.RegionId == r.Id`.
 - `Join` defaults to a left join; `JoinRelated` uses the join type declared in metadata, and throws `InvalidOperationException` when no relation can be inferred, suggesting an explicit `Join`. In a chain, `JoinRelated` matches from back to front in association order, preferring the most recently joined table (for example, `JoinRelated<User>().JoinRelated<Dept>()` follows `User → Dept` and only falls back to the main table last).
+- `Join` / `JoinRelated` are intended for entity tables; do not mix them with views. View models already generate association JOINs through `[ForeignColumn]`, so mixing the two duplicates joins and may cause alias conflicts. See [Lambda Query Guide §5.4](./lambda-guide.en.md#54-joins-with-join-and-joinrelated).
 - Complete all joins **before** `Where` / `Select`; if you already applied `Where`, narrow it back with `.AsSource()` before calling `Join<TNext>`.
 - Up to 7 tables can be chained. When a `Select` follows a `Join` inside a Lambda, use `IEnumerable<object>` as `TResult` of `Expr.Query<T, TResult>`.
 

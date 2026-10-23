@@ -402,6 +402,7 @@ var matureItUsers = await objectViewDAO.Search(
 - 复合键、联合主键或需要复用的连接：使用 TableJoin 在类型上预定义，避免在多个视图重复声明。
 - AutoExpand：仅对稳定、明确、可预期的级联路径开启。若同一目标表存在多条关系，请优先显式建模并谨慎使用。
 - Alias：使用 Alias/AliasName 避免列名冲突，视图中只声明必要的外表列以减少网络传输。
+- Join 与 View 不要混用：视图的 `[ForeignColumn]` 已经负责关联 JOIN，不要再把视图作为 `Join` / `JoinRelated` 的查询源或右表；显式多表连接使用实体类型，按关联表过滤使用 `ExistsRelated`。
 - 性能验证：对复杂视图在生产前审查生成的 SQL，并用数据库执行计划（EXPLAIN）检查索引与连接顺序。
 
 ---

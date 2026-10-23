@@ -516,6 +516,8 @@ services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
 | `Expr.ExistsRelated<T>(lambda)`                  | `bool`            | 仅用于 Lambda 表达式中构造自动关联的 EXISTS 查询（直接调用会抛出异常） |
 | `Expr.FromRelated<T>(tableArgs)`                 | `QuerySource<T>`  | 同 `Expr.From<T>()`，Lambda 内额外补上自动关联条件                     |
 
+> `Join` / `JoinRelated` 只用于实体表；视图模型已通过 `[ForeignColumn]` 自动生成关联 JOIN，不要与视图混用。显式多表连接使用实体类型，按关联表过滤使用 `ExistsRelated`。
+
 补充规则：
 
 - `PropertyExpr`、`TableExpr`、`ForeignExpr`、`FunctionExpr`、`SelectExpr`、`SelectItemExpr`、`CommonTableExpr`、`GenericSqlExpr` 等表达式，在对象比较和哈希计算时，名称与别名按**忽略大小写**处理。
