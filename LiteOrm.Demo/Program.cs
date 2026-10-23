@@ -59,7 +59,7 @@ using (var scope = host.Services.CreateScope())
     // 5. 窗口函数演示 (5.1-5.2: 仅分区、分区+排序)
     await WindowFunctionDemo.RunAsync(serviceFactory);
 
-    // 6. UpdateExpr 更新表达式演示 (6.1-6.5: 列表初始化、链式Set、算术运算、FunctionExpr、Lambda条件)
+    // 6. UpdateExpr 更新表达式演示 (6.1-6.7: 列表初始化、链式Set、算术运算、FunctionExpr、Lambda条件、子查询Set、纯Lambda更新)
     await UpdateExprDemo.RunAsync(serviceFactory);
 
     // 7. ExistsRelated 关联过滤演示 (7.1-7.4: 正向用户、正向部门、NOT EXISTS、多条件组合)
@@ -74,7 +74,7 @@ using (var scope = host.Services.CreateScope())
     // 10. JsonNode 属性演示 (Info 列：JSON 文本存储 + 列级 JsonNodeConverter 读写)
     await JsonNodeDemo.RunAsync(serviceFactory);
 
-    // 11. Join 多表连接查询演示 (11.1 Join、11.2 JoinRelated + 连接类型、11.3 链式三表连接)
+    // 11. Join 多表连接查询演示 (11.1 Join、11.2 JoinRelated + 连接类型、11.3 链式 JoinRelated、11.4 多参数排序、11.5 多参数分组)
     await JoinQueryDemo.RunAsync(scope.ServiceProvider);
 
     // 12. 远程服务调用演示 (AddRemoteServiceFactory：从配置读取远程地址、工厂代理、远程调用)

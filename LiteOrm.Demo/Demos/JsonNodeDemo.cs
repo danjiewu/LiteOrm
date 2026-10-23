@@ -18,7 +18,7 @@ namespace LiteOrm.Demo.Demos
         public static async Task RunAsync(ServiceFactory factory)
         {
             Console.WriteLine("\n══════════════════════════════════════════════════════════");
-            Console.WriteLine("    JsonNode 属性演示（Info 列：JSON 文本存储）");
+            Console.WriteLine("    10. JsonNode 属性演示（Info 列：JSON 文本存储）");
             Console.WriteLine("══════════════════════════════════════════════════════════");
 
             var userSvc = factory.UserService;

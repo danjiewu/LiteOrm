@@ -48,7 +48,7 @@ namespace LiteOrm.Demo.Demos
         public static async Task RunAsync()
         {
             Console.WriteLine("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            Console.WriteLine("  10. 远程服务调用（AddRemoteServiceFactory 演示）：");
+            Console.WriteLine("  12. 远程服务调用（AddRemoteServiceFactory 演示）：");
             Console.WriteLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
             // 1. 从 appsettings.json 读取 RemoteService 配置节
