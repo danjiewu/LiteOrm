@@ -79,7 +79,7 @@
 |[计算列的实际应用](./typical-applications/computed-columns.md)|[Computed Columns in Practice](./typical-applications/computed-columns.en.md)|用户等级折扣、上架状态位、跨表展示名三个需求实例与生成 SQL|
 |[并发控制与读写分离](./typical-applications/concurrency-and-read-write-splitting.md)|[Concurrency and Read/Write Splitting](./typical-applications/concurrency-and-read-write-splitting.en.md)|时间戳乐观并发、事务边界、只读副本与读写一致性|
 |[按需投影：先查实体再投影，还是查询时投影](./typical-applications/query-projection.md)|[Projection on Demand: Entity-First or Query-Time](./typical-applications/query-projection.en.md)|四个业务需求对比先查实体再投影与查询时投影，覆盖列表页、导出、详情页与分组聚合|
-|[复杂查询实战：同表多关系、动态排序、分页计数、树形方言与条件持久化](./typical-applications/complex-queries.md)|[Complex Queries in Practice: Multi-Role Joins, Dynamic Sorting, Paging, Dialect Trees and Saved Conditions](./typical-applications/complex-queries.en.md)|同一实体派生类型区分同表多关系、JoinRelated、表头动态排序、同一条件 count 与当页查询、自定义 Lambda 与方言 CONNECT BY、Expr 条件持久化重载、DateTime.Now 函数/参数与 SqlGen 调试|
+|[复杂查询实战：部门树、最近 7 天、动态排序分页与条件持久化](./typical-applications/complex-queries.md)|[Complex Queries in Practice: Department Trees, Last 7 Days, Dynamic Sorting/Paging and Saved Conditions](./typical-applications/complex-queries.en.md)|部门及下级部门订单、一份查询 JSON（含排序与分页）直接交给 Search、从查询中提取 filter、最近 7 天函数/参数、GenericSqlExpr 与自定义 FunctionExpr 两种树形实现、同一 filter 的 count 与当页、条件 JSON 保存重载与 SqlGen 调试|
 
 ### 参考文档 / Reference
 
@@ -112,5 +112,5 @@
 4. 使用 `LiteOrm.DependencyInjection` 集成（Autofac、AOP）：先阅读[配置参考](./reference/configuration-reference.md)，再了解"DI扩展"中的事务、日志与服务鉴权等特性。
 5. 涉及分表、性能或数据库方言差异：继续阅读"高级特性篇"。
 6. 需要扩展框架能力：查阅"扩展开发篇"。
-7. 落地具体业务场景（多租户隔离、数据权限、软删除与归档、审计、敏感字段加密、对象 JSON 列存储、并发与读写分离、按需投影的几种做法、复杂查询（同表多关系、动态排序、树形方言与条件持久化））：查阅"应用场景"，每个场景都有需求描述与可直接抄的代码。
+7. 落地具体业务场景（多租户隔离、数据权限、软删除与归档、审计、敏感字段加密、对象 JSON 列存储、并发与读写分离、按需投影的几种做法、复杂查询（部门树、最近 7 天、动态排序分页与条件持久化））：查阅"应用场景"，每个场景都有需求描述与可直接抄的代码。
 8. 需要快速确认配置项、接口名或术语：直接查阅"参考篇"。

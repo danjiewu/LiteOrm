@@ -315,7 +315,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void SerializeAndDeserialize_GenericSqlExpr_RoundTrips()
         {
-            var expr = new GenericSqlExpr("myKey") { Arg = "myArg" };
+            var expr = new GenericSqlExpr("myKey") { Arg = Expr.Value("myArg") };
 
             var json = JsonSerializer.Serialize<Expr>(expr);
             var result = JsonSerializer.Deserialize<Expr>(json);

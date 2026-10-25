@@ -259,14 +259,16 @@ Validator groups use **short-circuit evaluation**: execution stops at the first 
 
 ```csharp
 public delegate string? SqlGenerateHandler(
-    SqlBuildContext context, object? arg);
+    SqlBuildContext context, Expr? arg);
 
 public sealed class GenericSqlExpr : LogicExpr
 {
     public string? Key { get; set; }   // unique key for registry lookup
-    public object? Arg { get; set; }   // extra argument passed to callback
+    public Expr? Arg { get; set; }     // argument expression passed to callback
 }
 ```
+
+`Arg` is an `Expr`: pass plain values via `Expr.Value(...)` (`Expr.Sql(key, value)` / `GenericSqlExpr.Get(key, value)` wraps them into a `ValueExpr` automatically); inside the callback render it with `arg.ToSql(context)` — string values are parameterized automatically.
 
 `GenericSqlExpr` also implements an implicit conversion to `ValueTypeExpr`, so the dynamic fragment can be used directly in value positions such as SELECT columns, function arguments, and computed columns; when it takes part in operators or extension method chains, call `AsValue()` explicitly.
 
@@ -277,23 +279,22 @@ using static LiteOrm.Common.Expr;
 // Register a custom SQL generator
 GenericSqlExpr.Register("CustomCheck", (context, arg) =>
 {
-    // Parameterize: use context.OutputParams to pass user values
-    string paramName = context.OutputParams.Count.ToString();
-    context.OutputParams.Add(new(context.SqlBuilder.ToParamName(paramName), arg));
-    return $"dbo.CustomCheck({context.SqlBuilder.ToSqlParam(paramName)})";
+    // Parameterize: Arg is an Expr; ValueExpr writes into context.OutputParams when rendered
+    if (arg is null) return "dbo.CustomCheck(NULL)";
+    return $"dbo.CustomCheck({arg.ToSql(context)})";
 });
 
 // Use in queries
 var expr = Prop("IsActive") == true
-    & new GenericSqlExpr("CustomCheck") { Arg = "someValue" };
+    & new GenericSqlExpr("CustomCheck") { Arg = Expr.Value("someValue") };
 var users = await userService.SearchAsync(expr);
 ```
 
 ### 5.3 Security Features
 
 1. **Must be pre-registered**: Maintains a global registry via `ConcurrentDictionary`; unregistered keys throw exceptions
-2. **Supports parameterization**: The delegate can reach the parameter collection via `context.OutputParams`, allowing safe passing of user values
-3. **Parameter passing**: Business parameters are passed via the `Arg` property, not concatenated into SQL
+2. **Supports parameterization**: `Arg` is rendered as an expression (`arg.ToSql(context)`); a `ValueExpr` writes into `context.OutputParams` automatically instead of being concatenated into SQL
+3. **Parameter passing**: Business parameters are passed to `Arg` as an `Expr` (e.g. `Expr.Value(...)`) and parameterized during rendering
 
 If you want to use it for business scenarios such as "current-user scope filtering" or "multi-tenant filtering", read this together with [Permission Filtering](../advanced-topics/permission-filtering.en.md), which focuses on **when to use runtime Expr / GenericSqlExpr versus `ConstFilter` or table routing**.
 
@@ -327,22 +328,21 @@ Within `ExprString`, **literal strings** (`AppendLiteral`) are developer-hardcod
 
 ### 6.2 GenericSqlExpr Freedom
 
-The `SqlGenerateHandler` delegate can return any string. If `context.OutputParams` is not carefully used within the callback, injection points can be introduced in custom SQL:
+The `SqlGenerateHandler` delegate can return any string. `Arg` is an `Expr`, and `ValueExpr.ToString()` returns the raw value — concatenating it directly into SQL introduces an injection point:
 
 ```csharp
 using static LiteOrm.Common.Expr;
-// ❌ Dangerous: user input concatenated directly in delegate
+// ❌ Dangerous: expression text concatenated straight into SQL
 GenericSqlExpr.Register("UnsafeLookup", (ctx, arg) =>
 {
-    return $"SELECT * FROM Users WHERE Code = '{arg}'";
+    return $"SELECT * FROM Users WHERE Code = '{arg?.ToString()}'";
 });
 
-// ✅ Safe: use context.OutputParams for parameterization
+// ✅ Safe: render the expression; ValueExpr is parameterized automatically
 GenericSqlExpr.Register("SafeLookup", (ctx, arg) =>
 {
-    string paramName = ctx.OutputParams.Count.ToString();
-    ctx.OutputParams.Add(new(ctx.SqlBuilder.ToParamName(paramName), arg));
-    return $"SELECT * FROM Users WHERE Code = {ctx.SqlBuilder.ToSqlParam(paramName)}";
+    string value = arg is null ? "NULL" : arg.ToSql(ctx);
+    return $"SELECT * FROM Users WHERE Code = {value}";
 });
 ```
 

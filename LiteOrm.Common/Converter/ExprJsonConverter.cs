@@ -711,7 +711,7 @@ namespace LiteOrm.Common
                         if (ge.Arg is not null)
                         {
                             writer.WritePropertyName("Arg");
-                            WriteNative(writer, ge.Arg, options);
+                            WriteExpr(writer, ge.Arg, options);
                         }
                         break;
                     case ValueExpr vve:
@@ -1619,7 +1619,7 @@ namespace LiteOrm.Common
                     else if (reader.ValueTextEquals("Arg"))
                     {
                         reader.Read();
-                        ge.Arg = ReadNative(ref reader, options);
+                        ge.Arg = JsonSerializer.Deserialize(ref reader, GetTypeInfo<Expr>());
                     }
                     else
                     {

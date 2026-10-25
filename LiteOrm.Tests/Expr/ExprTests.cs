@@ -233,7 +233,7 @@ namespace LiteOrm.Tests
         public void GenericSqlExpr_Tests()
         {
             // 注册一个虚拟处理器
-            GenericSqlExpr.Register("TestKey", (SqlBuildContext ctx, object? arg) => "TEST SQL");
+            GenericSqlExpr.Register("TestKey", (SqlBuildContext ctx, Expr? arg) => "TEST SQL");
 
             // 相等性测试
             Expr g1 = GenericSqlExpr.Get("TestKey", 123);
@@ -294,7 +294,7 @@ namespace LiteOrm.Tests
             var listExpr = v1.In(new[] { v1, v2 });
 
             // Sql / StaticSql
-            GenericSqlExpr.Register("TestKey2", (SqlBuildContext ctx, object? arg) => "TEST");
+            GenericSqlExpr.Register("TestKey2", (SqlBuildContext ctx, Expr? arg) => "TEST");
             Assert.Equal(GenericSqlExpr.Get("TestKey2", 1), Expr.Sql("TestKey2", 1));
             Assert.Equal(GenericSqlExpr.Get("TestKey2"), Expr.Sql("TestKey2"));
 

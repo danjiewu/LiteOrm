@@ -472,7 +472,7 @@ namespace LiteOrm.Common
         /// 创建动态 SQL 表达式（支持运行时替换或参数化局内值）。
         /// </summary>
         /// <param name="key">SQL 片段键名或模板文本。</param>
-        /// <param name="arg">动态替换参数，为 null 时不替换。</param>
+        /// <param name="arg">动态替换参数，为 null 时不替换；非表达式值会自动包装为 <see cref="ValueExpr"/>。</param>
         /// <returns>动态 SQL 表达式。</returns>
         public static GenericSqlExpr Sql(string key, object? arg = null) => GenericSqlExpr.Get(key, arg);
 

@@ -1,871 +1,667 @@
-# Complex Queries in Practice: Multi-Role Joins, Dynamic Sorting, Paging, Dialect Tree SQL and Saved Conditions
+# Complex Queries in Practice: Department Trees, Last 7 Days, Dynamic Sorting/Paging and Saved Conditions
 
-The basics of `QuerySource`, `Join` / `JoinRelated`, Lambda, `Expr` and `ExprString` are covered elsewhere. This article is about **composition**: a work-order list page plus an organization-tree filter that ties together two roles of one employee table, header-driven sorting, one condition set shared by count and page, custom Lambda plus dialect tree SQL, and saved/reloaded conditions — then inspects the SQL offline with `SqlGen`.
+Basic Lambda syntax, `Expr` composition, `ExprString` interpolation, and associations are each covered by their own documents, so this document does not repeat them and instead focuses on how they combine into one realistic query path. It follows a single requirement as it evolves: the frontend submits one query JSON from which the backend extracts the filter for counting and paging; the equality condition on the department is then replaced by a department subtree; sorting and paging are then moved into the same JSON; and finally the filter is saved separately and reloaded when needed. All SQL shown below is actual rendered output, using the SQLite dialect unless noted, with parameter values written as `@0` and `@1`.
 
-All SQL below is actual rendered output (SQLite unless noted); parameters appear as `@0`, `@1`.
+## 1. Requirement, Model and Query Input
 
-## Where to find the basics
+### 1.1 Requirements
 
-| Capability | Document |
-| --- | --- |
-| `QuerySource<T>`, `Join` / `JoinRelated` chaining | [Query overview](../core-usage/query-overview.en.md) |
-| Lambda syntax, multi-parameter Lambdas, captured-variable parameterization | [Lambda guide](../core-usage/lambda-guide.en.md) |
-| Minimal `[TableJoin]`, `[ForeignType]`, `[ForeignColumn]` setup | [Associations](../core-usage/associations.en.md) |
-| `RegisterMethodHandler` / `RegisterMemberHandler` | [Expression extension](../extensibility/expression-extension.en.md) |
-| `Expr.Lambda`, `To<bool>()`, mixing Lambda and Expr | [Lambda and Expr](../core-usage/lambda-expr-mixing.en.md) |
-| `ExprString` interpolation, embedded `Expr`, `[column]` placeholders | [ExprString guide](../core-usage/exprstring-guide.en.md) |
-| Expr JSON shapes and operator markers | [Expr JSON serialization](../extensibility/expr-serialization.en.md) |
-| Constructing Expr JSON on the client | [Native Expr queries](../extensibility/frontend-native-expr.en.md) |
-| Dialect paging and `Skip` / `Take` basics | [Custom paging](../advanced-topics/custom-paging.en.md) |
-| Grouping, aggregation and projection comparison | [Projection on demand](./query-projection.en.md) |
-| CTE `With` / `UnionAll` | [CTE guide](../core-usage/cte-guide.en.md) |
-| Dynamic table names and `TableArgs` | [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md) |
+The following requirements also serve as the acceptance points referenced later in this document:
 
-## 1. Requirements and model
+- Only orders belonging to the specified department and all of its descendants are returned, without first loading the department Ids into memory and building an `IN` list from them.
+- Only orders created within the last 7 days are returned, where "last" may mean either a rule relative to the current time or a fixed time window.
+- The three optional filters on status, minimum amount, and order-number keyword are supported, and a filter that is absent must not produce an extra SQL fragment.
+- The list can be sorted by clicking a column header, covering created time, amount, status, and order number in either direction.
+- The list is paged, and the total count and the current page must be produced from the same set of conditions.
+- Query conditions can be saved so that the user can reload and reuse them later.
 
-Requirements (also the acceptance points for later sections):
+### 1.2 Model
 
-- Filter the work-order list by status, assignee level, reviewer level, created-time range and a title/code keyword.
-- Sort by clicking a header: created time, priority, status, code, assignee name, reviewer name, either direction.
-- Page `page` with `pageSize` rows; return **both** the total and the current page from the same condition set.
-- A status bar on top summarizes counts by status (a second SQL statement).
-- Organization tree: query a node and all its descendants; the work-order list can filter by that tree condition.
-- Users can save the current filter as a view and reload it later, then keep layering conditions.
-
-The model is work orders plus organizations. Assignee and reviewer both come from `Employees`, distinguished by **derived types that inherit the same entity**:
+Only two tables are needed: the department table provides the tree structure, and the order table provides the data to filter and sort.
 
 ```csharp
-public enum WorkOrderStatus { Open = 1, Processing = 2, Closed = 3 }
-
-[Table("Employees")]
-public class Employee
-{
-    [Column("Id", IsPrimaryKey = true, IsIdentity = true)] public int Id { get; set; }
-    [Column("Name")] public string Name { get; set; } = "";
-    [Column("Level")] public int Level { get; set; }
-}
-
-/// <summary>Assignee: one business role of the Employees table.</summary>
-public class Assignee : Employee { }
-
-/// <summary>Reviewer: another business role of the Employees table.</summary>
-public class Reviewer : Employee { }
-
-[Table("OrgUnits")]
-public class OrgUnit
+[Table("Departments")]
+public class Department
 {
     [Column("Id", IsPrimaryKey = true, IsIdentity = true)] public int Id { get; set; }
     [Column("ParentId")] public int? ParentId { get; set; }
     [Column("Name")] public string Name { get; set; } = "";
-    [Column("Level")] public int Level { get; set; }
 }
 
-[Table("WorkOrders")]
-public class WorkOrder
+[Table("Orders")]
+public class SaleOrder
 {
     [Column("Id", IsPrimaryKey = true, IsIdentity = true)] public int Id { get; set; }
-    [Column("Code")] public string Code { get; set; } = "";
-    [Column("Title")] public string Title { get; set; } = "";
+    [Column("OrderNo")] public string OrderNo { get; set; } = "";
+    [Column("DeptId")] public int DeptId { get; set; }
     [Column("Status")] public int Status { get; set; }
-    [Column("Priority")] public int Priority { get; set; }
-    [Column("OrgUnitId")] public int OrgUnitId { get; set; }
-
-    [Column("AssigneeId")]
-    [ForeignType(typeof(Assignee), JoinType = TableJoinType.Inner)]
-    public int AssigneeId { get; set; }
-
-    [Column("ReviewerId")]
-    [ForeignType(typeof(Reviewer), JoinType = TableJoinType.Left)]
-    public int? ReviewerId { get; set; }
-
+    [Column("Amount")] public decimal Amount { get; set; }
     [Column("CreatedTime")] public DateTime CreatedTime { get; set; }
-    [Column("DueTime")] public DateTime DueTime { get; set; }
-}
-
-/// <summary>List view: display columns only; reads and writes still use WorkOrder.</summary>
-public class WorkOrderView : WorkOrder
-{
-    [ForeignColumn(typeof(Assignee), Property = nameof(Employee.Name))]
-    public string AssigneeName { get; set; } = "";
-
-    [ForeignColumn(typeof(Reviewer), Property = nameof(Employee.Name))]
-    public string? ReviewerName { get; set; }
-
-    [ForeignColumn(typeof(Assignee), Property = nameof(Employee.Level))]
-    public int AssigneeLevel { get; set; }
-
-    [ForeignColumn(typeof(Reviewer), Property = nameof(Employee.Level))]
-    public int? ReviewerLevel { get; set; }
-}
-
-public class WorkOrderListItem
-{
-    public int Id { get; set; }
-    public string Code { get; set; } = "";
-    public string Title { get; set; } = "";
-    public string AssigneeName { get; set; } = "";
-    public string? ReviewerName { get; set; }
-    public int Priority { get; set; }
-    public DateTime CreatedTime { get; set; }
-}
-
-public sealed class WorkOrderQuery
-{
-    public int Status { get; init; }
-    public int MinAssigneeLevel { get; init; }
-    public int MinReviewerLevel { get; init; }
-    public int? OrgUnitId { get; init; }          // organization-tree filter, see section 4
-    public DateTime From { get; init; }
-    public DateTime To { get; init; }
-    public string? Keyword { get; init; }
-    public string? SortBy { get; init; }          // createdTime / priority / status / code / assigneeName / reviewerName
-    public bool Desc { get; init; } = true;
-    public int Page { get; init; } = 1;
-    public int PageSize { get; init; } = 20;
 }
 ```
 
-**Why derived types distinguish the relations** (said once, applies throughout):
+### 1.3 Query Input: One Query JSON
 
-- `[Table]` has `Inherited = true`, so `Assignee` / `Reviewer` inherit the table name `Employees` and all columns.
-- Their `DefinitionType`s are `Assignee` and `Reviewer`. `JoinRelated` matches with `DefinitionType.IsAssignableFrom(foreignType)`, so sibling derived types never match each other.
-- Joining from the base `Employee` finds nothing (`Assignee.IsAssignableFrom(Employee) == false`) and throws "No relation ... found in metadata".
-- The same type with a different `Alias` does not work either: `BuildRelatedLogic` matches by type only, never by alias.
-- Derived types express relations only and carry no `[ForeignColumn]`; display columns live on `WorkOrderView`, avoiding duplicate JOINs from automatic and explicit joins.
-
-## 2. Two roles of one table with `JoinRelated`
-
-```csharp
-var query = Expr.From<WorkOrder>()
-    .JoinRelated<Assignee>(TableJoinType.Inner)   // assignee: required, inner join
-    .JoinRelated<Reviewer>(TableJoinType.Left)    // reviewer: nullable, keep orders without one
-    .Where((w, assignee, reviewer) => w.Status != (int)WorkOrderStatus.Closed
-                                   && assignee.Level >= 3)
-    .Select((w, assignee, reviewer) => new WorkOrderListItem
-    {
-        Id = w.Id,
-        Code = w.Code,
-        Title = w.Title,
-        AssigneeName = assignee.Name,
-        ReviewerName = reviewer.Name,
-        Priority = w.Priority,
-        CreatedTime = w.CreatedTime
-    });
-
-List<WorkOrderListItem> items =
-    await workOrderDAO.SearchAs<WorkOrderListItem>(query).ToListAsync(ct);
-```
-
-Rendered SQL (SQLite):
-
-```sql
-SELECT "T0"."Id", "T0"."Code", "T0"."Title",
-       "T1"."Name" AS "AssigneeName", "T2"."Name" AS "ReviewerName",
-       "T0"."Priority", "T0"."CreatedTime"
-FROM "WorkOrders" "T0"
-INNER JOIN "Employees" "T1" ON "T0"."AssigneeId" = "T1"."Id"
-LEFT JOIN "Employees" "T2" ON "T0"."ReviewerId" = "T2"."Id"
-WHERE "T0"."Status" <> 3 AND "T1"."Level" >= 3
-```
-
-Notes:
-
-- No ON is written; `[ForeignType]` metadata supplies it. The second join falls back to the root `T0` to find its relation.
-- The same physical table appears twice, separated by aliases `T1` / `T2`; no manual aliasing.
-- After joining, the element is a flat tuple, and `Where` / `Select` take one parameter per table (`TupleQueryableExtensions`).
-- To add conditions use `JoinRelated<T>(on, joinType)`; explicit and automatic conditions are combined with AND.
-- Literal `3` inside the Lambda is inlined; an outer variable (e.g. `minLevel`) becomes parameter `@n`.
-- Query methods live on `ObjectViewDAO<T>` (`ObjectDAO<T>` only writes); pass the chain directly to `SearchAs<TResult>(IQueryable<TResult>)` without converting it back to `Expr`.
-
-## 3. List page: filtering, dynamic sorting, paging and one shared count
-
-### 3.1 One shared filter
-
-```csharp
-using static LiteOrm.Common.Expr;
-
-LogicExpr BuildFilter(WorkOrderQuery q)
-{
-    LogicExpr filter = Prop(nameof(WorkOrder.Status)) == q.Status;
-    filter &= Prop(nameof(WorkOrderView.AssigneeLevel)) >= q.MinAssigneeLevel;
-    filter &= Prop(nameof(WorkOrder.ReviewerId)).IsNull()
-            | Prop(nameof(WorkOrderView.ReviewerLevel)) >= q.MinReviewerLevel;
-    filter &= Prop(nameof(WorkOrder.CreatedTime)) >= q.From;
-    filter &= Prop(nameof(WorkOrder.CreatedTime)) < q.To;
-
-    if (q.OrgUnitId is int orgUnitId)                 // tree fragment from section 4
-        filter &= Expr.Sql("OrgSubTree", orgUnitId);
-
-    if (!string.IsNullOrWhiteSpace(q.Keyword))
-        filter &= Expr.Sql("KeywordSearch", q.Keyword.Trim());
-
-    return filter;
-}
-```
-
-`filter` is built once and shared by count and page. `Prop(nameof(WorkOrderView.AssigneeLevel))` resolves to the view's joined column `"Assignee"."Level"`.
-
-### 3.2 Header sorting: Expr instead of Lambda branching
-
-```csharp
-// Only whitelisted keys; never feed user input directly as a property name
-private static readonly Dictionary<string, string> SortableFields =
-    new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["createdTime"]  = nameof(WorkOrder.CreatedTime),
-        ["priority"]     = nameof(WorkOrder.Priority),
-        ["status"]       = nameof(WorkOrder.Status),
-        ["code"]         = nameof(WorkOrder.Code),
-        ["assigneeName"] = nameof(WorkOrderView.AssigneeName),
-        ["reviewerName"] = nameof(WorkOrderView.ReviewerName),
-    };
-
-OrderByItemExpr[] BuildOrderBys(WorkOrderQuery q)
-{
-    var items = new List<OrderByItemExpr>(2);
-    if (q.SortBy is not null && SortableFields.TryGetValue(q.SortBy, out string? prop))
-        items.Add(q.Desc ? Prop(prop).Desc() : Prop(prop).Asc());
-
-    items.Add(Prop(nameof(WorkOrder.Id)).Desc());   // unique-key tiebreaker for stable page boundaries
-    return items.ToArray();
-}
-```
-
-With Lambda, every field × direction needs its own branch:
-
-```csharp
-IOrderedQueryable<WorkOrderView> ordered = q.SortBy switch
-{
-    "createdTime"  => q.Desc ? src.OrderByDescending(v => v.CreatedTime) : src.OrderBy(v => v.CreatedTime),
-    "priority"     => q.Desc ? src.OrderByDescending(v => v.Priority) : src.OrderBy(v => v.Priority),
-    // ... six fields × two directions = 12 branches
-    _              => src.OrderByDescending(v => v.Id)
-};
-ordered = ordered.ThenByDescending(v => v.Id);
-```
-
-The Expr version maps "field name → expression" once and flips direction with `Desc()` / `Asc()`; a new sortable column is one whitelist line.
-
-### 3.3 One `filter` for total and page
-
-```csharp
-SelectExpr BuildPageExpr(WorkOrderQuery q, LogicExpr filter)
-{
-    int skip = (q.Page - 1) * q.PageSize;
-    return Expr.From(typeof(WorkOrderView))
-        .Where(filter)
-        .OrderBy(BuildOrderBys(q))
-        .Section(skip, q.PageSize)
-        .Select(
-            new SelectItemExpr(Prop(nameof(WorkOrder.Id)), nameof(WorkOrderListItem.Id)),
-            new SelectItemExpr(Prop(nameof(WorkOrder.Code)), nameof(WorkOrderListItem.Code)),
-            new SelectItemExpr(Prop(nameof(WorkOrder.Title)), nameof(WorkOrderListItem.Title)),
-            new SelectItemExpr(Prop(nameof(WorkOrderView.AssigneeName)), nameof(WorkOrderListItem.AssigneeName)),
-            new SelectItemExpr(Prop(nameof(WorkOrderView.ReviewerName)), nameof(WorkOrderListItem.ReviewerName)),
-            new SelectItemExpr(Prop(nameof(WorkOrder.Priority)), nameof(WorkOrderListItem.Priority)),
-            new SelectItemExpr(Prop(nameof(WorkOrder.CreatedTime)), nameof(WorkOrderListItem.CreatedTime)));
-}
-
-LogicExpr filter = BuildFilter(q);
-
-// Total: no ORDER BY / paging
-int total = await workOrderService.CountAsync(filter, cancellationToken: ct);
-
-// Page: Where → OrderBy → Section → Select
-List<WorkOrderListItem> page = await workOrderService
-    .SearchAsAsync<WorkOrderListItem>(BuildPageExpr(q, filter), cancellationToken: ct);
-```
-
-Count SQL (SQLite; tree and keyword fragments elided with `...`):
-
-```sql
-SELECT Count(1)
-FROM "WorkOrders" "T0"
-INNER JOIN "Employees" "Assignee" ON "T0"."AssigneeId" = "Assignee"."Id"
-LEFT JOIN "Employees" "Reviewer" ON "T0"."ReviewerId" = "Reviewer"."Id"
-WHERE "T0"."Status" = @0
-  AND "Assignee"."Level" >= @1
-  AND ("T0"."ReviewerId" IS NULL OR "Reviewer"."Level" >= @2)
-  AND "T0"."CreatedTime" >= @3 AND "T0"."CreatedTime" < @4
-  AND ...tree subquery...
-  AND ...keyword fragment...
-```
-
-Page SQL (`SortBy = "assigneeName"`, `Desc = true`, `Page = 2`, `PageSize = 20`):
-
-```sql
-SELECT "T0"."Id", "T0"."Code", "T0"."Title",
-       "Assignee"."Name" AS "AssigneeName", "Reviewer"."Name" AS "ReviewerName",
-       "T0"."Priority", "T0"."CreatedTime"
-FROM "WorkOrders" "T0"
-INNER JOIN "Employees" "Assignee" ON "T0"."AssigneeId" = "Assignee"."Id"
-LEFT JOIN "Employees" "Reviewer" ON "T0"."ReviewerId" = "Reviewer"."Id"
-WHERE ...
-ORDER BY "Assignee"."Name" DESC, "T0"."Id" DESC
-LIMIT 20 OFFSET 20
-```
-
-Changing `SortBy` only changes `ORDER BY`; with `SortBy = "createdTime"`, `Desc = false`, page 1 and 10 rows, it becomes `ORDER BY "T0"."CreatedTime", "T0"."Id" DESC` + `LIMIT 10`.
-
-Notes:
-
-- Build `filter` once and share it; the count branch must not carry `OrderBy` / `Skip` / `Take`.
-- Whitelist the sort field first; a raw `Prop(userInput)` hands a column name to the user and must be forbidden.
-- Add `Id` as the last sort key: duplicates can otherwise cause repeated or missing rows across pages.
-- Both joins are many-to-one, so `Count(1)` is not inflated; with a one-to-many join use `Count(DISTINCT "T0"."Id")`.
-- View JOIN types come from `[ForeignType]` metadata (assignee Inner, reviewer Left), matching section 2's explicit joins.
-- `Section` renders as `LIMIT n OFFSET m` on SQLite and is not parameterized; MySQL uses `LIMIT m,n`, Oracle uses `OFFSET ... ROWS FETCH NEXT ... ROWS ONLY` (see [Custom paging](../advanced-topics/custom-paging.en.md)).
-- Count and page are two executions; wrap them in one transaction or snapshot read when strict consistency matters.
-
-## 4. Tree queries: custom Lambda parsing and dialect SQL from `GenericSqlExpr`
-
-Goal: write `u.InSubTreeOf(rootId)` and get `START WITH ... CONNECT BY` on Oracle, recursive CTE on MySQL / SQLite / PostgreSQL.
-
-### 4.1 Business method (compiles; never runs in memory)
-
-```csharp
-public static class OrgUnitExtensions
-{
-    /// <summary>Whether the unit lies in rootId's subtree (including itself).</summary>
-    public static bool InSubTreeOf(this OrgUnit unit, int rootId)
-        => unit.Id == rootId;   // placeholder; the parser takes over during queries
-}
-```
-
-### 4.2 Register custom Lambda parsing: expand the method into `GenericSqlExpr`
-
-```csharp
-static WorkOrderQueries()
-{
-    // Register the fragment before the Lambda handler: Expr.Sql requires the key at parse time
-    RegisterOrgSubTree();
-
-    LambdaExprConverter.RegisterMethodHandler(
-        typeof(OrgUnitExtensions), nameof(OrgUnitExtensions.InSubTreeOf),
-        (node, converter) =>
-        {
-            // Extension methods are static calls in expression trees: node.Object == null,
-            // the receiver is Arguments[0] and the root Id is Arguments[1].
-            // Hand the argument expression straight to GenericSqlExpr: parameterization, dialect
-            // and serialization are all handled downstream.
-            return Expr.Sql("OrgSubTree", converter.Convert(node.Arguments[1]));
-        });
-}
-```
-
-### 4.3 `GenericSqlExpr`: emit the parameter from Expr, build the recursive CTE with Expr then `ToSql`
-
-```csharp
-static void RegisterOrgSubTree()
-{
-    GenericSqlExpr.Register("OrgSubTree", (context, arg) =>
-    {
-        // Lambda parsing passes an Expr; a reloaded condition may pass a raw value
-        ValueTypeExpr root = arg switch
-        {
-            ValueTypeExpr value => value,
-            null => throw new NotSupportedException("OrgSubTree needs a root node argument."),
-            _ => Expr.Value(arg)          // rendered as a parameter, never inlined
-        };
-
-        ISqlBuilder builder = context.SqlBuilder;
-
-        // The same fragment serves OrgUnit (Id) and WorkOrderView (OrgUnitId)
-        string column = context.Table?.DefinitionType == typeof(OrgUnit)
-            ? nameof(OrgUnit.Id)
-            : nameof(WorkOrder.OrgUnitId);
-        string outerColumn = context.SingleTable || context.DefaultTableAliasName is null
-            ? builder.ToSqlName(column)
-            : $"{builder.ToSqlName(context.DefaultTableAliasName)}.{builder.ToSqlName(column)}";
-
-        if (builder is OracleBuilder)
-        {
-            // Oracle hierarchical queries cannot be expressed with Expr, so write it by hand;
-            // the root is still emitted by Expr as :0 rather than constructing Param manually
-            string table = builder.ToSqlName(
-                TableInfoProvider.Instance.GetTableDefinition(typeof(OrgUnit)).Name!);
-            string id = builder.ToSqlName(nameof(OrgUnit.Id));
-            string parentId = builder.ToSqlName(nameof(OrgUnit.ParentId));
-            string rootSql = root.ToSql(context);
-
-            return $"{outerColumn} IN (" +
-                   $"SELECT {id} FROM {table} " +
-                   $"START WITH {id} = {rootSql} " +
-                   $"CONNECT BY PRIOR {id} = {parentId})";
-        }
-
-        // MySQL / SQLite / PostgreSQL: build the recursive CTE with Expr, emit via ToSql
-        using (context.BeginScope())   // CTE rendering rewrites the default alias; isolate it
-        {
-            return $"{outerColumn} IN ({BuildOrgSubTreeQuery(root).ToSql(context)})";
-        }
-    });
-}
-
-/// <summary>Org subtree query: anchor plus self-referencing recursion, wrapped as a CTE.</summary>
-static SelectExpr BuildOrgSubTreeQuery(ValueTypeExpr rootId)
-{
-    SelectExpr anchor = Expr.From(typeof(OrgUnit))
-        .Where(Expr.Prop(nameof(OrgUnit.Id)) == rootId)
-        .Select(new SelectItemExpr(Expr.Prop(nameof(OrgUnit.Id)), nameof(OrgUnit.Id)));
-
-    var selfRef = new CommonTableExpr { Alias = "OrgTree" };
-
-    SelectExpr recursive = Expr.From(typeof(OrgUnit))
-        .Join(selfRef, Expr.Prop(nameof(OrgUnit.ParentId)) == Expr.Prop("OrgTree", nameof(OrgUnit.Id)))
-        .Select(new SelectItemExpr(Expr.Prop(nameof(OrgUnit.Id)), nameof(OrgUnit.Id)));
-
-    return anchor.UnionAll(recursive)
-        .With("OrgTree")
-        .Select(new SelectItemExpr(Expr.Prop(nameof(OrgUnit.Id)), nameof(OrgUnit.Id)));
-}
-```
-
-### 4.4 Two call styles, one SQL shape
-
-```csharp
-int rootId = 1001;
-
-// Style 1: business method inside a Lambda (the parser expands it to the OrgSubTree fragment)
-List<OrgUnit> nodes = await orgUnitDAO
-    .Search(q => q.Where(u => u.InSubTreeOf(rootId))
-                  .OrderBy(u => u.Level))
-    .ToListAsync(ct);
-
-// Style 2: build Expr directly (good for dynamic conditions and saved conditions)
-List<OrgUnit> sameNodes = await orgUnitDAO
-    .Search(Expr.Sql("OrgSubTree", rootId))
-    .ToListAsync(ct);
-```
-
-Oracle (`OracleBuilder`; Oracle uppercases identifiers):
-
-```sql
-SELECT "T0"."ID", "T0"."PARENTID", "T0"."NAME", "T0"."LEVEL"
-FROM "ORGUNITS" "T0"
-WHERE "T0"."ID" IN (
-    SELECT "ID" FROM "ORGUNITS"
-    START WITH "ID" = :0
-    CONNECT BY PRIOR "ID" = "PARENTID"
-)
-ORDER BY "T0"."LEVEL"
-```
-
-SQLite / MySQL / PostgreSQL (recursive CTE built with Expr; aliases are measured: anchor `T1`, recursive `T2`, the CTE itself gets no extra alias):
-
-```sql
-SELECT "T0"."Id", "T0"."ParentId", "T0"."Name", "T0"."Level"
-FROM "OrgUnits" "T0"
-WHERE "T0"."Id" IN (
-    WITH RECURSIVE "OrgTree" AS (
-        SELECT "T1"."Id"
-        FROM "OrgUnits" "T1"
-        WHERE "T1"."Id" = @0
-        UNION ALL
-        SELECT "T2"."Id"
-        FROM "OrgUnits" "T2"
-        LEFT JOIN "OrgTree" ON "T2"."ParentId" = "OrgTree"."Id"
-    )
-    SELECT "Id" FROM "OrgTree"
-)
-ORDER BY "T0"."Level"
-```
-
-Reusing the fragment in the work-order list switches the outer column to `OrgUnitId`:
-
-```csharp
-// Equivalent to filter &= Expr.Sql("OrgSubTree", orgUnitId) from section 3
-// Produces: "T0"."OrgUnitId" IN (...tree subquery...)
-List<WorkOrderListItem> page = await workOrderDAO
-    .SearchAs<WorkOrderListItem>(BuildPageExpr(q, BuildFilter(q)))
-    .ToListAsync(ct);
-```
-
-### 4.5 Notes
-
-- The outer column comes from `context.Table.DefinitionType`: `Id` for `OrgUnit`, `OrgUnitId` otherwise, with the current default alias; single-table mode (`SingleTable`) omits the prefix.
-- The Oracle branch obtains the table name through `TableInfoProvider` + `FormatTableName`, so sharded `TableArgs` apply automatically.
-- Every parameter is emitted by Expr: Oracle uses `root.ToSql(context)` to get `:0`; the recursive CTE's root participates in `Where` as a value expression and `ToSql` appends it. Do not concatenate values or construct `Param` by hand.
-- Build the CTE with Expr (`From → Where → Select`, `UnionAll`, `With("OrgTree")`) then call `ToSql(context)`; aliases, parameters and the `RECURSIVE` keyword follow framework rules.
-- CTE rendering rewrites `DefaultTableAliasName`, so it must run inside `context.BeginScope()` to keep outer conditions untouched.
-- `Arg` may be an Expr (from Lambda parsing) or a raw value (after reload); the leading `switch` normalizes it to `ValueTypeExpr`.
-- `Expr.Sql(key, arg)` requires the key to be registered at parse time; register in a static constructor or during startup.
-- Whether `Arg` can be saved as Expr JSON depends on its type: raw values can, `ValueExpr` cannot (see 5.5).
-- For cyclic data add `NOCYCLE` on Oracle, or carry `Depth` in the recursive part and cap it on MySQL / SQLite.
-
-### 4.6 Also useful: a reusable multi-column keyword fragment
-
-Outside tree SQL, a generic fragment only needs parameters, not dialect awareness:
-
-```csharp
-GenericSqlExpr.Register("KeywordSearch", (context, arg) =>
-{
-    string keyword = arg as string ?? string.Empty;
-    // Emit the parameter through Expr, same rules as the tree fragment
-    string param = Expr.Value($"%{keyword}%").ToSql(context);
-    string title = context.SqlBuilder.ToSqlName(nameof(WorkOrder.Title));
-    string code = context.SqlBuilder.ToSqlName(nameof(WorkOrder.Code));
-    return $"({title} LIKE {param} OR {code} LIKE {param})";
-});
-```
-
-```sql
-WHERE ("Title" LIKE @0 OR "Code" LIKE @0)
-```
-
-Both columns share one parameter; only the tree fragment needs dialect and table names.
-
-## 5. Saving and reloading historical query conditions: choosing functions vs parameters
-
-### 5.1 Save (conditions only, no paging)
-
-```csharp
-public sealed class SavedView
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public string FilterJson { get; set; } = "";   // stores the LogicExpr JSON
-    public int OwnerId { get; set; }
-}
-
-static readonly JsonSerializerOptions SaveOptions = new()
-{
-    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-};
-
-// The user clicks "Save view"
-string json = JsonSerializer.Serialize<Expr>(BuildFilter(q), SaveOptions);
-```
-
-The resulting condition JSON:
+The list endpoint receives a single JSON string that describes the filters and may also carry sorting and paging. The JSON does not specify a table and does not need an outer `$select`, because `Search` and `SearchAsync` supply the table from the Service entity type and fill in the columns to query, so the whole path involves exactly one deserialization. The smallest query, which contains only the filter, looks like this:
 
 ```json
 {
   "$and": [
+    { "$": "==", "Left": { "#": "DeptId" }, "Right": { "@": 1001 } },
+    { "$": ">=", "Left": { "#": "CreatedTime" },
+      "Right": { "$": "func", "AddDays": [ { "$": "func", "Now": [] }, { "@": -7 } ] } },
     { "$": "==", "Left": { "#": "Status" }, "Right": { "@": 1 } },
-    { "$": "contains", "Left": { "#": "Title" }, "Right": { "@": "invoice" } },
-    { "$": "sql", "Key": "OrgSubTree", "Arg": 1001 }
+    { "$": ">=", "Left": { "#": "Amount" }, "Right": { "@": 100 } },
+    { "$": "contains", "Left": { "#": "OrderNo" }, "Right": { "@": "SO2026" } }
   ]
 }
 ```
 
-(Actual output is one compact line; wrapped here for readability. `{"@": {"$datetime": "..."}}` is a `DateTime` constant, `{"$": "func", "Now": []}` is a database function.)
-
-### 5.2 Reload and keep layering conditions
+Keys beginning with `$` denote operators or segment types, `#` denotes a column, and `@` denotes a parameter; the complete shape is documented in [Expr JSON Serialization Format](../extensibility/expr-serialization.en.md). Sorting and paging are two additional segment layers that section 4 adds to this same JSON. Deserialization takes a single line of code, and the result may be either a logical condition or a segment chain that carries sorting and paging:
 
 ```csharp
-// Open a saved view
-LogicExpr? saved = JsonSerializer.Deserialize<Expr>(savedView.FilterJson)?.AsLogic()
-    ?? throw new InvalidDataException("The saved condition cannot be parsed.");
-
-// Combine the historical condition with the current request
-LogicExpr filter = saved & BuildFilter(q);
-
-int total = await workOrderService.CountAsync(filter, cancellationToken: ct);
-List<WorkOrderListItem> page = await workOrderService
-    .SearchAsAsync<WorkOrderListItem>(BuildPageExpr(q, filter), cancellationToken: ct);
+Expr query = JsonSerializer.Deserialize<Expr>(queryJson)!;
 ```
 
-Sorting and paging are not persisted; the current request decides them. The saved condition only decides which rows qualify.
+In production the JSON should be validated with `ExprValidator`, and the set of fields the frontend may reference should be restricted, as described in [Security](../advanced-topics/security.en.md). When an optional filter is absent, its node is simply missing from the `$and` array, so no extra condition appears in the generated SQL.
 
-### 5.3 Two outcomes for `DateTime.Now` after reload
+### 1.4 Extracting the Filter from the Query
 
-The same time condition behaves completely differently after save/reload depending on how it is written:
+A paged query needs the whole query, whereas counting needs only the filter inside it. When the query is just a condition, the condition itself is the `filter`; when the query carries sorting or paging, its segment layers form a `SectionExpr`, `OrderByExpr`, `WhereExpr` chain through `Source`, so walking inward along `Source` and stopping at the first `WhereExpr` yields the filter:
 
 ```csharp
-// A. Lambda: parses to a database function, evaluated by the database on every execution
-List<WorkOrder> byFunction = await workOrderDAO
-    .Search(q => q.Where(w => w.DueTime < DateTime.Now))
-    .ToListAsync(ct);
-
-// B. Expr + Const: parses to a parameter whose value is fixed at build time
-LogicExpr frozen = Prop(nameof(WorkOrder.DueTime)) < Expr.Const(DateTime.Now);
-
-// C. Expr + Now(): parses to a database function and survives JSON round-trips
-LogicExpr dynamicExpr = Prop(nameof(WorkOrder.DueTime)) < Expr.Now();
-```
-
-Rendered SQL (SQLite):
-
-```sql
--- A / C
-"T0"."DueTime" < datetime('now', 'localtime')
-
--- B
-"T0"."DueTime" < @0        -- parameter value: 2026-10-23T10:30:45.123
-```
-
-Oracle / MySQL:
-
-```sql
--- A / C
-"T0"."DUETIME" < sysdate          -- Oracle
-`T0`.`DueTime` < NOW()            -- MySQL
-```
-
-After saving to JSON:
-
-```json
-// B: the time is frozen at save time
-{ "$": "<", "Left": { "#": "DueTime" }, "Right": { "$datetime": "2026-10-23T10:30:45.123+08:00" } }
-
-// C: the function is preserved and stays dynamic after reload
-{ "$": "<", "Left": { "#": "DueTime" }, "Right": { "$": "func", "Now": [] } }
-```
-
-Comparison:
-
-| Style | Emitted form | Evaluation time | After save and reload |
-| --- | --- | --- | --- |
-| `w => w.DueTime < DateTime.Now` | dialect function (`datetime('now','localtime')` / `NOW()` / `sysdate`) | every execution, database clock | convert with `Expr.Lambda<T>(...)` first, then saveable; still a function |
-| `Prop(...) < Expr.Const(DateTime.Now)` | parameter `@0` (DateTime is never inlined) | build time, application clock | JSON holds a fixed timestamp; never changes after reload |
-| `Prop(...) < Expr.Now()` | dialect function | every execution, database clock | JSON keeps `{"$":"func","Now":[]}`; stays dynamic |
-| `var now = DateTime.Now;` outside the Lambda | parameter | assignment time | fixed value (basics in the [Lambda guide](../core-usage/lambda-guide.en.md)) |
-
-### 5.4 Which to use after reloading a saved condition
-
-| Scenario | Function or parameter | Style | Behaviour after reload |
-| --- | --- | --- | --- |
-| Last 7 days, overdue, pending reminders | function | `Expr.Now()` | reads the database time on every execution |
-| Report snapshots, audit replay, reconciliation | parameter | `Expr.Const(DateTime.Now)` | frozen at save time |
-| Absolute date range picked by the user | parameter | `Prop(...) >= q.From` (outer variable) | stays at the value the user chose |
-| Must follow the database time zone | function | `Expr.Now()` | follows the database time zone |
-| Must follow the application time zone | parameter | `Expr.Const(DateTime.Now)` | follows the application time zone |
-
-In one sentence: use a function for "relative to execution time", use a parameter for "a snapshot at save time".
-
-### 5.5 Notes
-
-- What is saved is an `Expr`, not an `Expression<Func<T,bool>>`; when starting from a Lambda, call `Expr.Lambda<T>(...)` first to get a serializable `LogicExpr`.
-- Save only the condition (`LogicExpr`), not a whole `SelectExpr`: paging and sorting belong to the current request. Save a `SelectExpr` only when the entire view must be replayed.
-- `GenericSqlExpr` restores only `Key` + `Arg`; the loading side must register the same key before rendering.
-- **`Arg` must be a JSON-serializable raw value.** The `Arg` produced by Lambda parsing is a `ValueExpr` (an `Expr` object); const or not, `JsonSerializer.Serialize` throws `InvalidOperationException: Type 'LiteOrm.Common.ValueExpr' is not registered in ExprJsonSerializerContext.` To save a condition that contains the tree fragment, build it from a raw value with `Expr.Sql("OrgSubTree", rootId)` (as section 3 does); the JSON is `{"$":"sql","Key":"OrgSubTree","Arg":1001}` and `Arg` is still an `int` after reload.
-- The difference between "function" and "parameter" is not SQL length but **where evaluation happens**: functions in the database, parameters in the application.
-- Align time zones and precision: `sysdate` / `NOW()` / `datetime('now','localtime')` use the database time zone, `DateTime.Now` / `Expr.Const` use the application time zone; unify across deployments.
-- `DateTime.Today` behaves the same: `CURRENT_DATE` / `curdate()` / `trunc(sysdate)` in a Lambda, a fixed date as a parameter.
-- `ExprString` / `RawSql` are not serializable; keep them out of saved conditions.
-- Prefix saved JSON with a version (e.g. wrap it in `"v": 1`) so the shape can evolve.
-- Format details and markers: [Expr JSON serialization](../extensibility/expr-serialization.en.md); client-side construction: [Native Expr queries](../extensibility/frontend-native-expr.en.md).
-
-## 6. Mixing Lambda, Expr and ExprString: three styles in one endpoint
-
-```csharp
-public async Task<WorkOrderPageResult> GetPageAsync(WorkOrderQuery q, CancellationToken ct)
+static LogicExpr? GetFilter(Expr? query)
 {
-    // 1) Fixed business baseline as a Lambda, converted into a composable Expr
-    LogicExpr filter = Expr.Lambda<WorkOrderView>(
-        v => v.Status != (int)WorkOrderStatus.Closed)!;
+    if (query is LogicExpr logic) return logic;
 
-    // 2) Dynamic filters and sorting layered on with Expr
-    filter &= BuildFilter(q);
-    OrderByItemExpr[] orderBys = BuildOrderBys(q);
-
-    // 3) One condition set: total + current page
-    int total = await workOrderService.CountAsync(filter, cancellationToken: ct);
-    List<WorkOrderListItem> items = await workOrderService
-        .SearchAsAsync<WorkOrderListItem>(BuildPageExpr(q, filter), cancellationToken: ct);
-
-    // 4) Status bar: a custom DAO writes GROUP BY with ExprString, embedding the same filter
-    List<StatusSummary> summary = await workOrderDAO.QueryStatusSummaryAsync(filter, ct);
-
-    return new WorkOrderPageResult(total, items, summary);
+    for (Expr? node = query; node is not null; node = (node as SqlSegment)?.Source)
+    {
+        if (node is WhereExpr where) return where.Where;
+    }
+    return null;
 }
 ```
 
-Custom DAO (`ObjectViewDAO<WorkOrderView>`):
+This code copies no nodes: a condition query returns the expression itself, and a sorted or paged query returns the very object inside the `Where` node. The count and the page query therefore share one filter, and the condition has exactly one source of truth.
+
+### 1.5 Scope and Prerequisites
+
+The following table points to the documents that explain each building block, since this document only discusses how they compose:
+
+| Capability | Document |
+| --- | --- |
+| Lambda syntax, closure parameterization, multi-parameter Lambda | [Lambda Guide](../core-usage/lambda-guide.en.md) |
+| `RegisterMethodHandler` / `RegisterMemberHandler` mechanics | [Expression Extension](../extensibility/expression-extension.en.md) |
+| `Expr.Lambda`, `AsValue()`, Lambda/Expr conversion | [Lambda and Expr Mixing](../core-usage/lambda-expr-mixing.en.md) |
+| `ExprString` interpolation, embedded `Expr`, `[Column]` placeholders | [ExprString Guide](../core-usage/exprstring-guide.en.md) |
+| Expr JSON shape and operator markers | [Expr JSON Serialization Format](../extensibility/expr-serialization.en.md) |
+| Building Expr JSON on the frontend | [Frontend Native Expr Queries](../extensibility/frontend-native-expr.en.md) |
+| Dialect paging with `Section` / `Skip` / `Take` | [Custom Paging](../advanced-topics/custom-paging.en.md) |
+| CTE `With` / `UnionAll` | [CTE Guide](../core-usage/cte-guide.en.md) |
+| Grouping/aggregation and projection comparison | [On-Demand Projection](./query-projection.en.md) |
+| Custom function mapping and `SqlBuilder` extension | [Custom SqlBuilder / Dialect Extension](../extensibility/custom-sqlbuilder.en.md) |
+
+## 2. Step 1: This Department + Last 7 Days + Optional Filters
+
+The deserialized `query` can be handed directly to the DAO, and the first step is to query only the current department so that the path from JSON to SQL works end to end.
+
+### 2.1 Execute the Deserialized Result Directly
 
 ```csharp
-public class WorkOrderDAO : ObjectViewDAO<WorkOrderView>
+Expr query = JsonSerializer.Deserialize<Expr>(queryJson)!;
+LogicExpr? filter = GetFilter(query);
+
+int total = await orderService.CountAsync(filter, cancellationToken: ct);
+List<SaleOrder> items = await orderService.SearchAsync(query, cancellationToken: ct);
+```
+
+`CountAsync` accepts only a condition, so it wraps that condition in a `WHERE` clause and renders `SELECT Count(1)`, which means the count SQL never carries sorting or paging; `SearchAsync` accepts any `Expr`, supplies the table and query columns from the Service entity type, and renders sorting and paging exactly as they appear in the JSON. The `$and` array may hold any number of conditions or just one, and all parameter values travel in `@` nodes into `context.OutputParams` rather than being spliced into the SQL text. A `contains` node corresponds to Lambda `Contains`, and the framework adds wildcards on both sides of the parameter as well as handling escaping and parameterization.
+
+### 2.2 "Last 7 Days": Function or Parameter
+
+The same "last 7 days" condition has two JSON forms, and they differ both in the SQL they render and in what they mean once saved:
+
+```json
+// Function: recompute with the database's current time on every execution
+{ "$": ">=", "Left": { "#": "CreatedTime" },
+  "Right": { "$": "func", "AddDays": [ { "$": "func", "Now": [] }, { "@": -7 } ] } }
+
+// Parameter: the point in time is fixed when the JSON is produced
+{ "$": ">=", "Left": { "#": "CreatedTime" },
+  "Right": { "$datetime": "2026-10-18T13:53:02.2826566+08:00" } }
+```
+
+SQLite renders the two forms as follows:
+
+```sql
+-- Function: -7 participates in date arithmetic as a parameter
+"T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@0 AS TEXT)||' days')
+-- @0 = -7
+
+-- Parameter: time is fixed; SQL has only an ordinary parameter
+"T0"."CreatedTime" >= @0
+-- @0 = 2026/10/18 13:53:02
+```
+
+MySQL and Oracle render the function form as ``DATE_ADD(NOW(), INTERVAL -7 DAY)`` and `(sysdate + NUMTODSINTERVAL(-7, 'DAY'))` respectively, because each dialect's SqlBuilder is responsible for adapting function names and date arithmetic.
+
+When the server builds the same condition with Lambda or `Expr`, `DateTime.Now` is resolved into a `Now()` function, and only an explicit constant becomes a parameter:
+
+```csharp
+// Lambda: DateTime.Now → Now() function
+Expr.Lambda<SaleOrder>(o => o.CreatedTime >= DateTime.Now.AddDays(-7))!;
+
+// Parameter: compute the time first, then treat it as a constant
+Expr.Const(DateTime.Now.AddDays(-7));
+```
+
+The choice depends on whether the condition expresses a rule or a fact. Live dashboards should use the function form, because every execution takes the database's current time as the reference and a saved condition always means "last 7 days"; reconciliation, exports, and audit snapshots should use the parameter form, because the time window is frozen into the condition and reruns always return the same rows. Both forms can be saved and reloaded, and the difference is explained in 5.2.
+
+### 2.3 SQL for This Step
+
+For the request `DeptId=1001, Days=7, Status=1, MinAmount=100, Keyword="SO2026"`, this smallest query renders as follows. The JSON contains no SELECT segment, so `SearchAsync` has already supplied every `SaleOrder` column, which is why the SQL still lists columns explicitly instead of using `*`:
+
+```sql
+SELECT "T0"."Id", "T0"."OrderNo", "T0"."DeptId", "T0"."Status", "T0"."Amount", "T0"."CreatedTime"
+FROM "Orders" "T0"
+WHERE "T0"."DeptId" = @0
+ AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@1 AS TEXT)||' days')
+ AND "T0"."Status" = @2 AND "T0"."Amount" >= @3 AND "T0"."OrderNo" LIKE @4
+-- @0 = 1001, @1 = -7, @2 = 1, @3 = 100, @4 = %SO2026%
+```
+
+The JSON does not yet contain the sorting and paging layers, so the SQL has no `ORDER BY` or `LIMIT`. Section 4 adds those layers to the query JSON; for now the remaining issue is that `DeptId = @0` covers only one department.
+
+## 3. Step 2: Expand the Department into a Tree
+
+The requirement is to query a department and all of its descendants, so the JSON condition `"$": "=="` becomes `"$": "in"` with its right-hand side replaced by a subtree fragment, while every other condition stays unchanged. The difficulty lies in how the subtree becomes SQL: Oracle uses `CONNECT BY`, while the other dialects use a recursive CTE.
+
+The two approaches below implement the same `DeptSubTree` fragment, and either one may be chosen; section 3.4 gives the JSON for each option.
+
+### 3.1 Option A: `GenericSqlExpr` + `AsValue()`
+
+#### 3.1.1 Register a Value Fragment
+
+`GenericSqlExpr` itself is a `LogicExpr` and can only sit in a WHERE position, so using it as the right-hand side of an order's `DeptId` inside `IN (...)` requires wrapping it with `AsValue()` to produce a value expression.
+
+`Arg` is of type `Expr`, so passing a raw value wraps it into a `ValueExpr` automatically, while a property or function expression may also be passed directly; the handler normalizes whatever it receives with `AsValue()`.
+
+The registered handler returns a parenthesized subquery, which allows it to appear inside `IN`, a SELECT column, a comparison, or a function argument:
+
+```csharp
+public static class DeptSubTree
 {
-    public WorkOrderDAO(SessionManager sessionManager) : base(sessionManager) { }
+    public static void Register()
+    {
+        GenericSqlExpr.Register("DeptSubTree", (context, arg) =>
+        {
+            if (arg is null) throw new NotSupportedException("DeptSubTree requires a department Id.");
+            ValueTypeExpr rootId = arg.AsValue();
+
+            ISqlBuilder builder = context.SqlBuilder;
+            if (builder is OracleBuilder)
+            {
+                string table = builder.ToSqlName(
+                    TableInfoProvider.Instance.GetTableDefinition(typeof(Department)).Name!);
+                string id = builder.ToSqlName(nameof(Department.Id));
+                string parentId = builder.ToSqlName(nameof(Department.ParentId));
+                return $"(SELECT {id} FROM {table} START WITH {id} = {rootId.ToSql(context)} " +
+                       $"CONNECT BY PRIOR {id} = {parentId})";
+            }
+
+            using (context.BeginScope())
+                return $"({BuildRecursiveQuery(rootId).ToSql(context)})";
+        });
+    }
+
+    // The recursive CTE is built with Expr directly: anchor + UNION ALL self-reference, then With("DeptTree")
+    // internal so the FunctionExpr version in 3.2 can reuse the same construction logic
+    internal static SelectExpr BuildRecursiveQuery(ValueTypeExpr rootId)
+    {
+        SelectExpr anchor = Expr.From(typeof(Department))
+            .Where(Expr.Prop(nameof(Department.Id)) == rootId)
+            .Select(new SelectItemExpr(Expr.Prop(nameof(Department.Id)), nameof(Department.Id)));
+
+        var selfRef = new CommonTableExpr { Alias = "DeptTree" };
+
+        SelectExpr recursive = Expr.From(typeof(Department))
+            .Join(selfRef, Expr.Prop(nameof(Department.ParentId)) == Expr.Prop("DeptTree", nameof(Department.Id)))
+            .Select(new SelectItemExpr(Expr.Prop(nameof(Department.Id)), nameof(Department.Id)));
+
+        return anchor.UnionAll(recursive)
+            .With("DeptTree")
+            .Select(new SelectItemExpr(Expr.Prop(nameof(Department.Id)), nameof(Department.Id)));
+    }
+}
+```
+
+#### 3.1.2 Use It in a Condition
+
+```csharp
+LogicExpr InDeptTree(int deptId)
+    => Expr.Prop(nameof(SaleOrder.DeptId)).In(Expr.Sql("DeptSubTree", deptId).AsValue());
+```
+
+SQLite renders this condition as a recursive CTE subquery:
+
+```sql
+"T0"."DeptId" IN (WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
+    FROM "Departments" "T1"
+    WHERE "T1"."Id" = @0
+    UNION ALL SELECT "T2"."Id"
+      FROM "Departments" "T2"
+      LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
+SELECT "Id"
+  FROM "DeptTree")
+-- @0 = 1001
+```
+
+Oracle renders the same condition as a hierarchical query instead:
+
+```sql
+"T0"."DEPTID" IN (SELECT "ID" FROM "DEPARTMENTS" START WITH "ID" = :0 CONNECT BY PRIOR "ID" = "PARENTID")
+-- :0 = 1001
+```
+
+#### 3.1.3 Make It Writable in Lambda
+
+Business code reads more naturally as `o.InDeptSubTree(deptId)`, and the method below exists only so that the code compiles, since it never executes in memory:
+
+```csharp
+public static class OrderExtensions
+{
+    public static bool InDeptSubTree(this SaleOrder order, int deptId) => false;
+}
+```
+
+When registering the resolver, remember that an extension method is a static call in an expression tree, so `node.Object == null`, the receiver is `Arguments[0]`, and the department Id is `Arguments[1]`:
+
+```csharp
+LambdaExprConverter.RegisterMethodHandler(
+    typeof(OrderExtensions), nameof(OrderExtensions.InDeptSubTree),
+    (node, converter) =>
+    {
+        Expr deptId = converter.Convert(node.Arguments[1]);
+        return Expr.Prop(nameof(SaleOrder.DeptId)).In(Expr.Sql("DeptSubTree", deptId).AsValue());
+    });
+
+// Usage
+int deptId = 1001;
+LogicExpr filter = Expr.Lambda<SaleOrder>(o => o.InDeptSubTree(deptId))!;
+```
+
+This Lambda produces exactly the same SQL as the `Expr` in 3.1.2, because closure variables are resolved into a `ValueExpr` that `Arg` accepts directly and that is saved as `{"@":1001}`.
+
+#### 3.1.4 Key Points
+
+The handler only produces a value fragment, while the positions such as `IN`, `=`, and SELECT columns are decided by the caller, which is why one key can be reused in different contexts. The recursive CTE is assembled from `UnionAll` and `With`, and `CommonTableExpr { Alias = "DeptTree" }` carries only the alias so that no table alias is appended on output. `context.BeginScope()` isolates the inner subquery's alias and parameter scope, while `@0` still joins the same parameter collection. The Oracle branch obtains the table name from `TableInfoProvider` and converts identifiers with `builder.ToSqlName`, rather than hardcoding uppercase table names. Finally, `AsValue()` is essential, because without it a `GenericSqlExpr` works only as a condition and cannot be the right-hand side of `IN`.
+
+### 3.2 Option B: Custom `FunctionExpr`
+
+`FunctionExpr` is a value expression by nature and can be the right-hand side of `IN` directly, so no `AsValue()` is needed.
+
+#### 3.2.1 Default Implementation + Dialect Overrides
+
+Register a generic implementation on `SqlBuilder.Instance` so that every dialect can use the recursive CTE, then override it on concrete types such as `OracleBuilder`. `BuildFunctionSql` looks up handlers in the order "concrete type → base class", so an override affects only that dialect:
+
+```csharp
+public static class DeptSubTreeFunction
+{
+    public static void Register()
+    {
+        // Default implementation: recursive CTE shared by all dialects
+        SqlBuilder.Instance.RegisterFunctionSqlHandler("DeptSubTree", RenderRecursive);
+
+        // Oracle overrides with CONNECT BY
+        OracleBuilder.Instance.RegisterFunctionSqlHandler("DeptSubTree", RenderOracle);
+    }
+
+    static void RenderRecursive(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context)
+    {
+        ValueTypeExpr rootId = expr.Args[0];
+        using (context.BeginScope())
+            outSql.Append($"({DeptSubTree.BuildRecursiveQuery(rootId).ToSql(context)})");
+    }
+
+    static void RenderOracle(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context)
+    {
+        ValueTypeExpr rootId = expr.Args[0];
+        ISqlBuilder builder = context.SqlBuilder;
+        string table = builder.ToSqlName(
+            TableInfoProvider.Instance.GetTableDefinition(typeof(Department)).Name!);
+        string id = builder.ToSqlName(nameof(Department.Id));
+        string parentId = builder.ToSqlName(nameof(Department.ParentId));
+        outSql.Append($"(SELECT {id} FROM {table} START WITH {id} = {rootId.ToSql(context)} " +
+                       $"CONNECT BY PRIOR {id} = {parentId})");
+    }
+}
+```
+
+Registering the default on `SqlBuilder.Instance` and overriding only where needed avoids repeating the same recursive CTE for every dialect, leaving dialect differences only where they genuinely exist.
+
+#### 3.2.2 Use It in a Condition
+
+```csharp
+LogicExpr InDeptTree(int deptId)
+    => Expr.Prop(nameof(SaleOrder.DeptId)).In(Expr.Func("DeptSubTree", Expr.Value(deptId)));
+```
+
+SQLite and Oracle output is byte-for-byte identical to 3.1, and the Lambda version only changes the `Expr` that the handler returns:
+
+```csharp
+// With option B, the handler from 3.1.3 returns a FunctionExpr instead
+LambdaExprConverter.RegisterMethodHandler(
+    typeof(OrderExtensions), nameof(OrderExtensions.InDeptSubTree),
+    (node, converter) =>
+    {
+        Expr deptId = converter.Convert(node.Arguments[1]);
+        return Expr.Prop(nameof(SaleOrder.DeptId)).In(Expr.Func("DeptSubTree", deptId.AsValue()));
+    });
+```
+
+### 3.3 How to Choose
+
+| Concern | `GenericSqlExpr` + `AsValue()` | Custom `FunctionExpr` |
+| --- | --- | --- |
+| Registration | One global key registry | Default on `SqlBuilder.Instance`, overridden by dialect as needed |
+| Dialect branching | Handler checks `context.SqlBuilder` | Default implementation + concrete-type overrides |
+| Expression type | `LogicExpr`; needs `AsValue()` in value positions | Native `ValueTypeExpr` |
+| Reuse | Any Expr can reference the key | Fits the function system and is visible to function validators |
+| Best for | Fragments with small cross-dialect differences, centralized management | Fragments with large dialect differences, or already-customized SqlBuilders |
+
+### 3.4 JSON for the Department Tree
+
+Option A replaces the right-hand side with a `$sql` node carrying an `Arg` that is written as a parameter according to the `Expr` JSON rules:
+
+```json
+{ "$": "in", "Left": { "#": "DeptId" },
+  "Right": { "$": "sql", "Key": "DeptSubTree", "Arg": { "@": 1001 } } }
+```
+
+Option B replaces the right-hand side with a function-call node whose argument array also contains a single department Id:
+
+```json
+{ "$": "in", "Left": { "#": "DeptId" },
+  "Right": { "$": "func", "DeptSubTree": [ { "@": 1001 } ] } }
+```
+
+Replacing only this one condition node while leaving every other node untouched produces the new query JSON for "department tree + last 7 days + optional filters".
+
+## 4. Step 3: Write Sorting and Paging into the JSON
+
+### 4.1 The JSON Shape for Sorting and Paging
+
+Sorting and paging are not additional request parameters but two segment layers of the query JSON. The query needs neither `$select` nor `$table`, so the outermost segment is the paging segment `$section`, whose source is the sorting segment `$orderby`, whose source is the condition segment `$where`; because no table is specified, `$where` is written as `null` so that `Search` can supply it from the entity type:
+
+```json
+{
+  "$section": {
+    "$orderby": {
+      "$where": null,
+      "Where": { "$and": [ ... ] }
+    },
+    "OrderBys": [
+      { "Field": { "#": "Amount" }, "Asc": false },
+      { "Field": { "#": "Id" }, "Asc": false }
+    ]
+  },
+  "Skip": 20,
+  "Take": 20
+}
+```
+
+Each segment places its inner segment under the key named by its `$` marker, and its own properties sit at the same level as that key: `Skip` and `Take` are siblings of `$section`, `OrderBys` is a sibling of `$orderby`, and `Where` is a sibling of `$where`. An omitted `Asc` means ascending order, `false` means descending order, `Skip` may be omitted when it is zero, and `Take` equal to zero means no limit.
+
+When `OrderBys` sorts `Amount` descending and the query takes page 2 with 20 rows per page, the sorting and paging portion renders as follows:
+
+```sql
+ORDER BY "T0"."Amount" DESC, "T0"."Id" DESC
+LIMIT 20 OFFSET 20
+```
+
+When `OrderBys` contains only `CreatedTime` ascending, it renders as follows:
+
+```sql
+ORDER BY "T0"."CreatedTime", "T0"."Id" DESC
+```
+
+MySQL writes paging as ``LIMIT 20,20`` and Oracle writes it as `OFFSET 20 ROWS FETCH NEXT 20 ROWS ONLY`, and these differences are handled by each dialect's SqlBuilder, so the JSON itself stays dialect-neutral.
+
+Sorting fields are written directly in the JSON, so the query method does not need a second whitelist mapping. If the endpoint is exposed publicly, `ExprValidator` can restrict the field scope once (see [Security](../advanced-topics/security.en.md)), which validates sorting fields together with filter fields and avoids maintaining a separate list of sortable columns.
+
+### 4.2 Total and Page from One Filter
+
+`query` comes from one deserialization, and `filter` is extracted from it, so the two serve counting and paging respectively:
+
+```csharp
+LogicExpr? filter = GetFilter(query);
+
+int total = await orderService.CountAsync(filter, cancellationToken: ct);
+List<SaleOrder> items = await orderService.SearchAsync(query, cancellationToken: ct);
+```
+
+The count SQL has neither `ORDER BY` nor `LIMIT`, because it receives only `filter`:
+
+```sql
+SELECT Count(1)
+FROM "Orders" "T0"
+WHERE "T0"."DeptId" IN (WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
+    FROM "Departments" "T1"
+    WHERE "T1"."Id" = @0
+    UNION ALL SELECT "T2"."Id"
+      FROM "Departments" "T2"
+      LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
+SELECT "Id"
+  FROM "DeptTree")
+ AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@1 AS TEXT)||' days')
+-- @0 = 1001, @1 = -7
+```
+
+The page SQL receives the whole `query` and therefore adds the three filter parameters together with sorting and paging:
+
+```sql
+SELECT "T0"."Id", "T0"."OrderNo", "T0"."DeptId", "T0"."Status", "T0"."Amount", "T0"."CreatedTime"
+FROM "Orders" "T0"
+WHERE "T0"."DeptId" IN (...)
+ AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@1 AS TEXT)||' days')
+ AND "T0"."Status" = @2 AND "T0"."Amount" >= @3 AND "T0"."OrderNo" LIKE @4
+ORDER BY "T0"."Amount" DESC, "T0"."Id" DESC
+LIMIT 20 OFFSET 20
+-- @0 = 1001, @1 = -7, @2 = 1, @3 = 100, @4 = %SO2026%
+```
+
+### 4.3 Key Points
+
+- `filter` and `query` come from the same deserialization, since counting uses the `Where` inside it while the page uses the whole `query`, which means the two are consistent by construction and a condition change happens in one place only.
+- Sorting must include a unique column as a tiebreaker, `Id` in this example, otherwise paging may repeat rows or skip rows.
+- The table is determined by the Service entity type while the JSON describes only conditions, sorting, and paging, so counting and the page always read the same table.
+
+## 5. Step 4: Save and Reload the Filter
+
+### 5.1 Save the Filter, Not the Whole Query
+
+The JSON received by the list endpoint contains the filter together with sorting and paging, but only the filter needs to be persisted: sorting and paging belong to the current browsing session and should follow the user's current view rather than being frozen into history. Saving therefore extracts `Where` from the query and serializes it, and reloading puts it back into the `$where` node of the query JSON; when the query is itself a condition, that condition is used directly:
+
+```csharp
+static Expr SetFilter(Expr query, LogicExpr? filter)
+{
+    if (query is LogicExpr) return filter!;
+
+    for (SqlSegment? node = query as SqlSegment; node is not null; node = node.Source)
+    {
+        if (node is WhereExpr where) { where.Where = filter; return query; }
+    }
+    throw new ArgumentException("The query JSON has no $where node.");
+}
+
+// Save: store only the filter
+store.Save(userId, JsonSerializer.Serialize<Expr>(GetFilter(query)));
+
+// Reload: put the filter back into the current query
+query = SetFilter(query, (LogicExpr?)JsonSerializer.Deserialize<Expr>(store.Load(userId)));
+```
+
+`GenericSqlExpr.Arg` is of type `Expr` and therefore serializes by the `Expr` rules: a `ValueExpr` becomes `{"@": value}` and `Expr.Const(...)` becomes a native value. Consequently `"Arg": { "@": 1001 }` from 3.4 round-trips directly, without restoring a raw value during save and reload, and a filter that is saved and reloaded renders SQL byte-for-byte identical to the original.
+
+### 5.2 Two Semantics for "Last 7 Days" After Reload
+
+The two forms from 2.2 mean completely different things once reloaded. The function form, with `Now` and `AddDays` inside `$func`, saves the rule "last 7 days", so opening it today means 10-18 through 10-25 while opening it next week means 10-25 through 11-01, which makes it suitable for live dashboards and always-on filters. The parameter form, written as `$datetime`, saves the fact "since 10-18", so rerunning it at any later time returns the same rows, which makes it suitable for reconciliation, exports, and audit trails. The decision rule is straightforward: if the user explicitly selects a date range in the UI, use a parameter, and if the user selects a relative option such as "last N days", use a function.
+
+### 5.3 Add More Conditions After Reload
+
+The reloaded filter can be combined with new conditions, and the combined result can be written back into the query while sorting and paging remain in the JSON:
+
+```csharp
+LogicExpr saved = (LogicExpr?)JsonSerializer.Deserialize<Expr>(store.Load(userId))!;
+query = SetFilter(query, saved & (Expr.Prop(nameof(SaleOrder.Amount)) >= 500));
+```
+
+### 5.4 The Handler Must Be Registered in the Current Process
+
+The `DeptSubTree` handler must be registered in the current process, for example by calling `DeptSubTree.Register()` or `DeptSubTreeFunction.Register()` at startup. Otherwise a reloaded condition cannot resolve the key at SQL generation time, and the subquery that should appear is rendered as an empty fragment.
+
+## 6. Assembly: The Complete Query Method
+
+Each step above added exactly one capability, and the following code puts them together in call order.
+
+### 6.1 Service: Total and Page
+
+```csharp
+public sealed record OrderPage(int Total, List<SaleOrder> Items);
+
+public sealed class OrderListService
+{
+    private readonly EntityService<SaleOrder> _orders;
+
+    public OrderListService(EntityService<SaleOrder> orders) => _orders = orders;
+
+    public async Task<OrderPage> QueryAsync(string queryJson, CancellationToken ct = default)
+    {
+        // One deserialization yields the whole query
+        Expr query = JsonSerializer.Deserialize<Expr>(queryJson)!;
+
+        // Counting uses only Where; the page uses the whole query
+        LogicExpr? filter = GetFilter(query);
+        int total = await _orders.CountAsync(filter, cancellationToken: ct);
+        List<SaleOrder> items = await _orders.SearchAsync(query, cancellationToken: ct);
+
+        return new OrderPage(total, items);
+    }
+}
+```
+
+`GetFilter` (1.4) and `SetFilter` (5.1) live in the same class, and `DeptSubTree.Register()` or `DeptSubTreeFunction.Register()` is called once at startup. Saving and reloading conditions follow section 5, and no other part of `QueryAsync` needs to change.
+
+### 6.2 Status Summary on the Same Page: Mixing `ExprString`
+
+The list passes conditions as JSON, while the status summary on the same page reads more clearly with `ExprString`, because it is hand-written SQL with an embedded `Expr` that can reuse the extracted `filter` directly:
+
+```csharp
+public class OrderDAO : ObjectViewDAO<SaleOrder>
+{
+    public OrderDAO(SessionManager sessionManager) : base(sessionManager) { }
 
     public Task<List<StatusSummary>> QueryStatusSummaryAsync(LogicExpr filter, CancellationToken ct = default)
         => SearchAs<StatusSummary>(
                 $"SELECT [Status], COUNT(1) AS [Total] FROM {From} WHERE {filter} GROUP BY [Status]")
             .ToListAsync(ct);
 }
-
-public sealed class StatusSummary
-{
-    public int Status { get; set; }
-    public int Total { get; set; }
-}
 ```
 
-The second SQL statement (SQLite):
+The rendering is:
 
 ```sql
 SELECT "Status", COUNT(1) AS "Total"
-FROM "WorkOrders" "T0"
-INNER JOIN "Employees" "Assignee" ON "T0"."AssigneeId" = "Assignee"."Id"
-LEFT JOIN "Employees" "Reviewer" ON "T0"."ReviewerId" = "Reviewer"."Id"
-WHERE "T0"."Status" = @0
-  AND "Assignee"."Level" >= @1
-  AND ("T0"."ReviewerId" IS NULL OR "Reviewer"."Level" >= @2)
-  ...
+FROM "Orders" "T0"
+WHERE "DeptId" IN (WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
+    FROM "Departments" "T1"
+    WHERE "T1"."Id" = @0
+    UNION ALL SELECT "T2"."Id"
+      FROM "Departments" "T2"
+      LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
+SELECT "Id"
+  FROM "DeptTree")
+ AND "CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@1 AS TEXT)||' days')
 GROUP BY "Status"
 ```
 
-`{From}` is a DAO marker (the whole FROM clause, including view JOINs) while `filter` is an `Expr` interpolated in; both use the DAO's view metadata, so joined-column aliases such as `"Assignee"."Level"` line up.
+`{From}` is a DAO placeholder that is replaced by the table or view together with its joins, and `filter` is the interpolated `Expr` that expands directly into SQL and shares the same parameter collection. The columns in the rendered `filter` carry no table alias, as in `"DeptId"` above, because the `ExprString` context already registers the main table and omits the alias for a single-table query. A `[Column]` placeholder in a hand-written fragment is converted to the current dialect's real quoting, which is `"` for SQLite and `` ` `` for MySQL.
 
-Choosing a style:
+## 7. Comparison with Other ORMs
 
-| Scenario | Style | Why |
+| Scenario | LiteOrm approach | Extra work in common ORMs |
 | --- | --- | --- |
-| Fixed business baseline | Lambda or `Expr.Lambda<T>` | readable, refactorable, compile-time checked |
-| Filters driven by request parameters | Expr | number and combination decided at runtime |
-| Header sorting | Expr (whitelist + `Asc` / `Desc`) | one mapping instead of a switch explosion |
-| Coexisting with Lambda queries | `expr.To<bool>()` | embeds a dynamic fragment into a typed query |
-| Repeated, parameterized SQL fragments | `GenericSqlExpr` | register once, parameterize uniformly, render per dialect |
-| Aggregates / UNION / dialect-specific SQL | `ExprString` | statements Expr cannot express, still reusing `{From}` and embedding `Expr` |
-| Saving historical conditions | Expr JSON | Lambda / ExprString cannot be persisted directly |
-| Inspecting the final SQL | `SqlGen` | offline, dialect-switchable |
+| Passing in conditions | Frontend Expr JSON deserialized directly | Define a DTO per query, then map it to a query |
+| Passing in sorting and paging | The `$orderby` / `$section` layers of the same JSON | Accept sorting and paging separately, then splice them into the query |
+| Department-tree filter | One Expr fragment renders dialect `CONNECT BY` or a recursive CTE | Recursively query Ids first, then build `IN`; or write raw SQL |
+| Count + page from one condition | Extract `Where` from the same `Expr` for counting | Two hand-written SQL statements or two expression trees |
+| Dynamic header sorting | `OrderBys` written directly in the query JSON | Lots of `switch` or string concatenation |
+| Saving conditions | Store only the extracted filter JSON | A separate DTO conversion layer |
+| Lambda / Expr / ExprString | All three compose and share parameters | Usually only one is supported |
 
-Notes:
+## 8. Debugging Queries with SqlGen
 
-- `Expr.Lambda<T>` turns a Lambda into a `LogicExpr`, which can then be combined with request conditions using `&` / `|`.
-- An `Expr` embedded in `ExprString` keeps Expr parameterization; plain values become named parameters; `[Status]` is replaced with the dialect's quoting.
-- `{From}` and embedded `Expr`s share the DAO's build context; if aliases disagree, check whether DAOs for different views are mixed.
-- `ExprString` is only available at the DAO layer; services do not expose it. Subclass a DAO when needed (inject `SessionManager` through the constructor).
+`SqlGen` does not touch a database and only renders an `Expr` to SQL for a chosen dialect, which makes it ideal for documentation and dialect troubleshooting.
 
-## 7. How this compares with other ORMs
-
-Wording is deliberately cautious; capabilities vary by version:
-
-| Requirement | LiteOrm | Typical EF Core | Typical Dapper |
-| --- | --- | --- | --- |
-| Two business relations on one table | two derived types + `[ForeignType]` on the columns; `JoinRelated<Assignee>()` / `JoinRelated<Reviewer>()` fill ON | two navigation properties or two `HasOne`s; write two `Join`s with ON by hand | hand-written joins with two aliases and manual mapping |
-| View auto-joins from the same metadata | `[ForeignColumn]` on `WorkOrderView` reuses the derived types | projection + `Include` or manual `Join` | manual JOIN + column aliases |
-| Header-click dynamic sorting | whitelist + `OrderByItemExpr[]`, one line per field | switch + separate `OrderBy` branches, or Dynamic LINQ | string concatenation, no compile-time checks |
-| Total and page from one condition | one `filter` used twice (`CountAsync` / `Where`) | keep two `IQueryable` branches or duplicate the condition | two SQL statements with duplicated conditions |
-| Dialect-aware tree queries | `GenericSqlExpr` + `context.SqlBuilder` branches (`CONNECT BY` / `WITH RECURSIVE`) | raw SQL or `FromSql`, handling dialects yourself | dialect SQL by hand |
-| Business methods in SQL | one `RegisterMethodHandler` | custom methods must be translatable or fall back to client evaluation | SQL functions by hand |
-| Saving and reloading conditions | `Expr` JSON round-trip, including `GenericSqlExpr` key / arg | expression trees have no built-in serialization; usually store a DTO and rebuild | no equivalent; store SQL yourself |
-| Offline SQL for any dialect | `SqlGen` with another `SqlBuilder` | `ToQueryString()` depends on the current provider | the SQL is already hand-written |
-
-Only the differences: LiteOrm's distinguishing points are **metadata-supplied ON clauses, one parameter per table after joining, one condition reused directly, serializable query conditions, and Expr rendered offline for any dialect**.
-
-## 8. Debugging queries with SqlGen
-
-### 8.1 Minimal usage
+### 8.1 Minimal Usage
 
 ```csharp
-using LiteOrm;
-using LiteOrm.CodeGen;
-using LiteOrm.Common;
-
-var sqlGen = new SqlGen(typeof(WorkOrderView))
-{
-    SqlBuilder = SQLiteBuilder.Instance          // defaults to the generic SqlBuilder; set the dialect explicitly
-};
-
-PreparedSql prepared = sqlGen.ToSql(BuildPageExpr(q, filter));
-
-Console.WriteLine(prepared.Sql);
-foreach (Param p in prepared.Params)
-    Console.WriteLine($"{p.Name} = {p.Value} ({p.DbType})");
+var sqlGen = new SqlGen(typeof(SaleOrder)) { SqlBuilder = SQLiteBuilder.Instance };
+PreparedSql sql = sqlGen.ToSql(query);
+Console.WriteLine(sql.Sql);
+foreach (Param p in sql.Params) Console.WriteLine($"{p.Name} = {p.Value}");
 ```
 
-Functions and Lambda handlers initialize automatically on first use of `SqlBuilder` / `LambdaExprConverter`; a standalone console app needs no explicit `Initialize` call.
+`SqlGen` uses the generic `SqlBuilder.Instance` (`OFFSET ... FETCH`) by default, so `SqlBuilder` must be set explicitly to verify SQLite, MySQL, or Oracle behavior.
 
-### 8.2 Debugging the page SQL
-
-The chain must end in a `SelectExpr` (only `Select` / `Update` / `Delete` produce complete statements). Vary `SortBy` to compare `ORDER BY`:
+### 8.2 Verify the Tree Fragment Across Dialects
 
 ```csharp
-foreach (string sortBy in new[] { "createdTime", "priority", "assigneeName" })
-{
-    var probe = new WorkOrderQuery { SortBy = sortBy, Page = 2, PageSize = 20 /* ... */ };
-    Console.WriteLine(sqlGen.ToSql(BuildPageExpr(probe, BuildFilter(probe))).Sql);
-}
+LogicExpr treeFilter = InDeptTree(1001);
+
+var sqlite = new SqlGen(typeof(SaleOrder)) { SqlBuilder = SQLiteBuilder.Instance };
+var oracle = new SqlGen(typeof(SaleOrder)) { SqlBuilder = OracleBuilder.Instance };
+
+Console.WriteLine(sqlite.ToSql(treeFilter).Sql);   // WITH RECURSIVE
+Console.WriteLine(oracle.ToSql(treeFilter).Sql);   // START WITH ... CONNECT BY
 ```
 
-### 8.3 Debugging count
+With the `Expr.Func("DeptSubTree", ...)` implementation the output must be identical, and any difference means the two implementations register or handle parameters differently.
 
-Same rule as `CountAsync`: `ToSource` first, then wrap in `Count(1)`.
+### 8.3 Verify Count, Page and Reload
 
 ```csharp
-Expr countExpr = new SelectExpr(
-    filter.ToSource<WorkOrderView>(),
+// Equivalent to the count query that CountAsync builds internally
+SelectExpr countExpr = new SelectExpr(
+    GetFilter(query)!.ToSource<SaleOrder>(),
     new SelectItemExpr(Expr.Aggregate("Count", Expr.Const(1))));
 
-PreparedSql countSql = sqlGen.ToSql(countExpr);
+Console.WriteLine(sqlGen.ToSql(countExpr).Sql);   // SELECT Count(1), no ORDER BY/LIMIT
+Console.WriteLine(sqlGen.ToSql(query).Sql);       // ORDER BY + LIMIT/OFFSET
+
+string saved = JsonSerializer.Serialize<Expr>(GetFilter(query));
+LogicExpr reloaded = (LogicExpr?)JsonSerializer.Deserialize<Expr>(saved)!;
+Console.WriteLine(sqlGen.ToSql(GetFilter(query)!).Sql == sqlGen.ToSql(reloaded).Sql);   // True
 ```
 
-### 8.4 Debugging a `JoinRelated` query
+### 8.4 Compare with Runtime SQL and a Checklist
 
-Take `GetQueryExpr()` at the end of the chain and hand it to SqlGen:
+Runtime SQL is available from `SessionManager.Current?.SqlStack`, which keeps the last 10 statements and is cleared after each `Service` method call. `SqlGen` validates only generation logic and does not validate parameter types or whether database functions exist, so the query should still be run once against the real dialect before release.
 
-```csharp
-SqlSegment joinExpr = query.GetQueryExpr();   // the IQueryable chain from section 2
-PreparedSql joinSql = sqlGen.ToSql(joinExpr);
-```
+When something goes wrong, the following checklist suggests an order of investigation:
 
-### 8.5 Debugging tree fragments: one Expr, several dialects, no database
+- Empty tree SQL: the `DeptSubTree` key is not registered, or `GenericSqlExpr` is not wrapped with `AsValue()`.
+- SQLite emits `CONNECT BY`: `RegisterFunctionSqlHandler` was not registered on a concrete type such as `OracleBuilder`.
+- SQL changed after reload: determine whether the saved form is a function or a parameter by looking for `"Now"` or `"$datetime"` in the JSON.
+- Sorting or paging has no effect: confirm that the `$orderby` / `$section` layers exist and sit at the correct level in the JSON.
+- Reload fails: verify that `Arg` is written as Expr JSON, with a numeric parameter written as `{"@": 1001}`.
+- Duplicate rows across pages: sorting lacks a unique tiebreaker column.
 
-```csharp
-// In a standalone console app trigger registration first (static constructor or an explicit call)
-RegisterOrgSubTree();
+## 9. Limitations and Further Reading
 
-var treeExpr = new SelectExpr(
-    Expr.From(typeof(OrgUnit)).Where(Expr.Sql("OrgSubTree", 1001)),
-    new SelectItemExpr(Expr.Prop(nameof(OrgUnit.Id)), nameof(OrgUnit.Id)));
-
-var treeGen = new SqlGen(typeof(OrgUnit)) { SqlBuilder = OracleBuilder.Instance };
-Console.WriteLine(treeGen.ToSql(treeExpr).Sql);          // START WITH ... CONNECT BY
-
-treeGen.SqlBuilder = SQLiteBuilder.Instance;
-Console.WriteLine(treeGen.ToSql(treeExpr).Sql);          // WITH RECURSIVE (built with Expr)
-```
-
-### 8.6 Debugging saved / reloaded conditions
-
-```csharp
-string json = JsonSerializer.Serialize<Expr>(filter);
-Expr? loaded = JsonSerializer.Deserialize<Expr>(json);
-if (loaded is null) throw new InvalidDataException("Deserialization failed");
-
-Console.WriteLine(json);
-Console.WriteLine(sqlGen.ToSql(loaded).Sql);   // should match the original filter's SQL
-```
-
-### 8.7 Switching dialects
-
-```csharp
-sqlGen.SqlBuilder = MySqlBuilder.Instance;     // or PostgreSqlBuilder / OracleBuilder / SqlServerBuilder
-PreparedSql mysql = sqlGen.ToSql(BuildPageExpr(q, filter));
-```
-
-With one Expr and another builder you can compare quoting, paging syntax and parameter placeholders; for sharded entities assign `sqlGen.TableArgs` (see [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md)).
-
-### 8.8 Comparing with runtime SQL
-
-```csharp
-string? lastSql = SessionManager.Current?.SqlStack.LastOrDefault();
-```
-
-- `SqlStack` holds `CommandText` only, no parameter values; read parameter values from the offline `PreparedSql.Params` or logs.
-- At most 10 entries; cleared after a service call, so read immediately.
-- When offline and runtime SQL differ, check in order: `TableArgs`, `SqlBuilder` dialect, root table alias, service-level `ConstFilter`, parameter values and `DbType`.
-
-### 8.9 Checklist
-
-- Call `ToSql` first to inspect structure and parameters, then execute; never reconstruct SQL by string concatenation.
-- The chain must end in `Select`, otherwise you only get a fragment.
-- Paging numbers are inlined in SQL; a missing parameter for them is expected.
-- For joins, check the number of JOIN clauses and their ONs before WHERE; for dynamic sorting, verify ORDER BY hits the whitelist.
-- If a custom Lambda / `GenericSqlExpr` misbehaves, first check whether the emitted fragment is empty (registration did not take effect).
-- For tree queries confirm the dialect branch: Oracle should show `CONNECT BY`, others `WITH RECURSIVE`.
-- A CTE self-reference uses only its alias (e.g. `LEFT JOIN "OrgTree" ON ...`); no extra `T3` alias is appended.
-- If a deserialized condition fails to render, check that the `GenericSqlExpr` key is registered in this process and that `Arg` is a serializable raw value.
-
-## 9. Limitations and related links
-
-- Derived types must inherit an entity marked with `[Table]`; joining from the base class finds nothing.
-- `JoinRelated` relies on `[ForeignType]` / `[TableJoin]` metadata and throws when no relation can be inferred; fall back to `Join` with an explicit condition only then.
-- Tuple joins support at most 7 tables.
-- Dynamic sorting must go through a whitelist; never pass a request field straight to `Expr.Prop`.
-- `GenericSqlExpr` suits fragments with a fixed shape; when the condition structure changes with the business, use Expr.
-- A recursive CTE inside an `IN (...)` subquery works on SQLite / MySQL / PostgreSQL; SQL Server does not allow `WITH` inside a subquery, so use a materialized path column (e.g. `Path LIKE '1/5/%'`) or hoist the CTE to the statement root.
-- `SqlGen.ToSql` emits a complete statement only for `Select` / `Update` / `Delete`; anything else is a fragment.
-- Related links: [Query overview](../core-usage/query-overview.en.md), [Lambda guide](../core-usage/lambda-guide.en.md), [Associations](../core-usage/associations.en.md), [Expression extension](../extensibility/expression-extension.en.md), [Lambda and Expr](../core-usage/lambda-expr-mixing.en.md), [ExprString guide](../core-usage/exprstring-guide.en.md), [Expr JSON serialization](../extensibility/expr-serialization.en.md), [Native Expr queries](../extensibility/frontend-native-expr.en.md), [Projection on demand](./query-projection.en.md), [Custom paging](../advanced-topics/custom-paging.en.md), [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md), [CTE guide](../core-usage/cte-guide.en.md), [Permission filtering](../advanced-topics/permission-filtering.en.md).
+- A recursive CTE nested inside an `IN (...)` subquery works on SQLite, MySQL 8, and PostgreSQL; SQL Server does not allow `WITH` inside a subquery, so a materialized path column such as `Path LIKE '1/5/%'` should be used or the CTE lifted to the statement root; MySQL 5.7 has no recursive CTE support.
+- `GenericSqlExpr`'s `Arg` is a single `Expr`, so multiple parameters or more complex structures call for `FunctionExpr` or an explicitly constructed `Expr`.
+- When accepting JSON from the frontend, restrict expression types and field scope with `ExprValidator`, and never feed arbitrary JSON straight into SQL generation; sorting fields and filter fields can be restricted in that same place.
+- Counting uses only the extracted `Where` while the table comes from the Service entity type, so the query JSON neither needs to specify a table nor should.
+- The tree handler solves only the "descendants of a department" semantic; ancestor chains or per-level aggregation need their own fragments rather than overloading one key with multiple semantics.
+- Related links: [Query Overview](../core-usage/query-overview.en.md), [Lambda Guide](../core-usage/lambda-guide.en.md), [Associations](../core-usage/associations.en.md), [Expression Extension](../extensibility/expression-extension.en.md), [Lambda and Expr Mixing](../core-usage/lambda-expr-mixing.en.md), [ExprString Guide](../core-usage/exprstring-guide.en.md), [Expr JSON Serialization Format](../extensibility/expr-serialization.en.md), [Frontend Native Expr Queries](../extensibility/frontend-native-expr.en.md), [On-Demand Projection](./query-projection.en.md), [Custom Paging](../advanced-topics/custom-paging.en.md), [CTE Guide](../core-usage/cte-guide.en.md), [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md), [Custom SqlBuilder / Dialect Extension](../extensibility/custom-sqlbuilder.en.md).

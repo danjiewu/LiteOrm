@@ -12,7 +12,7 @@ namespace LiteOrm.Common
     /// <param name="context">SQL构建上下文，构建器与参数集合均由上下文提供</param>
     /// <param name="arg">额外参数</param>
     /// <returns>生成的SQL字符串</returns>
-    public delegate string? SqlGenerateHandler(SqlBuildContext context, object? arg);
+    public delegate string? SqlGenerateHandler(SqlBuildContext context, Expr? arg);
 
     /// <summary>
     /// 通过委托生成的 SQL 片段表达式类。
@@ -41,9 +41,9 @@ namespace LiteOrm.Common
         public static implicit operator ValueTypeExpr(GenericSqlExpr? expr) => new ValueExpr(expr);
 
         /// <summary>
-        /// 生成该 SQL 所需委托的内部参数。
+        /// 生成该 SQL 所需委托的内部参数表达式。
         /// </summary>
-        public object? Arg { get; set; }
+        public Expr? Arg { get; set; }
 
         private SqlGenerateHandler? SqlHandler => String.IsNullOrEmpty(Key) ? null : _registry[Key!].SqlHandler;
 
@@ -150,12 +150,17 @@ namespace LiteOrm.Common
         /// 获取已注册的静态 SQL 表达式并设置参数。
         /// </summary>
         /// <param name="key">表达式唯一键。</param>
-        /// <param name="arg">参数。</param>
+        /// <param name="arg">参数；传入非表达式值时自动包装为 <see cref="ValueExpr"/>。</param>
         /// <returns>GenericSqlExpr 实例。</returns>
         public static GenericSqlExpr Get(string key, object? arg)
         {
             var expr = Get(key);
-            expr.Arg = arg;
+            expr.Arg = arg switch
+            {
+                null => null,
+                Expr value => value,
+                _ => Expr.Value(arg)
+            };
             return expr;
         }
         #endregion

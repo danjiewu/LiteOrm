@@ -50,20 +50,22 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
   - `Like`
   - converting a dynamic DTO into `Expr`
 
-### Complex queries: multi-role joins, dynamic sorting, dialect trees and saved conditions
+### Complex queries: department trees, last 7 days, dynamic sorting/paging and saved conditions
 
 - Entry doc: [Complex Queries in Practice](../typical-applications/complex-queries.en.md)
 - Code sources:
-  - `LiteOrm.Tests\Converter\JoinExprTests.cs`
+  - `LiteOrm.Tests\Converter\LambdaExprConverterTests.cs`
   - `LiteOrm.Tests\Expr\GenericSqlExprTests.cs`
+  - `LiteOrm.Tests\SqlBuilder\RecursiveCteSqlTests.cs`
   - `LiteOrm.Tests\Expr\RawSqlExprStringTests.cs`
   - `LiteOrm.Tests\SqlBuilder\SqlGenTests.cs`
 - Focus:
-  - derived entity types for several roles on one table, joined in one go with `JoinRelated`
-  - header-click sorting: building `OrderByExpr` dynamically from `Expr`
+  - filtering by a department and all its descendants: `GenericSqlExpr` + `AsValue()` and a custom `FunctionExpr`
+  - dialect tree SQL emitting `CONNECT BY` or a recursive CTE
+  - the last 7 days: whether `DateTime.Now` becomes a function or a parameter
+  - header-click sorting: a whitelist plus `Expr`-built `OrderByItemExpr`
   - one `LogicExpr` filter driving both `count` and the current page
-  - a custom Lambda method handler plus `GenericSqlExpr` emitting dialect `CONNECT BY` or a recursive CTE
-  - persisting `Expr` as JSON and reloading it, and when `DateTime.Now` becomes a function vs. a parameter
+  - persisting `Expr` as JSON, reloading it, then layering more conditions
   - mixing Lambda, `Expr` and `ExprString`, and debugging generated SQL with `SqlGen`
 
 ## 3. Write and batch examples

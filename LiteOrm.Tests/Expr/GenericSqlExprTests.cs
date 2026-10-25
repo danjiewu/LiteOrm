@@ -39,7 +39,7 @@ namespace LiteOrm.Common.UnitTests
 
             var expr = GenericSqlExpr.Get(key, 5);
 
-            Assert.Equal(5, expr.Arg);
+            Assert.Equal(5, Assert.IsType<ValueExpr>(expr.Arg).Value);
         }
 
         [Fact]
@@ -57,7 +57,7 @@ namespace LiteOrm.Common.UnitTests
         [Fact]
         public void Clone_CopiesKeyAndArg()
         {
-            var expr = new GenericSqlExpr("k") { Arg = 7 };
+            var expr = new GenericSqlExpr("k") { Arg = Expr.Value(7) };
             var clone = (GenericSqlExpr)expr.Clone();
 
             Assert.Equal(expr, clone);

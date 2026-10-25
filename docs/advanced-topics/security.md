@@ -259,14 +259,16 @@ if (!ExprVisitor.Validate(validator, expr))
 
 ```csharp
 public delegate string? SqlGenerateHandler(
-    SqlBuildContext context, object? arg);
+    SqlBuildContext context, Expr? arg);
 
 public sealed class GenericSqlExpr : LogicExpr
 {
     public string? Key { get; set; }   // 注册表中查找的唯一键
-    public object? Arg { get; set; }   // 传递给回调的额外参数
+    public Expr? Arg { get; set; }     // 传递给回调的参数表达式
 }
 ```
+
+`Arg` 是 `Expr`：传入普通值用 `Expr.Value(...)`（`Expr.Sql(key, value)` / `GenericSqlExpr.Get(key, value)` 会自动包装为 `ValueExpr`）；回调内用 `arg.ToSql(context)` 渲染，字符串等值会自动参数化。
 
 `GenericSqlExpr` 还实现了到 `ValueTypeExpr` 的隐式转换，动态片段可直接用在 SELECT 列、函数参数、计算列等值位置；参与运算符或扩展方法链时仍要显式调用 `AsValue()`。
 
@@ -277,23 +279,22 @@ using static LiteOrm.Common.Expr;
 // 注册自定义 SQL 生成器
 GenericSqlExpr.Register("CustomCheck", (context, arg) =>
 {
-    // 参数化：使用 context.OutputParams 传递用户值
-    string paramName = context.OutputParams.Count.ToString();
-    context.OutputParams.Add(new(context.SqlBuilder.ToParamName(paramName), arg));
-    return $"dbo.CustomCheck({context.SqlBuilder.ToSqlParam(paramName)})";
+    // 参数化：Arg 是 Expr，渲染时 ValueExpr 自动写入 context.OutputParams
+    if (arg is null) return "dbo.CustomCheck(NULL)";
+    return $"dbo.CustomCheck({arg.ToSql(context)})";
 });
 
 // 在查询中使用
 var expr = Prop("IsActive") == true
-    & new GenericSqlExpr("CustomCheck") { Arg = "someValue" };
+    & new GenericSqlExpr("CustomCheck") { Arg = Expr.Value("someValue") };
 var users = await userService.SearchAsync(expr);
 ```
 
 ### 5.3 安全特性
 
 1. **必须预注册**：通过 `ConcurrentDictionary` 维护全局注册表，未注册的 key 会抛出异常
-2. **支持参数化**：委托可通过 `context.OutputParams` 拿到参数集合并安全地传递用户值
-3. **参数传递**：通过 `Arg` 属性传递业务参数，不拼接到 SQL 中
+2. **支持参数化**：`Arg` 交由表达式渲染（`arg.ToSql(context)`），`ValueExpr` 自动写入 `context.OutputParams`，不拼接到 SQL 中
+3. **参数传递**：业务参数以 `Expr` 形式传入 `Arg`（如 `Expr.Value(...)`），由渲染过程参数化
 
 如果你是想把它用于“当前用户范围过滤”或“多租户过滤”等业务场景，请再结合[权限过滤](../advanced-topics/permission-filtering.md)一并阅读，那里更强调**什么时候该用运行时 Expr / GenericSqlExpr，什么时候该用 `ConstFilter` 或表路由**。
 
@@ -327,22 +328,21 @@ var users = await userService.SearchAsync(expr);
 
 ### 6.2 GenericSqlExpr 的自由度
 
-`SqlGenerateHandler` 委托可以返回任意字符串。如果回调中不谨慎使用 `context.OutputParams`，可能在自定义 SQL 中引入注入点：
+`SqlGenerateHandler` 委托可以返回任意字符串。`Arg` 是 `Expr`，而 `ValueExpr.ToString()` 返回的是原始值——如果直接把它拼进 SQL，就会引入注入点：
 
 ```csharp
 using static LiteOrm.Common.Expr;
-// ❌ 危险：直接在委托中拼接用户输入
+// ❌ 危险：取表达式文本直接拼进 SQL
 GenericSqlExpr.Register("UnsafeLookup", (ctx, arg) =>
 {
-    return $"SELECT * FROM Users WHERE Code = '{arg}'";
+    return $"SELECT * FROM Users WHERE Code = '{arg?.ToString()}'";
 });
 
-// ✅ 安全：使用 context.OutputParams 参数化
+// ✅ 安全：交给表达式渲染，ValueExpr 自动参数化
 GenericSqlExpr.Register("SafeLookup", (ctx, arg) =>
 {
-    string paramName = ctx.OutputParams.Count.ToString();
-    ctx.OutputParams.Add(new(ctx.SqlBuilder.ToParamName(paramName), arg));
-    return $"SELECT * FROM Users WHERE Code = {ctx.SqlBuilder.ToSqlParam(paramName)}";
+    string value = arg is null ? "NULL" : arg.ToSql(ctx);
+    return $"SELECT * FROM Users WHERE Code = {value}";
 });
 ```
 
