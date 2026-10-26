@@ -1,4 +1,4 @@
-# Projection on Demand: Entity-First or Query-Time
+# Projection on Demand
 
 The shape a query needs rarely matches the table: a list page wants five columns, a detail page another set, a stats page only aggregates. LiteOrm covers this with three approaches: query the entity, query the entity and project in memory, or project inside the query. All three are valid syntax; how much data the SQL brings back and how many times it asks the database decide the cost of each.
 

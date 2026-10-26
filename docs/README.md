@@ -78,7 +78,7 @@
 |[对象的 JSON 列存储与字段查询](./typical-applications/json-column-mapping.md)|[JSON Columns for Objects and Field-Level Queries](./typical-applications/json-column-mapping.en.md)|整段 JSON 落列、转换器注册、字段映射为 JSON 函数与按字段查询|
 |[计算列的实际应用](./typical-applications/computed-columns.md)|[Computed Columns in Practice](./typical-applications/computed-columns.en.md)|用户等级折扣、上架状态位、跨表展示名三个需求实例与生成 SQL|
 |[并发控制与读写分离](./typical-applications/concurrency-and-read-write-splitting.md)|[Concurrency and Read/Write Splitting](./typical-applications/concurrency-and-read-write-splitting.en.md)|时间戳乐观并发、事务边界、只读副本与读写一致性|
-|[按需投影：先查实体再投影，还是查询时投影](./typical-applications/query-projection.md)|[Projection on Demand: Entity-First or Query-Time](./typical-applications/query-projection.en.md)|四个业务需求对比先查实体再投影与查询时投影，覆盖列表页、导出、详情页与分组聚合|
+|[按需投影](./typical-applications/query-projection.md)|[Projection on Demand](./typical-applications/query-projection.en.md)|四个业务需求对比先查实体再投影与查询时投影，覆盖列表页、导出、详情页与分组聚合|
 |[复杂查询实例](./typical-applications/complex-queries.md)|[Complex Query Examples](./typical-applications/complex-queries.en.md)|部门及下级部门订单、一份查询 JSON（含排序与分页）直接交给 Search、从查询中提取 filter、最近 7 天函数/参数、GenericSqlExpr 与自定义 FunctionExpr 两种树形实现、同一 filter 的 count 与当页、条件 JSON 保存重载、Lambda 构造 Query 对象传入解析与 SqlGen 调试|
 
 ### 参考文档 / Reference
