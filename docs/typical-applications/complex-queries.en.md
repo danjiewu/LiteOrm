@@ -1,12 +1,12 @@
-# Complex Queries in Practice: Department Trees, Last 7 Days, Dynamic Sorting/Paging and Saved Conditions
+# Complex Query Examples
 
-Basic Lambda syntax, `Expr` composition, `ExprString` interpolation, and associations are each covered by their own documents, so this document does not repeat them and instead focuses on how they combine into one realistic query path. It follows a single requirement as it evolves: the frontend submits one query JSON from which the backend extracts the filter for counting and paging; the equality condition on the department is then replaced by a department subtree; sorting and paging are then moved into the same JSON; and finally the filter is saved separately and reloaded when needed. All SQL shown below is actual rendered output, using the SQLite dialect unless noted, with parameter values written as `@0` and `@1`.
+Using a realistic order-list query as the example, this document presents the complete implementation directly and then explains each key mechanism: department-tree filtering, the last 7 days, dynamic sorting/paging, saved conditions, and an equivalent Lambda parsing path. Basic syntax, `Expr` composition, and associations are each covered by their own documents and are not repeated here. All SQL shown below is actual rendered output, using the SQLite dialect unless noted, with parameter values written as `@0` and `@1`.
 
-## 1. Requirement, Model and Query Input
+## 1. Requirements and Query Input
 
 ### 1.1 Requirements
 
-The following requirements also serve as the acceptance points referenced later in this document:
+The query must satisfy the following requirements:
 
 - Only orders belonging to the specified department and all of its descendants are returned, without first loading the department Ids into memory and building an `IN` list from them.
 - Only orders created within the last 7 days are returned, where "last" may mean either a rule relative to the current time or a fixed time window.
@@ -42,28 +42,54 @@ public class SaleOrder
 
 ### 1.3 Query Input: One Query JSON
 
-The list endpoint receives a single JSON string that describes the filters and may also carry sorting and paging. The JSON does not specify a table and does not need an outer `$select`, because `Search` and `SearchAsync` supply the table from the Service entity type and fill in the columns to query, so the whole path involves exactly one deserialization. The smallest query, which contains only the filter, looks like this:
+The list endpoint receives a single JSON string. The JSON below is the complete query this document ultimately executes: the department tree, the last 7 days, the three optional filters, sorting, and paging all live in this one document. It needs neither `$table` nor `$select`, because the Service entity type supplies the table and query columns.
 
 ```json
 {
-  "$and": [
-    { "$": "==", "Left": { "#": "DeptId" }, "Right": { "@": 1001 } },
-    { "$": ">=", "Left": { "#": "CreatedTime" },
-      "Right": { "$": "func", "AddDays": [ { "$": "func", "Now": [] }, { "@": -7 } ] } },
-    { "$": "==", "Left": { "#": "Status" }, "Right": { "@": 1 } },
-    { "$": ">=", "Left": { "#": "Amount" }, "Right": { "@": 100 } },
-    { "$": "contains", "Left": { "#": "OrderNo" }, "Right": { "@": "SO2026" } }
-  ]
+  "$section": {
+    "$orderby": {
+      "$where": null,
+      "Where": {
+        "$and": [
+          { "$": "in", "Left": { "#": "DeptId" },
+            "Right": { "$": "sql", "Key": "DeptSubTree", "Arg": { "@": 1001 } } },
+          { "$": ">=", "Left": { "#": "CreatedTime" },
+            "Right": { "$": "func", "AddDays": [ { "$": "func", "Now": [] }, { "@": -7 } ] } },
+          { "$": "==", "Left": { "#": "Status" }, "Right": { "@": 1 } },
+          { "$": ">=", "Left": { "#": "Amount" }, "Right": { "@": 100 } },
+          { "$": "contains", "Left": { "#": "OrderNo" }, "Right": { "@": "SO2026" } }
+        ]
+      }
+    },
+    "OrderBys": [
+      { "Field": { "#": "Amount" }, "Asc": false },
+      { "Field": { "#": "Id" }, "Asc": false }
+    ]
+  },
+  "Skip": 20,
+  "Take": 20
 }
 ```
 
-Keys beginning with `$` denote operators or segment types, `#` denotes a column, and `@` denotes a parameter; the complete shape is documented in [Expr JSON Serialization Format](../extensibility/expr-serialization.en.md). Sorting and paging are two additional segment layers that section 4 adds to this same JSON. Deserialization takes a single line of code, and the result may be either a logical condition or a segment chain that carries sorting and paging:
+One deserialization yields the whole query; counting uses the filter inside it while the page uses the whole query (`GetFilter` is implemented in 1.4):
 
 ```csharp
 Expr query = JsonSerializer.Deserialize<Expr>(queryJson)!;
+LogicExpr? filter = GetFilter(query);
+
+int total = await orderService.CountAsync(filter, cancellationToken: ct);
+List<SaleOrder> items = await orderService.SearchAsync(query, cancellationToken: ct);
 ```
 
-In production the JSON should be validated with `ExprValidator`, and the set of fields the frontend may reference should be restricted, as described in [Security](../advanced-topics/security.en.md). When an optional filter is absent, its node is simply missing from the `$and` array, so no extra condition appears in the generated SQL.
+Key points:
+
+- Keys beginning with `$` denote operators or segment types, `#` denotes a column, and `@` denotes a parameter; the complete shape is documented in [Expr JSON Serialization Format](../extensibility/expr-serialization.en.md).
+- Segments nest by layer: `$section` wraps `$orderby`, which wraps `$where`; each inner segment sits on the key named by its `$` marker, while its own properties (`Skip` / `Take`, `OrderBys`, `Where`) stay at the same level as the marker.
+- When an optional filter is absent, its node is simply missing from the `$and` array, so no extra condition appears in the generated SQL.
+- The department tree uses a `$sql` segment (see §3) and the last 7 days use the `Now` / `AddDays` functions (see 2.2); like every other condition they are eventually parameterized as `@0`, `@1`. The `DeptSubTree` handler must be registered in the current process, otherwise the segment renders as empty (see 5.4).
+- Sorting appends `Id` after `Amount` as a unique tiebreaker so paging cannot repeat or skip rows.
+- Both statements share the result of one deserialization: `CountAsync` receives only `filter`, while `SearchAsync` receives the whole `query`, so sorting and paging never enter the counting SQL.
+- In production the JSON should be validated with `ExprValidator`, restricting the fields and operators the frontend may reference, as described in [Security](../advanced-topics/security.en.md).
 
 ### 1.4 Extracting the Filter from the Query
 
@@ -93,7 +119,6 @@ The following table points to the documents that explain each building block, si
 | Lambda syntax, closure parameterization, multi-parameter Lambda | [Lambda Guide](../core-usage/lambda-guide.en.md) |
 | `RegisterMethodHandler` / `RegisterMemberHandler` mechanics | [Expression Extension](../extensibility/expression-extension.en.md) |
 | `Expr.Lambda`, `AsValue()`, Lambda/Expr conversion | [Lambda and Expr Mixing](../core-usage/lambda-expr-mixing.en.md) |
-| `ExprString` interpolation, embedded `Expr`, `[Column]` placeholders | [ExprString Guide](../core-usage/exprstring-guide.en.md) |
 | Expr JSON shape and operator markers | [Expr JSON Serialization Format](../extensibility/expr-serialization.en.md) |
 | Building Expr JSON on the frontend | [Frontend Native Expr Queries](../extensibility/frontend-native-expr.en.md) |
 | Dialect paging with `Section` / `Skip` / `Take` | [Custom Paging](../advanced-topics/custom-paging.en.md) |
@@ -101,19 +126,11 @@ The following table points to the documents that explain each building block, si
 | Grouping/aggregation and projection comparison | [On-Demand Projection](./query-projection.en.md) |
 | Custom function mapping and `SqlBuilder` extension | [Custom SqlBuilder / Dialect Extension](../extensibility/custom-sqlbuilder.en.md) |
 
-## 2. Step 1: This Department + Last 7 Days + Optional Filters
+## 2. Filters: This Department, Last 7 Days, and Optional Conditions
 
-The deserialized `query` can be handed directly to the DAO, and the first step is to query only the current department so that the path from JSON to SQL works end to end.
+The complete query in 1.3 is already executable; this section explains the filters themselves: the division of labor between counting and the page, the two forms of "last 7 days", and how optional conditions expand.
 
-### 2.1 Execute the Deserialized Result Directly
-
-```csharp
-Expr query = JsonSerializer.Deserialize<Expr>(queryJson)!;
-LogicExpr? filter = GetFilter(query);
-
-int total = await orderService.CountAsync(filter, cancellationToken: ct);
-List<SaleOrder> items = await orderService.SearchAsync(query, cancellationToken: ct);
-```
+### 2.1 Counting vs. the Page
 
 `CountAsync` accepts only a condition, so it wraps that condition in a `WHERE` clause and renders `SELECT Count(1)`, which means the count SQL never carries sorting or paging; `SearchAsync` accepts any `Expr`, supplies the table and query columns from the Service entity type, and renders sorting and paging exactly as they appear in the JSON. The `$and` array may hold any number of conditions or just one, and all parameter values travel in `@` nodes into `context.OutputParams` rather than being spliced into the SQL text. A `contains` node corresponds to Lambda `Contains`, and the framework adds wildcards on both sides of the parameter as well as handling escaping and parameterization.
 
@@ -157,24 +174,9 @@ Expr.Const(DateTime.Now.AddDays(-7));
 
 The choice depends on whether the condition expresses a rule or a fact. Live dashboards should use the function form, because every execution takes the database's current time as the reference and a saved condition always means "last 7 days"; reconciliation, exports, and audit snapshots should use the parameter form, because the time window is frozen into the condition and reruns always return the same rows. Both forms can be saved and reloaded, and the difference is explained in 5.2.
 
-### 2.3 SQL for This Step
+## 3. Department-Tree Filtering
 
-For the request `DeptId=1001, Days=7, Status=1, MinAmount=100, Keyword="SO2026"`, this smallest query renders as follows. The JSON contains no SELECT segment, so `SearchAsync` has already supplied every `SaleOrder` column, which is why the SQL still lists columns explicitly instead of using `*`:
-
-```sql
-SELECT "T0"."Id", "T0"."OrderNo", "T0"."DeptId", "T0"."Status", "T0"."Amount", "T0"."CreatedTime"
-FROM "Orders" "T0"
-WHERE "T0"."DeptId" = @0
- AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@1 AS TEXT)||' days')
- AND "T0"."Status" = @2 AND "T0"."Amount" >= @3 AND "T0"."OrderNo" LIKE @4
--- @0 = 1001, @1 = -7, @2 = 1, @3 = 100, @4 = %SO2026%
-```
-
-The JSON does not yet contain the sorting and paging layers, so the SQL has no `ORDER BY` or `LIMIT`. Section 4 adds those layers to the query JSON; for now the remaining issue is that `DeptId = @0` covers only one department.
-
-## 3. Step 2: Expand the Department into a Tree
-
-The requirement is to query a department and all of its descendants, so the JSON condition `"$": "=="` becomes `"$": "in"` with its right-hand side replaced by a subtree fragment, while every other condition stays unchanged. The difficulty lies in how the subtree becomes SQL: Oracle uses `CONNECT BY`, while the other dialects use a recursive CTE.
+The query in 1.3 replaces the equality condition on the current department with a department subtree: the right-hand side of `"$": "in"` is no longer a department Id but a subtree fragment, while every other condition stays unchanged. The difficulty lies in how the subtree becomes SQL: Oracle uses `CONNECT BY`, while the other dialects use a recursive CTE.
 
 The two approaches below implement the same `DeptSubTree` fragment, and either one may be chosen; section 3.4 gives the JSON for each option.
 
@@ -387,7 +389,7 @@ Option B replaces the right-hand side with a function-call node whose argument a
 
 Replacing only this one condition node while leaving every other node untouched produces the new query JSON for "department tree + last 7 days + optional filters".
 
-## 4. Step 3: Write Sorting and Paging into the JSON
+## 4. Dynamic Sorting and Paging
 
 ### 4.1 The JSON Shape for Sorting and Paging
 
@@ -431,16 +433,7 @@ Sorting fields are written directly in the JSON, so the query method does not ne
 
 ### 4.2 Total and Page from One Filter
 
-`query` comes from one deserialization, and `filter` is extracted from it, so the two serve counting and paging respectively:
-
-```csharp
-LogicExpr? filter = GetFilter(query);
-
-int total = await orderService.CountAsync(filter, cancellationToken: ct);
-List<SaleOrder> items = await orderService.SearchAsync(query, cancellationToken: ct);
-```
-
-The count SQL has neither `ORDER BY` nor `LIMIT`, because it receives only `filter`:
+`query` comes from one deserialization, and `filter` is extracted from it (the execution code is in 1.3), so the two serve counting and paging respectively. The count SQL has neither `ORDER BY` nor `LIMIT`, because it receives only `filter`:
 
 ```sql
 SELECT Count(1)
@@ -476,7 +469,7 @@ LIMIT 20 OFFSET 20
 - Sorting must include a unique column as a tiebreaker, `Id` in this example, otherwise paging may repeat rows or skip rows.
 - The table is determined by the Service entity type while the JSON describes only conditions, sorting, and paging, so counting and the page always read the same table.
 
-## 5. Step 4: Save and Reload the Filter
+## 5. Saving Conditions
 
 ### 5.1 Save the Filter, Not the Whole Query
 
@@ -520,11 +513,11 @@ query = SetFilter(query, saved & (Expr.Prop(nameof(SaleOrder.Amount)) >= 500));
 
 The `DeptSubTree` handler must be registered in the current process, for example by calling `DeptSubTree.Register()` or `DeptSubTreeFunction.Register()` at startup. Otherwise a reloaded condition cannot resolve the key at SQL generation time, and the subquery that should appear is rendered as an empty fragment.
 
-## 6. Assembly: The Complete Query Method
+## 6. The Complete Query Method
 
-Each step above added exactly one capability, and the following code puts them together in call order.
+The capabilities above combine into a ready-to-use query method. There are two entry points: deserialize the query JSON submitted by the frontend, or build an `IQueryable<T>` with Lambda and pass it in for parsing.
 
-### 6.1 Service: Total and Page
+### 6.1 JSON Entry: Total and Page
 
 ```csharp
 public sealed record OrderPage(int Total, List<SaleOrder> Items);
@@ -552,40 +545,65 @@ public sealed class OrderListService
 
 `GetFilter` (1.4) and `SetFilter` (5.1) live in the same class, and `DeptSubTree.Register()` or `DeptSubTreeFunction.Register()` is called once at startup. Saving and reloading conditions follow section 5, and no other part of `QueryAsync` needs to change.
 
-### 6.2 Status Summary on the Same Page: Mixing `ExprString`
+### 6.2 Lambda Entry: Build a Query Object and Pass It In
 
-The list passes conditions as JSON, while the status summary on the same page reads more clearly with `ExprString`, because it is hand-written SQL with an embedded `Expr` that can reuse the extracted `filter` directly:
+When conditions come from the server, you can skip JSON entirely: build an `IQueryable<SaleOrder>` with Lambda, then pass the constructed query object to the `IQueryable<T>` overloads of `SearchAsync` / `Search`, which parse it into an `Expr` and execute it. The two methods below can be added to the `OrderListService` from 6.1:
 
 ```csharp
-public class OrderDAO : ObjectViewDAO<SaleOrder>
-{
-    public OrderDAO(SessionManager sessionManager) : base(sessionManager) { }
+public sealed record OrderCriteria(
+    int DeptId,
+    int? Status,
+    decimal? MinAmount,
+    string? Keyword,
+    int Skip,
+    int Take);
 
-    public Task<List<StatusSummary>> QueryStatusSummaryAsync(LogicExpr filter, CancellationToken ct = default)
-        => SearchAs<StatusSummary>(
-                $"SELECT [Status], COUNT(1) AS [Total] FROM {From} WHERE {filter} GROUP BY [Status]")
-            .ToListAsync(ct);
+public IQueryable<SaleOrder> BuildQuery(OrderCriteria criteria)
+{
+    IQueryable<SaleOrder> query = Expr.From<SaleOrder>()
+        .Where(o => o.InDeptSubTree(criteria.DeptId))
+        .Where(o => o.CreatedTime >= DateTime.Now.AddDays(-7));
+
+    // Append optional conditions on demand; repeated Where calls merge into one condition (AND) during parsing
+    if (criteria.Status.HasValue)
+        query = query.Where(o => o.Status == criteria.Status.Value);
+    if (criteria.MinAmount.HasValue)
+        query = query.Where(o => o.Amount >= criteria.MinAmount.Value);
+    if (!string.IsNullOrWhiteSpace(criteria.Keyword))
+        query = query.Where(o => o.OrderNo.Contains(criteria.Keyword));
+
+    return query
+        .OrderByDescending(o => o.Amount)
+        .ThenByDescending(o => o.Id)
+        .Skip(criteria.Skip)
+        .Take(criteria.Take);
+}
+
+public async Task<OrderPage> QueryByLambdaAsync(OrderCriteria criteria, CancellationToken ct = default)
+{
+    IQueryable<SaleOrder> query = BuildQuery(criteria);
+
+    // Parse the constructed query object into an Expr; this only builds the expression tree and needs no executor
+    Expr queryExpr = query.GetQueryExpr();
+    LogicExpr? filter = GetFilter(queryExpr);
+
+    int total = await _orders.CountAsync(filter, cancellationToken: ct);
+    List<SaleOrder> items = await _orders.SearchAsync(query, cancellationToken: ct);
+
+    return new OrderPage(total, items);
 }
 ```
 
-The rendering is:
+`Expr.From<SaleOrder>()` returns a `QuerySource<SaleOrder>` that implements `IQueryable<T>`, so `Where` / `OrderByDescending` / `Skip` / `Take` are standard LINQ operators. When the query is passed to `SearchAsync(IQueryable<T>)` / `Search(IQueryable<T>)`, the framework uses the same `LambdaExprConverter` to parse the expression tree into an `Expr`, and the subsequent SQL generation and parameter binding are identical to the JSON entry.
 
-```sql
-SELECT "Status", COUNT(1) AS "Total"
-FROM "Orders" "T0"
-WHERE "DeptId" IN (WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
-    FROM "Departments" "T1"
-    WHERE "T1"."Id" = @0
-    UNION ALL SELECT "T2"."Id"
-      FROM "Departments" "T2"
-      LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
-SELECT "Id"
-  FROM "DeptTree")
- AND "CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@1 AS TEXT)||' days')
-GROUP BY "Status"
-```
+Key points:
 
-`{From}` is a DAO placeholder that is replaced by the table or view together with its joins, and `filter` is the interpolated `Expr` that expands directly into SQL and shares the same parameter collection. The columns in the rendered `filter` carry no table alias, as in `"DeptId"` above, because the `ExprString` context already registers the main table and omits the alias for a single-table query. A `[Column]` placeholder in a hand-written fragment is converted to the current dialect's real quoting, which is `"` for SQLite and `` ` `` for MySQL.
+- **Building does not execute.** The source returned by `Expr.From<T>()` has no executor bound and only builds expressions; enumerating it directly throws `InvalidOperationException`. To fetch data, pass it to `SearchAsync` / `Search`, or resolve the executor-bound `QuerySource<T>` from the container and call async methods through `.AsSource()`.
+- **Counting and the page still share one source.** Optional conditions are appended as additional `Where` calls, and repeated `Where` merges in place during parsing, so `GetFilter(queryExpr)` returns the complete condition and counting cannot miss any layer.
+- **The "last 7 days" semantics follow the syntax.** `DateTime.Now.AddDays(-7)` becomes the `Now()` and `AddDays` functions during parsing, equivalent to the function form in 2.2; to freeze the window, compute the timestamp outside the Lambda and capture it in a closure, which makes it a parameter.
+- **The department tree relies on the Lambda handler.** `InDeptSubTree` needs the method handler registered as in 3.1.3; without it, the parser cannot recognize the call.
+- **Dynamic sorting still needs a whitelist.** When the sort column comes from the frontend, map it to fixed `switch` branches (one Lambda sort per branch) instead of letting user strings reach the query; the JSON entry keeps using `$orderby` plus `ExprValidator`.
+- **Division of labor with the JSON entry.** Lambda entry field names come from compile-time member access and need no field whitelist, making it suitable for server-side fixed conditions; the JSON entry suits dynamically assembled frontend conditions. Both ultimately produce the same `Expr` tree, so they can be mixed per caller, and a `filter` produced by Lambda can be serialized and saved as described in §5.
 
 ## 7. Comparison with Other ORMs
 
@@ -646,7 +664,7 @@ Console.WriteLine(sqlGen.ToSql(GetFilter(query)!).Sql == sqlGen.ToSql(reloaded).
 
 ### 8.4 Compare with Runtime SQL and a Checklist
 
-Runtime SQL is available from `SessionManager.Current?.SqlStack`, which keeps the last 10 statements and is cleared after each `Service` method call. `SqlGen` validates only generation logic and does not validate parameter types or whether database functions exist, so the query should still be run once against the real dialect before release.
+Runtime SQL is available from `SessionManager.Current?.SqlStack`, which keeps the last 10 statements. With DI, `ServiceInvokeInterceptor` clears it after each `Service` method call; when the core library is used alone, it is not cleared automatically and you must call `SessionManager.Reset()` yourself. `SqlGen` validates only generation logic and does not validate parameter types or whether database functions exist, so the query should still be run once against the real dialect before release.
 
 When something goes wrong, the following checklist suggests an order of investigation:
 
@@ -664,4 +682,4 @@ When something goes wrong, the following checklist suggests an order of investig
 - When accepting JSON from the frontend, restrict expression types and field scope with `ExprValidator`, and never feed arbitrary JSON straight into SQL generation; sorting fields and filter fields can be restricted in that same place.
 - Counting uses only the extracted `Where` while the table comes from the Service entity type, so the query JSON neither needs to specify a table nor should.
 - The tree handler solves only the "descendants of a department" semantic; ancestor chains or per-level aggregation need their own fragments rather than overloading one key with multiple semantics.
-- Related links: [Query Overview](../core-usage/query-overview.en.md), [Lambda Guide](../core-usage/lambda-guide.en.md), [Associations](../core-usage/associations.en.md), [Expression Extension](../extensibility/expression-extension.en.md), [Lambda and Expr Mixing](../core-usage/lambda-expr-mixing.en.md), [ExprString Guide](../core-usage/exprstring-guide.en.md), [Expr JSON Serialization Format](../extensibility/expr-serialization.en.md), [Frontend Native Expr Queries](../extensibility/frontend-native-expr.en.md), [On-Demand Projection](./query-projection.en.md), [Custom Paging](../advanced-topics/custom-paging.en.md), [CTE Guide](../core-usage/cte-guide.en.md), [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md), [Custom SqlBuilder / Dialect Extension](../extensibility/custom-sqlbuilder.en.md).
+- Related links: [Query Overview](../core-usage/query-overview.en.md), [Lambda Guide](../core-usage/lambda-guide.en.md), [Associations](../core-usage/associations.en.md), [Expression Extension](../extensibility/expression-extension.en.md), [Lambda and Expr Mixing](../core-usage/lambda-expr-mixing.en.md), [Expr JSON Serialization Format](../extensibility/expr-serialization.en.md), [Frontend Native Expr Queries](../extensibility/frontend-native-expr.en.md), [On-Demand Projection](./query-projection.en.md), [Custom Paging](../advanced-topics/custom-paging.en.md), [CTE Guide](../core-usage/cte-guide.en.md), [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md), [Custom SqlBuilder / Dialect Extension](../extensibility/custom-sqlbuilder.en.md).

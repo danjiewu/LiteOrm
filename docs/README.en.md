@@ -79,7 +79,7 @@ This is the main index of the LiteOrm documentation set. For deeper coverage, fo
 |[Computed Columns in Practice](./typical-applications/computed-columns.md)|Three worked examples — tier discounts, listing status bits, cross-table display names — with generated SQL|
 |[Concurrency and Read/Write Splitting](./typical-applications/concurrency-and-read-write-splitting.md)|Timestamp optimistic concurrency, transaction boundaries, read-only replicas and consistency|
 |[Projection on Demand: Entity-First or Query-Time](./typical-applications/query-projection.md)|Four requirements comparing entity-first projection with query-time projection: list pages, exports, detail pages and grouped aggregation|
-|[Complex Queries in Practice: Department Trees, Last 7 Days, Dynamic Sorting/Paging and Saved Conditions](./typical-applications/complex-queries.md)|One query JSON including sorting and paging handed directly to `Search`, extracting the filter for counting, orders for a department and its descendants, last 7 days as function vs. parameter, tree SQL via `GenericSqlExpr` and a custom `FunctionExpr`, count and page from one filter, saved/reloaded condition JSON, and SqlGen debugging|
+|[Complex Query Examples](./typical-applications/complex-queries.md)|One query JSON including sorting and paging handed directly to `Search`, extracting the filter for counting, orders for a department and its descendants, last 7 days as function vs. parameter, tree SQL via `GenericSqlExpr` and a custom `FunctionExpr`, count and page from one filter, saved/reloaded condition JSON, an equivalent Lambda entry that builds a Query object and passes it in, and SqlGen debugging|
 
 ### Reference
 

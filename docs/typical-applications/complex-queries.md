@@ -1,12 +1,12 @@
-# 复杂查询实战：部门树、最近 7 天、动态排序分页与条件持久化
+# 复杂查询实例
 
-基础的 Lambda 语法、`Expr` 组合、`ExprString` 插值与关联查询已经由其他文档分别介绍，本文不再重复这些基础内容，只讨论它们如何组合成一条真实的业务查询链。全文按照需求的演进顺序展开：前端提交一份查询 JSON，后端从中提取过滤条件并完成计数与分页；随后把「本部门」这个等值条件替换成部门子树；接着把排序与分页也交给同一份 JSON 描述；最后把条件单独保存，并在需要时重新装载回来执行。文中的 SQL 均为实际渲染结果，除特别注明外使用 SQLite 方言，参数值以 `@0`、`@1` 表示。
+本文以一条真实的订单列表查询为例，直接给出完整实现，并逐项解释其中的关键机制：部门树过滤、最近 7 天、动态排序分页、条件持久化，以及等价的 Lambda 解析方式。基础语法、`Expr` 组合与关联查询已由其他文档分别介绍，这里不再重复。文中的 SQL 均为实际渲染结果，除特别注明外使用 SQLite 方言，参数值以 `@0`、`@1` 表示。
 
-## 1. 需求、模型与查询输入
+## 1. 需求描述与查询输入
 
-### 1.1 需求清单
+### 1.1 需求描述
 
-下面列出的需求同时也是后文的验收点：
+本次查询需要满足以下要求：
 
 - 只查询指定部门及其所有下级部门的订单，不允许先把部门 Id 列表查到内存再拼成 `IN` 列表。
 - 只查询最近 7 天创建的订单，其中「最近」既可以是相对当前时间的规则，也可以是固定的时间窗口。
@@ -42,28 +42,54 @@ public class SaleOrder
 
 ### 1.3 查询输入：一份查询 JSON
 
-列表接口只接收一个 JSON 字符串，它描述筛选条件，并可以附加排序与分页。JSON 不需要指定表，也不需要外层 `$select`，因为 `Search` 与 `SearchAsync` 会用 Service 的实体类型补上表，并自动补齐要查询的列，整条查询路径只经过一次反序列化。先看只包含筛选条件的最小查询：
+列表接口只接收一个 JSON 字符串。下面直接给出本文最终执行的完整查询：部门树、最近 7 天、三个可选条件、排序与分页都在这同一份 JSON 里。它不需要 `$table`，也不需要 `$select`，表与查询列由 Service 的实体类型补齐。
 
 ```json
 {
-  "$and": [
-    { "$": "==", "Left": { "#": "DeptId" }, "Right": { "@": 1001 } },
-    { "$": ">=", "Left": { "#": "CreatedTime" },
-      "Right": { "$": "func", "AddDays": [ { "$": "func", "Now": [] }, { "@": -7 } ] } },
-    { "$": "==", "Left": { "#": "Status" }, "Right": { "@": 1 } },
-    { "$": ">=", "Left": { "#": "Amount" }, "Right": { "@": 100 } },
-    { "$": "contains", "Left": { "#": "OrderNo" }, "Right": { "@": "SO2026" } }
-  ]
+  "$section": {
+    "$orderby": {
+      "$where": null,
+      "Where": {
+        "$and": [
+          { "$": "in", "Left": { "#": "DeptId" },
+            "Right": { "$": "sql", "Key": "DeptSubTree", "Arg": { "@": 1001 } } },
+          { "$": ">=", "Left": { "#": "CreatedTime" },
+            "Right": { "$": "func", "AddDays": [ { "$": "func", "Now": [] }, { "@": -7 } ] } },
+          { "$": "==", "Left": { "#": "Status" }, "Right": { "@": 1 } },
+          { "$": ">=", "Left": { "#": "Amount" }, "Right": { "@": 100 } },
+          { "$": "contains", "Left": { "#": "OrderNo" }, "Right": { "@": "SO2026" } }
+        ]
+      }
+    },
+    "OrderBys": [
+      { "Field": { "#": "Amount" }, "Asc": false },
+      { "Field": { "#": "Id" }, "Asc": false }
+    ]
+  },
+  "Skip": 20,
+  "Take": 20
 }
 ```
 
-`$` 开头的键表示操作符或片段类型，`#` 表示列，`@` 表示参数，完整的形状见 [Expr JSON 序列化格式](../extensibility/expr-serialization.md)。排序与分页是另外两层片段，第 4 节会把它们加进同一份 JSON。反序列化只需要一行代码，得到的结果既可以是逻辑条件，也可以是带排序分页的片段链：
+一次反序列化得到整条查询，计数取其中的条件、当页使用整条查询（`GetFilter` 的实现见 1.4）：
 
 ```csharp
 Expr query = JsonSerializer.Deserialize<Expr>(queryJson)!;
+LogicExpr? filter = GetFilter(query);
+
+int total = await orderService.CountAsync(filter, cancellationToken: ct);
+List<SaleOrder> items = await orderService.SearchAsync(query, cancellationToken: ct);
 ```
 
-生产环境应先用 `ExprValidator` 校验这份 JSON，并限制前端可引用的字段，具体做法见[安全性](../advanced-topics/security.md)。可选条件不存在时，`$and` 数组里就没有对应节点，生成的 SQL 自然不会多出条件。
+关键点：
+
+- `$` 开头的键表示操作符或片段类型，`#` 表示列，`@` 表示参数，完整的形状见 [Expr JSON 序列化格式](../extensibility/expr-serialization.md)。
+- 片段按层嵌套：`$section` 包住 `$orderby`，`$orderby` 包住 `$where`；每层的内层片段放在 `$标记` 对应的键上，自己的属性（`Skip` / `Take`、`OrderBys`、`Where`）与标记同级。
+- 可选条件不存在时，`$and` 数组里就没有对应节点，生成的 SQL 自然也不会多出条件。
+- 部门树使用 `$sql` 片段（见 §3），最近 7 天使用 `Now` / `AddDays` 函数（见 2.2）；它们和其它条件一样最终参数化为 `@0`、`@1`。`DeptSubTree` 处理器必须已在当前进程注册，否则片段会被渲染为空（见 5.4）。
+- 排序在 `Amount` 之后追加 `Id` 作为唯一列兜底，避免翻页出现重复行或漏行。
+- 两条语句共用同一次反序列化的结果：`CountAsync` 只拿 `filter`，`SearchAsync` 拿整条 `query`，排序与分页不会进入计数 SQL。
+- 生产环境应先用 `ExprValidator` 校验这份 JSON，并限制前端可引用的字段与操作符，具体做法见[安全性](../advanced-topics/security.md)。
 
 ### 1.4 从查询中提取过滤条件
 
@@ -93,7 +119,6 @@ static LogicExpr? GetFilter(Expr? query)
 | Lambda 语法、闭包变量参数化、多参数 Lambda | [Lambda 指南](../core-usage/lambda-guide.md) |
 | `RegisterMethodHandler` / `RegisterMemberHandler` 机制 | [表达式扩展](../extensibility/expression-extension.md) |
 | `Expr.Lambda`、`AsValue()`、Lambda 与 Expr 互转 | [Lambda 与 Expr 组合](../core-usage/lambda-expr-mixing.md) |
-| `ExprString` 插值、嵌入 `Expr`、`[列名]` 占位 | [ExprString 指南](../core-usage/exprstring-guide.md) |
 | Expr 的 JSON 形状、操作符标记 | [Expr JSON 序列化格式](../extensibility/expr-serialization.md) |
 | 前端直接构造 Expr JSON | [前端原生 Expr 查询](../extensibility/frontend-native-expr.md) |
 | 方言分页原理与 `Section` / `Skip` / `Take` | [自定义分页](../advanced-topics/custom-paging.md) |
@@ -101,19 +126,11 @@ static LogicExpr? GetFilter(Expr? query)
 | 分组聚合与投影对比 | [按需投影](./query-projection.md) |
 | 自定义函数映射与 `SqlBuilder` 扩展 | [自定义 SqlBuilder / 方言扩展](../extensibility/custom-sqlbuilder.md) |
 
-## 2. 第一步：执行本部门 + 最近 7 天 + 可选条件
+## 2. 过滤条件：本部门、最近 7 天与可选条件
 
-反序列化得到的 `query` 可以直接交给 DAO，先只查本部门，把从 JSON 到 SQL 的链路跑通。
+1.3 的完整查询已经可以直接执行；下面解释过滤条件本身：计数与当页的分工、最近 7 天的两种写法，以及可选条件的展开方式。
 
-### 2.1 直接执行反序列化结果
-
-```csharp
-Expr query = JsonSerializer.Deserialize<Expr>(queryJson)!;
-LogicExpr? filter = GetFilter(query);
-
-int total = await orderService.CountAsync(filter, cancellationToken: ct);
-List<SaleOrder> items = await orderService.SearchAsync(query, cancellationToken: ct);
-```
+### 2.1 计数与当页的分工
 
 `CountAsync` 只接受条件，内部会把它包装成 `WHERE` 并渲染 `SELECT Count(1)`，所以计数 SQL 不会带上排序和分页；`SearchAsync` 接受任意 `Expr`，内部用 Service 的实体类型补齐表与查询列，排序和分页会原样渲染。`$and` 里可以放任意多个条件，也可以只放一条，参数值全部由 `@` 节点携带并最终进入 `context.OutputParams`，不会被拼进 SQL 文本。`contains` 节点对应 Lambda 的 `Contains`，框架会给参数补上两侧通配符并负责转义与参数化。
 
@@ -157,24 +174,9 @@ Expr.Const(DateTime.Now.AddDays(-7));
 
 选择原则取决于条件要表达的是规则还是事实。实时看板适合用函数，因为每次执行都以数据库当前时间为准，条件保存后也永远表示「最近 7 天」；对账、导出和审计快照适合用参数，因为时间窗口被冻结进条件，之后重跑的结果保持不变。两种写法都能保存和重载，区别见 5.2。
 
-### 2.3 这一步的 SQL
+## 3. 部门树过滤
 
-请求 `DeptId=1001, Days=7, Status=1, MinAmount=100, Keyword="SO2026"` 时，这一份最小查询渲染结果如下。JSON 里没有 SELECT 片段，`SearchAsync` 已经按 `SaleOrder` 补齐了全部列，所以 SQL 仍然是明确的列清单而不是 `*`：
-
-```sql
-SELECT "T0"."Id", "T0"."OrderNo", "T0"."DeptId", "T0"."Status", "T0"."Amount", "T0"."CreatedTime"
-FROM "Orders" "T0"
-WHERE "T0"."DeptId" = @0
- AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@1 AS TEXT)||' days')
- AND "T0"."Status" = @2 AND "T0"."Amount" >= @3 AND "T0"."OrderNo" LIKE @4
--- @0 = 1001, @1 = -7, @2 = 1, @3 = 100, @4 = %SO2026%
-```
-
-此时 JSON 里还没有排序和分页层，所以 SQL 也没有 `ORDER BY` 与 `LIMIT`。排序和分页会在第 4 节作为查询 JSON 的另外两层加入，现在先解决 `DeptId = @0` 只覆盖本部门的问题。
-
-## 3. 第二步：把本部门扩展为部门树
-
-需求是查询某部门及其所有下级部门，因此需要把 JSON 里的 `"$": "=="` 换成 `"$": "in"`，右值换成子树片段，其余条件保持不变。难点在于子树如何落到 SQL 里：Oracle 使用 `CONNECT BY`，其它方言使用递归 CTE。
+1.3 的查询用部门子树替换了本部门的等值条件：`"$": "in"` 的右值不再是部门 Id，而是一个子树片段，其余条件保持不变。难点在于子树如何落到 SQL 里：Oracle 使用 `CONNECT BY`，其它方言使用递归 CTE。
 
 下面两种方式实现同一个 `DeptSubTree` 片段，任选其一即可，3.4 给出两种方式对应的 JSON。
 
@@ -387,7 +389,7 @@ LambdaExprConverter.RegisterMethodHandler(
 
 只替换这一个条件节点而保持其余节点不动，得到的就是「部门树 + 最近 7 天 + 可选条件」这份新的查询 JSON。
 
-## 4. 第三步：把排序与分页写进 JSON
+## 4. 动态排序与分页
 
 ### 4.1 排序与分页的 JSON 形状
 
@@ -431,16 +433,7 @@ MySQL 的分页写作 ``LIMIT 20,20``，Oracle 写作 `OFFSET 20 ROWS FETCH NEXT
 
 ### 4.2 用同一份 filter 取总数与当页
 
-`query` 由一次反序列化得到，`filter` 是从它里面提取出来的条件，两者分别用于计数与当页：
-
-```csharp
-LogicExpr? filter = GetFilter(query);
-
-int total = await orderService.CountAsync(filter, cancellationToken: ct);
-List<SaleOrder> items = await orderService.SearchAsync(query, cancellationToken: ct);
-```
-
-计数 SQL 没有 `ORDER BY` 和 `LIMIT`，因为它只拿到 `filter`：
+`query` 由一次反序列化得到，`filter` 是从它里面提取出来的条件（执行代码见 1.3），两者分别用于计数与当页。计数 SQL 没有 `ORDER BY` 和 `LIMIT`，因为它只拿到 `filter`：
 
 ```sql
 SELECT Count(1)
@@ -476,7 +469,7 @@ LIMIT 20 OFFSET 20
 - 排序必须额外指定一个唯一列兜底（这里是 `Id`），否则翻页时可能出现重复行或漏行。
 - 表由 Service 的实体类型决定，JSON 只描述条件、排序和分页，因此计数与当页一定落在同一张表上。
 
-## 5. 第四步：保存与重载查询条件
+## 5. 条件持久化
 
 ### 5.1 保存条件而不是整份查询
 
@@ -520,11 +513,11 @@ query = SetFilter(query, saved & (Expr.Prop(nameof(SaleOrder.Amount)) >= 500));
 
 `DeptSubTree` 的处理器必须在当前进程注册过，例如在启动时调用 `DeptSubTree.Register()` 或 `DeptSubTreeFunction.Register()`。否则重载得到的条件在生成 SQL 时找不到对应的 key，原本应该出现的子查询就会被渲染成空片段。
 
-## 6. 组装：完整查询方法
+## 6. 完整查询方法
 
-前面每一步都只增加了一个能力，现在按调用顺序把它们合起来。
+把上述能力组合成一个可直接使用的查询方法。入口有两种：反序列化前端提交的查询 JSON，或用 Lambda 构造 `IQueryable<T>` 后传入解析。
 
-### 6.1 Service：总数与当页
+### 6.1 JSON 入口：总数与当页
 
 ```csharp
 public sealed record OrderPage(int Total, List<SaleOrder> Items);
@@ -552,40 +545,65 @@ public sealed class OrderListService
 
 `GetFilter`（1.4）与 `SetFilter`（5.1）放在同一个类里，应用启动时调用一次 `DeptSubTree.Register()` 或 `DeptSubTreeFunction.Register()`。保存与重载条件按第 5 节的方式处理即可，`QueryAsync` 的其余部分不需要修改。
 
-### 6.2 同一页面的状态汇总：ExprString 混用
+### 6.2 Lambda 入口：构造 Query 对象后传入解析
 
-列表页用 JSON 传条件，而同一页面上的「状态汇总」用 `ExprString` 更直观，因为它是手写 SQL 加嵌入式 `Expr`，可以直接复用提取出来的 `filter`：
+条件来自服务端时，可以完全跳过 JSON，用 Lambda 直接构造 `IQueryable<SaleOrder>`，再把这个构造好的 Query 对象传给 `SearchAsync` / `Search` 的 `IQueryable<T>` 重载，由框架解析成 `Expr` 并执行。下面两个方法可以并入 6.1 的 `OrderListService`：
 
 ```csharp
-public class OrderDAO : ObjectViewDAO<SaleOrder>
-{
-    public OrderDAO(SessionManager sessionManager) : base(sessionManager) { }
+public sealed record OrderCriteria(
+    int DeptId,
+    int? Status,
+    decimal? MinAmount,
+    string? Keyword,
+    int Skip,
+    int Take);
 
-    public Task<List<StatusSummary>> QueryStatusSummaryAsync(LogicExpr filter, CancellationToken ct = default)
-        => SearchAs<StatusSummary>(
-                $"SELECT [Status], COUNT(1) AS [Total] FROM {From} WHERE {filter} GROUP BY [Status]")
-            .ToListAsync(ct);
+public IQueryable<SaleOrder> BuildQuery(OrderCriteria criteria)
+{
+    IQueryable<SaleOrder> query = Expr.From<SaleOrder>()
+        .Where(o => o.InDeptSubTree(criteria.DeptId))
+        .Where(o => o.CreatedTime >= DateTime.Now.AddDays(-7));
+
+    // 可选条件按需追加；重复 Where 会在解析时合并为同一个条件（AND）
+    if (criteria.Status.HasValue)
+        query = query.Where(o => o.Status == criteria.Status.Value);
+    if (criteria.MinAmount.HasValue)
+        query = query.Where(o => o.Amount >= criteria.MinAmount.Value);
+    if (!string.IsNullOrWhiteSpace(criteria.Keyword))
+        query = query.Where(o => o.OrderNo.Contains(criteria.Keyword));
+
+    return query
+        .OrderByDescending(o => o.Amount)
+        .ThenByDescending(o => o.Id)
+        .Skip(criteria.Skip)
+        .Take(criteria.Take);
+}
+
+public async Task<OrderPage> QueryByLambdaAsync(OrderCriteria criteria, CancellationToken ct = default)
+{
+    IQueryable<SaleOrder> query = BuildQuery(criteria);
+
+    // 把构造好的 Query 对象解析成 Expr；仅拼表达式，不需要执行器
+    Expr queryExpr = query.GetQueryExpr();
+    LogicExpr? filter = GetFilter(queryExpr);
+
+    int total = await _orders.CountAsync(filter, cancellationToken: ct);
+    List<SaleOrder> items = await _orders.SearchAsync(query, cancellationToken: ct);
+
+    return new OrderPage(total, items);
 }
 ```
 
-渲染结果为：
+`Expr.From<SaleOrder>()` 返回 `QuerySource<SaleOrder>`，它实现 `IQueryable<T>`，因此 `Where` / `OrderByDescending` / `Skip` / `Take` 都是标准 LINQ 算子。传入 `SearchAsync(IQueryable<T>)` / `Search(IQueryable<T>)` 时，框架用同一个 `LambdaExprConverter` 把表达式树解析成 `Expr`，后续 SQL 生成与参数绑定和 JSON 入口完全一致。
 
-```sql
-SELECT "Status", COUNT(1) AS "Total"
-FROM "Orders" "T0"
-WHERE "DeptId" IN (WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
-    FROM "Departments" "T1"
-    WHERE "T1"."Id" = @0
-    UNION ALL SELECT "T2"."Id"
-      FROM "Departments" "T2"
-      LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
-SELECT "Id"
-  FROM "DeptTree")
- AND "CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@1 AS TEXT)||' days')
-GROUP BY "Status"
-```
+要点：
 
-`{From}` 是 DAO 的预定义标记，会被替换为表或视图以及连接；`filter` 是插值进来的 `Expr`，直接展开成 SQL 片段并共用同一个参数集合。上面渲染结果里的 `filter` 没有表别名前缀（例如 `"DeptId"`），因为 `ExprString` 的上下文已经注册了主表，单表查询时会省略别名。手写片段里的 `[列名]` 会按当前方言替换成真实的引用符，SQLite 为 `"`，MySQL 为 `` ` ``。
+- **构造阶段不执行查询。** `Expr.From<T>()` 返回的查询源没有绑定执行器，只用于拼表达式；直接枚举会抛 `InvalidOperationException`。要取数就把它传给 `SearchAsync` / `Search`，或从容器取已绑定执行器的 `QuerySource<T>`，再用 `.AsSource()` 调用异步方法。
+- **计数与当页仍然同源。** 可选条件通过追加 `Where` 实现，重复 `Where` 在解析时原地合并成一个条件，因此 `GetFilter(queryExpr)` 拿到的是完整条件，计数不会漏掉其中任何一层。
+- **「最近 7 天」的语义由写法决定。** `DateTime.Now.AddDays(-7)` 在解析阶段变成 `Now()` 与 `AddDays` 函数，等价于 2.2 的函数形式；如果要冻结时间窗口，先在 Lambda 外把时间算好，再用闭包变量捕获，它会成为参数。
+- **部门树依赖 Lambda 处理器。** `InDeptSubTree` 需要按 3.1.3 注册方法处理器；未注册时解析器无法识别这个调用。
+- **动态排序仍要收口。** 排序列来自前端时，把它映射成固定的 `switch` 分支（每个分支写一条 Lambda 排序），不要让用户字符串直接进入查询；JSON 入口则继续交给 `$orderby` 与 `ExprValidator` 校验。
+- **与 JSON 入口的分工。** Lambda 入口的字段名由编译期成员访问确定，不需要字段白名单，适合服务端固定条件；JSON 入口适合前端动态组装条件。两条路径最终生成同一棵 `Expr` 树，可以按调用方混用，也可以按 §5 的方式把 Lambda 产生的 `filter` 序列化保存。
 
 ## 7. 和其他 ORM 的对照
 
@@ -646,7 +664,7 @@ Console.WriteLine(sqlGen.ToSql(GetFilter(query)!).Sql == sqlGen.ToSql(reloaded).
 
 ### 8.4 对照执行期 SQL 与调试清单
 
-执行期的 SQL 可以从 `SessionManager.Current?.SqlStack` 取得，它最多保留最后 10 条，并且每次调用 `Service` 方法后都会被清空。`SqlGen` 只验证生成逻辑，不验证参数类型，也不验证数据库函数是否存在，因此上线前仍要用真实方言跑一次。
+执行期的 SQL 可以从 `SessionManager.Current?.SqlStack` 取得，它最多保留最后 10 条。使用 DI 时，`ServiceInvokeInterceptor` 会在每次 Service 方法调用结束时清空它；只用核心库（不经过 Service 拦截器）时不会自动清空，需要手动调用 `SessionManager.Reset()`。`SqlGen` 只验证生成逻辑，不验证参数类型，也不验证数据库函数是否存在，因此上线前仍要用真实方言跑一次。
 
 遇到问题时可以按下面的顺序排查：
 
@@ -664,4 +682,4 @@ Console.WriteLine(sqlGen.ToSql(GetFilter(query)!).Sql == sqlGen.ToSql(reloaded).
 - 接收前端 JSON 时，必须用 `ExprValidator` 限制表达式类型与字段范围，不能把任意 JSON 直接送进 SQL 生成；排序字段与筛选字段可以在这同一处限制。
 - 计数只使用提取出的 `Where`，表由 Service 的实体类型决定，因此查询 JSON 不需要也不应该再指定表。
 - 树形处理器只解决「向下找部门」这一种语义；向上找父链、按层聚合等需求应另写片段，不要把多个语义塞进同一个 key。
-- 相关链接：[查询总览](../core-usage/query-overview.md)、[Lambda 指南](../core-usage/lambda-guide.md)、[关联查询](../core-usage/associations.md)、[表达式扩展](../extensibility/expression-extension.md)、[Lambda 与 Expr 组合](../core-usage/lambda-expr-mixing.md)、[ExprString 指南](../core-usage/exprstring-guide.md)、[Expr JSON 序列化格式](../extensibility/expr-serialization.md)、[前端原生 Expr 查询](../extensibility/frontend-native-expr.md)、[按需投影](./query-projection.md)、[自定义分页](../advanced-topics/custom-paging.md)、[CTE 指南](../core-usage/cte-guide.md)、[分表与 TableArgs](../advanced-topics/sharding-and-tableargs.md)、[自定义 SqlBuilder / 方言扩展](../extensibility/custom-sqlbuilder.md)。
+- 相关链接：[查询总览](../core-usage/query-overview.md)、[Lambda 指南](../core-usage/lambda-guide.md)、[关联查询](../core-usage/associations.md)、[表达式扩展](../extensibility/expression-extension.md)、[Lambda 与 Expr 组合](../core-usage/lambda-expr-mixing.md)、[Expr JSON 序列化格式](../extensibility/expr-serialization.md)、[前端原生 Expr 查询](../extensibility/frontend-native-expr.md)、[按需投影](./query-projection.md)、[自定义分页](../advanced-topics/custom-paging.md)、[CTE 指南](../core-usage/cte-guide.md)、[分表与 TableArgs](../advanced-topics/sharding-and-tableargs.md)、[自定义 SqlBuilder / 方言扩展](../extensibility/custom-sqlbuilder.md)。

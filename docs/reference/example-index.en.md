@@ -52,7 +52,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 ### Complex queries: department trees, last 7 days, dynamic sorting/paging and saved conditions
 
-- Entry doc: [Complex Queries in Practice](../typical-applications/complex-queries.en.md)
+- Entry doc: [Complex Query Examples](../typical-applications/complex-queries.en.md)
 - Code sources:
   - `LiteOrm.Tests\Converter\LambdaExprConverterTests.cs`
   - `LiteOrm.Tests\Expr\GenericSqlExprTests.cs`

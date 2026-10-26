@@ -207,8 +207,8 @@ Actual window function SQL depends on your registered function handlers and data
 ## 10. How to View Real SQL
 
 - `SessionManager.Current?.SqlStack` provides the SQL executed in the current session.
-- `SqlStack` keeps up to 10 recent SQL statements and clears after each `Service` method call.
-- To inspect the SQL a query or fragment will produce without touching a database, see [Complex Queries in Practice · Debugging queries with SqlGen](../typical-applications/complex-queries.en.md#8-debugging-queries-with-sqlgen).
+- `SqlStack` keeps up to 10 recent SQL statements. With DI, `ServiceInvokeInterceptor` clears it after each `Service` method call; when the core library is used alone it is not cleared automatically, and you must call `SessionManager.Reset()` yourself.
+- To inspect the SQL a query or fragment will produce without touching a database, see [Complex Query Examples · Debugging queries with SqlGen](../typical-applications/complex-queries.en.md#8-debugging-queries-with-sqlgen).
 
 ## Related Links
 

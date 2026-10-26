@@ -52,7 +52,7 @@
 
 ### 复杂查询：部门树、最近 7 天、动态排序分页与条件持久化
 
-- 文档入口：[复杂查询实战](../typical-applications/complex-queries.md)
+- 文档入口：[复杂查询实例](../typical-applications/complex-queries.md)
 - 代码来源：
   - `LiteOrm.Tests\Converter\LambdaExprConverterTests.cs`
   - `LiteOrm.Tests\Expr\GenericSqlExprTests.cs`
