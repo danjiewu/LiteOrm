@@ -100,7 +100,7 @@ namespace LiteOrm.Common
         /// </summary>
         public override Expr Clone()
         {
-            var g = new GenericSqlExpr(this.Key) { Arg = this.Arg };
+            var g = new GenericSqlExpr(this.Key) { Arg = this.Arg?.Clone() };
             return g;
         }
 

@@ -1325,7 +1325,6 @@ namespace LiteOrm.Common
             if (constFilter == null) return null;
             if (string.IsNullOrEmpty(tableAlias)) return constFilter;
 
-            // Clone 保持具体类型不变，因此可安全还原为 LogicExpr
             LogicExpr aliasedFilter = (LogicExpr)constFilter.Clone();
             ExprVisitor.Visit(node =>
             {
