@@ -1,5 +1,21 @@
 # Changelog
 
+## v8.1.14 (2026-10-28)
+
+### New Features
+
+- **`SqlBuildContext` gains CTE collection and `Init()`** (`LiteOrm.Common`): the context exposes a new `CommonTableExprs` list that receives every `CommonTableExpr` encountered while rendering, plus `Init()`, which resets the scope, alias sequence and collected CTEs while keeping the constructor's table/alias, `TableArgs`, `SingleTable` and `OutputParams`.
+
+### Improvements
+
+- **CTEs are collected while rendering** (`LiteOrm.Common`): the pre-render walk over the whole expression tree is removed; the `CommonTableExpr` rendering path now calls `SqlBuildContext.AddCommonTableExpr`. That method walks the definition body once in post-order, collecting referenced CTEs (dependencies first) before itself, deduplicates by alias, throws on differing definitions, and moves alias-only nodes to the end once a full definition arrives. After the main query is rendered, the `WITH` / `WITH RECURSIVE` clause is emitted once at the front of the statement.
+
+- **`Expr.ToSql(...)` takes an `isRoot` parameter** (`LiteOrm.Common`): `ToSql(this Expr expr, SqlBuildContext context, bool isRoot = false)` calls `Init()` and emits the `WITH` clause only when `isRoot` is `true`; nested rendering such as function handlers and `GenericSqlExpr` callbacks keeps the default `false`, leaves the context untouched, and the CTEs they collect are emitted by the outermost call. `ToPreparedSql` always renders as a root.
+
+- **`WITH` parameters follow SQL text order** (`LiteOrm.Common`): `BuildCteSql` moves the parameters produced while rendering CTE definitions to the front of `OutputParams` so the collection matches the SQL text. CTE parameter numbering differs from 8.1.13 (body conditions first, CTEs after); parameters bind by name, so execution is unaffected.
+
+***
+
 ## v8.1.13 (2026-10-22)
 
 ### Breaking changes

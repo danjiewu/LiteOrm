@@ -2,11 +2,11 @@
   <PropertyGroup>
     <TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
     <RootNamespace>LiteOrm.Common</RootNamespace>
-    <AssemblyVersion>8.1.13.0</AssemblyVersion>
-    <FileVersion>8.1.13.0</FileVersion>
+    <AssemblyVersion>8.1.14.0</AssemblyVersion>
+    <FileVersion>8.1.14.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <VersionPrefix>8.1.13</VersionPrefix>
+    <VersionPrefix>8.1.14</VersionPrefix>
     <Nullable>enable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
@@ -16,14 +16,11 @@
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
-      8.1.13:
-      - 新增 QuerySource&lt;T&gt; 查询源：可传 IQuerySourceExecutor&lt;T&gt; 直接取数，Where/Select 之后用 AsSource() 收窄后可用异步方法；GetQueryExpr() 把查询链转成 Expr，不需要执行器。
-      - 新增 Service 和 DAO 的 IQueryable 的查询重载。
-      - 破坏性变更：删除 Expr.Exists/Expr.ExistsRelated 的 LogicExpr 泛型重载与 Where&lt;T&gt; Lambda 扩展方法；删除 TableRef 抽象类，JoinedTable 改为直接继承 SqlObject。
-      - 新增 Expr.From&lt;T1&gt;() 返回 QuerySource&lt;T1&gt;。      
-      - 新增 Join&lt;T2&gt; / JoinRelated&lt;T2&gt;，另提供 Join&lt;T2,...,T7&gt; / JoinRelated&lt;T2,...,T7&gt; 多表重载。
-      - Lambda 支持根级聚合：Count/Sum/Average/Max/Min 等可在 IQueryable Lambda 内直接解析。
-      - AOT 下 [TableJoin]/[ForeignType]/[ForeignColumn] 与 [Column(Constant = ...)] 由 TableInfoGenerator 编译期写入 TableInfo，CommonTableInfoProvider 装配出完整的 TableView 与 TableDefinition.ConstFilter。
+      8.1.14:
+      - 新增 SqlBuildContext.CommonTableExprs 与 Init()：渲染过程中出现的 CommonTableExpr 会收集到上下文，主查询渲染完成后统一拼出 WITH / WITH RECURSIVE；Init() 重置作用域、别名序列与已收集的 CTE，保留 TableArgs、SingleTable 与 OutputParams。
+      - CTE 改为渲染时收集：删除渲染前遍历表达式树预收集的逻辑；AddCommonTableExpr 对定义主体做一次后序遍历，先收集被引用的 CTE（依赖在先）再收集自身，同别名去重、定义不同抛异常。
+      - 新增 Expr.ToSql(Expr, SqlBuildContext, bool isRoot = false)：只有根节点调用 Init() 并输出 WITH 子句，函数处理器等嵌套渲染保持默认 false，不重置上下文；ToPreparedSql 始终按根节点调用。
+      - WITH 子句参数在 OutputParams 中前移到主体条件之前，与 SQL 文本顺序一致（参数按名称绑定，编号相对 8.1.13 有变化，不影响执行）。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

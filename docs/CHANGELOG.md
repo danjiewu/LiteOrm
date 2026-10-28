@@ -1,5 +1,21 @@
 # 变更日志 (Changelog)
 
+## v8.1.14 (2026-10-28)
+
+### 新特性
+
+- **`SqlBuildContext` 增加 CTE 收集与 `Init()`**（`LiteOrm.Common`）：上下文新增 `CommonTableExprs` 列表，渲染过程中出现的 `CommonTableExpr` 会写入其中；新增 `Init()` 重置作用域、表别名序列与已收集的 CTE，同时保留构造时的表 / 别名、`TableArgs`、`SingleTable` 与 `OutputParams`。
+
+### 改进
+
+- **CTE 改为渲染时收集**（`LiteOrm.Common`）：删除渲染前遍历整棵表达式树预收集 CTE 的逻辑，改由 `CommonTableExpr` 渲染时调用 `SqlBuildContext.AddCommonTableExpr`。该方法对定义主体做一次后序遍历，先收集被引用的 CTE（依赖在先）再收集自身；同别名去重、定义不同抛异常，仅别名的节点在遇到完整定义时移到末尾。主查询渲染完成后统一拼出 `WITH` / `WITH RECURSIVE` 并置于语句最前。
+
+- **`Expr.ToSql(...)` 增加 `isRoot` 参数**（`LiteOrm.Common`）：`ToSql(this Expr expr, SqlBuildContext context, bool isRoot = false)` 只在 `isRoot` 为 `true` 时调用 `Init()` 并输出 `WITH` 子句；函数处理器、`GenericSqlExpr` 回调等嵌套渲染保持默认 `false`，不会重置上下文，其收集到的 CTE 由最外层统一输出。`ToPreparedSql` 始终按根节点调用。
+
+- **`WITH` 子句参数与 SQL 文本顺序一致**（`LiteOrm.Common`）：`BuildCteSql` 把 CTE 渲染期间产生的参数在 `OutputParams` 中前移，使集合顺序与 SQL 文本一致。CTE 参数编号相对 8.1.13 有变化（主体条件在前、CTE 在后），参数按名称绑定，不影响执行。
+
+***
+
 ## v8.1.13 (2026-10-22)
 
 ### 破坏性变更
