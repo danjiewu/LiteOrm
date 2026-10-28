@@ -8,6 +8,10 @@ namespace LiteOrm.Common
     /// </summary>
     public class SqlBuildContext
     {
+        private readonly SqlTable? _table;
+        private readonly string? _aliasName;
+        private readonly string[]? _tableArgs;
+
         /// <summary>
         /// 使用指定的 SQL 构建器初始化 <see cref="SqlBuildContext"/> 类的新实例
         /// </summary>
@@ -15,7 +19,7 @@ namespace LiteOrm.Common
         public SqlBuildContext(ISqlBuilder sqlBuilder)
         {
             SqlBuilder = sqlBuilder ?? throw new ArgumentNullException(nameof(sqlBuilder));
-            CurrentScope = new SqlScopeContext();
+            Init();
         }
 
         /// <summary>
@@ -28,15 +32,34 @@ namespace LiteOrm.Common
         public SqlBuildContext(ISqlBuilder sqlBuilder, SqlTable? table, string aliasName, string[]? tableArgs)
         {
             SqlBuilder = sqlBuilder ?? throw new ArgumentNullException(nameof(sqlBuilder));
+            _table = table;
+            _aliasName = aliasName;
+            _tableArgs = tableArgs;
+            Init();
+        }
+
+        /// <summary>
+        /// 重置上下文的渲染状态：丢弃渲染过程中累积的作用域、表别名映射、表别名序列与已收集的 CTE，
+        /// 回到构造时的根作用域配置。<see cref="TableArgs"/>、<see cref="SingleTable"/> 等调用方配置保持不变，
+        /// <see cref="OutputParams"/> 由调用方管理，不做清空。顶层调用 <see cref="ExprSqlConverter.ToSql(Expr, SqlBuildContext, bool)"/>（<c>isRoot</c> 为 <see langword="true"/>）时会自动调用该方法。
+        /// </summary>
+        public void Init()
+        {
+            string[]? tableArgs = CurrentScope?.TableArgs is { Length: > 0 } args ? args : _tableArgs;
+            bool singleTable = CurrentScope?.SingleTable ?? false;
+
             CurrentScope = new SqlScopeContext
             {
-                DefaultTableAliasName = aliasName,
-                TableArgs = tableArgs
+                DefaultTableAliasName = _aliasName,
+                TableArgs = tableArgs,
+                SingleTable = singleTable
             };
-            if (table != null)
+            if (_table != null)
             {
-                CurrentScope.AddTableAlias(aliasName ?? Constants.DefaultTableAlias, table);
+                CurrentScope.AddTableAlias(_aliasName ?? Constants.DefaultTableAlias, _table);
             }
+            Sequence = 1;
+            _commonTableExprs.Clear();
         }
 
         private ICollection<Param>? _outputParams;
@@ -54,6 +77,68 @@ namespace LiteOrm.Common
         {
             get => _outputParams ??= new List<Param>();
             set => _outputParams = value;
+        }
+
+        private readonly List<CommonTableExpr> _commonTableExprs = new List<CommonTableExpr>();
+
+        /// <summary>
+        /// 渲染过程中收集到的公共表表达式（CTE）节点，按出现顺序排列，包含完整定义与仅别名引用的节点。
+        /// 主查询渲染完成后，由 <see cref="ExprSqlConverter"/> 据此拼出 WITH 子句。
+        /// </summary>
+        public IReadOnlyList<CommonTableExpr> CommonTableExprs => _commonTableExprs;
+
+        /// <summary>
+        /// 收集一个 CTE 节点：先后序遍历定义主体，一次性收集其中引用的 CTE（依赖在先），再收集自身。
+        /// </summary>
+        /// <param name="cte">要收集的 CTE 节点</param>
+        internal void AddCommonTableExpr(CommonTableExpr cte)
+        {
+            // 后序遍历定义主体，一次性收集其中引用的 CTE，避免逐节点递归重复遍历
+            if (cte.Source != null)
+            {
+                ExprVisitor.Visit(node =>
+                {
+                    if (node is CommonTableExpr nested) AddCteNode(nested);
+                }, cte.Source, ExprVisitOrder.PostOrder);
+            }
+
+            AddCteNode(cte);
+        }
+
+        /// <summary>
+        /// 将单个 CTE 节点合并到收集列表。同别名只保留一份：完整定义相等时去重，不同定义时抛出异常。
+        /// 仅别名引用的节点在遇到完整定义时被替换，保证定义能够写入 WITH 子句；
+        /// 替换后的定义移动到列表末尾，使其依赖的定义（先被收集）排在它前面。
+        /// </summary>
+        /// <param name="cte">要合并的 CTE 节点</param>
+        private void AddCteNode(CommonTableExpr cte)
+        {
+            if (string.IsNullOrEmpty(cte.Alias)) return;
+
+            for (int i = 0; i < _commonTableExprs.Count; i++)
+            {
+                CommonTableExpr existing = _commonTableExprs[i];
+                if (!string.Equals(existing.Alias, cte.Alias, StringComparison.OrdinalIgnoreCase)) continue;
+
+                // 仅别名引用不携带定义，遇到已有定义时忽略
+                if (cte.Source == null) return;
+
+                if (existing.Source == null)
+                {
+                    // 之前只收集到别名引用（如递归自引用），补上完整定义并排序到末尾
+                    _commonTableExprs.RemoveAt(i);
+                    _commonTableExprs.Add(cte);
+                    return;
+                }
+
+                if (!Equals(existing.Source, cte.Source))
+                {
+                    throw new InvalidOperationException($"CTE '{cte.Alias}' has multiple different definitions.");
+                }
+                return;
+            }
+
+            _commonTableExprs.Add(cte);
         }
 
         /// <summary>

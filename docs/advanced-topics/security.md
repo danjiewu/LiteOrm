@@ -24,7 +24,7 @@ LiteOrm 的 SQL 注入防护采用**多层纵深防御**策略：
 LiteOrm 所有 SQL 值传递都通过 `SqlBuildContext.OutputParams` 集合完成：
 
 ```csharp
-public static string ToSql(this Expr expr, SqlBuildContext context)
+public static string ToSql(this Expr expr, SqlBuildContext context, bool isRoot = false)
 ```
 
 生成的 SQL 中使用参数占位符（如 `@0`、`@1`），值通过 `context.OutputParams` 独立传递，**从不将用户输入直接拼接到 SQL 字符串中**。
@@ -268,7 +268,7 @@ public sealed class GenericSqlExpr : LogicExpr
 }
 ```
 
-`Arg` 是 `Expr`：传入普通值用 `Expr.Value(...)`（`Expr.Sql(key, value)` / `GenericSqlExpr.Get(key, value)` 会自动包装为 `ValueExpr`）；回调内用 `arg.ToSql(context)` 渲染，字符串等值会自动参数化。
+`Arg` 是 `Expr`：传入普通值用 `Expr.Value(...)`（`Expr.Sql(key, value)` / `GenericSqlExpr.Get(key, value)` 会自动包装为 `ValueExpr`）；回调内用 `arg.ToSql(context)` 渲染，字符串等值会自动参数化（嵌套调用保持 `isRoot` 默认值 `false`，不会重置上下文；根节点调用需显式传 `true` 或改用 `ToPreparedSql`）。
 
 `GenericSqlExpr` 还实现了到 `ValueTypeExpr` 的隐式转换，动态片段可直接用在 SELECT 列、函数参数、计算列等值位置；参与运算符或扩展方法链时仍要显式调用 `AsValue()`。
 

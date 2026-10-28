@@ -118,100 +118,57 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="expr">表达式。</param>
         /// <param name="context">生成 SQL 的上下文环境，包含表信息、别名、SQL 构建器与输出参数集合。</param>
+        /// <param name="isRoot">
+        /// 是否为根节点。为 <c>true</c> 时先调用 <see cref="SqlBuildContext.Init"/> 重置上下文；默认 <c>false</c>，
+        /// 适用于函数处理器、<see cref="GenericSqlExpr"/> 回调等嵌套在渲染过程内部的场景。
+        /// </param>
         /// <returns>表示该表达式的 SQL 字符串片段，通常带有参数占位符。</returns>
-        /// <remarks>
-        /// 只接受完整查询或值、逻辑表达式作为根表达式。<see cref="WhereExpr"/>、<see cref="GroupByExpr"/>、<see cref="HavingExpr"/>、
-        /// <see cref="OrderByExpr"/>、<see cref="SectionExpr"/>、<see cref="TableJoinExpr"/> 等片段只作为查询结构的组成部分出现，
-        /// 不支持作为根表达式直接输出。
-        /// </remarks>
-        /// <exception cref="NotSupportedException">表达式类型不支持作为根表达式输出时抛出。</exception>
-        public static string ToSql(this Expr expr, SqlBuildContext context)
+        public static string ToSql(this Expr expr, SqlBuildContext context, bool isRoot = false)
         {
             if (expr == null) return string.Empty;
 
-            // 预收集 CTE 定义，通过后序遍历表达式树获取所有 CommonTableExpr 节点
-            var sb = ValueStringBuilder.Create(256);
-            if (context.SqlBuilder.SupportCteExpr)
-            {
-                var cteList = CollectCteExprs(expr);
+            // 根节点：先重置上下文，再渲染主体（渲染过程中出现的 CTE 会被收集），最后拼出 WITH 子句
+            if (isRoot) context.Init();
 
-                if (cteList.Count > 0)
-                {
-                    sb.Append(context.SqlBuilder.ExplicitRecursive ? "WITH RECURSIVE " : "WITH ");
-                    for (int i = 0; i < cteList.Count; i++)
-                    {
-                        if (i > 0) sb.Append(",");
-                        sb.Append(context.SqlBuilder.ToSqlName(cteList[i].Alias!));
-                        sb.Append(" AS ");
-                        ToSqlInternal(ref sb, cteList[i].Source, context, MaxPriority);
-                        sb.NewLine(0);
-                        context.AddTableAlias(cteList[i].Alias!, null);
-                    }
-                    context.DefaultTableAliasName = null;// CTE 定义中的别名不应影响主查询的默认表别名解析
-                }
-            }
+            var sb = ValueStringBuilder.Create(256);
             ToSqlInternal(ref sb, expr, context);
-            string res = sb.ToString();
+            string sql = sb.ToString();
             sb.Dispose();
-            return res;
+
+            if (isRoot && context.SqlBuilder.SupportCteExpr && context.CommonTableExprs.Count > 0)
+            {
+                sql = $"{BuildCteSql(context)}{sql}";
+            }
+            return sql;
         }
 
-        private static List<CommonTableExpr> CollectCteExprs(Expr expr)
+        /// <summary>
+        /// 使用上下文中收集到的 CTE 定义拼出 WITH 子句。
+        /// CTE 在收集时已按依赖顺序排列（后序遍历保证依赖的定义先入列），此处按顺序输出即可。
+        /// </summary>
+        /// <param name="context">生成 SQL 的上下文环境。</param>
+        /// <returns>WITH 子句。</returns>
+        private static string BuildCteSql(SqlBuildContext context)
         {
-            var cteList = new List<CommonTableExpr>();
-            var cteMap = new Dictionary<string, CommonTableExpr>(StringComparer.Ordinal);
-            // 记录引用了但尚未找到定义的别名（可能是递归 CTE 的自引用，定义在后序遍历中会稍晚到达）。
-            var pendingRefs = new HashSet<string>(StringComparer.Ordinal);
-
-            ExprVisitor.Visit(node =>
+            var sb = ValueStringBuilder.Create(256);
+            sb.Append(context.SqlBuilder.ExplicitRecursive ? "WITH RECURSIVE " : "WITH ");
+            bool first = true;
+            for (int i = 0; i < context.CommonTableExprs.Count; i++)
             {
-                if (node is not CommonTableExpr cte || string.IsNullOrEmpty(cte.Alias))
-                {
-                    return true;
-                }
-
-                if (!cteMap.TryGetValue(cte.Alias!, out var existing))
-                {
-                    if (cte.Source != null)
-                    {
-                        // 定义节点：加入集合
-                        cteMap.Add(cte.Alias!, cte);
-                        cteList.Add(cte);
-                        // 定义已找到，从待解析集合中移除
-                        pendingRefs.Remove(cte.Alias!);
-                    }
-                    else
-                    {
-                        // 引用节点（Source == null）且别名未定义：
-                        // 可能是递归 CTE 的自引用（定义节点在后序遍历中会稍晚到达），暂记录，不报错。
-                        pendingRefs.Add(cte.Alias!);
-                    }
-                    return true;
-                }
-
-                // 别名已存在
-                if (cte.Source == null)
-                {
-                    // 只有别名的引用节点会复用首个完整定义，不再重复写入 WITH。
-                    return true;
-                }
-
-                // 定义节点：校验一致性
-                if (!Equals(existing.Source, cte.Source))
-                {
-                    throw new InvalidOperationException($"CTE '{cte.Alias}' has multiple different definitions.");
-                }
-
-                return true;
-            }, expr, ExprVisitOrder.PostOrder);
-
-            // 遍历结束后，检查是否有引用了但未定义的 CTE（排除递归自引用已找到定义的情况）
-            if (pendingRefs.Count > 0)
-            {
-                throw new InvalidOperationException($"CTE '{pendingRefs.First()}' is referenced but its definition is not available.");
+                CommonTableExpr cte = context.CommonTableExprs[i];
+                // 仍为仅别名引用的节点说明整棵树里没有对应定义，视为非法
+                if (cte.Source == null) throw new InvalidOperationException($"CTE '{cte.Alias}' is referenced but its definition is not available.");
+                if (!first) sb.Append(",");
+                first = false;
+                sb.Append(context.SqlBuilder.ToSqlName(cte.Alias!));
+                sb.Append(" AS ");
+                ToSqlInternal(ref sb, cte.Source, context, MaxPriority);
+                sb.NewLine(0);
             }
-
-            return cteList;
+            
+            string result = sb.ToString();
+            sb.Dispose();
+            return result;
         }
 
         /// <summary>
@@ -313,7 +270,7 @@ namespace LiteOrm.Common
         /// <returns>包含 SQL 语句和参数列表的 <see cref="PreparedSql"/> 实例。</returns>
         public static PreparedSql ToPreparedSql(this Expr expr, SqlBuildContext context)
         {
-            string sql = ToSql(expr, context);
+            string sql = ToSql(expr, context, true);
             return new PreparedSql(sql, context.OutputParams);
         }
 
@@ -323,12 +280,6 @@ namespace LiteOrm.Common
         /// <param name="expr">表达式。</param>
         /// <param name="sb">用于接收 SQL 片段的字符串构建器。</param>
         /// <param name="context">生成 SQL 的上下文环境，包含表信息、别名、SQL 构建器与输出参数集合。</param>
-        /// <remarks>
-        /// 与 <see cref="ToSql(Expr, SqlBuildContext)"/> 相同，只接受完整查询或值、逻辑表达式作为根表达式，
-        /// <see cref="WhereExpr"/>、<see cref="GroupByExpr"/>、<see cref="HavingExpr"/>、<see cref="OrderByExpr"/>、
-        /// <see cref="SectionExpr"/>、<see cref="TableJoinExpr"/> 等片段不能作为根表达式直接输出。
-        /// </remarks>
-        /// <exception cref="NotSupportedException">表达式类型不支持作为根表达式输出时抛出。</exception>
         public static void ToSql(this Expr expr, ref ValueStringBuilder sb, SqlBuildContext context)
         {
             ToSqlInternal(ref sb, expr, context);
@@ -1228,8 +1179,8 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 处理公共表表达式（CTE）。若 SqlBuilder 支持 CTE 则仅输出别名（CTE 定义已在顶层 WITH 子句中预生成）；
-        /// 否则按内联子查询方式展开。
+        /// 处理公共表表达式（CTE）。若 SqlBuilder 支持 CTE 则把节点收集到上下文（完整定义稍后统一生成 WITH 子句），
+        /// 当前位置只输出别名；否则按内联子查询方式展开。
         /// </summary>
         /// <param name="sb">用于接收 SQL 片段的字符串构建器。</param>
         /// <param name="expr">要转换的 CTE 表达式。</param>
@@ -1242,6 +1193,8 @@ namespace LiteOrm.Common
                 {
                     throw new InvalidOperationException("CTE alias cannot be null or empty when rendering a CTE reference.");
                 }
+                // 收集自身（内部会先递归收集定义主体中引用的 CTE），保证 WITH 中的定义按依赖顺序排列
+                context.AddCommonTableExpr(expr);
                 sb.Append(context.SqlBuilder.ToSqlName(expr.Alias!));
             }
             else

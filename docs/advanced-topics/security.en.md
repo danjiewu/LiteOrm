@@ -24,7 +24,7 @@ LiteOrm's SQL injection prevention uses a **multi-layered defense-in-depth** str
 All SQL value passing in LiteOrm goes through the `SqlBuildContext.OutputParams` collection:
 
 ```csharp
-public static string ToSql(this Expr expr, SqlBuildContext context)
+public static string ToSql(this Expr expr, SqlBuildContext context, bool isRoot = false)
 ```
 
 The generated SQL uses parameter placeholders (e.g., `@0`, `@1`), and values are passed independently through `context.OutputParams` — **user input is never directly concatenated into the SQL string**.
@@ -268,7 +268,7 @@ public sealed class GenericSqlExpr : LogicExpr
 }
 ```
 
-`Arg` is an `Expr`: pass plain values via `Expr.Value(...)` (`Expr.Sql(key, value)` / `GenericSqlExpr.Get(key, value)` wraps them into a `ValueExpr` automatically); inside the callback render it with `arg.ToSql(context)` — string values are parameterized automatically.
+`Arg` is an `Expr`: pass plain values via `Expr.Value(...)` (`Expr.Sql(key, value)` / `GenericSqlExpr.Get(key, value)` wraps them into a `ValueExpr` automatically); inside the callback render it with `arg.ToSql(context)` — string values are parameterized automatically (nested calls keep `isRoot` at its default `false` and do not reset the context; a root call must pass `true` explicitly or use `ToPreparedSql`).
 
 `GenericSqlExpr` also implements an implicit conversion to `ValueTypeExpr`, so the dynamic fragment can be used directly in value positions such as SELECT columns, function arguments, and computed columns; when it takes part in operators or extension method chains, call `AsValue()` explicitly.
 

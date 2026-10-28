@@ -95,13 +95,17 @@ The important part is:
 
 ## 5. Validation rules for duplicate CTE aliases
 
-LiteOrm now collects all CTEs in the expression tree and validates them by alias:
+CTE definitions are no longer collected by walking the whole expression tree up front. They are collected while rendering: the `CommonTableExpr` rendering path hands itself to `SqlBuildContext.AddCommonTableExpr`, which walks the definition body once in post-order to collect the CTEs it references (dependencies first) and then collects itself, while only the alias is emitted in place; once the main query is rendered, LiteOrm builds the `WITH` clause from the collected definitions in order and puts it at the front of the SQL.
 
-- Same alias with **equal definitions**: deduplicated automatically, only the first definition is kept in `WITH`
+Aliases are validated during collection:
+
+- Same alias with **equal definitions**: deduplicated automatically, only one definition is kept in `WITH`
 - Same alias with **different definitions**: throws `InvalidOperationException`
-- Alias-only reference without a prior full definition: throws
+- Alias-only reference with no full definition anywhere in the tree: throws
 
 So you can safely reuse the same CTE expression multiple times, or reuse the same alias across a large expression tree, as long as the definition stays identical.
+
+> A top-level call `expr.ToSql(context, true)` (`isRoot` set to `true`) or `expr.ToPreparedSql(context)` calls `context.Init()` automatically, which resets the scope, alias sequence and collected CTEs, so reusing the same context needs no manual cleanup. `OutputParams` belongs to the caller and is not cleared by `Init()`. Nested calls made during rendering (e.g. inside a function handler) keep `isRoot` at its default `false`, do not reset the context, and the CTEs they collect are emitted by the outermost call.
 
 ### 5.1 Recursive CTE
 

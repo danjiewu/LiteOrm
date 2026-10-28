@@ -95,13 +95,17 @@ var query = adultUsers
 
 ## 5. 同别名 CTE 的校验规则
 
-LiteOrm 现在会先收集整棵表达式树里的 CTE，再按别名做校验：
+CTE 定义不再提前遍历整棵表达式树收集，而是在渲染时边渲染边收集：`CommonTableExpr` 走到渲染方法时把自身交给 `SqlBuildContext.AddCommonTableExpr`，该方法先用后序遍历一次性收集定义主体中引用的 CTE（依赖在先），再收集自身，当前位置只输出别名；主查询渲染完成后，再用收集到的定义按顺序拼出 `WITH` 子句放到 SQL 最前面。
+
+收集时按别名做校验：
 
 - 同别名且定义**相等**：自动去重，只保留第一份定义写入 `WITH`
 - 同别名但定义**不相等**：抛出 `InvalidOperationException`
-- 只引用别名、但前面没有先出现完整定义：抛出异常
+- 只引用别名、但整棵树里没有对应完整定义：抛出异常
 
 于是你可以在复杂查询里复用同一个 CTE 表达式；也可以使用同一个 CTE 别名，但必须保证其定义一致。
+
+> 顶层调用 `expr.ToSql(context, true)`（`isRoot` 为 `true`）或 `expr.ToPreparedSql(context)` 会自动调用 `context.Init()` 重置作用域、别名序列与已收集的 CTE，因此复用同一个上下文重新生成 SQL 时不必手动清理；`OutputParams` 由调用方管理，`Init()` 不会清空它。渲染过程中的嵌套调用（如函数处理器内）保持 `isRoot` 默认值 `false`，不会重置上下文，其收集到的 CTE 会由最外层统一输出。
 
 ### 5.1 递归 CTE
 

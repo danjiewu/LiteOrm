@@ -86,4 +86,4 @@ An Expr cycle-reference detector (`static class`) exposing `HasCycle` / `FindCyc
 
 ## `SqlBuildContext`
 
-The SQL build context, carrying table aliases, scopes, table-name arguments and other state during SQL generation for use by `ISqlBuilder` and the Expr-to-SQL pipeline. DAOs can customize the context by overriding `CreateSqlBuildContext` (e.g. to inject sharding arguments). Located in the `LiteOrm.Common` namespace.
+The SQL build context, carrying table aliases, scopes, table-name arguments, and the CTEs collected during rendering (`CommonTableExprs`) for use by `ISqlBuilder` and the Expr-to-SQL pipeline. DAOs can customize the context by overriding `CreateSqlBuildContext` (e.g. to inject sharding arguments); a root-level call `ToSql(context, true)` (or `ToPreparedSql`) calls `Init()` automatically to reset the scope, alias sequence and collected CTEs (`OutputParams` stays under the caller's control). Located in the `LiteOrm.Common` namespace.

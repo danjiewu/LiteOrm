@@ -86,5 +86,5 @@ Expr 循环引用检测器（`static class`），提供 `HasCycle` / `FindCycle`
 
 ## `SqlBuildContext`
 
-SQL 构建上下文，携带构建过程中的表别名、作用域、表名参数等状态信息，供 `ISqlBuilder` 和 Expr 转 SQL 流程使用。DAO 可通过重写 `CreateSqlBuildContext` 自定义上下文（如注入分表参数）。位于 `LiteOrm.Common` 命名空间。
+SQL 构建上下文，携带构建过程中的表别名、作用域、表名参数、渲染时收集到的 CTE（`CommonTableExprs`）等状态信息，供 `ISqlBuilder` 和 Expr 转 SQL 流程使用。DAO 可通过重写 `CreateSqlBuildContext` 自定义上下文（如注入分表参数）；根节点调用 `ToSql(context, true)`（或 `ToPreparedSql`）会自动调用 `Init()` 重置作用域、别名序列与已收集的 CTE（`OutputParams` 由调用方管理）。位于 `LiteOrm.Common` 命名空间。
 

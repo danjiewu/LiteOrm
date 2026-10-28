@@ -249,7 +249,7 @@ Getting an expression into SQL takes three stages: `Expr` → `SqlSegment` → `
 
 Concretely, `Expr.Prop("Age") > 18` produces a SQL string with a placeholder plus one parameter whose value is 18. The 18 never appears as a literal in the SQL text. That is where injection gets cut off.
 
-The exit point is `ExprSqlConverter`: `Expr.ToSql(SqlBuildContext)` (`ExprSqlConverter.cs:128`) dispatches by expression type and adds parentheses where they are required; `Expr.ToPreparedSql(SqlBuildContext)` (`:306`) packages the SQL text and the parameter list into a `PreparedSql`.
+The exit point is `ExprSqlConverter`: `Expr.ToSql(SqlBuildContext, bool isRoot = false)` (`ExprSqlConverter.cs:132`) dispatches by expression type and adds parentheses where they are required; `Expr.ToPreparedSql(SqlBuildContext)` (`:287`) packages the SQL text and the parameter list into a `PreparedSql`.
 
 `ValueStringBuilder` is the framework's own string builder: a `ref struct` that rents a buffer from `ArrayPool<char>` and returns it afterwards. `SqlValueStringBuilder` keeps a few of them, one per clause such as SELECT, FROM and WHERE. Most of the GC savings come from here.
 
