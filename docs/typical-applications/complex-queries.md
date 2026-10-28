@@ -244,26 +244,30 @@ LogicExpr InDeptTree(int deptId)
     => Expr.Prop(nameof(SaleOrder.DeptId)).In(Expr.Sql("DeptSubTree", deptId).AsValue());
 ```
 
-SQLite 把这个条件渲染成递归 CTE 子查询：
+`InDeptTree` 生成的递归 CTE 会被收集到上下文，并在最终语句的最外层拼出 `WITH`，`IN` 里只保留对 CTE 的引用：
 
 ```sql
-"T0"."DeptId" IN (WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
-    FROM "Departments" "T1"
-    WHERE "T1"."Id" = @0
-    UNION ALL SELECT "T2"."Id"
-      FROM "Departments" "T2"
-      LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
-SELECT "Id"
+WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
+  FROM "Departments" "T1"
+  WHERE "T1"."Id" = @0
+  UNION ALL SELECT "T2"."Id"
+    FROM "Departments" "T2"
+    LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
+SELECT "T0"."Id", "T0"."OrderNo", ...
+FROM "Orders" "T0"
+WHERE "T0"."DeptId" IN (SELECT "Id"
   FROM "DeptTree")
 -- @0 = 1001
 ```
 
-Oracle 则把同一个条件渲染成层级查询：
+SQL Server 输出同样的结构，只是不带 `RECURSIVE`（`WITH "DeptTree" AS (...)`）；Oracle 则把同一个条件渲染成层级查询：
 
 ```sql
 "T0"."DEPTID" IN (SELECT "ID" FROM "DEPARTMENTS" START WITH "ID" = :0 CONNECT BY PRIOR "ID" = "PARENTID")
 -- :0 = 1001
 ```
+
+注意 `WITH` 一定出现在语句根部而不是 `IN` 子查询内部：CTE 定义在主体渲染完成后才统一拼到最前面，因此子查询里只出现别名。也因此，CTE 里的参数编号排在主体条件之后——例如主体已有 `@0` 时，子树根 Id 就是 `@1`；参数按名称绑定，编号先后不影响执行。
 
 #### 3.1.3 让 Lambda 也能写
 
@@ -296,7 +300,7 @@ LogicExpr filter = Expr.Lambda<SaleOrder>(o => o.InDeptSubTree(deptId))!;
 
 #### 3.1.4 要点
 
-处理器只负责生成值片段，`IN`、`=`、SELECT 列等位置由调用方决定，因此同一个 key 可以在不同上下文中复用。递归 CTE 由 `UnionAll` 与 `With` 拼成，`CommonTableExpr { Alias = "DeptTree" }` 只写别名，输出时不会再追加表别名。`context.BeginScope()` 用于隔离内层子查询的别名与参数作用域，但 `@0` 仍会追加到同一个参数集合。Oracle 分支通过 `TableInfoProvider` 取表名、再用 `builder.ToSqlName` 转换标识符，不要手写大写表名。最后要记住 `AsValue()` 是关键：没有它，`GenericSqlExpr` 只能当条件用，不能放在 `IN` 右边。
+处理器只负责生成值片段，`IN`、`=`、SELECT 列等位置由调用方决定，因此同一个 key 可以在不同上下文中复用。递归 CTE 由 `UnionAll` 与 `With` 拼成，`CommonTableExpr { Alias = "DeptTree" }` 只写别名，输出时不会再追加表别名；CTE 定义本身由框架收集后统一放到语句最外层的 `WITH`。`context.BeginScope()` 用于隔离内层子查询的别名与参数作用域，但参数仍会追加到同一个参数集合。Oracle 分支通过 `TableInfoProvider` 取表名、再用 `builder.ToSqlName` 转换标识符，不要手写大写表名。最后要记住 `AsValue()` 是关键：没有它，`GenericSqlExpr` 只能当条件用，不能放在 `IN` 右边。
 
 ### 3.2 方案 B：自定义 `FunctionExpr`
 
@@ -436,31 +440,37 @@ MySQL 的分页写作 ``LIMIT 20,20``，Oracle 写作 `OFFSET 20 ROWS FETCH NEXT
 `query` 由一次反序列化得到，`filter` 是从它里面提取出来的条件（执行代码见 1.3），两者分别用于计数与当页。计数 SQL 没有 `ORDER BY` 和 `LIMIT`，因为它只拿到 `filter`：
 
 ```sql
+WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
+  FROM "Departments" "T1"
+  WHERE "T1"."Id" = @1
+  UNION ALL SELECT "T2"."Id"
+    FROM "Departments" "T2"
+    LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
 SELECT Count(1)
 FROM "Orders" "T0"
-WHERE "T0"."DeptId" IN (WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
-    FROM "Departments" "T1"
-    WHERE "T1"."Id" = @0
-    UNION ALL SELECT "T2"."Id"
-      FROM "Departments" "T2"
-      LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
-SELECT "Id"
-  FROM "DeptTree")
- AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@1 AS TEXT)||' days')
--- @0 = 1001, @1 = -7
+WHERE "T0"."DeptId" IN (SELECT "Id"
+  FROM "DeptTree") AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@0 AS TEXT)||' days') AND "T0"."Status" = @1 AND "T0"."Amount" >= @2 AND "T0"."OrderNo" LIKE @3
+-- @0 = -7, @1 = 1, @2 = 100, @3 = %SO2026%, @4 = 1001
 ```
 
-当页 SQL 因为拿到整条 `query`，会追加三个筛选参数以及排序和分页：
+注意参数顺序：子树根 Id 在 CTE 定义渲染时才产生，CTE 又是主体渲染完成后才拼到最前面，所以它拿到的是最后一个编号，主体条件依次占用前面的编号。参数按名称绑定，编号先后不影响执行。
+
+当页 SQL 拿到整条 `query`，条件与计数完全一致，只额外追加排序和分页；它同样在最外层输出一份独立的 `WITH`（两条语句各自生成，不共享上下文）：
 
 ```sql
+WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
+  FROM "Departments" "T1"
+  WHERE "T1"."Id" = @4
+  UNION ALL SELECT "T2"."Id"
+    FROM "Departments" "T2"
+    LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
 SELECT "T0"."Id", "T0"."OrderNo", "T0"."DeptId", "T0"."Status", "T0"."Amount", "T0"."CreatedTime"
 FROM "Orders" "T0"
-WHERE "T0"."DeptId" IN (...)
- AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@1 AS TEXT)||' days')
- AND "T0"."Status" = @2 AND "T0"."Amount" >= @3 AND "T0"."OrderNo" LIKE @4
+WHERE "T0"."DeptId" IN (SELECT "Id"
+  FROM "DeptTree") AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@0 AS TEXT)||' days') AND "T0"."Status" = @1 AND "T0"."Amount" >= @2 AND "T0"."OrderNo" LIKE @3
 ORDER BY "T0"."Amount" DESC, "T0"."Id" DESC
 LIMIT 20 OFFSET 20
--- @0 = 1001, @1 = -7, @2 = 1, @3 = 100, @4 = %SO2026%
+-- @0 = -7, @1 = 1, @2 = 100, @3 = %SO2026%, @4 = 1001
 ```
 
 ### 4.3 要点
@@ -677,7 +687,7 @@ Console.WriteLine(sqlGen.ToSql(GetFilter(query)!).Sql == sqlGen.ToSql(reloaded).
 
 ## 9. 限制与延伸阅读
 
-- 递归 CTE 嵌在 `IN (...)` 子查询里时，SQLite、MySQL 8 与 PostgreSQL 都可以使用；SQL Server 不允许 `WITH` 嵌在子查询中，应改用物化路径列（例如 `Path LIKE '1/5/%'`）或把 CTE 提到语句根部；MySQL 5.7 不支持递归 CTE。
+- 递归 CTE 由框架提升到语句最外层（`WITH` 不会出现在 `IN (...)` 子查询里），SQLite、MySQL 8、PostgreSQL 与 SQL Server 都可直接执行，Oracle 走 `CONNECT BY`；MySQL 5.7 不支持递归 CTE。若把含 CTE 的片段手工拼进 `UPDATE ... WHERE` 等子句，需要自己把 `WITH` 移到语句根部。
 - `GenericSqlExpr` 的 `Arg` 是单个 `Expr`，需要多个参数或更复杂的条件结构时应改用 `FunctionExpr` 或显式构造 `Expr`。
 - 接收前端 JSON 时，必须用 `ExprValidator` 限制表达式类型与字段范围，不能把任意 JSON 直接送进 SQL 生成；排序字段与筛选字段可以在这同一处限制。
 - 计数只使用提取出的 `Where`，表由 Service 的实体类型决定，因此查询 JSON 不需要也不应该再指定表。

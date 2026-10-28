@@ -244,26 +244,30 @@ LogicExpr InDeptTree(int deptId)
     => Expr.Prop(nameof(SaleOrder.DeptId)).In(Expr.Sql("DeptSubTree", deptId).AsValue());
 ```
 
-SQLite renders this condition as a recursive CTE subquery:
+The recursive CTE produced by `InDeptTree` is collected into the context and emitted as a `WITH` clause at the outermost level of the final statement, while `IN` keeps only a reference to the CTE:
 
 ```sql
-"T0"."DeptId" IN (WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
-    FROM "Departments" "T1"
-    WHERE "T1"."Id" = @0
-    UNION ALL SELECT "T2"."Id"
-      FROM "Departments" "T2"
-      LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
-SELECT "Id"
+WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
+  FROM "Departments" "T1"
+  WHERE "T1"."Id" = @0
+  UNION ALL SELECT "T2"."Id"
+    FROM "Departments" "T2"
+    LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
+SELECT "T0"."Id", "T0"."OrderNo", ...
+FROM "Orders" "T0"
+WHERE "T0"."DeptId" IN (SELECT "Id"
   FROM "DeptTree")
 -- @0 = 1001
 ```
 
-Oracle renders the same condition as a hierarchical query instead:
+SQL Server emits the same structure without `RECURSIVE` (`WITH "DeptTree" AS (...)`), while Oracle renders the same condition as a hierarchical query:
 
 ```sql
 "T0"."DEPTID" IN (SELECT "ID" FROM "DEPARTMENTS" START WITH "ID" = :0 CONNECT BY PRIOR "ID" = "PARENTID")
 -- :0 = 1001
 ```
+
+Note that the `WITH` always appears at the statement root rather than inside the `IN` subquery: CTE definitions are appended to the front only after the main body has been rendered, so the subquery contains the alias alone. The CTE's parameters are therefore numbered after the body's conditions — if the body already uses `@0`, the subtree root Id becomes `@1`; parameters bind by name, so the numbering order does not affect execution.
 
 #### 3.1.3 Make It Writable in Lambda
 
@@ -296,7 +300,7 @@ This Lambda produces exactly the same SQL as the `Expr` in 3.1.2, because closur
 
 #### 3.1.4 Key Points
 
-The handler only produces a value fragment, while the positions such as `IN`, `=`, and SELECT columns are decided by the caller, which is why one key can be reused in different contexts. The recursive CTE is assembled from `UnionAll` and `With`, and `CommonTableExpr { Alias = "DeptTree" }` carries only the alias so that no table alias is appended on output. `context.BeginScope()` isolates the inner subquery's alias and parameter scope, while `@0` still joins the same parameter collection. The Oracle branch obtains the table name from `TableInfoProvider` and converts identifiers with `builder.ToSqlName`, rather than hardcoding uppercase table names. Finally, `AsValue()` is essential, because without it a `GenericSqlExpr` works only as a condition and cannot be the right-hand side of `IN`.
+The handler only produces a value fragment, while the positions such as `IN`, `=`, and SELECT columns are decided by the caller, which is why one key can be reused in different contexts. The recursive CTE is assembled from `UnionAll` and `With`, and `CommonTableExpr { Alias = "DeptTree" }` carries only the alias so that no table alias is appended on output; the CTE definition itself is collected by the framework and emitted in the statement's outermost `WITH`. `context.BeginScope()` isolates the inner subquery's alias and parameter scope, while parameters still join the same parameter collection. The Oracle branch obtains the table name from `TableInfoProvider` and converts identifiers with `builder.ToSqlName`, rather than hardcoding uppercase table names. Finally, `AsValue()` is essential, because without it a `GenericSqlExpr` works only as a condition and cannot be the right-hand side of `IN`.
 
 ### 3.2 Option B: Custom `FunctionExpr`
 
@@ -436,31 +440,37 @@ Sorting fields are written directly in the JSON, so the query method does not ne
 `query` comes from one deserialization, and `filter` is extracted from it (the execution code is in 1.3), so the two serve counting and paging respectively. The count SQL has neither `ORDER BY` nor `LIMIT`, because it receives only `filter`:
 
 ```sql
+WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
+  FROM "Departments" "T1"
+  WHERE "T1"."Id" = @1
+  UNION ALL SELECT "T2"."Id"
+    FROM "Departments" "T2"
+    LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
 SELECT Count(1)
 FROM "Orders" "T0"
-WHERE "T0"."DeptId" IN (WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
-    FROM "Departments" "T1"
-    WHERE "T1"."Id" = @0
-    UNION ALL SELECT "T2"."Id"
-      FROM "Departments" "T2"
-      LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
-SELECT "Id"
-  FROM "DeptTree")
- AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@1 AS TEXT)||' days')
--- @0 = 1001, @1 = -7
+WHERE "T0"."DeptId" IN (SELECT "Id"
+  FROM "DeptTree") AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@0 AS TEXT)||' days') AND "T0"."Status" = @1 AND "T0"."Amount" >= @2 AND "T0"."OrderNo" LIKE @3
+-- @0 = -7, @1 = 1, @2 = 100, @3 = %SO2026%, @4 = 1001
 ```
 
-The page SQL receives the whole `query` and therefore adds the three filter parameters together with sorting and paging:
+Note the parameter order: the subtree root Id is produced only when the CTE definition is rendered, and the CTE is placed at the front only after the main body has been rendered, so it takes the last index while the body's conditions take the earlier ones. Parameters bind by name, so the numbering order does not affect execution.
+
+The page SQL receives the whole `query`, its conditions match those of the count exactly, and only sorting and paging are added; it likewise emits an independent `WITH` at the outermost level (the two statements are generated separately and share no context):
 
 ```sql
+WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
+  FROM "Departments" "T1"
+  WHERE "T1"."Id" = @4
+  UNION ALL SELECT "T2"."Id"
+    FROM "Departments" "T2"
+    LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
 SELECT "T0"."Id", "T0"."OrderNo", "T0"."DeptId", "T0"."Status", "T0"."Amount", "T0"."CreatedTime"
 FROM "Orders" "T0"
-WHERE "T0"."DeptId" IN (...)
- AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@1 AS TEXT)||' days')
- AND "T0"."Status" = @2 AND "T0"."Amount" >= @3 AND "T0"."OrderNo" LIKE @4
+WHERE "T0"."DeptId" IN (SELECT "Id"
+  FROM "DeptTree") AND "T0"."CreatedTime" >= DATE(datetime('now', 'localtime'), CAST(@0 AS TEXT)||' days') AND "T0"."Status" = @1 AND "T0"."Amount" >= @2 AND "T0"."OrderNo" LIKE @3
 ORDER BY "T0"."Amount" DESC, "T0"."Id" DESC
 LIMIT 20 OFFSET 20
--- @0 = 1001, @1 = -7, @2 = 1, @3 = 100, @4 = %SO2026%
+-- @0 = -7, @1 = 1, @2 = 100, @3 = %SO2026%, @4 = 1001
 ```
 
 ### 4.3 Key Points
@@ -677,7 +687,7 @@ When something goes wrong, the following checklist suggests an order of investig
 
 ## 9. Limitations and Further Reading
 
-- A recursive CTE nested inside an `IN (...)` subquery works on SQLite, MySQL 8, and PostgreSQL; SQL Server does not allow `WITH` inside a subquery, so a materialized path column such as `Path LIKE '1/5/%'` should be used or the CTE lifted to the statement root; MySQL 5.7 has no recursive CTE support.
+- The framework lifts a recursive CTE to the outermost level of the statement (`WITH` never appears inside an `IN (...)` subquery), so SQLite, MySQL 8, PostgreSQL, and SQL Server all execute it directly while Oracle uses `CONNECT BY`; MySQL 5.7 has no recursive CTE support. If a fragment containing a CTE is spliced by hand into clauses such as `UPDATE ... WHERE`, the `WITH` must be moved to the statement root yourself.
 - `GenericSqlExpr`'s `Arg` is a single `Expr`, so multiple parameters or more complex structures call for `FunctionExpr` or an explicitly constructed `Expr`.
 - When accepting JSON from the frontend, restrict expression types and field scope with `ExprValidator`, and never feed arbitrary JSON straight into SQL generation; sorting fields and filter fields can be restricted in that same place.
 - Counting uses only the extracted `Where` while the table comes from the Service entity type, so the query JSON neither needs to specify a table nor should.

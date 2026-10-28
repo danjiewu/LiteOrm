@@ -153,6 +153,7 @@ namespace LiteOrm.Common
             var sb = ValueStringBuilder.Create(256);
             sb.Append(context.SqlBuilder.ExplicitRecursive ? "WITH RECURSIVE " : "WITH ");
             bool first = true;
+            int paramCountBefore = context.OutputParams.Count;
             for (int i = 0; i < context.CommonTableExprs.Count; i++)
             {
                 CommonTableExpr cte = context.CommonTableExprs[i];
@@ -165,7 +166,10 @@ namespace LiteOrm.Common
                 ToSqlInternal(ref sb, cte.Source, context, MaxPriority);
                 sb.NewLine(0);
             }
-            
+            if (context.OutputParams.Count != paramCountBefore)
+            {
+                context.OutputParams = context.OutputParams.Skip(paramCountBefore).Concat(context.OutputParams.Take(paramCountBefore)).ToList();
+            }           
             string result = sb.ToString();
             sb.Dispose();
             return result;

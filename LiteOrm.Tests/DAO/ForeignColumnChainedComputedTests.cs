@@ -550,7 +550,10 @@ namespace LiteOrm.Tests
         [Column("Code", AllowNull = true)]
         public string? Code { get; set; }
 
+        //Oracle、SQLite 使用 || 拼接字符串
         [Column("Label", Expression = "{Name} || '-' || {Code}")]
+        //SQLite、Sql Server、MySQL 可用 CONCAT 函数拼接字符串
+        //[Column("Label",Expression = "CONCAT({Name}, '-', {Code})")]
         public string? Label { get; set; }
     }
 
@@ -572,8 +575,10 @@ namespace LiteOrm.Tests
 
         [ForeignColumn("City", Property = nameof(ForeignComputedCity.Label))]
         public string? CityLabel { get; set; }
-
+        //SQLite、Oracle 使用 || 拼接字符串
         [Column(Expression = "{CityLabel} || '-' || {Name}")]
+        //SQLite、Sql Server、MySQL 可用 CONCAT 函数拼接字符串
+        //[Column(Expression = "CONCAT({CityLabel}, '-', {Name})")]
         public string? DeptCityLabel => CityLabel + "-" + Name;
     }
 

@@ -263,8 +263,10 @@ namespace LiteOrm.Tests
 
         [Column("Code", AllowNull = true)]
         public string? Code { get; set; }
-
+        //Oracle、SQLite可用||拼接字符串
         [Column("DisplayName", Expression = "{Name} || '-' || {Code}")]
+        //SQLite、Sql Server、MySQL 可用 CONCAT 函数拼接字符串
+        //[Column("DisplayName", Expression = "CONCAT({Name}, '-', {Code})")]
         public string? DisplayName { get; set; }
     }
 
