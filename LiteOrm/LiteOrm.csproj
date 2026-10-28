@@ -19,6 +19,7 @@
 <PackageReleaseNotes>
       8.1.14:
       - 同步 LiteOrm.Common 8.1.14：CTE 改为渲染时收集，WITH 子句统一输出到语句最前。
+      - DAO 手工拼接的 UPDATE / DELETE / SELECT 语句在条件含 CTE 时自动补上 WITH（DataDAO.UpdateAllValues 与固定筛选条件）。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

@@ -147,7 +147,8 @@ namespace LiteOrm
         {
             Span<char> colBuf = stackalloc char[512];
             var strColumns = new ValueStringBuilder(colBuf);
-            var paramValues = new List<Param>();
+            var context = CreateSqlBuildContext(true);
+            var paramValues = context.OutputParams;
             ColumnDefinition[] columns = UpdatableColumns;
             int count = columns.Length;
             for (int i = 0; i < count; i++)
@@ -173,10 +174,9 @@ namespace LiteOrm
                 where += $" AND {ToColumnSql(TimestampColumn)} = {ToSqlParam(paramName)}";
             }
 
-            // 固定筛选条件（Column.Constant）限定更新范围，与实体不可见的行不会被更新
-            where = AppendConstFilter(where, paramValues);
+            where = AppendConstFilter(where, context);
 
-            string sql = $"UPDATE {ToSqlName(FactTableName)} SET {strColumns.ToString()} \nWHERE {where}";
+            string sql = $"{ExprSqlConverter.BuildCteSql(context)}UPDATE {ToSqlName(FactTableName)} SET {strColumns.ToString()} \nWHERE {where}";
             strColumns.Dispose();
             return new PreparedSql(sql, paramValues);
         }
@@ -187,12 +187,12 @@ namespace LiteOrm
         /// <returns>返回删除命令实例。</returns>
         protected virtual PreparedSql MakeDeleteSql()
         {
-            var paramValues = new List<Param>();
-
             // 构建 WHERE 子句，固定筛选条件参与限定删除范围
-            string where = AppendConstFilter(MakeKeyCondition(paramValues), paramValues);
+            SqlBuildContext context = CreateSqlBuildContext(true);
+            var paramValues = context.OutputParams;
+            string where = AppendConstFilter(MakeKeyCondition(paramValues), context);
 
-            string sql = $"DELETE FROM {ToSqlName(FactTableName)} \nWHERE {where}";
+            string sql = $"{ExprSqlConverter.BuildCteSql(context)}DELETE FROM {ToSqlName(FactTableName)} \nWHERE {where}";
             return new PreparedSql(sql, paramValues);
         }
 
@@ -249,7 +249,11 @@ namespace LiteOrm
         {
             ColumnDefinition[] updatableColumns = UpdatableColumns;
             var keyColumns = TableDefinition.Keys.ToArray();
-            var paramValues = new List<Param>();
+            SqlBuildContext context = CreateSqlBuildContext(true);
+            // 批量更新语句给目标表起了别名（见 BatchTargetTableAlias），固定筛选条件须按该别名限定；基础方言没有别名，保持不限定
+            context.DefaultTableAliasName = SqlBuilder.BatchTargetTableAlias;
+            context.SingleTable = SqlBuilder.BatchTargetTableAlias is null;
+            var paramValues = context.OutputParams;
 
             int paramCount = 0;
             for (int b = 0; b < batchSize; b++)
@@ -266,9 +270,8 @@ namespace LiteOrm
                 }
             }
 
-            // 固定筛选条件的参数排在批量参数之后，列名按方言批量语句中目标表的别名限定
-            string? constFilter = MakeConstFilterCondition(paramValues, SqlBuilder.BatchTargetTableAlias);
-            string sql = SqlBuilder.BuildBatchUpdateSql(FactTableName, updatableColumns, keyColumns, batchSize, constFilter);
+            string? constFilter = MakeConstFilterCondition(context);
+            string sql = $"{ExprSqlConverter.BuildCteSql(context)}{SqlBuilder.BuildBatchUpdateSql(FactTableName, updatableColumns, keyColumns, batchSize, constFilter)}";
 
             return new PreparedSql(sql, paramValues);
         }
@@ -279,7 +282,8 @@ namespace LiteOrm
         protected virtual PreparedSql MakeBatchIDExistsSql(int batchSize)
         {
             var keyColumns = TableDefinition.Keys;
-            var paramValues = new List<Param>();
+            SqlBuildContext context = CreateSqlBuildContext(true);
+            var paramValues = context.OutputParams;
 
             int paramCount = 0;
             for (int b = 0; b < batchSize; b++)
@@ -289,11 +293,9 @@ namespace LiteOrm
                     paramValues.Add(new Param(paramCount.ToString(), null, key.GetDbValueType(SqlBuilder)));
                     paramCount++;
                 }
-            }
-
-            // 固定筛选条件限定“存在”的判定范围，模型不可见的行按不存在处理
-            string? constFilter = MakeConstFilterCondition(paramValues);
-            string sql = SqlBuilder.BuildBatchIDExistsSql(FactTableName, keyColumns, batchSize, constFilter);
+            }          
+            string? constFilter = MakeConstFilterCondition(context);
+            string sql = $"{ExprSqlConverter.BuildCteSql(context)}{SqlBuilder.BuildBatchIDExistsSql(FactTableName, keyColumns, batchSize, constFilter)}";
             return new PreparedSql(sql, paramValues);
         }
 
@@ -303,7 +305,8 @@ namespace LiteOrm
         protected virtual PreparedSql MakeBatchDeleteSql(int batchSize)
         {
             ColumnDefinition[] keyColumns = TableDefinition.Keys.ToArray();
-            var paramValues = new List<Param>();
+            SqlBuildContext context = CreateSqlBuildContext(true);
+            var paramValues = context.OutputParams; 
 
             int paramCount = 0;
             for (int b = 0; b < batchSize; b++)
@@ -314,10 +317,8 @@ namespace LiteOrm
                     paramCount++;
                 }
             }
-
-            // 固定筛选条件限定删除范围，模型不可见的行不会被删除
-            string? constFilter = MakeConstFilterCondition(paramValues);
-            string sql = SqlBuilder.BuildBatchDeleteSql(FactTableName, keyColumns, batchSize, constFilter);
+            string? constFilter = MakeConstFilterCondition(context);
+            string sql = $"{ExprSqlConverter.BuildCteSql(context)}{SqlBuilder.BuildBatchDeleteSql(FactTableName, keyColumns, batchSize, constFilter)}";
             return new PreparedSql(sql, paramValues);
         }
 

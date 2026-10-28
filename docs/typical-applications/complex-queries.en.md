@@ -687,7 +687,7 @@ When something goes wrong, the following checklist suggests an order of investig
 
 ## 9. Limitations and Further Reading
 
-- The framework lifts a recursive CTE to the outermost level of the statement (`WITH` never appears inside an `IN (...)` subquery), so SQLite, MySQL 8, PostgreSQL, and SQL Server all execute it directly while Oracle uses `CONNECT BY`; MySQL 5.7 has no recursive CTE support. If a fragment containing a CTE is spliced by hand into clauses such as `UPDATE ... WHERE`, the `WITH` must be moved to the statement root yourself.
+- The framework lifts a recursive CTE to the outermost level of the statement (`WITH` never appears inside an `IN (...)` subquery), so SQLite, MySQL 8, PostgreSQL, and SQL Server all execute it directly while Oracle uses `CONNECT BY`; MySQL 5.7 has no recursive CTE support. UPDATE / DELETE / SELECT statements that the DAO assembles by hand automatically place a CTE's `WITH` at the front; only SQL concatenated outside the framework needs the `WITH` moved manually.
 - `GenericSqlExpr`'s `Arg` is a single `Expr`, so multiple parameters or more complex structures call for `FunctionExpr` or an explicitly constructed `Expr`.
 - When accepting JSON from the frontend, restrict expression types and field scope with `ExprValidator`, and never feed arbitrary JSON straight into SQL generation; sorting fields and filter fields can be restricted in that same place.
 - Counting uses only the extracted `Where` while the table comes from the Service entity type, so the query JSON neither needs to specify a table nor should.

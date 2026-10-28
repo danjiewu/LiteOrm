@@ -687,7 +687,7 @@ Console.WriteLine(sqlGen.ToSql(GetFilter(query)!).Sql == sqlGen.ToSql(reloaded).
 
 ## 9. 限制与延伸阅读
 
-- 递归 CTE 由框架提升到语句最外层（`WITH` 不会出现在 `IN (...)` 子查询里），SQLite、MySQL 8、PostgreSQL 与 SQL Server 都可直接执行，Oracle 走 `CONNECT BY`；MySQL 5.7 不支持递归 CTE。若把含 CTE 的片段手工拼进 `UPDATE ... WHERE` 等子句，需要自己把 `WITH` 移到语句根部。
+- 递归 CTE 由框架提升到语句最外层（`WITH` 不会出现在 `IN (...)` 子查询里），SQLite、MySQL 8、PostgreSQL 与 SQL Server 都可直接执行，Oracle 走 `CONNECT BY`；MySQL 5.7 不支持递归 CTE。DAO 内部手工拼接的 UPDATE / DELETE / SELECT 语句会自动把 CTE 的 `WITH` 补在语句最前面，只有自己在框架外拼接 SQL 字符串时才需要手动移动。
 - `GenericSqlExpr` 的 `Arg` 是单个 `Expr`，需要多个参数或更复杂的条件结构时应改用 `FunctionExpr` 或显式构造 `Expr`。
 - 接收前端 JSON 时，必须用 `ExprValidator` 限制表达式类型与字段范围，不能把任意 JSON 直接送进 SQL 生成；排序字段与筛选字段可以在这同一处限制。
 - 计数只使用提取出的 `Where`，表由 Service 的实体类型决定，因此查询 JSON 不需要也不应该再指定表。

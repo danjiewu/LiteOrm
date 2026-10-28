@@ -677,21 +677,15 @@ namespace LiteOrm
         /// 生成表固定筛选条件（<see cref="TableDefinition.ConstFilter"/>，由 <see cref="ColumnAttribute.Constant"/> 收敛而来）的 SQL 片段。
         /// </summary>
         /// <remarks>
-        /// 参数名称取 <paramref name="paramValues"/> 的当前元素个数，因此须在键条件参数追加之后调用，才能与命令中的参数顺序保持一致。
+        /// 条件产生的参数写入 <see cref="SqlBuildContext.OutputParams"/>，因此须在键条件参数追加之后调用；
+        /// 条件中若含 CTE，会被收集到 <paramref name="context"/>，由调用方用 <see cref="ExprSqlConverter.BuildCteSql"/> 拼出 WITH 子句。
         /// </remarks>
-        /// <param name="paramValues">参数集合，固定筛选条件产生的参数追加到该集合末尾。</param>
-        /// <param name="tableAlias">
-        /// 条件中列名使用的表别名。为 null 时按单表模式生成不带表名的列名，适用于语句中未给目标表起别名的单表 UPDATE / DELETE。
-        /// 视图 DAO 的 FROM 子句带默认别名，故默认使用 <see cref="Constants.DefaultTableAlias"/> 限定；
-        /// 批量更新语句则传入 <see cref="SqlBuilder.BatchTargetTableAlias"/> 指定的别名。
-        /// </param>
+        /// <param name="context">渲染固定筛选条件的上下文，表、别名、参数集合与收集到的 CTE 都由调用方配置和读取。</param>
         /// <returns>固定筛选条件的 SQL 片段；表中未声明固定筛选时返回 null。</returns>
-        protected virtual string? MakeConstFilterCondition(ICollection<Param> paramValues, string? tableAlias = null)
+        protected virtual string? MakeConstFilterCondition(SqlBuildContext context)
         {
             LogicExpr? constFilter = TableDefinition.ConstFilter;
             if (constFilter is null) return null;
-            if (tableAlias is null && IsView) tableAlias = Constants.DefaultTableAlias;
-            var context = new SqlBuildContext(SqlBuilder, Table, tableAlias ?? Constants.DefaultTableAlias, TableArgs) { SingleTable = tableAlias is null, OutputParams = paramValues };
             return constFilter.ToSql(context);
         }
 
@@ -699,12 +693,11 @@ namespace LiteOrm
         /// 将固定筛选条件以 AND 追加到已有 WHERE 条件之后。
         /// </summary>
         /// <param name="where">已有 WHERE 条件，可为空。</param>
-        /// <param name="paramValues">参数集合，固定筛选条件产生的参数追加到该集合末尾。</param>
-        /// <param name="tableAlias">条件中列名使用的表别名，语义同 <see cref="MakeConstFilterCondition"/>。</param>
+        /// <param name="context">渲染固定筛选条件的上下文，同时收集其参数与 CTE。</param>
         /// <returns>合并后的 WHERE 条件；表中未声明固定筛选时原样返回 <paramref name="where"/>。</returns>
-        protected string AppendConstFilter(string where, ICollection<Param> paramValues, string? tableAlias = null)
+        protected string AppendConstFilter(string where, SqlBuildContext context)
         {
-            string? constFilter = MakeConstFilterCondition(paramValues, tableAlias);
+            string? constFilter = MakeConstFilterCondition(context);
             if (constFilter is null || constFilter.Length == 0) return where;
             if (String.IsNullOrEmpty(where)) return constFilter;
             return $"{where} AND {constFilter}";

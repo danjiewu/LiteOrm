@@ -62,10 +62,10 @@ namespace LiteOrm
             var context = CreateSqlBuildContext(true);
             context.OutputParams = paramValues;
             string where = expr.ToSql(context);
-            // 固定筛选条件追加在调用方条件之后，与参数顺序保持一致
-            where = AppendConstFilter(where, paramValues);
+            // 固定筛选条件追加在调用方条件之后，与参数顺序保持一致；与主条件共用上下文，CTE 统一在最前面输出一次
+            where = AppendConstFilter(where, context);
             string whereClause = String.IsNullOrEmpty(where) ? "" : "\nWHERE " + where;
-            string updateSql = $"UPDATE {ParamTable} SET {String.Join(", ", strSets.ToArray())} {whereClause}";
+            string updateSql = $"{ExprSqlConverter.BuildCteSql(context)}UPDATE {ParamTable} SET {String.Join(", ", strSets.ToArray())} {whereClause}";
             var command = MakeNamedParamCommand(updateSql, paramValues);
             return new NonQueryResult(command);
         }

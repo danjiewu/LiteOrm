@@ -148,8 +148,9 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="context">生成 SQL 的上下文环境。</param>
         /// <returns>WITH 子句。</returns>
-        private static string BuildCteSql(SqlBuildContext context)
+        public static string BuildCteSql(SqlBuildContext context)
         {
+            if (!context.SqlBuilder.SupportCteExpr || context.CommonTableExprs.Count == 0) return string.Empty;
             var sb = ValueStringBuilder.Create(256);
             sb.Append(context.SqlBuilder.ExplicitRecursive ? "WITH RECURSIVE " : "WITH ");
             bool first = true;
@@ -168,8 +169,11 @@ namespace LiteOrm.Common
             }
             if (context.OutputParams.Count != paramCountBefore)
             {
-                context.OutputParams = context.OutputParams.Skip(paramCountBefore).Concat(context.OutputParams.Take(paramCountBefore)).ToList();
-            }           
+                // 先物化再清空：Skip/Take/Concat 是延迟查询，直接枚举会读到已清空的集合
+                List<Param> moved = context.OutputParams.Skip(paramCountBefore).Concat(context.OutputParams.Take(paramCountBefore)).ToList();
+                context.OutputParams.Clear();
+                foreach (Param param in moved) context.OutputParams.Add(param);
+            }
             string result = sb.ToString();
             sb.Dispose();
             return result;

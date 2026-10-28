@@ -84,13 +84,12 @@ namespace LiteOrm
         /// 实现获取对象操作的IDbCommand
         /// </summary>
         protected virtual PreparedSql MakeGetObjectSql()
-        {
-            var paramValues = new List<Param>();
+        {           
+            SqlBuildContext context = CreateSqlBuildContext(true);
+            var paramValues = context.OutputParams;
+            string where = AppendConstFilter(MakeKeyCondition(paramValues), context);
 
-            // 构建 WHERE 子句，固定筛选条件限定可见范围
-            string where = AppendConstFilter(MakeKeyCondition(paramValues), paramValues);
-
-            string sql = $"SELECT {AllFields} \nFROM {From} \nWHERE {where}";
+            string sql = $"{ExprSqlConverter.BuildCteSql(context)}SELECT {AllFields} \nFROM {From} \nWHERE {where}";
             return new PreparedSql(sql, paramValues);
         }
 
@@ -100,13 +99,13 @@ namespace LiteOrm
         /// </summary>
         protected virtual PreparedSql MakeObjectExistsSql()
         {
-            ThrowExceptionIfNoKeys();
-            var paramValues = new List<Param>();
+            ThrowExceptionIfNoKeys();            
 
-            // 构建 WHERE 子句，固定筛选条件限定可见范围
-            string where = AppendConstFilter(MakeKeyCondition(paramValues), paramValues);
+            SqlBuildContext context = CreateSqlBuildContext(true);
+            var paramValues = context.OutputParams;
+            string where = AppendConstFilter(MakeKeyCondition(paramValues), context);
 
-            string sql = $"SELECT 1 \nFROM {From} \nWHERE {where}";
+            string sql = $"{ExprSqlConverter.BuildCteSql(context)}SELECT 1 \nFROM {From} \nWHERE {where}";
             return new PreparedSql(sql, paramValues);
         }
         #endregion
