@@ -45,3 +45,4 @@ msbuild.wrn
 /docs/series
 /msbuild.binlog
 /.workbuddy
+/.trae-html-share-packages/docs
