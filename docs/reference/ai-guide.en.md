@@ -1,5 +1,12 @@
 # LiteOrm API Usage Guide (for AI)
 
+## Environment and packages
+
+- Runtime: `.NET 8.0+`; `netstandard2.0` covers .NET Framework 4.6.1+.
+- NuGet: `LiteOrm` (brings `LiteOrm.Common`), `LiteOrm.DependencyInjection` (Autofac + Castle; AOP transactions/permissions/logging), `LiteOrm.Remote` / `LiteOrm.Remote.Server` (remote invocation).
+- Drivers: SQL Server `Microsoft.Data.SqlClient`, MySQL `MySqlConnector`, PostgreSQL `Npgsql`, Oracle `Oracle.ManagedDataAccess.Core`, SQLite `Microsoft.Data.Sqlite`.
+- Databases: SQL Server 2012+, MySQL 8.0+, Oracle 12c+, PostgreSQL, SQLite; domestic/compatible engines (DM, KingbaseES, GaussDB, OceanBase, TiDB, GreatDB) inherit the corresponding mainstream dialect.
+
 ## 1. Configuration and registration
 
 ### appsettings.json
@@ -379,6 +386,12 @@ try { sessionManager.Commit(); }
 catch { sessionManager.Rollback(); throw; }
 ```
 
+### Concurrency and read/write splitting
+
+- Optimistic concurrency: mark a column with `[Column("Version", IsTimestamp = true)]` and pass the old value to `Update(entity, oldVersion)` / `UpdateAsync(entity, oldVersion, ct)`. A conflict affects 0 rows and returns `false` (no exception); the new value comes from the entity's current property and is not incremented by the framework.
+- Key-based `Delete` / `DeleteID` carry no timestamp condition; for protection use `DeleteAll(Prop("Id") == id & Prop("Version") == oldVersion)`.
+- With `DataSources[].ReadOnlyConfigs`, queries from view DAOs (`IsView = true`) go to a read replica; queries inside a transaction always use the primary; one session reuses the replica it picked, and multiple replicas are used round-robin. For strong consistency, read inside a transaction or override `IsView => false`.
+
 ## 6. Advanced features
 
 ### Sharding
@@ -747,6 +760,223 @@ var users = await objectViewDAO.Search(expr).ToListAsync();
 // Lambda form
 var lambdaExpr = Lambda<User>(u => ExistsRelated<Department>(d => d.Name == "IT"));
 ```
+
+### Extension points (when needed)
+
+- Custom functions: `SqlBuilder.Instance.RegisterFunctionSqlHandler("MyFunc", handler)`; render arguments inside the handler with `expr.Args[i].ToSql(context)` (non-root rendering, no context reset).
+- Custom SQL fragments: `GenericSqlExpr.Register(key, callback)` — pre-registration is mandatory; parameterize values inside the callback.
+- Expression extensions: `LambdaExprConverter.RegisterMethodHandler` / `RegisterMemberHandler` map business methods/properties to SQL expressions (see [Expression extension](../extensibility/expression-extension.en.md)).
+- Dialect extensions: derive from `SqlBuilder` or a specific dialect builder, override paging, identifier quoting and type mapping, then register with `RegisterSqlBuilder` (see [Custom SqlBuilder](../extensibility/custom-sqlbuilder.en.md)).
+
+## 9. CTE (common table expressions)
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// 1) Define a CTE: SelectExpr.With(alias) returns a CommonTableExpr
+var activeUsers = From(typeof(User))
+    .Where(Prop("Age") >= 18)
+    .Select(Prop("Id").As("Id"), Prop("UserName").As("Name"))
+    .With("ActiveUsers");
+
+// 2) Build the main query from the CTE
+var query = activeUsers
+    .Where(Prop("Name").Contains("A"))
+    .Select(Prop("Id"), Prop("Name"))
+    .OrderBy(Prop("Id").Asc())
+    .Section(0, 20);
+
+// 3) Root rendering: the WITH clause is emitted automatically
+var sql = query.ToPreparedSql(context);
+```
+
+- Only a `SelectExpr` can become a CTE: `SelectExpr.With(name)` → `CommonTableExpr`, which still supports `Where` / `Select` / `OrderBy` / `UnionAll`. Both sides of a `UnionAll` may reuse the same `CommonTableExpr`; the `WITH` clause is emitted once.
+- Recursive CTE: reference the alias inside the definition with `new CommonTableExpr { Alias = "Tree" }` (`Source == null`, alias only) and `UnionAll` it with the anchor. `WITH RECURSIVE` is controlled by `ISqlBuilder.ExplicitRecursive`.
+- Collection: when a `CommonTableExpr` is rendered it calls `SqlBuildContext.AddCommonTableExpr`, which records the definition in `context.CommonTableExprs` (one post-order walk of the definition body, dependencies first) and emits only the alias in place. After the root body is rendered, `ExprSqlConverter.BuildCteSql(context)` builds `WITH [RECURSIVE]` and places it at the front of the SQL.
+- Root vs nested rendering: `ToPreparedSql(context)` / `ToSql(context, true)` are root calls — they run `context.Init()` and emit `WITH`; function handlers and `GenericSqlExpr` callbacks are nested and use `ToSql(context)` (default `isRoot = false`), which does not reset the context, and the CTEs they collect are emitted by the outermost call. **Never pass `true` from a nested call**, it clears collected CTEs and scopes.
+- Alias validation: equal definitions are deduplicated; different definitions throw `InvalidOperationException`; an alias-only node without a definition throws.
+- Parameter numbering: CTE definitions render after the main body, so their parameters are numbered after the body's conditions; `BuildCteSql` moves those parameters to the front of `OutputParams` so the collection matches the SQL text. Parameters bind by name, so ordering does not affect execution.
+- `ExprString` does not expand CTEs automatically; use structured `Expr` / `SelectExpr`, or write the full `WITH ... SELECT ...` by hand.
+- UPDATE / DELETE / SELECT statements assembled inside the DAO (`DataDAO.UpdateAllValues`, const filters, etc.) automatically place a CTE's `WITH` at the front.
+
+## 10. Paging, sorting, grouping and window functions
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var query = From(typeof(User))
+    .Where(Prop("Age") >= 18)                  // WhereExpr
+    .GroupBy(Prop("DeptId"))                   // GroupByExpr
+    .Having(Prop("Id").Count() > 5)            // HavingExpr
+    .Select(Prop("DeptId"), Prop("Id").Count().As("Cnt"))
+    .OrderBy(Prop("Cnt").Desc())               // OrderByExpr; multiple OrderByItemExpr allowed
+    .Section(0, 20);                           // SectionExpr: skip, take
+```
+
+- `.Section(skip, take)` is the only paging entry; repeated calls reuse the same `SectionExpr` and update `Skip` / `Take` in place.
+- In JSON, paging is the `Skip` / `Take` fields of the `$section` layer; sorting is the `OrderBys` array of the `$orderby` layer (`{ "Field": ..., "Asc": bool }`).
+- `LIMIT/OFFSET`, `OFFSET ... FETCH`, Oracle `ROW_NUMBER`, MySQL `LIMIT a,b` are handled by the dialect `SqlBuilder`; business code never branches on the database.
+- Always add a unique tiebreaker when paging (for example another `Prop("Id").Desc()`), otherwise rows may repeat or be skipped.
+- Window functions use `FunctionExpr.Over(partitionExprs, orderExprs)`:
+
+```csharp
+var runningTotal = Func("SUM", Prop("Amount"))
+    .Over(new[] { Prop("ProductId") }, new[] { Prop("SaleTime").Asc() });
+```
+
+## 11. Expr JSON, frontend queries and SQL debugging
+
+Serialize and deserialize with `System.Text.Json` (`ExprJsonConverter` emits the short format by default):
+
+```csharp
+string json = JsonSerializer.Serialize<Expr>(expr);
+Expr reloaded = JsonSerializer.Deserialize<Expr>(json)!;
+```
+
+Short-format markers:
+
+| Marker | Meaning |
+| --- | --- |
+| `#` | Column reference: `{"#":"Name"}`, `{"#":"T0.Name"}` |
+| `@` | Parameter value: `{"@":42}` (deserialized as a parameterized `ValueExpr`) |
+| Plain value | Constant (`42`, `"abc"`, `{"$datetime":"..."}`) |
+| `$` | Operator or segment type: `{"$":"=="}`, `{"$":"func"}`, `{"$":"sql"}` |
+| `!` | Negation: `{"!":{"#":"IsActive"}}` |
+| `$and` / `$or` | Logical AND / OR |
+| `$where` / `$select` / `$orderby` / `$section` / `$table` / `$join` / `$group` / `$having` | Query-structure segments |
+
+- Segments nest by layer: `$section` wraps `$orderby`, which wraps `$where`; each layer's own properties (`Skip`/`Take`, `OrderBys`, `Where`) sit next to the `$` marker.
+- Comparison operators: `==`, `!=`, `>`, `>=`, `<`, `<=`; string/set operators: `in`, `notin`, `like`, `notlike`, `contains`, `notcontains`, `startswith`, `notstartswith`, `endswith`, `notendswith`, `regexp`, `notregexp`.
+- Full shapes: [Expr JSON serialization format](../extensibility/expr-serialization.en.md).
+
+Always validate JSON received from a frontend:
+
+```csharp
+var validator = new ExprValidatorGroup(
+    ExprValidator.CreateQueryOnly(),        // only SELECT-style expressions
+    FunctionExprValidator.AllowRegisted     // only registered functions
+);
+if (!ExprVisitor.Validate(validator, expr))   // must use ExprVisitor.Validate to walk the whole tree
+    throw new UnauthorizedAccessException($"Disallowed expression: {validator.FailedExpr}");
+```
+
+SQL generation and debugging (no database needed):
+
+```csharp
+var sqlGen = new SqlGen(typeof(User)) { SqlBuilder = SQLiteBuilder.Instance };
+PreparedSql sql = sqlGen.ToSql(expr);       // root rendering; a CTE's WITH is emitted automatically
+Console.WriteLine(sql.Sql);
+foreach (Param p in sql.Params) Console.WriteLine($"{p.Name} = {p.Value}");
+```
+
+## 12. Security and parameterization
+
+- All business values are parameterized through `SqlBuildContext.OutputParams`: `@n` on SQL Server / MySQL / PostgreSQL / SQLite, `:n` on Oracle. Never concatenate user input into SQL text.
+- `Expr.Value(v)` is parameterized; `Expr.Const(v)` is inlined as a constant. Numeric/boolean constants may be inlined; strings, `DateTime` and the like are always parameterized.
+- `null` comparisons become `IS NULL` automatically (`Prop("X") == null` → `X IS NULL`), avoiding the `= NULL` semantics bug.
+- `Contains` / `Like` add wildcards and escape `%`, `_`, `[`, `]`, appending `ESCAPE '/'` when needed.
+- Custom SQL fragments must be pre-registered, and the callback must render expressions instead of concatenating values:
+
+```csharp
+GenericSqlExpr.Register("OwnerScope", (context, arg) =>
+{
+    if (arg is null) return null;
+    LogicExpr own = Prop("OwnerId") == arg.AsValue();
+    return own.ToSql(context);      // non-root rendering: parameterized, current scope preserved
+});
+```
+
+- `RawSql` is only for values that cannot be parameterized (e.g. `LIMIT` counts, sort direction) and must be range- or whitelist-validated first; it is not an `Expr`, is not scanned by validators, and cannot round-trip through JSON.
+- `ExprString` exists only at the DAO layer: literals are developer-authored SQL, plain values in format items are parameterized automatically, and `Expr` items are rendered as expressions. SQL identifiers may use `[` `]` placeholders that are replaced with the dialect's quote characters before execution.
+
+## 13. Const filters and data permissions
+
+- `[Column("State", Constant = RecordState.Enabled)]` adds a table-wide fixed filter, consolidated into `TableDefinition.ConstFilter`. It applies to queries, conditional UPDATE / DELETE, key-based read/update/delete, and batch statements, and becomes part of `JOIN ... ON` in association queries.
+- `Constant` accepts enums, numbers (`Constant = 1`), strings (`Constant = "tenant_a"`) and other constants convertible to the property type; use it only for rules that never change.
+- Runtime context (current user / tenant) should be layered with `Expr` at the query entry:
+
+```csharp
+LogicExpr filter = BuildBusinessFilter(request)
+    & (Prop("IsDeleted") == false);
+if (!IsAdmin(currentUser))
+    filter &= Prop("CreatedByUserId") == currentUser.Id;
+```
+
+- When runtime conditions must also cover association and write paths, build a `GenericSqlExpr` and assign it to `TableDefinition.ConstFilter` (see [Permission filtering](../advanced-topics/permission-filtering.en.md) and [Data permissions](../typical-applications/data-permission.en.md)).
+- List filtering does not replace object-level checks: detail, update and delete endpoints must still verify ownership explicitly.
+- Multi-tenant isolation has four levels: runtime `Expr`, `TableArgs` sharding, `ConstFilter` slicing, and `DataSource` database routing.
+
+## 14. Sharding, data mapping and custom converters
+
+### Sharding
+
+```csharp
+[Table("Logs_{0}")]                 // {0} is replaced by TableArgs
+public class Log : IArged
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public long Id { get; set; }
+    [Column("Level")] public string? Level { get; set; }
+    [Column("CreateTime")] public DateTime CreateTime { get; set; }
+    string[] IArged.TableArgs => new[] { CreateTime.ToString("yyyyMM") };
+}
+
+var logs = await logService.SearchAsync(
+    l => l.CreateTime >= start && l.CreateTime <= end,
+    tableArgs: new[] { "202603" });      // explicit shard arguments for queries
+```
+
+- Writes route by `IArged.TableArgs`; queries/deletes pass `tableArgs`; one placeholder corresponds to one argument.
+
+### Data mapping
+
+- `DbValueType` describes the database-side value type; arrays/JSON and other complex types need an explicit `DbType` (`Array`, `Json`, `Jsonb`), and custom types without `[Column]` are not mapped to columns automatically.
+- `JsonNode` maps to `DbValueType.Json` automatically; arrays use native PostgreSQL arrays and fall back to text elsewhere.
+- Register custom converters against the `SqlBuilder` generic type (register on the base type to cover every dialect):
+
+```csharp
+SqlBuilder.Instance.RegisterDbValueConverter<SqlBuilder, string, OrderSettings>(
+    targetType: DbValueType.Json,
+    fromDb: s => JsonSerializer.Deserialize<OrderSettings>(s)!,
+    toDb: v => JsonSerializer.Serialize(v)
+);
+```
+
+- A column can also declare `[Column(..., ConverterType = typeof(MyConverter))]`; under NativeAOT, declare or pre-register converters explicitly and keep a public parameterless constructor.
+
+## 15. Logging, service authorization and remote services
+
+- Logging: built on `Microsoft.Extensions.Logging`. `[ServiceLog(LogLevel = ServiceLogLevel.Debug, LogFormat = LogFormat.Full)]` can mark a method, class or interface; interfaces such as `IEntityServiceAsync<T>` default to Debug; slow-call logs come from the service interceptor.
+- Service authorization: `[ServicePermission]` (authenticated), `[ServicePermission(AllowRoles = "Admin, Manager")]`, `[ServicePermission(true)]` (anonymous). Roles apply only after `IUserContext` (`IPrincipal UserPrincipal`) is registered; without it everything is allowed; failures throw `ServicePermissionException`. Requires the AOP from `RegisterLiteOrm()`.
+- Remote services: both sides share a `[Service]` interface; the server calls `builder.Services.AddRemoteServer()`, the client uses `AddRemoteService<T>()` (or `AddRemoteServiceFactory<TFactory>()`) plus `RemoteServiceUri`. Signatures and call sites stay identical to local calls.
+
+## 16. Performance and NativeAOT
+
+- Pool: `PoolSize` (16), `MaxPoolSize` (100), `KeepAliveDuration` (10 minutes); `ParamCountLimit` (1000) caps parameters per statement and drives the batch size used by bulk methods.
+- Query results are lazy: an unconsumed or undisposed `EnumerableResult<T>` / `DataTableResult` keeps the connection; consume with `ToList()` / `await foreach` and dispose promptly.
+- Select only the columns you need (`SearchAs` projection); use `BatchInsert` / `BatchUpdate` / `BatchDelete` for bulk writes.
+- NativeAOT: supported by the base library, with source-generated metadata and mappers. `LiteOrm.DependencyInjection` (Autofac/Castle) and `LiteOrm.Remote` are not AOT-compatible; AOP features (transaction/permission/log attributes) are unavailable — use manual transactions, runtime `Expr` and service events instead.
+- Under AOT, projection/anonymous types have no generated mapper and fall back to reflection; custom converters must be declared or pre-registered.
+
+## 17. Common mistakes and checklist
+
+| Symptom | Cause / correct approach |
+| --- | --- |
+| Calling `Expr.Exists<T>(...)` outside a Lambda throws | It only works inside Lambda expressions handled by the parser; outside, use `Expr.Exists(type, innerExpr, tableArgs)` |
+| Mixing `From<T>()` and `From(typeof(T))` breaks | `From<T>()` returns `QuerySource<T>` (IQueryable chain); `From(typeof(T))` returns `TableExpr` (Expr chain); do not mix them |
+| No `ExprString` overload on Service | `ExprString` is DAO-only; switch to a DAO when you need hand-written SQL |
+| Missing or duplicated `WITH` in SQL | Use `ToPreparedSql` / `ToSql(context, true)` at the root; use `ToSql(context)` inside handlers |
+| Context cleared inside a custom function handler | Never call root `ToSql(context, true)` during rendering — it runs `Init()` |
+| Duplicate or skipped rows when paging | Sorting lacks a unique tiebreaker |
+| Ambiguous column names in multi-table queries | Qualify with `Expr.Prop("alias", "column")`, or use a view with `[ForeignColumn]` |
+| `ConstFilter` seems ignored | `Column.Constant` must be convertible to the property type; for runtime conditions assign a `GenericSqlExpr` to `TableDefinition.ConstFilter` |
+| UPDATE / DELETE always affects 0 rows | Check whether `ConstFilter` (including column constants) blocks the rows |
+| Timestamp concurrency protection does nothing | Pass the old value as `timestamp` to `Update` / `UpdateAsync` and check the return value |
+| `[Transaction]` has no effect | Requires `RegisterLiteOrm()`, a `public` method, and an interface proxy call |
+| Writes are not visible inside a transaction | Queries in a transaction always use the primary; other sessions cannot see uncommitted rows |
+| Read replica returns stale data | View DAO queries use the replica by default; for strong consistency, read inside a transaction or override `IsView => false` |
+| Computed-column expression throws `NotSupportedException` | `ColumnDefinition.ExpressionExpr` only allows fixed SQL — `Expr.Value(...)` produces parameters |
+| AOP / remote unavailable under AOT | Use `AddLiteOrm()`, manual transactions and service events |
 
 ## Related Links
 

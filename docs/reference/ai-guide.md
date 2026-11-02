@@ -1,5 +1,12 @@
 # LiteOrm API 使用指南（AI 适用）
 
+## 环境与依赖包
+
+- 运行环境：`.NET 8.0+`；`netstandard2.0` 兼容 .NET Framework 4.6.1+。
+- NuGet：`LiteOrm`（自动携带 `LiteOrm.Common`）、`LiteOrm.DependencyInjection`（Autofac + Castle，AOP 事务/权限/日志）、`LiteOrm.Remote` / `LiteOrm.Remote.Server`（远程调用）。
+- 数据库驱动：SQL Server `Microsoft.Data.SqlClient`、MySQL `MySqlConnector`、PostgreSQL `Npgsql`、Oracle `Oracle.ManagedDataAccess.Core`、SQLite `Microsoft.Data.Sqlite`。
+- 支持 SQL Server 2012+、MySQL 8.0+、Oracle 12c+、PostgreSQL、SQLite；国产/兼容库（达梦、人大金仓、GaussDB、OceanBase、TiDB、GreatDB）继承对应主流方言。
+
 ## 一、配置与注册
 
 ### appsettings.json
@@ -379,6 +386,12 @@ try { sessionManager.Commit(); }
 catch { sessionManager.Rollback(); throw; }
 ```
 
+### 并发与读写分离
+
+- 乐观并发：`[Column("Version", IsTimestamp = true)]` 标记时间戳列；更新时把读到的旧值传给 `Update(entity, oldVersion)` / `UpdateAsync(entity, oldVersion, ct)`。冲突时影响 0 行并返回 `false`，不抛异常；新值取自实体当前属性，框架不做自增。
+- 按主键 `Delete` / `DeleteID` 不带时间戳条件；需要并发保护时改用 `DeleteAll(Prop("Id") == id & Prop("Version") == oldVersion)`。
+- 配置 `DataSources[].ReadOnlyConfigs` 后，视图 DAO（`IsView = true`）的查询走只读副本；事务内查询强制走主库；同一会话复用已选中的副本，多个副本轮询；需要强一致时把读取放进事务，或覆盖 `IsView => false`。
+
 ## 六、高级特性
 
 ### 分表
@@ -747,6 +760,223 @@ var users = await objectViewDAO.Search(expr).ToListAsync();
 // Lambda 写法
 var lambdaExpr = Lambda<User>(u => ExistsRelated<Department>(d => d.Name == "IT"));
 ```
+
+### 扩展点（按需）
+
+- 自定义函数：`SqlBuilder.Instance.RegisterFunctionSqlHandler("MyFunc", handler)`；处理器内用 `expr.Args[i].ToSql(context)` 渲染参数（非根渲染，不重置上下文）。
+- 自定义 SQL 片段：`GenericSqlExpr.Register(key, callback)`，必须预注册，回调内参数化渲染。
+- 表达式扩展：`LambdaExprConverter.RegisterMethodHandler` / `RegisterMemberHandler`，把业务方法 / 属性映射成 SQL 表达式（见[表达式扩展](../extensibility/expression-extension.md)）。
+- 方言扩展：继承 `SqlBuilder` 或具体方言 Builder，覆盖分页、标识符转换、类型映射等方法，再用 `RegisterSqlBuilder` 注册（见[自定义 SqlBuilder](../extensibility/custom-sqlbuilder.md)）。
+
+## 九、CTE（公共表表达式）
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// 1) 定义 CTE：SelectExpr.With(alias) 返回 CommonTableExpr
+var activeUsers = From(typeof(User))
+    .Where(Prop("Age") >= 18)
+    .Select(Prop("Id").As("Id"), Prop("UserName").As("Name"))
+    .With("ActiveUsers");
+
+// 2) 引用 CTE 构建主查询
+var query = activeUsers
+    .Where(Prop("Name").Contains("A"))
+    .Select(Prop("Id"), Prop("Name"))
+    .OrderBy(Prop("Id").Asc())
+    .Section(0, 20);
+
+// 3) 根节点渲染：自动输出 WITH
+var sql = query.ToPreparedSql(context);
+```
+
+- CTE 只接收 `SelectExpr`：`SelectExpr.With(name)` → `CommonTableExpr`；之后可继续 `Where` / `Select` / `OrderBy` / `UnionAll`。`UnionAll` 两侧可复用同一个 `CommonTableExpr`，`WITH` 只输出一份。
+- 递归 CTE：定义体内用 `new CommonTableExpr { Alias = "Tree" }`（只写别名、`Source == null`）自引用，再与锚点 `UnionAll`；`WITH RECURSIVE` 由 `ISqlBuilder.ExplicitRecursive` 决定。
+- 收集机制：`CommonTableExpr` 渲染时调用 `SqlBuildContext.AddCommonTableExpr`，把定义写入 `context.CommonTableExprs`（对定义主体做一次后序遍历，依赖的 CTE 排在前面），当前位置只输出别名；根节点渲染结束后由 `ExprSqlConverter.BuildCteSql(context)` 拼出 `WITH [RECURSIVE]` 放到 SQL 最前。
+- 根节点与嵌套渲染：`ToPreparedSql(context)` / `ToSql(context, true)` 是根节点，会调用 `context.Init()` 并输出 `WITH`；自定义函数处理器、`GenericSqlExpr` 回调等嵌套场景使用 `ToSql(context)`（默认 `isRoot = false`），不重置上下文，其收集到的 CTE 由最外层统一输出。**嵌套场景禁止传 `true`**，否则会清空已收集的 CTE 与作用域。
+- 同别名校验：定义相等只保留一份；定义不同抛 `InvalidOperationException`；只有别名、找不到完整定义抛异常。
+- 参数编号：CTE 定义在主体之后渲染，CTE 内的参数编号排在主体条件之后；`BuildCteSql` 会把这些参数前移到 `OutputParams` 开头，使集合顺序与 SQL 文本一致。参数按名称绑定，编号先后不影响执行。
+- `ExprString` 不会自动展开 CTE；需要 CTE 时用 `Expr` / `SelectExpr` 结构化构建，或手写完整 `WITH ... SELECT ...`。
+- DAO 内部手工拼接的 UPDATE / DELETE / SELECT（`DataDAO.UpdateAllValues`、固定筛选条件等）会自动把 `WITH` 补到语句最前。
+
+## 十、分页、排序、分组与窗口函数
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+var query = From(typeof(User))
+    .Where(Prop("Age") >= 18)                  // WhereExpr
+    .GroupBy(Prop("DeptId"))                   // GroupByExpr
+    .Having(Prop("Id").Count() > 5)            // HavingExpr
+    .Select(Prop("DeptId"), Prop("Id").Count().As("Cnt"))
+    .OrderBy(Prop("Cnt").Desc())               // OrderByExpr，可传多个 OrderByItemExpr
+    .Section(0, 20);                           // SectionExpr：Skip, Take
+```
+
+- `.Section(skip, take)` 是唯一的分页入口；重复调用复用同一个 `SectionExpr`，直接更新 `Skip` / `Take`。
+- JSON 中分页是 `$section` 层上的 `Skip` / `Take` 字段；排序在 `$orderby` 层的 `OrderBys`（元素 `{ "Field": ..., "Asc": bool }`）。
+- `LIMIT/OFFSET`、`OFFSET ... FETCH`、Oracle `ROW_NUMBER`、MySQL `LIMIT a,b` 等差异由方言 `SqlBuilder` 处理，业务代码不区分数据库。
+- 翻页必须用唯一列兜底（如再追加 `Prop("Id").Desc()`），否则可能重复或漏行。
+- 窗口函数通过 `FunctionExpr.Over(partitionExprs, orderExprs)` 使用：
+
+```csharp
+var runningTotal = Func("SUM", Prop("Amount"))
+    .Over(new[] { Prop("ProductId") }, new[] { Prop("SaleTime").Asc() });
+```
+
+## 十一、Expr JSON、前端查询与 SQL 调试
+
+序列化与反序列化直接使用 `System.Text.Json`（`ExprJsonConverter` 默认输出简洁模式）：
+
+```csharp
+string json = JsonSerializer.Serialize<Expr>(expr);
+Expr reloaded = JsonSerializer.Deserialize<Expr>(json)!;
+```
+
+简洁模式标记：
+
+| 标记 | 含义 |
+| --- | --- |
+| `#` | 列引用：`{"#":"Name"}`、`{"#":"T0.Name"}` |
+| `@` | 参数值：`{"@":42}`（反序列化为参数化 `ValueExpr`） |
+| 直接值 | 常量（`42`、`"abc"`、`{"$datetime":"..."}`） |
+| `$` | 操作符或片段类型：`{"$":"=="}`、`{"$":"func"}`、`{"$":"sql"}` |
+| `!` | 取反：`{"!":{"#":"IsActive"}}` |
+| `$and` / `$or` | 逻辑与 / 或 |
+| `$where` / `$select` / `$orderby` / `$section` / `$table` / `$join` / `$group` / `$having` | 查询结构片段 |
+
+- 片段按层嵌套：`$section` 包 `$orderby`，`$orderby` 包 `$where`；每层自身属性（`Skip`/`Take`、`OrderBys`、`Where`）与 `$标记` 同级。
+- 比较操作符：`==`、`!=`、`>`、`>=`、`<`、`<=`；字符串/集合操作符：`in`、`notin`、`like`、`notlike`、`contains`、`notcontains`、`startswith`、`notstartswith`、`endswith`、`notendswith`、`regexp`、`notregexp`。
+- 完整形状见 [Expr JSON 序列化格式](../extensibility/expr-serialization.md)。
+
+接收前端 JSON 时必须校验：
+
+```csharp
+var validator = new ExprValidatorGroup(
+    ExprValidator.CreateQueryOnly(),        // 只允许 SELECT 查询类表达式
+    FunctionExprValidator.AllowRegisted     // 只允许已注册的函数
+);
+if (!ExprVisitor.Validate(validator, expr))   // 必须用 ExprVisitor.Validate 遍历整棵树
+    throw new UnauthorizedAccessException($"不允许的表达式: {validator.FailedExpr}");
+```
+
+SQL 生成与调试（不连数据库）：
+
+```csharp
+var sqlGen = new SqlGen(typeof(User)) { SqlBuilder = SQLiteBuilder.Instance };
+PreparedSql sql = sqlGen.ToSql(expr);       // 根节点渲染，CTE 的 WITH 会自动输出
+Console.WriteLine(sql.Sql);
+foreach (Param p in sql.Params) Console.WriteLine($"{p.Name} = {p.Value}");
+```
+
+## 十二、安全与参数化
+
+- 所有业务值都经 `SqlBuildContext.OutputParams` 参数化，占位符 SQL Server/MySQL/PostgreSQL/SQLite 为 `@n`、Oracle 为 `:n`；不要把用户输入拼进 SQL 文本。
+- `Expr.Value(v)` 参数化；`Expr.Const(v)` 内联为常量（不参数化）。数值常量 / 布尔常量可能直接内联；字符串、`DateTime` 等始终参数化。
+- `null` 比较自动转 `IS NULL`（`Prop("X") == null` → `X IS NULL`），避免 `= NULL` 的语义错误。
+- `Contains` / `Like` 自动添加通配符并转义 `%`、`_`、`[`、`]`，确有通配符时追加 `ESCAPE '/'`。
+- 自定义 SQL 片段必须预注册，回调内用表达式渲染而不是字符串拼值：
+
+```csharp
+GenericSqlExpr.Register("OwnerScope", (context, arg) =>
+{
+    if (arg is null) return null;
+    LogicExpr own = Prop("OwnerId") == arg.AsValue();
+    return own.ToSql(context);      // 非根渲染，参数化并保持当前作用域
+});
+```
+
+- `RawSql` 只用于无法参数化的动态值（如 `LIMIT` 行数、排序方向），必须先做数值范围或白名单校验；它不是 `Expr`，不被验证器扫描、不能 JSON 往返。
+- `ExprString` 只在 DAO 层可用：字面量是开发者写死的 SQL，格式化项中的普通值自动参数化，`Expr` 项按表达式渲染；SQL 标识符可用 `[` `]` 占位，执行前替换为方言引用符。
+
+## 十三、固定筛选条件与数据权限
+
+- `[Column("State", Constant = RecordState.Enabled)]`：给整张表加全局固定筛选，收敛为 `TableDefinition.ConstFilter`。查询、条件更新/删除、按主键读取/更新/删除、批量语句都会带上它；关联查询中还会进入 `JOIN ... ON`。
+- `Constant` 支持枚举、数值（`Constant = 1`）、字符串（`Constant = "tenant_a"`）等可转换为属性类型的常量；只适合**永远不变**的规则。
+- 运行时上下文（当前用户 / 租户）优先用 `Expr` 在查询入口统一叠加：
+
+```csharp
+LogicExpr filter = BuildBusinessFilter(request)
+    & (Prop("IsDeleted") == false);
+if (!IsAdmin(currentUser))
+    filter &= Prop("CreatedByUserId") == currentUser.Id;
+```
+
+- 需要让运行时条件自动覆盖关联与写入路径时，写成 `GenericSqlExpr` 并赋给 `TableDefinition.ConstFilter`（见[权限过滤](../advanced-topics/permission-filtering.md)与[数据权限](../typical-applications/data-permission.md)）。
+- 列表过滤不能替代对象级校验：详情、修改、删除接口仍要显式校验归属，否则可绕过。
+- 多租户的四种落地层次：运行时 `Expr`、`TableArgs` 分表、`ConstFilter` 切片、按 `DataSource` 分库。
+
+## 十四、分表、数据映射与自定义转换器
+
+### 分表
+
+```csharp
+[Table("Logs_{0}")]                 // {0} 由 TableArgs 替换
+public class Log : IArged
+{
+    [Column("Id", IsPrimaryKey = true, IsIdentity = true)]
+    public long Id { get; set; }
+    [Column("Level")] public string? Level { get; set; }
+    [Column("CreateTime")] public DateTime CreateTime { get; set; }
+    string[] IArged.TableArgs => new[] { CreateTime.ToString("yyyyMM") };
+}
+
+var logs = await logService.SearchAsync(
+    l => l.CreateTime >= start && l.CreateTime <= end,
+    tableArgs: new[] { "202603" });      // 查询时显式指定分表参数
+```
+
+- 写入时按 `IArged.TableArgs` 自动路由；查询 / 删除用 `tableArgs` 参数指定；多个占位符对应多个参数。
+
+### 数据映射
+
+- `DbValueType` 描述数据库取值类型；数组/JSON 等复杂类型需显式 `DbType`（`Array`、`Json`、`Jsonb`），未标注 `[Column]` 的自定义类型不会自动映射为列。
+- `JsonNode` 自动映射为 `DbValueType.Json`；数组在 PostgreSQL 落原生数组，其余方言回退文本。
+- 自定义转换器按 `SqlBuilder` 泛型类型注册（对所有方言生效就注册到基类）：
+
+```csharp
+SqlBuilder.Instance.RegisterDbValueConverter<SqlBuilder, string, OrderSettings>(
+    targetType: DbValueType.Json,
+    fromDb: s => JsonSerializer.Deserialize<OrderSettings>(s)!,
+    toDb: v => JsonSerializer.Serialize(v)
+);
+```
+
+- 列级也可声明 `[Column(..., ConverterType = typeof(MyConverter))]`；NativeAOT 下必须显式声明或预注册，且转换器需要公共无参构造函数。
+
+## 十五、日志、服务鉴权与远程服务
+
+- 日志：基于 `Microsoft.Extensions.Logging`。`[ServiceLog(LogLevel = ServiceLogLevel.Debug, LogFormat = LogFormat.Full)]` 可标在方法 / 类 / 接口；`IEntityServiceAsync<T>` 等内置接口默认 Debug 级；慢查询日志由服务拦截器输出。
+- 服务鉴权：`[ServicePermission]`（要求已认证）、`[ServicePermission(AllowRoles = "Admin, Manager")]`、`[ServicePermission(true)]`（匿名）。需要注册 `IUserContext`（`IPrincipal UserPrincipal`）后角色才生效；未注册时放行；失败抛 `ServicePermissionException`。依赖 `RegisterLiteOrm()` 的 AOP。
+- 远程服务：两端共享 `[Service]` 接口定义；服务端 `builder.Services.AddRemoteServer()`，客户端 `AddRemoteService<T>()`（或 `AddRemoteServiceFactory<TFactory>()`）并配置 `RemoteServiceUri`。接口签名与本地调用完全一致。
+
+## 十六、性能与 NativeAOT
+
+- 连接池：`PoolSize`（默认 16）、`MaxPoolSize`（默认 100）、`KeepAliveDuration`（默认 10 分钟）；`ParamCountLimit`（默认 1000）是单条 SQL 参数上限，批量方法据此计算每批记录数。
+- 查询结果惰性求值：`EnumerableResult<T>` / `DataTableResult` 未消费或未释放时连接不会归还，注意 `ToList()` / `await foreach` 后及时释放。
+- 只查需要的列（`SearchAs` 投影）、批量写入用 `BatchInsert` / `BatchUpdate`、批量删除用 `BatchDelete`。
+- NativeAOT：基础库支持，源生成器编译期生成元数据与映射；`LiteOrm.DependencyInjection`（Autofac/Castle）与 `LiteOrm.Remote` 不支持 AOT；AOP（事务/权限/日志特性）在 AOT 下不可用，改用手工事务、运行时 `Expr` 与服务事件。
+- AOT 下投影类型/匿名类型没有生成映射，回退反射路径；自定义转换器需显式声明或预注册。
+
+## 十七、常见错误与检查清单
+
+| 现象 | 原因 / 正确做法 |
+| --- | --- |
+| `Expr.Exists<T>(...)` 直接调用抛异常 | 它只能出现在 Lambda 内，由解析器接管；Lambda 外请用 `Expr.Exists(type, innerExpr, tableArgs)` |
+| `From<T>()` 与 `From(typeof(T))` 混用出错 | `From<T>()` 返回 `QuerySource<T>`（IQueryable 链）；`From(typeof(T))` 返回 `TableExpr`（Expr 链），不要混用 |
+| Service 上找不到 `ExprString` 重载 | `ExprString` 只在 DAO 层提供；需要手写 SQL 时切到 DAO |
+| 查询 SQL 里出现 `WITH` 缺失或重复 | 根节点必须走 `ToPreparedSql` / `ToSql(context, true)`；嵌套处理器用 `ToSql(context)` |
+| 自定义函数处理器里上下文被清空 | 不要在渲染过程中调用顶层 `ToSql(context, true)`，它执行 `Init()` |
+| 分页出现重复/漏行 | 排序缺少唯一列兜底 |
+| 多表查询列名歧义 | 用 `Expr.Prop("别名", "列名")` 明确别名，或使用视图 + `[ForeignColumn]` |
+| `ConstFilter` 未生效 | `Column.Constant` 需要可转换为属性类型的常量；运行时条件请用 `Expr` 或 `GenericSqlExpr` 赋给 `TableDefinition.ConstFilter` |
+| 执行更新/删除一直返回 0 | 检查是否被 `ConstFilter`（含列常量）挡住了 |
+| 时间戳并发保护未生效 | 必须把旧值作为 `timestamp` 传入 `Update` / `UpdateAsync`，并检查返回值 |
+| `[Transaction]` 不生效 | 需要 `RegisterLiteOrm()`、方法为 `public`、且通过接口代理调用 |
+| 事务中读不到刚写入的数据 | 事务中的查询强制走主库；未提交前其他会话看不到 |
+| 只读副本读到旧数据 | 视图 DAO 查询默认走只读副本；需要强一致时把读取放在事务内或覆盖 `IsView => false` |
+| 计算列表达式抛 `NotSupportedException` | `ColumnDefinition.ExpressionExpr` 只允许固定 SQL，不能用 `Expr.Value(...)` 产生参数 |
+| AOT 下 AOP / 远程不可用 | 改用 `AddLiteOrm()`、手工事务与服务事件 |
 
 ## 相关链接
 

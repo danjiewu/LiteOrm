@@ -45,7 +45,7 @@ namespace LiteOrm.Common
         /// </summary>
         public Expr? Arg { get; set; }
 
-        private SqlGenerateHandler? SqlHandler => String.IsNullOrEmpty(Key) ? null : _registry[Key!].SqlHandler;
+        private SqlGenerateHandler? SqlHandler => String.IsNullOrEmpty(Key) ? null : _registry[Key!];
 
         /// <summary>
         /// 表达式唯一键。
@@ -106,21 +106,14 @@ namespace LiteOrm.Common
 
 
         #region 静态注册表
-        private class InnerSqlExpr
-        {
-            public bool IsValue { get; set; }
-            public SqlGenerateHandler? SqlHandler { get; set; }
-        }
-
-        private static readonly ConcurrentDictionary<string, InnerSqlExpr> _registry = new ConcurrentDictionary<string, InnerSqlExpr>();
+        private static readonly ConcurrentDictionary<string, SqlGenerateHandler> _registry = new ConcurrentDictionary<string, SqlGenerateHandler>();
 
         /// <summary>
         /// 注册一个动态 SQL 表达式类。
         /// <param name="key">表达式唯一键。</param>
         /// <param name="func">生成该表达式 SQL 字符串的委托。</param> 
-        /// <param name="isValue">指示该表达式是否为值类型表达式。</param>
         /// </summary>
-        public static GenericSqlExpr Register(string key, SqlGenerateHandler func, bool isValue = false)
+        public static GenericSqlExpr Register(string key, SqlGenerateHandler func)
         {
             if (key is null) throw new ArgumentNullException(nameof(key));
             if (func is null) throw new ArgumentNullException(nameof(func));
@@ -128,7 +121,7 @@ namespace LiteOrm.Common
             {
                 return new GenericSqlExpr(key);
             }
-            _registry[key] = new InnerSqlExpr { IsValue = isValue, SqlHandler = func };
+            _registry[key] = func;
             return new GenericSqlExpr(key);
         }
 
@@ -139,7 +132,7 @@ namespace LiteOrm.Common
         public static GenericSqlExpr Get(string key)
         {
             if (key is null) throw new ArgumentNullException(nameof(key));
-            if (_registry.TryGetValue(key, out var expr))
+            if (_registry.ContainsKey(key))
             {
                 return new GenericSqlExpr(key);
             }
