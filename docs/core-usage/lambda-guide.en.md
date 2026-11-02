@@ -39,7 +39,7 @@ var complex = await userService.SearchAsync(
 
 ### 1.2 Supported string and method handlers
 
-At startup, `LiteOrmLambdaHandlerInitializer` registers a batch of Lambda method handlers. The strings it currently supports (see `LiteOrm.Common/Converter/LiteOrmLambdaHandlerInitializer.cs`):
+At startup, `LiteOrmLambdaHandlerInitializer` registers a batch of Lambda method handlers. The strings it currently supports (see `LiteOrm.Common/Initilizer/LiteOrmLambdaHandlerInitializer.cs`):
 
 | Method | SQL semantic | Example |
 |--------|--------------|---------|

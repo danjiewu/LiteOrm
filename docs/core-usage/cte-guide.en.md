@@ -107,6 +107,8 @@ So you can safely reuse the same CTE expression multiple times, or reuse the sam
 
 > A top-level call `expr.ToSql(context, true)` (`isRoot` set to `true`) or `expr.ToPreparedSql(context)` calls `context.Init()` automatically, which resets the scope, alias sequence and collected CTEs, so reusing the same context needs no manual cleanup. `OutputParams` belongs to the caller and is not cleared by `Init()`. Nested calls made during rendering (e.g. inside a function handler) keep `isRoot` at its default `false`, do not reset the context, and the CTEs they collect are emitted by the outermost call.
 
+> CTE definitions are rendered and prefixed after the main body, so parameters produced inside a CTE receive placeholder numbers after the body's conditions; `BuildCteSql` moves those parameters to the front of `OutputParams` so the collection order matches the final SQL text. Parameters bind by name, so the numbering order does not affect execution.
+
 ### 5.1 Recursive CTE
 
 Recursive CTEs are used for hierarchical / tree-structured data (org charts, category trees, path finding, etc.). LiteOrm decides whether to emit the `RECURSIVE` keyword based on the database's `ExplicitRecursive` property.
@@ -157,8 +159,8 @@ Default `ExplicitRecursive` values by database:
 | MySQL / TiDB / OceanBase / GreatDB | `true` | uses `WITH RECURSIVE` |
 | PostgreSQL / KingbaseES / GaussDB | `true` | uses `WITH RECURSIVE` |
 | SQLite | `true` | uses `WITH RECURSIVE` |
-| SQL Server | `false` | no `RECURSIVE` keyword needed |
-| Oracle / DM (Dameng) | `false` | no `RECURSIVE` keyword needed |
+| SQL Server | `false` | no `RECURSIVE` keyword needed; recursive CTEs still work |
+| Oracle / DM (Dameng) | `false` | recursive CTEs are not supported; use `CONNECT BY` for tree queries |
 
 For databases where `ExplicitRecursive` is `true`, the generated SQL looks like:
 
@@ -174,7 +176,7 @@ SELECT [Id], [Name], [Level]
 FROM [CategoryTree]
 ```
 
-For databases where `ExplicitRecursive` is `false` (e.g., SQL Server), only `WITH` is emitted (no `RECURSIVE`).
+For databases where `ExplicitRecursive` is `false`, only `WITH` is emitted (no `RECURSIVE`). SQL Server still supports recursive CTEs, while Oracle / Dameng do not support self-referencing recursive CTEs and should use `CONNECT BY` for hierarchical queries (see [Complex Query Examples](../typical-applications/complex-queries.en.md#3-department-tree-filtering)).
 
 ## 6. CTE serialization rules
 
@@ -263,5 +265,5 @@ var result = await dataViewDAO.Search(
 - [ExprString Guide](./exprstring-guide.en.md)
 - [Lambda & Expr Mixing](./lambda-expr-mixing.en.md)
 - [AI Guide](../reference/ai-guide.en.md)
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 

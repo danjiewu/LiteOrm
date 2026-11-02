@@ -24,7 +24,7 @@ LiteOrm combines micro-ORM speed with full-ORM ergonomics. It fits projects that
 
 Start with the **docs hub**, then follow the learning-path navigation to read the full documentation:
 
-**Homepage**: [https://danjiewu.github.io/LiteOrm/](https://danjiewu.github.io/LiteOrm/) ｜ Local docs nav: **[docs/README.md](./docs/README.md)**
+**Homepage**: [https://danjiewu.github.io/LiteOrm/](https://danjiewu.github.io/LiteOrm/) ｜ Local docs nav: **[docs/README.en.md](./docs/README.en.md)**
 
 - **Getting Started**: install, register, and run your first working example
 - **Core Usage**: entity mapping, Expr / query guides, CRUD, associations, mixing Lambda with Expr
@@ -134,7 +134,7 @@ Latest comparison test results based on the LiteOrm.Benchmark project (.NET 10.0
 
 | Resource | Description |
 |:--- |:--- |
-| [Documentation Hub](./docs/README.md) | Bilingual docs hub organized by learning path |
+| [Documentation Hub](./docs/README.en.md) | English docs hub organized by learning path |
 | [中文文档中心](./docs/README.md) | 按学习路径组织的中英文文档导航 |
 | [API Index](./docs/reference/api-index.en.md) | Scenario-based API and capability entry points |
 | [AI Guide](./docs/reference/ai-guide.en.md) | Compact appendix for assistants and quick API orientation |

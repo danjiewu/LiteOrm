@@ -32,7 +32,7 @@ public class Oracle11gBuilder : OracleBuilder
 }
 ```
 
-For a complete implementation, see [Custom Paging](../advanced-topics/custom-paging.md).
+For a complete implementation, see [Custom Paging](../advanced-topics/custom-paging.en.md).
 
 ## Registration Methods
 
@@ -105,7 +105,7 @@ If the function comes from Lambda or member extensions, you also need to registe
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Custom Paging](../advanced-topics/custom-paging.en.md)
 - [Expression Extension](./expression-extension.en.md)
 - [Configuration Reference](../reference/configuration-reference.en.md)

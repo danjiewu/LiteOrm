@@ -109,6 +109,21 @@ Notes:
 
 ### 2.3 TableJoin (Type-Level)
 
+```csharp
+[TableJoin(typeof(Department), "ParentId", Alias = "Parent", JoinType = TableJoinType.Left)]
+[TableJoin(typeof(Department), "DeptId", Alias = "Dept", JoinType = TableJoinType.Left)]
+public class User { /* ... */ }
+
+public class OrderView : Order
+{
+    [ForeignColumn(typeof(User), Property = "UserName")]
+    public string? UserName { get; set; }
+
+    [ForeignColumn("Dept", Property = "Name")]
+    public string? DeptName { get; set; } // references the Alias declared on TableJoin
+}
+```
+
 `TableJoin` is suitable for expressing complex association relationships.
 
 If the target table uses a **composite primary key**, you can use `ForeignKeys = "Key1,Key2"` to provide multiple foreign key columns in order; `ForeignType` does not support this multi-column association scenario.
@@ -406,7 +421,7 @@ In implementation, LiteOrm merges ForeignType and TableJoin information during t
 
 ## 7. Related Links
 
-- [Back to English docs hub](../README.md)
+- [Back to English docs hub](../README.en.md)
 - [Entity Mapping](./entity-mapping.en.md)
 - [Query Overview](./query-overview.en.md)
 - [Lambda Guide](./lambda-guide.en.md)

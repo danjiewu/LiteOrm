@@ -2,7 +2,7 @@
 
 This article demonstrates a minimal runnable example of LiteOrm's typical usage flow: defining entities, registering services, inserting data, querying data, and paginated queries.
 
-> If you don't need Autofac/AOP/DI, you can refer to [First Complete Example (Base Library Only)](./first-example.md). The base library also offers `AddLiteOrm()` (plain MS DI, no Autofac/AOP) — you can start with it and upgrade smoothly to the host integration covered here.
+> If you don't need Autofac/AOP/DI, you can refer to [First Complete Example (Base Library Only)](./first-example.en.md). The base library also offers `AddLiteOrm()` (plain MS DI, no Autofac/AOP) — you can start with it and upgrade smoothly to the host integration covered here.
 
 > **Beginner tip**: This article assumes you've completed [Installation](./installation.en.md) and [Configuration](../reference/configuration-reference.en.md). If this is your first time with LiteOrm, follow along and type the code—it takes about 15 minutes. This article uses SQLite as the demo database, so no additional database server installation is needed.
 
@@ -122,7 +122,7 @@ app.Run();
 
 > **`RegisterLiteOrm()` or `AddLiteOrm()`?**
 > - `RegisterLiteOrm()` (this article): Autofac container + Castle AOP interception, supporting `[Transaction]`, `[ServicePermission]`, `[ServiceLog]` and more; called on `builder.Host`.
-> - `AddLiteOrm()` (base library, plain MS DI): use it when you don't need Autofac / AOP; call it on `builder.Services`. See [First Complete Example (Base Library Only)](./first-example.md).
+> - `AddLiteOrm()` (base library, plain MS DI): use it when you don't need Autofac / AOP; call it on `builder.Services`. See [First Complete Example (Base Library Only)](./first-example.en.md).
 
 ## 5. Resolve a Service and Insert a Record
 
@@ -387,7 +387,7 @@ If all items pass—congratulations! You've successfully completed the basic Lit
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Entity Mapping and Data Sources](../core-usage/entity-mapping.en.md)
 - [Query Overview](../core-usage/query-overview.en.md)
 - [Lambda Guide](../core-usage/lambda-guide.en.md)

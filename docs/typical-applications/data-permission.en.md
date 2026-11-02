@@ -264,7 +264,7 @@ A condition attached as `ConstFilter` (Way 2) is recognized and applied by prima
 
 ## Related links
 
-- [Back to index](../README.md)
+- [Back to index](../README.en.md)
 - [Service Authorization](../di/service-authorization.en.md)
 - [Tenant Isolation](./tenant-isolation.en.md)
 - [Soft Deletes and Historical Data](./soft-delete-and-archive.en.md)

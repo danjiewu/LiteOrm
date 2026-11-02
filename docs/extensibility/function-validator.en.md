@@ -200,7 +200,7 @@ validator.Validate(expr2);  // false
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Associations](../core-usage/associations.en.md)
 - [Expression Extension](./expression-extension.en.md)
 - [Window Functions](../advanced-topics/window-functions.en.md)

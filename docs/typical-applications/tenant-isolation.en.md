@@ -290,7 +290,7 @@ services.AddScoped<ObjectViewDAO<TenantOrder>, TenantOrderViewDAO>();
 
 ## Related links
 
-- [Back to index](../README.md)
+- [Back to index](../README.en.md)
 - [Permission Filtering and User Scopes](../advanced-topics/permission-filtering.en.md)
 - [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md)
 - [Data Permissions](./data-permission.en.md)

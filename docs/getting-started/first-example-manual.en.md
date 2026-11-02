@@ -222,7 +222,7 @@ catch
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Installation](./installation.en.md)
 - [First Full Example (Base Library Only)](./first-example.en.md)
 - [First Full Example (DI)](./first-example-di.en.md)

@@ -195,7 +195,7 @@ await departmentService.UpdateOrInsertAsync(dept);
 int deleted = await userService.DeleteAsync(u => u.UserName == "alice");
 ```
 
-> Lambda condition queries are written identically to local services. The framework converts Lambda expressions to serializable `Expr` expression trees in the client process before transmission. See [Expression Guide](../core-usage/expr-guide.md).
+> Lambda condition queries are written identically to local services. The framework converts Lambda expressions to serializable `Expr` expression trees in the client process before transmission. See [Expression Guide](../core-usage/expr-guide.en.md).
 
 ---
 
@@ -1031,7 +1031,7 @@ Remote service invocation **completely relies on JSON serialization of input par
 | **`CancellationToken` not serialized** | The cancellation token is passed end-to-end by the transport layer as call context and does not appear in `Arguments` |
 | **`Expr` parameters serialized by declared type** | Lambda expressions written in business code are **first converted to `Expr` derived classes** in the client process by `LambdaExprConverter.ToLogicExpr` before transmission. `Expression<Func<T,bool>>` itself is never serialized |
 
-For the JSON structure of requests and responses, see [Expression Serialization](../extensibility/expr-serialization.md) and the source code `LiteOrm.Common/Remote/RemoteInvocationMessage.cs`.
+For the JSON structure of requests and responses, see [Expression Serialization](../extensibility/expr-serialization.en.md) and the source code `LiteOrm.Common/Remote/RemoteInvocationMessage.cs`.
 
 ---
 

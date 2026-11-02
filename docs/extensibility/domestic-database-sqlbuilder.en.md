@@ -209,7 +209,7 @@ private class DamengIdentityModel
 }
 ```
 
-For the `CreateProvider` helper method, refer to the existing implementation in `LiteOrm.Tests\SqlBuilderTests.cs` (construct `ISqlBuilderFactory` and `IDataSourceProvider` via Moq, then instantiate `AttributeTableInfoProvider`).
+For the `CreateProvider` helper method, refer to the existing implementation in `LiteOrm.Tests\SqlBuilder\SqlBuilderTests.cs` (construct `ISqlBuilderFactory` and `IDataSourceProvider` via Moq, then instantiate `AttributeTableInfoProvider`).
 
 If your dialect has unique function translations (such as Dameng's `SYSDATE` or `TO_DATE` behavior differences), register function handlers following the [Expression Extension](./expression-extension.en.md) document and write dedicated tests.
 
@@ -415,7 +415,7 @@ When integrating a new domestic / compatible database, follow these steps:
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Custom SqlBuilder / Dialect Extension](./custom-sqlbuilder.en.md)
 - [Custom Paging Implementation Example](../advanced-topics/custom-paging.en.md)
 - [Database Differences and Compatibility Notes](../reference/database-compatibility.en.md)

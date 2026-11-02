@@ -525,7 +525,7 @@ As a rule of thumb:
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Associations](../core-usage/associations.en.md)
 - [Permission Filtering](../advanced-topics/permission-filtering.en.md)
 - [Performance Optimization](./performance.en.md)

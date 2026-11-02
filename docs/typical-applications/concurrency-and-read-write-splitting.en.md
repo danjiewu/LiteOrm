@@ -218,7 +218,7 @@ Notes:
 
 ## Related links
 
-- [Back to index](../README.md)
+- [Back to index](../README.en.md)
 - [Transactions](../di/transactions.en.md)
 - [Configuration Reference](../reference/configuration-reference.en.md)
 - [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md)

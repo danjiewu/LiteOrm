@@ -209,6 +209,20 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 | Oracle / Dameng | `INSERT INTO ... SELECT ... FROM DUAL UNION ALL SELECT ...` |
 | Others | Standard `INSERT INTO ... VALUES (...), (...), ...` (base default) |
 
+### 2.11 CTE and the Recursive Keyword
+
+Every built-in dialect supports CTEs (`SqlBuilder.SupportCteExpr` defaults to `true`); whether `RECURSIVE` follows `WITH` depends on `SqlBuilder.ExplicitRecursive`:
+
+| Database | `ExplicitRecursive` | Form |
+|----------|---------------------|------|
+| MySQL / TiDB / OceanBase / GreatDB | `true` | `WITH RECURSIVE` |
+| PostgreSQL / KingbaseES / GaussDB | `true` | `WITH RECURSIVE` |
+| SQLite | `true` | `WITH RECURSIVE` |
+| SQL Server | `false` | `WITH` |
+| Oracle / Dameng (DM) | `false` | `WITH` |
+
+SQL Server supports recursive CTEs without the `RECURSIVE` keyword, while Oracle / Dameng do not support recursive CTEs and should use `CONNECT BY` for tree queries. For CTE construction, recursive patterns and parameter order, see the [CTE Guide](../core-usage/cte-guide.en.md).
+
 ## 3. Bulk Write Capabilities (IBulkProvider)
 
 LiteOrm supports high-performance bulk writes via the `IBulkProvider` interface, but **the base library does not include any built-in implementations**—only the interface is provided.
@@ -319,7 +333,7 @@ That keeps business-layer code more stable over time.
 
 ## Related Links
 
-- [Back to English docs hub](../README.md)
+- [Back to English docs hub](../README.en.md)
 - [Example Index](./example-index.en.md)
 - [Generated SQL Examples](./sql-examples.en.md)
 - [Custom paging](../advanced-topics/custom-paging.en.md)

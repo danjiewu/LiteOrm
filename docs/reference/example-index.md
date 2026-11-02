@@ -28,9 +28,9 @@
 - 文档入口：[查询总览](../core-usage/query-overview.md)｜[Lambda 查询指南](../core-usage/lambda-guide.md)｜[Expr 使用指南](../core-usage/expr-guide.md)
 - 代码来源：
   - `LiteOrm.Demo\Demos\ExistsRelatedDemo.cs`
-  - `LiteOrm.Tests\ExprEnhancedTests.cs`
-  - `LiteOrm.Tests\ServiceTests.cs`
-  - `LiteOrm.Tests\LambdaQueryTests.cs`
+  - `LiteOrm.Tests\Expr\ExprEnhancedTests.cs`
+  - `LiteOrm.Tests\Service\ServiceTests.cs`
+  - `LiteOrm.Tests\Query\LambdaQueryTests.cs`
 - 重点内容：
   - `Expr.Exists(typeof(T), ...)`
   - `Expr.ExistsRelated(typeof(T), ...)`
@@ -43,7 +43,7 @@
 - 文档入口：[查询总览](../core-usage/query-overview.md)｜[Lambda 查询指南](../core-usage/lambda-guide.md)｜[Expr 使用指南](../core-usage/expr-guide.md)
 - 代码来源：
   - `LiteOrm.Demo\Demos\PracticalQueryDemo.cs`
-  - `LiteOrm.Tests\PracticalQueryTests.cs`
+  - `LiteOrm.Tests\Query\PracticalQueryTests.cs`
 - 重点内容：
   - `In`
   - `Between`
@@ -75,7 +75,7 @@
 - 文档入口：[CRUD 指南](../core-usage/crud-guide.md)
 - 代码来源：
   - `LiteOrm.Demo\Data\DbInitializer.cs`
-  - `LiteOrm.Tests\ServiceTests.cs`
+  - `LiteOrm.Tests\Service\ServiceTests.cs`
 - 重点内容：
   - `BatchInsertAsync`
   - `BatchUpdateAsync`
@@ -86,7 +86,7 @@
 
 - 文档入口：[CRUD 指南](../core-usage/crud-guide.md)
 - 代码来源：
-  - `LiteOrm.Tests\ServiceTests.cs`
+  - `LiteOrm.Tests\Service\ServiceTests.cs`
   - `LiteOrm.Demo\Demos\UpdateExprDemo.cs`
 - 重点内容：
   - `BatchUpdateOrInsertAsync`
@@ -106,7 +106,7 @@
 - 代码来源：
   - `LiteOrm.Demo\Models\User.cs`
   - `LiteOrm.Demo\Models\SalesRecord.cs`
-  - `LiteOrm.Tests\ServiceTests.cs`
+  - `LiteOrm.Tests\Service\ServiceTests.cs`
 - 重点内容：
   - `DeptName / ParentDeptName`
   - `AutoExpand = true` 的二级展开
@@ -117,7 +117,7 @@
 - 文档入口：[关联查询](../core-usage/associations.md)
 - 代码来源：
   - `LiteOrm.Demo\Demos\ExistsRelatedDemo.cs`
-  - `LiteOrm.Tests\ExprEnhancedTests.cs`
+  - `LiteOrm.Tests\Expr\ExprEnhancedTests.cs`
 - 重点内容：
   - 正向过滤
   - 反向路径推断
@@ -140,7 +140,7 @@
 
 - 文档入口：[CRUD 指南](../core-usage/crud-guide.md)
 - 代码来源：
-  - `LiteOrm.Tests\ObjectDAOTests.cs`
+  - `LiteOrm.Tests\DAO\ObjectDAOTests.cs`
   - `LiteOrm.Tests\Models\TestTimestampUser.cs`
 - 重点内容：
   - `[Column(..., IsTimestamp = true)]`
@@ -166,7 +166,7 @@
 - 代码来源：
   - `LiteOrm.Demo\Data\DbInitializer.cs`
   - `LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs`（文件内实现类为 `MySqlBulkCopyProvider`）
-  - `LiteOrm.Tests\ServiceTests.cs`
+  - `LiteOrm.Tests\Service\ServiceTests.cs`
 - 重点内容：
   - 批量初始化
   - `SearchAs<T>` 投影

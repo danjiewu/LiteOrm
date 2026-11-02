@@ -270,7 +270,7 @@ It is an authorization exception, and its HTTP meaning is `403`. Missing data su
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Data Permissions](../typical-applications/data-permission.en.md)
 - [Permission Filtering and User Scopes](../advanced-topics/permission-filtering.en.md)
 - [Logging and Diagnostics](./logging.en.md)

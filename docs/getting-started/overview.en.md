@@ -483,7 +483,7 @@ The names in attributes are the actual database names. If your C# property name 
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Installation and Environment Requirements](./installation.en.md)
 - [Configuration Reference](../reference/configuration-reference.en.md)
 - [API Index](../reference/api-index.en.md)

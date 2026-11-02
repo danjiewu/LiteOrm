@@ -750,6 +750,6 @@ var lambdaExpr = Lambda<User>(u => ExistsRelated<Department>(d => d.Name == "IT"
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [API Index](./api-index.en.md)
 - [Glossary](./glossary.en.md)

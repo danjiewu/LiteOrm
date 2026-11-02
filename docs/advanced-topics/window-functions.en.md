@@ -266,7 +266,7 @@ The examples in this repository focus on `SumOver` and rely on `FunctionExpr.Ove
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Associations](../core-usage/associations.en.md)
 - [Expression Extension](../extensibility/expression-extension.en.md)
 - [Function Validator](../extensibility/function-validator.en.md)

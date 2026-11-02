@@ -184,7 +184,7 @@ if (!updated)
 - 通用 `IEntityService<T>` / `IEntityServiceAsync<T>` 的 `Update` 重载不带 `timestamp` 参数；需要乐观并发时，请直接使用 `ObjectDAO<T>`，或在自定义 Service 中封装 DAO。
 - `BatchUpdate` / `BatchUpdateAsync` 不会自动附带 `timestamp` 并发校验。
 
-> 完整示例可参考 `LiteOrm.Tests\ObjectDAOTests.cs` 和 `LiteOrm.Tests\Models\TestTimestampUser.cs`。
+> 完整示例可参考 `LiteOrm.Tests\DAO\ObjectDAOTests.cs` 和 `LiteOrm.Tests\Models\TestTimestampUser.cs`。
 
 ### 使用 Lambda 表达式更新（推荐）
 

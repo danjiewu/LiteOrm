@@ -39,7 +39,7 @@ var complex = await userService.SearchAsync(
 
 ### 1.2 支持的字符串与方法
 
-LiteOrm 在启动时通过 `LiteOrmLambdaHandlerInitializer` 注册了一批 Lambda 方法处理器，以下是实际支持的字符串方法（对照源码 `LiteOrm.Common/Converter/LiteOrmLambdaHandlerInitializer.cs`）：
+LiteOrm 在启动时通过 `LiteOrmLambdaHandlerInitializer` 注册了一批 Lambda 方法处理器，以下是实际支持的字符串方法（对照源码 `LiteOrm.Common/Initilizer/LiteOrmLambdaHandlerInitializer.cs`）：
 
 | 方法 | SQL 语义 | 示例 |
 |------|----------|------|

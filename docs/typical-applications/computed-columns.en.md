@@ -244,7 +244,7 @@ Points that tend to trip people up:
 
 ## Related links
 
-- [Back to index](../README.md)
+- [Back to index](../README.en.md)
 - [Entity Mapping · computed column definition](../core-usage/entity-mapping.en.md)
 - [Data Permissions](./data-permission.en.md)
 - [Tenant Isolation](./tenant-isolation.en.md)

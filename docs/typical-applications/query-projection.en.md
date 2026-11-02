@@ -617,7 +617,7 @@ Querying the entity first fits these cases better:
 
 ## Related links
 
-- [Back to index](../README.md)
+- [Back to index](../README.en.md)
 - [Query Overview: Search vs SearchAs](../core-usage/query-overview.en.md)
 - [View Models and Services](../core-usage/view-models-and-services.en.md)
 - [Associations](../core-usage/associations.en.md)

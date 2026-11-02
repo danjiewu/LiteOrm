@@ -207,7 +207,7 @@ private class DamengIdentityModel
 }
 ```
 
-`CreateProvider` 的辅助方法可以参考 `LiteOrm.Tests\SqlBuilderTests.cs` 中已有的实现（通过 Moq 构造 `ISqlBuilderFactory` 和 `IDataSourceProvider`，再实例化 `AttributeTableInfoProvider`）。
+`CreateProvider` 的辅助方法可以参考 `LiteOrm.Tests\SqlBuilder\SqlBuilderTests.cs` 中已有的实现（通过 Moq 构造 `ISqlBuilderFactory` 和 `IDataSourceProvider`，再实例化 `AttributeTableInfoProvider`）。
 
 如果你的方言有独特函数翻译（例如达梦的 `SYSDATE`、`TO_DATE` 行为差异），按 [表达式扩展](./expression-extension.md) 文档注册函数处理器并写专门测试。
 

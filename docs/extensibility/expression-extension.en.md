@@ -566,7 +566,7 @@ LiteOrm automatically registers the following cross-database SqlFunctions on fir
 
 ## 13. Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Associations](../core-usage/associations.en.md)
 - [Window Functions](../advanced-topics/window-functions.en.md)
 - [Function Validator](./function-validator.en.md)

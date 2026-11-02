@@ -212,7 +212,7 @@ Actual window function SQL depends on your registered function handlers and data
 
 ## Related Links
 
-- [Back to English docs hub](../README.md)
+- [Back to English docs hub](../README.en.md)
 - [API Index](./api-index.en.md)
 - [Query Overview](../core-usage/query-overview.en.md)
 - [Associations](../core-usage/associations.en.md)

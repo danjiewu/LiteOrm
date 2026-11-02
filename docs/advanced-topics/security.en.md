@@ -455,7 +455,7 @@ When using LiteOrm in production, confirm each item:
 
 ## 8. Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Function Validator](../extensibility/function-validator.en.md)
 - [Permission Filtering](../advanced-topics/permission-filtering.en.md)
 - [Frontend Native Expr](../extensibility/frontend-native-expr.en.md)

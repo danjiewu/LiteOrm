@@ -442,7 +442,7 @@ Sorting fields are written directly in the JSON, so the query method does not ne
 ```sql
 WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
   FROM "Departments" "T1"
-  WHERE "T1"."Id" = @1
+  WHERE "T1"."Id" = @4
   UNION ALL SELECT "T2"."Id"
     FROM "Departments" "T2"
     LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
@@ -453,7 +453,7 @@ WHERE "T0"."DeptId" IN (SELECT "Id"
 -- @0 = -7, @1 = 1, @2 = 100, @3 = %SO2026%, @4 = 1001
 ```
 
-Note the parameter order: the subtree root Id is produced only when the CTE definition is rendered, and the CTE is placed at the front only after the main body has been rendered, so it takes the last index while the body's conditions take the earlier ones. Parameters bind by name, so the numbering order does not affect execution.
+Note the parameter order: the subtree root Id is produced only when the CTE definition is rendered, and the CTE is placed at the front only after the main body has been rendered, so it takes the last index while the body's conditions take the earlier ones. `BuildCteSql` then moves these CTE parameters to the front of `OutputParams`, keeping the collection order consistent with the final SQL text; parameters bind by name, so the numbering order does not affect execution.
 
 The page SQL receives the whole `query`, its conditions match those of the count exactly, and only sorting and paging are added; it likewise emits an independent `WITH` at the outermost level (the two statements are generated separately and share no context):
 

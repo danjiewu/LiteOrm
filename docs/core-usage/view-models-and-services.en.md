@@ -158,7 +158,7 @@ Results are wrapped in lazy objects (`ResultTypes.cs`): the base is `CommandResu
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Entity Mapping and Data Sources](./entity-mapping.en.md)
 - [CRUD Guide](./crud-guide.en.md)
 - [Transactions](../di/transactions.en.md)

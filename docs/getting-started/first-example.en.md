@@ -289,7 +289,7 @@ Console.WriteLine($"Count={count}, Exists={exists}");
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Installation](./installation.en.md)
 - [Configuration Reference](../reference/configuration-reference.en.md)
 - [First End-to-End Example (DI)](./first-example-di.en.md)

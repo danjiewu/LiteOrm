@@ -327,7 +327,7 @@ During dynamic generation, the code checks whether a Controller with the same na
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [First Example (DI)](../getting-started/first-example-di.en.md)
 - [View Models and Services](../core-usage/view-models-and-services.en.md)
 - [Permission Filtering](../advanced-topics/permission-filtering.en.md)

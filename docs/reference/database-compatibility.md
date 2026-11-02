@@ -209,6 +209,20 @@ LiteOrm 内置以下 6 个国产 / 兼容数据库构建器。开发指南（基
 | Oracle / 达梦 | `INSERT INTO ... SELECT ... FROM DUAL UNION ALL SELECT ...` |
 | 其他 | 标准 `INSERT INTO ... VALUES (...), (...), ...`（基类默认） |
 
+### 2.11 CTE 与递归关键字
+
+所有内置方言都支持 CTE（`SqlBuilder.SupportCteExpr` 默认 `true`）；`WITH` 后是否输出 `RECURSIVE` 由 `SqlBuilder.ExplicitRecursive` 决定：
+
+| 数据库 | `ExplicitRecursive` | 生成形式 |
+|--------|---------------------|---------|
+| MySQL / TiDB / OceanBase / GreatDB | `true` | `WITH RECURSIVE` |
+| PostgreSQL / KingbaseES / GaussDB | `true` | `WITH RECURSIVE` |
+| SQLite | `true` | `WITH RECURSIVE` |
+| SQL Server | `false` | `WITH` |
+| Oracle / 达梦（DM） | `false` | `WITH` |
+
+SQL Server 不使用 `RECURSIVE` 关键字但仍支持递归 CTE；Oracle / 达梦不支持递归 CTE，树形查询应使用 `CONNECT BY`。CTE 的构建方式、递归写法和参数顺序见[CTE 指南](../core-usage/cte-guide.md)。
+
 ## 3. 批量写入能力（IBulkProvider）
 
 LiteOrm 通过 `IBulkProvider` 接口支持高性能批量写入，但**基础库不内置任何实现**，仅提供接口。

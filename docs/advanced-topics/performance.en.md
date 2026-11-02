@@ -544,7 +544,7 @@ Each ORM's six dimensions — **batch time / batch memory / batch GC** (4 operat
 | Benchmark mode | `[MemoryDiagnoser]` + `[MediumRunJob]` (Job=MediumRun, IterationCount=15, LaunchCount=2, WarmupCount=10) |
 | Compared ORMs | LiteOrm, Dapper, FreeSql, SqlSugar, EFCore |
 
-> Full BenchmarkDotNet reports live in `LiteOrm.Benchmark/BenchmarkDotNet.Artifacts/results/`. Visualization: https://aad8b2de3fba877d3.app.workbuddy.link/
+> The full report is committed as `LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md`; after running the benchmark, BenchmarkDotNet's detailed output goes to `LiteOrm.Benchmark/BenchmarkDotNet.Artifacts/results/`. Visualization: https://aad8b2de3fba877d3.app.workbuddy.link/
 
 ### 10.7 Numbers worth calling out
 
@@ -572,7 +572,7 @@ The command cache row is stated per statement: constant-filter statements are `G
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Associations](../core-usage/associations.en.md)
 - [Transactions](../di/transactions.en.md)
 - [Expression Extension](../extensibility/expression-extension.en.md)

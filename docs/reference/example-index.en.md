@@ -28,9 +28,9 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 - Entry doc: [Query Overview](../core-usage/query-overview.en.md) | [Lambda Guide](../core-usage/lambda-guide.en.md) | [Expr Guide](../core-usage/expr-guide.en.md)
 - Code sources:
   - `LiteOrm.Demo\Demos\ExistsRelatedDemo.cs`
-  - `LiteOrm.Tests\ExprEnhancedTests.cs`
-  - `LiteOrm.Tests\ServiceTests.cs`
-  - `LiteOrm.Tests\LambdaQueryTests.cs`
+  - `LiteOrm.Tests\Expr\ExprEnhancedTests.cs`
+  - `LiteOrm.Tests\Service\ServiceTests.cs`
+  - `LiteOrm.Tests\Query\LambdaQueryTests.cs`
 - Focus:
   - `Expr.Exists(typeof(T), ...)`
   - `Expr.ExistsRelated(typeof(T), ...)`
@@ -43,7 +43,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 - Entry doc: [Query Overview](../core-usage/query-overview.en.md) | [Lambda Guide](../core-usage/lambda-guide.en.md) | [Expr Guide](../core-usage/expr-guide.en.md)
 - Code sources:
   - `LiteOrm.Demo\Demos\PracticalQueryDemo.cs`
-  - `LiteOrm.Tests\PracticalQueryTests.cs`
+  - `LiteOrm.Tests\Query\PracticalQueryTests.cs`
 - Focus:
   - `In`
   - `Between`
@@ -75,7 +75,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 - Entry doc: [CRUD guide](../core-usage/crud-guide.en.md)
 - Code sources:
   - `LiteOrm.Demo\Data\DbInitializer.cs`
-  - `LiteOrm.Tests\ServiceTests.cs`
+  - `LiteOrm.Tests\Service\ServiceTests.cs`
 - Focus:
   - `BatchInsertAsync`
   - `BatchUpdateAsync`
@@ -86,7 +86,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 - Entry doc: [CRUD guide](../core-usage/crud-guide.en.md)
 - Code sources:
-  - `LiteOrm.Tests\ServiceTests.cs`
+  - `LiteOrm.Tests\Service\ServiceTests.cs`
   - `LiteOrm.Demo\Demos\UpdateExprDemo.cs`
 - Focus:
   - `BatchUpdateOrInsertAsync`
@@ -106,7 +106,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 - Code sources:
   - `LiteOrm.Demo\Models\User.cs`
   - `LiteOrm.Demo\Models\SalesRecord.cs`
-  - `LiteOrm.Tests\ServiceTests.cs`
+  - `LiteOrm.Tests\Service\ServiceTests.cs`
 - Focus:
   - `DeptName` / `ParentDeptName`
   - second-level expansion with `AutoExpand = true`
@@ -117,7 +117,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 - Entry doc: [Associations](../core-usage/associations.en.md)
 - Code sources:
   - `LiteOrm.Demo\Demos\ExistsRelatedDemo.cs`
-  - `LiteOrm.Tests\ExprEnhancedTests.cs`
+  - `LiteOrm.Tests\Expr\ExprEnhancedTests.cs`
 - Focus:
   - forward filtering
   - reverse-path inference
@@ -140,7 +140,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 
 - Entry doc: [CRUD Guide](../core-usage/crud-guide.en.md)
 - Code sources:
-  - `LiteOrm.Tests\ObjectDAOTests.cs`
+  - `LiteOrm.Tests\DAO\ObjectDAOTests.cs`
   - `LiteOrm.Tests\Models\TestTimestampUser.cs`
 - Focus:
   - `[Column(..., IsTimestamp = true)]`
@@ -166,7 +166,7 @@ This page groups current LiteOrm examples by scenario instead of by chapter. Mos
 - Code sources:
   - `LiteOrm.Demo\Data\DbInitializer.cs`
   - `LiteOrm.Demo\Demos\MySqlBulkInsertProvider.cs` (implementation class: `MySqlBulkCopyProvider`)
-  - `LiteOrm.Tests\ServiceTests.cs`
+  - `LiteOrm.Tests\Service\ServiceTests.cs`
 - Focus:
   - bulk initialization
   - `SearchAs<T>` projections
@@ -240,6 +240,6 @@ If you want to move from simple to advanced examples, this is a practical sequen
 
 ## Related links
 
-- [Back to English docs hub](../README.md)
+- [Back to English docs hub](../README.en.md)
 - [API Index](./api-index.en.md)
 

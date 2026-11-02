@@ -238,7 +238,7 @@ When "the value varies per request but must still apply on every path" is the re
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Service Authorization](../di/service-authorization.en.md)
 - [Associations](../core-usage/associations.en.md)
 - [Sharding and TableArgs](../advanced-topics/sharding-and-tableargs.en.md)

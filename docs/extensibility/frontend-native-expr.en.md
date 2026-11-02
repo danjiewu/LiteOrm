@@ -191,7 +191,7 @@ They should be at the same level as `$section`, not inside `$section`'s value.
 
 ## 7. Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Permission Filtering](../advanced-topics/permission-filtering.en.md)
 - [Query Overview](../core-usage/query-overview.en.md)
 

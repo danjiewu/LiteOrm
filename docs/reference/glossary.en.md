@@ -4,6 +4,10 @@
 
 LiteOrm's structured expression model for SQL-shaped queries, updates, functions, and segments.
 
+## `QuerySource<T>`
+
+A composable query source implementing `IQueryable<T>` / `IOrderedQueryable<T>`, created by `Expr.From<T>()`; an instance resolved from the container is bound to `IQuerySourceExecutor<T>` and can run async queries such as `ToListAsync` / `CountAsync` directly. After `Where` / `Select`, use `AsSource()` to narrow back to `QuerySource<T>`. Located in the `LiteOrm.Common` namespace.
+
 ## `LogicExpr`
 
 The condition-oriented part of the expression system, used for comparisons, boolean composition, `IN`, `EXISTS`, and similar predicates.
@@ -59,6 +63,10 @@ The dialect builder that converts LiteOrm expressions into executable SQL for a 
 ## `ConstFilter` / `Column.Constant`
 
 The `Constant` property of `ColumnAttribute`, used to declare fixed filter conditions. Resolved at metadata stage into `TableDefinition.ConstFilter`, and automatically injected during SQL generation into main-table `WHERE`, the `JOIN ... ON` of association queries, and the DAO key-based statements (`GetObject`, `ExistsKey`, `Update`, `DeleteByKeys`, batch update and delete). A joined table's condition only reaches association statements produced by expression queries; the model's own `From` fragment used by `GetObject` / `ExistsKey` does not carry it. Suited for model-level invariant rules such as enabled-state, fixed partitions, or fixed tenant types; not suited for runtime context like the current user or tenant. See [Permission Filtering](../advanced-topics/permission-filtering.en.md).
+
+## `CommonTableExpr`
+
+A common table expression (CTE) node, usually created by `SelectExpr.With(name)`. While rendering it hands itself to `SqlBuildContext.AddCommonTableExpr` for collection, and after the main query is rendered LiteOrm emits the `WITH` / `WITH RECURSIVE` clause; equal definitions under the same alias are deduplicated, while differing definitions throw. Located in the `LiteOrm.Common` namespace.
 
 ## `GenericSqlExpr`
 

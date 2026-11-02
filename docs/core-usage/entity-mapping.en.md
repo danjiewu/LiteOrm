@@ -108,6 +108,22 @@ public class Product
 
 > JSON columns serialize complex objects to JSON strings on write and deserialize them back to the property type on read.
 
+Properties of type `System.Text.Json.Nodes.JsonNode` are supported out of the box: no explicit `DbType` is required, and they map to a `DbValueType.Json` column automatically, serializing to a JSON string on write and restoring to a `JsonNode` on read. Queries can also use the indexer or `GetValue<T>()` to take the JSON path (rendering the `JsonExtract` / `JsonValue` SQL functions):
+
+```csharp
+[Table("Products")]
+public class Product
+{
+    [Column("Meta")]                 // JsonNode maps to DbValueType.Json automatically
+    public JsonNode? Meta { get; set; }
+}
+
+// Query: Meta['price'] extracts a JSON property
+Expr.Lambda<Product>(p => p.Meta!["price"] > 10);
+// Query: Meta['name'].GetValue<string>() extracts a scalar
+Expr.Lambda<Product>(p => p.Meta!["name"].GetValue<string>() == "Lite");
+```
+
 ### Computed Columns (Non-Actual Columns)
 
 A computed column does not create a physical database column and is excluded from inserts/updates; queries return the value via an expression, and references to the property in query conditions also render the expression. The expression supports two forms:
@@ -310,7 +326,7 @@ For more details, see [Sharding and TableArgs](../advanced-topics/sharding-and-t
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [View Models and Services](./view-models-and-services.en.md)
 - [Associations](./associations.en.md)
 - [Glossary](../reference/glossary.en.md)

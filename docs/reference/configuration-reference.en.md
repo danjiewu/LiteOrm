@@ -339,7 +339,7 @@ To watch the registration process, set the log level to `Debug` to see assembly-
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [First End-to-End Example (DI)](../getting-started/first-example-di.en.md)
 - [Transactions](../di/transactions.en.md)
 - [Logging and Diagnostics](../di/logging.en.md)

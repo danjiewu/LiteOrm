@@ -442,7 +442,7 @@ MySQL 的分页写作 ``LIMIT 20,20``，Oracle 写作 `OFFSET 20 ROWS FETCH NEXT
 ```sql
 WITH RECURSIVE "DeptTree" AS (SELECT "T1"."Id"
   FROM "Departments" "T1"
-  WHERE "T1"."Id" = @1
+  WHERE "T1"."Id" = @4
   UNION ALL SELECT "T2"."Id"
     FROM "Departments" "T2"
     LEFT JOIN "DeptTree" ON "T2"."ParentId" = "DeptTree"."Id")
@@ -453,7 +453,7 @@ WHERE "T0"."DeptId" IN (SELECT "Id"
 -- @0 = -7, @1 = 1, @2 = 100, @3 = %SO2026%, @4 = 1001
 ```
 
-注意参数顺序：子树根 Id 在 CTE 定义渲染时才产生，CTE 又是主体渲染完成后才拼到最前面，所以它拿到的是最后一个编号，主体条件依次占用前面的编号。参数按名称绑定，编号先后不影响执行。
+注意参数顺序：子树根 Id 在 CTE 定义渲染时才产生，CTE 又是主体渲染完成后才拼到最前面，所以它拿到的是最后一个编号，主体条件依次占用前面的编号。`BuildCteSql` 会把这些 CTE 参数在 `OutputParams` 中整体前移，使参数集合顺序与最终 SQL 文本一致；参数按名称绑定，编号先后不影响执行。
 
 当页 SQL 拿到整条 `query`，条件与计数完全一致，只额外追加排序和分页；它同样在最外层输出一份独立的 `WITH`（两条语句各自生成，不共享上下文）：
 

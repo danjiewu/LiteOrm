@@ -544,7 +544,7 @@ LiteOrm 相比其他 ORM 的性能优势，基于 `LiteOrm.Benchmark` 项目跑�
 | 基准模式 | `[MemoryDiagnoser]` + `[MediumRunJob]`（Job=MediumRun，IterationCount=15，LaunchCount=2，WarmupCount=10） |
 | 对比对象 | LiteOrm、Dapper、FreeSql、SqlSugar、EFCore |
 
-> 完整的 BenchmarkDotNet 报告位于 `LiteOrm.Benchmark/BenchmarkDotNet.Artifacts/results/` 目录下。可视化分析页：https://aad8b2de3fba877d3.app.workbuddy.link/
+> 完整报告已提交为 `LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md`；运行基准后，BenchmarkDotNet 的明细输出位于 `LiteOrm.Benchmark/BenchmarkDotNet.Artifacts/results/` 目录。可视化分析页：https://aad8b2de3fba877d3.app.workbuddy.link/
 
 ### 10.7 几个值得点出的事实
 

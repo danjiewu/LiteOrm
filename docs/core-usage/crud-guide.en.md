@@ -182,7 +182,7 @@ Important behavior details:
 - The generic `IEntityService<T>` / `IEntityServiceAsync<T>` update methods do not expose a `timestamp` overload. For optimistic concurrency, use `ObjectDAO<T>` directly or wrap it in a custom service.
 - `BatchUpdate` / `BatchUpdateAsync` do not automatically apply `timestamp` concurrency checks.
 
-> For a complete example, see `LiteOrm.Tests\ObjectDAOTests.cs` and `LiteOrm.Tests\Models\TestTimestampUser.cs`.
+> For a complete example, see `LiteOrm.Tests\DAO\ObjectDAOTests.cs` and `LiteOrm.Tests\Models\TestTimestampUser.cs`.
 
 ### Update with Lambda Expressions (Recommended)
 
@@ -418,7 +418,7 @@ On the read/write split: `ObjectDAO<T>` writes only and `ObjectViewDAO<T>` reads
 
 ## Related Links
 
-- [Back to docs hub](../README.md)
+- [Back to docs hub](../README.en.md)
 - [Query Overview](./query-overview.en.md)
 - [Lambda Guide](./lambda-guide.en.md)
 - [Expr Guide](./expr-guide.en.md)
