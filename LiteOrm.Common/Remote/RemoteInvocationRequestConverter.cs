@@ -351,6 +351,10 @@ namespace LiteOrm.Remote
         /// <summary>
         /// 反序列化单个参数。含 $type → 按实际类型反序列化；否则返回原始 <see cref="JsonElement"/>，
         /// 由服务端 dispatcher 按方法参数声明类型二次反序列化。
+        /// <para>
+        /// 若存在 <c>$type</c> 包装但类型无法解析或缺少 <c>$value</c>，抛出 <see cref="JsonException"/>，
+        /// 不再静默退化为按声明类型反序列化（否则会得到空实体，造成数据无声丢失）。
+        /// </para>
         /// </summary>
         [RequiresDynamicCode("DeserializeTypedValue uses reflection-based System.Text.Json deserialization with runtime types; not supported under NativeAOT.")]
         [RequiresUnreferencedCode("DeserializeTypedValue uses reflection-based System.Text.Json deserialization with runtime types.")]
@@ -368,8 +372,11 @@ namespace LiteOrm.Remote
                 var typeName = typeProp.GetString();
                 // 使用 ResolveType 解析类型名（委托优先，否则 TypeResolverHelper.FindType）
                 var actualType = ResolveType(typeName);
-                if (actualType != null && element.TryGetProperty("$value", out var valueProp))
-                    return JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, options);
+                if (actualType is null)
+                    throw new JsonException($"无法解析 $type 指定的类型 '{typeName}'，为避免静默退化为空值，已中止反序列化。");
+                if (!element.TryGetProperty("$value", out var valueProp))
+                    throw new JsonException($"$type 包装值缺少 $value 属性（类型 '{typeName}'）。");
+                return JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, options);
             }
 
             // 按声明类型反序列化（若有）；否则返回原始 JsonElement

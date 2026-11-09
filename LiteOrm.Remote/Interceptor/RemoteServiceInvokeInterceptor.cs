@@ -357,7 +357,7 @@ namespace LiteOrm.Remote
 
                     var listType = typeof(List<>).MakeGenericType(handler.ReturnType);
 
-                    var returnValues = DeserializeTypedValue(valueElement.Value, listType) as IList;
+                    var returnValues = RemoteInvocationRequestConverter.DeserializeTypedValue(valueElement.Value, listType, _serializerOptions) as IList;
                     if (returnValues is null) continue;
 
                     // 逐项回写（按索引对应）
@@ -369,7 +369,7 @@ namespace LiteOrm.Remote
                 else
                 {
                     // 单对象模式：按 ReturnType 反序列化并回写
-                    var returnValue = DeserializeTypedValue(valueElement.Value, handler.ReturnType);
+                    var returnValue = RemoteInvocationRequestConverter.DeserializeTypedValue(valueElement.Value, handler.ReturnType, _serializerOptions);
                     if (returnValue is null) continue;
 
                     handler.WriteBack(origArg, returnValue);
@@ -388,28 +388,6 @@ namespace LiteOrm.Remote
             // 如果是其他类型，序列化为 JsonElement
             var json = JsonSerializer.Serialize(value, value.GetType(), _serializerOptions);
             return JsonDocument.Parse(json).RootElement.Clone();
-        }
-
-        /// <summary>
-        /// 反序列化类型化值。若 <paramref name="element"/> 为 <c>$type</c> 包装，则按实际类型反序列化；
-        /// 否则按 <paramref name="expectedType"/> 反序列化。
-        /// </summary>
-        private static object? DeserializeTypedValue(JsonElement element, Type expectedType)
-        {
-            if (element.ValueKind == JsonValueKind.Null)
-                return expectedType.IsValueType ? Activator.CreateInstance(expectedType) : null;
-
-            // 检查 $type 包装
-            if (element.ValueKind == JsonValueKind.Object &&
-                element.TryGetProperty("$type", out var typeProp))
-            {
-                var typeName = typeProp.GetString();
-                var actualType = typeName is not null ? Type.GetType(typeName) : null;
-                if (actualType != null && element.TryGetProperty("$value", out var valueProp))
-                    return JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, _serializerOptions);
-            }
-
-            return JsonSerializer.Deserialize(element.GetRawText(), expectedType, _serializerOptions);
         }
 
         /// <summary>
@@ -584,7 +562,7 @@ namespace LiteOrm.Remote
             if (element is null || element.Value.ValueKind == JsonValueKind.Null)
                 return returnType.IsValueType ? Activator.CreateInstance(returnType) : null;
 
-            return DeserializeTypedValue(element.Value, returnType);
+            return RemoteInvocationRequestConverter.DeserializeTypedValue(element.Value, returnType, _serializerOptions);
         }
 
         #region 日志相关方法
