@@ -2,11 +2,11 @@
   <PropertyGroup>
     <TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
     <RootNamespace>LiteOrm.Common</RootNamespace>
-    <AssemblyVersion>8.1.14.0</AssemblyVersion>
-    <FileVersion>8.1.14.0</FileVersion>
+    <AssemblyVersion>8.1.15.0</AssemblyVersion>
+    <FileVersion>8.1.15.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <VersionPrefix>8.1.14</VersionPrefix>
+    <VersionPrefix>8.1.15</VersionPrefix>
     <Nullable>enable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
@@ -16,11 +16,8 @@
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
-      8.1.14:
-      - 新增 SqlBuildContext.CommonTableExprs 与 Init()：渲染过程中出现的 CommonTableExpr 会收集到上下文，主查询渲染完成后统一拼出 WITH / WITH RECURSIVE；Init() 重置作用域、别名序列与已收集的 CTE，保留 TableArgs、SingleTable 与 OutputParams。
-      - CTE 改为渲染时收集：删除渲染前遍历表达式树预收集的逻辑；AddCommonTableExpr 对定义主体做一次后序遍历，先收集被引用的 CTE（依赖在先）再收集自身，同别名去重、定义不同抛异常。
-      - 新增 Expr.ToSql(Expr, SqlBuildContext, bool isRoot = false)：只有根节点调用 Init() 并输出 WITH 子句，函数处理器等嵌套渲染保持默认 false，不重置上下文；ToPreparedSql 始终按根节点调用。
-      - WITH 子句参数在 OutputParams 中前移到主体条件之前，与 SQL 文本顺序一致（参数按名称绑定，编号相对 8.1.13 有变化，不影响执行）。
+      8.1.15:
+      - RemoteInvocationRequestConverter.DeserializeTypedValue 在 $type 无法解析或缺少 $value 时抛出 JsonException，不再静默退化为空实体；类型解析改用 TypeResolverHelper.FindType。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

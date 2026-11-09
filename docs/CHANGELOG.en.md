@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.1.15 (2026-11-09)
+
+### Breaking changes
+
+- **An unresolvable `$type` no longer degrades silently to an empty entity** (`LiteOrm.Common` / `LiteOrm.Remote`): `RemoteInvocationRequestConverter.DeserializeTypedValue` now throws `JsonException` when `$type` cannot be resolved or `$value` is missing, instead of deserializing the wrapper into the declared type and producing an empty object. The client result and write-back paths reuse this implementation (the interceptor's private copy is removed), and type resolution now uses `TypeResolverHelper.FindType`, matching the short-name convention of `TypeResolverHelper.GetName` on the serialization side.
+
+***
+
 ## v8.1.14 (2026-10-28)
 
 ### New Features

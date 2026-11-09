@@ -1,5 +1,13 @@
 # 变更日志 (Changelog)
 
+## v8.1.15 (2026-11-09)
+
+### 破坏性变更
+
+- **`$type` 解析失败不再静默退化为空实体**（`LiteOrm.Common` / `LiteOrm.Remote`）：`RemoteInvocationRequestConverter.DeserializeTypedValue` 在 `$type` 无法解析或缺少 `$value` 时抛出 `JsonException`，不再按声明类型反序列化出空对象；客户端反序列化返回值与回写参数统一复用该实现（删除拦截器中的私有副本），类型解析改用 `TypeResolverHelper.FindType`，与序列化端 `TypeResolverHelper.GetName` 的短名约定一致。
+
+***
+
 ## v8.1.14 (2026-10-28)
 
 ### 新特性
