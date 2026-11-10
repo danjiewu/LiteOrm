@@ -256,6 +256,36 @@ namespace LiteOrm
                 }
                 outSql.Append(")");
             });
+            sqlBuilder.RegisterFunctionSqlHandler("LISTAGG", (ref outSql, expr, context) =>
+            {
+                // LISTAGG(expr, separator) WITHIN GROUP (ORDER BY ...)
+                // 与窗口函数一致：先输出聚合函数本身，再按需追加 WITHIN GROUP 子句，
+                // 这样配合 Over 处理器即可生成 LISTAGG(...) WITHIN GROUP (...) OVER (...)
+                outSql.Append("LISTAGG(");
+                expr.Args[0].ToSql(ref outSql, context);
+                if (expr.Args.Count > 1)
+                {
+                    outSql.Append(", ");
+                    expr.Args[1].ToSql(ref outSql, context);
+                }
+                outSql.Append(')');
+                if (expr.Args.Count > 2)
+                {
+                    int begin = outSql.Length;
+                    outSql.Append(" WITHIN GROUP (ORDER BY ");
+                    int cur = outSql.Length;
+                    expr.Args[2].ToSql(ref outSql, context);
+                    if (outSql.Length == cur)
+                    {
+                        // 没有排序项时不输出 WITHIN GROUP 子句
+                        outSql.Length = begin;
+                    }
+                    else
+                    {
+                        outSql.Append(')');
+                    }
+                }
+            });
         }
         private static void RegisterSQLiteFunctions(SQLiteBuilder sqliteBuilder)
         {
@@ -326,6 +356,26 @@ namespace LiteOrm
                     if (i > 0) outSql.Append("||");
                     expr.Args[i].ToSql(ref outSql, context);
                 }
+            });
+            sqliteBuilder.RegisterFunctionSqlHandler("LISTAGG", (ref outSql, expr, context) =>
+            {
+                // SQLite 使用 group_concat(expr, separator ORDER BY ...)
+                outSql.Append("group_concat(");
+                expr.Args[0].ToSql(ref outSql, context);
+                if (expr.Args.Count > 1)
+                {
+                    outSql.Append(", ");
+                    expr.Args[1].ToSql(ref outSql, context);
+                }
+                if (expr.Args.Count > 2)
+                {
+                    int begin = outSql.Length;
+                    outSql.Append(" ORDER BY ");
+                    int cur = outSql.Length;
+                    expr.Args[2].ToSql(ref outSql, context);
+                    if (outSql.Length == cur) outSql.Length = begin;
+                }
+                outSql.Append(')');
             });
             sqliteBuilder.RegisterSimpleFunctionSqlHandler("Max", (ref outSql, functionName, arguments) =>
                 outSql.Append($"max({string.Join(", ", arguments)})"));
@@ -424,6 +474,26 @@ namespace LiteOrm
                 outSql.Append($"JSON_ARRAY({string.Join(", ", arguments)})"));
             mySqlBuilder.RegisterSimpleFunctionSqlHandler("IsJson", (ref outSql, functionName, arguments) =>
                 outSql.Append($"JSON_VALID({string.Join(", ", arguments)})"));
+            mySqlBuilder.RegisterFunctionSqlHandler("LISTAGG", (ref outSql, expr, context) =>
+            {
+                // MySQL 使用 GROUP_CONCAT(expr ORDER BY ... SEPARATOR ...)
+                outSql.Append("GROUP_CONCAT(");
+                expr.Args[0].ToSql(ref outSql, context);
+                if (expr.Args.Count > 2)
+                {
+                    int begin = outSql.Length;
+                    outSql.Append(" ORDER BY ");
+                    int cur = outSql.Length;
+                    expr.Args[2].ToSql(ref outSql, context);
+                    if (outSql.Length == cur) outSql.Length = begin;
+                }
+                if (expr.Args.Count > 1)
+                {
+                    outSql.Append(" SEPARATOR ");
+                    expr.Args[1].ToSql(ref outSql, context);
+                }
+                outSql.Append(')');
+            });
         }
 
         private static void RegisterOracleFunctions(OracleBuilder oracleBuilder)
@@ -671,6 +741,26 @@ namespace LiteOrm
                 outSql.Append($"jsonb_build_object({string.Join(", ", arguments)})"));
             postgreSqlBuilder.RegisterSimpleFunctionSqlHandler("JsonArray", (ref outSql, functionName, arguments) =>
                 outSql.Append($"jsonb_build_array({string.Join(", ", arguments)})"));
+            postgreSqlBuilder.RegisterFunctionSqlHandler("LISTAGG", (ref outSql, expr, context) =>
+            {
+                // PostgreSQL 使用 STRING_AGG(expr, separator ORDER BY ...)
+                outSql.Append("STRING_AGG(");
+                expr.Args[0].ToSql(ref outSql, context);
+                if (expr.Args.Count > 1)
+                {
+                    outSql.Append(", ");
+                    expr.Args[1].ToSql(ref outSql, context);
+                }
+                if (expr.Args.Count > 2)
+                {
+                    int begin = outSql.Length;
+                    outSql.Append(" ORDER BY ");
+                    int cur = outSql.Length;
+                    expr.Args[2].ToSql(ref outSql, context);
+                    if (outSql.Length == cur) outSql.Length = begin;
+                }
+                outSql.Append(')');
+            });
         }
 
         private static void RegisterSqlServerFunctions(SqlServerBuilder sqlServerBuilder)
@@ -744,6 +834,34 @@ namespace LiteOrm
                 outSql.Append($"JSON_ARRAY({string.Join(", ", arguments)})"));
             sqlServerBuilder.RegisterSimpleFunctionSqlHandler("IsJson", (ref outSql, functionName, arguments) =>
                 outSql.Append($"ISJSON({string.Join(", ", arguments)})"));
+            sqlServerBuilder.RegisterFunctionSqlHandler("LISTAGG", (ref outSql, expr, context) =>
+            {
+                // SQL Server 使用 STRING_AGG(expr, separator) WITHIN GROUP (ORDER BY ...)
+                outSql.Append("STRING_AGG(");
+                expr.Args[0].ToSql(ref outSql, context);
+                if (expr.Args.Count > 1)
+                {
+                    outSql.Append(", ");
+                    expr.Args[1].ToSql(ref outSql, context);
+                }
+                outSql.Append(')');
+                if (expr.Args.Count > 2)
+                {
+                    int begin = outSql.Length;
+                    outSql.Append(" WITHIN GROUP (ORDER BY ");
+                    int cur = outSql.Length;
+                    expr.Args[2].ToSql(ref outSql, context);
+                    if (outSql.Length == cur)
+                    {
+                        // 没有排序项时不输出 WITHIN GROUP 子句
+                        outSql.Length = begin;
+                    }
+                    else
+                    {
+                        outSql.Append(')');
+                    }
+                }
+            });
         }
 
         /// <summary>

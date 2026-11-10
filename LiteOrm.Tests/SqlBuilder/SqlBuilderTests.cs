@@ -199,6 +199,59 @@ namespace LiteOrm.Tests
             Assert.Equal(expectedParamCount, outputParams.Count);
         }
 
+        private static SqlBuilder GetBuilder(string builderName) => builderName switch
+        {
+            "Generic" => SqlBuilder.Instance,
+            "Oracle" => OracleBuilder.Instance,
+            "MySql" => MySqlBuilder.Instance,
+            "PostgreSql" => PostgreSqlBuilder.Instance,
+            "SqlServer" => SqlServerBuilder.Instance,
+            _ => SQLiteBuilder.Instance
+        };
+
+        private static string RenderListAgg(SqlBuilder builder, bool withOrderBy = true)
+        {
+            var expr = withOrderBy
+                ? Expr.Prop("Name").ListAgg(", ", Expr.Prop("Id").Asc())
+                : Expr.Prop("Name").ListAgg(", ");
+            return expr.ToPreparedSql(new SqlBuildContext(builder)).Sql;
+        }
+
+        [Theory]
+        [InlineData("Generic", "LISTAGG(\"Name\", ', ') WITHIN GROUP (ORDER BY \"Id\")")]
+        [InlineData("Oracle", "LISTAGG(\"NAME\", ', ') WITHIN GROUP (ORDER BY \"ID\")")]
+        [InlineData("MySql", "GROUP_CONCAT(`Name` ORDER BY `Id` SEPARATOR ', ')")]
+        [InlineData("PostgreSql", "STRING_AGG(\"name\", ', ' ORDER BY \"id\")")]
+        [InlineData("SqlServer", "STRING_AGG(\"Name\", ', ') WITHIN GROUP (ORDER BY \"Id\")")]
+        [InlineData("SQLite", "group_concat(\"Name\", ', ' ORDER BY \"Id\")")]
+        public void ListAgg_RendersDialectSpecificSql(string builderName, string expected)
+        {
+            Assert.Equal(expected, RenderListAgg(GetBuilder(builderName)));
+        }
+
+        [Theory]
+        [InlineData("Generic", "LISTAGG(\"Name\", ', ')")]
+        [InlineData("Oracle", "LISTAGG(\"NAME\", ', ')")]
+        [InlineData("MySql", "GROUP_CONCAT(`Name` SEPARATOR ', ')")]
+        [InlineData("PostgreSql", "STRING_AGG(\"name\", ', ')")]
+        [InlineData("SqlServer", "STRING_AGG(\"Name\", ', ')")]
+        [InlineData("SQLite", "group_concat(\"Name\", ', ')")]
+        public void ListAgg_WithoutOrderBy_OmitsOrderByClause(string builderName, string expected)
+        {
+            Assert.Equal(expected, RenderListAgg(GetBuilder(builderName), withOrderBy: false));
+        }
+
+        [Fact]
+        public void ListAgg_WithOver_RendersWindowClauseAfterWithinGroup()
+        {
+            var expr = Expr.Prop("Name").ListAgg(", ", Expr.Prop("Id").Asc())
+                .Over(new[] { Expr.Prop("DeptId") }, Array.Empty<OrderByItemExpr>());
+
+            string sql = expr.ToPreparedSql(new SqlBuildContext(OracleBuilder.Instance)).Sql;
+
+            Assert.Equal("LISTAGG(\"NAME\", ', ') WITHIN GROUP (ORDER BY \"ID\") OVER (PARTITION BY \"DEPTID\")", sql);
+        }
+
         private static AttributeTableInfoProvider CreateProvider(SqlBuilder builder)
         {
             return new AttributeTableInfoProvider();

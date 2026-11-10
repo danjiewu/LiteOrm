@@ -1,10 +1,14 @@
 # Changelog
 
-## v8.1.15 (2026-11-09)
+## v8.1.15 (2026-11-10)
+
+### New Features
+
+- **`LISTAGG` aggregate function support** (`LiteOrm.Common` / `LiteOrm`): the new `ExprExtensions.ListAgg` extension renders `LISTAGG` / `GROUP_CONCAT` / `STRING_AGG` / `group_concat` per dialect, with `WITHIN GROUP` ordering and `OVER` windows.
 
 ### Breaking changes
 
-- **An unresolvable `$type` no longer degrades silently to an empty entity** (`LiteOrm.Common` / `LiteOrm.Remote`): `RemoteInvocationRequestConverter.DeserializeTypedValue` now throws `JsonException` when `$type` cannot be resolved or `$value` is missing, instead of deserializing the wrapper into the declared type and producing an empty object. The client result and write-back paths reuse this implementation (the interceptor's private copy is removed), and type resolution now uses `TypeResolverHelper.FindType`, matching the short-name convention of `TypeResolverHelper.GetName` on the serialization side.
+- **An unresolvable `$type` no longer degrades silently to an empty entity** (`LiteOrm.Common` / `LiteOrm.Remote`): `RemoteInvocationRequestConverter.DeserializeTypedValue` now throws `JsonException` when `$type` cannot be resolved or `$value` is missing; client results and write-back parameters share this implementation.
 
 ***
 

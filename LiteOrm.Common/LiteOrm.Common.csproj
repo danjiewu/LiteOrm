@@ -18,6 +18,7 @@
     <PackageReleaseNotes>
       8.1.15:
       - RemoteInvocationRequestConverter.DeserializeTypedValue 在 $type 无法解析或缺少 $value 时抛出 JsonException，不再静默退化为空实体；类型解析改用 TypeResolverHelper.FindType。
+      - 新增 ExprExtensions.ListAgg 聚合函数扩展，支持指定分隔符与排序项生成 LISTAGG 表达式。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

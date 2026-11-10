@@ -12,6 +12,7 @@
     <PackageReleaseNotes>
       8.1.15:
       - 同步 LiteOrm.Common 8.1.15 / LiteOrm 8.1.15。
+      - 同步 LiteOrm.Common 新增的 ExprExtensions.ListAgg 聚合函数扩展。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>

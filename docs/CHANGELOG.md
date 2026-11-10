@@ -1,10 +1,14 @@
 # 变更日志 (Changelog)
 
-## v8.1.15 (2026-11-09)
+## v8.1.15 (2026-11-10)
+
+### 新特性
+
+- **新增 `LISTAGG` 聚合函数支持**（`LiteOrm.Common` / `LiteOrm`）：新增 `ExprExtensions.ListAgg` 扩展，按方言生成 `LISTAGG` / `GROUP_CONCAT` / `STRING_AGG` / `group_concat`，支持 `WITHIN GROUP` 排序与 `OVER` 窗口。
 
 ### 破坏性变更
 
-- **`$type` 解析失败不再静默退化为空实体**（`LiteOrm.Common` / `LiteOrm.Remote`）：`RemoteInvocationRequestConverter.DeserializeTypedValue` 在 `$type` 无法解析或缺少 `$value` 时抛出 `JsonException`，不再按声明类型反序列化出空对象；客户端反序列化返回值与回写参数统一复用该实现（删除拦截器中的私有副本），类型解析改用 `TypeResolverHelper.FindType`，与序列化端 `TypeResolverHelper.GetName` 的短名约定一致。
+- **`$type` 解析失败不再静默退化为空实体**（`LiteOrm.Common` / `LiteOrm.Remote`）：`RemoteInvocationRequestConverter.DeserializeTypedValue` 在 `$type` 无法解析或缺少 `$value` 时抛出 `JsonException`，客户端返回值与回写参数统一复用该实现。
 
 ***
 

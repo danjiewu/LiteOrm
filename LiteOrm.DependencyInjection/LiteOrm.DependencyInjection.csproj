@@ -21,6 +21,7 @@
 		<PackageReleaseNotes>
       8.1.15:
       - 同步 LiteOrm.Common 8.1.15 / LiteOrm 8.1.15。
+      - 同步新增的 LISTAGG 聚合函数支持（ExprExtensions.ListAgg 与各方言 SQL 生成）。
     </PackageReleaseNotes>
 	</PropertyGroup>
 	<PropertyGroup>
