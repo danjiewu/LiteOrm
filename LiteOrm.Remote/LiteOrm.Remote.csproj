@@ -6,14 +6,12 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程服务调用</Description>
-    <AssemblyVersion>8.1.15.0</AssemblyVersion>
-    <FileVersion>8.1.15.0</FileVersion>
-    <VersionPrefix>8.1.15</VersionPrefix>
+    <AssemblyVersion>8.1.16.0</AssemblyVersion>
+    <FileVersion>8.1.16.0</FileVersion>
+    <VersionPrefix>8.1.16</VersionPrefix>
     <PackageReleaseNotes>
-      8.1.15:
-      - 同步 LiteOrm.Common 8.1.15。
-      - 客户端返回值与回写参数统一复用 RemoteInvocationRequestConverter.DeserializeTypedValue，$type 无法解析或缺少 $value 时改为抛出 JsonException，不再静默退化为空实体。
-      - 同步 LiteOrm.Common 新增的 ExprExtensions.ListAgg 聚合函数扩展。
+      8.1.16:
+      - 同步 LiteOrm.Common 8.1.16：修复 [TableJoin(AutoExpand = true)] 未生效的 bug。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>

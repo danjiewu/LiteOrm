@@ -79,6 +79,101 @@ namespace LiteOrm.Common.UnitTests
                 });
         }
 
+        [Fact]
+        public void GetTableView_WithJoinedTableAutoExpand_ResolvesNestedForeignColumn()
+        {
+            var provider = new CommonTableInfoProvider();
+            provider.Register(CreateAutoExpandViewInfo());
+            provider.Register(new TableInfo(
+                typeof(AotAutoExpandUserProfile),
+                "AotAutoExpandUserProfiles",
+                null,
+                SyncTableMode.Never,
+                new List<ColumnInfo>
+                {
+                    new ColumnInfo { PropertyName = nameof(AotAutoExpandUserProfile.Id), ColumnName = "Id", IsPrimaryKey = true },
+                    new ColumnInfo
+                    {
+                        PropertyName = nameof(AotAutoExpandUserProfile.DepartmentId),
+                        ColumnName = "DepartmentId",
+                        ForeignTables = new[] { new ForeignTable { ForeignType = typeof(AotAutoExpandDepartment) } }
+                    }
+                }));
+            provider.Register(new TableInfo(
+                typeof(AotAutoExpandDepartment),
+                "AotAutoExpandDepartments",
+                null,
+                SyncTableMode.Never,
+                new List<ColumnInfo>
+                {
+                    new ColumnInfo { PropertyName = nameof(AotAutoExpandDepartment.Id), ColumnName = "Id", IsPrimaryKey = true },
+                    new ColumnInfo { PropertyName = nameof(AotAutoExpandDepartment.Name), ColumnName = "Name" }
+                }));
+
+            var view = provider.GetTableView(typeof(AotAutoExpandUserView))!;
+
+            Assert.Contains(view.JoinedTables, jt => jt.Name == nameof(AotAutoExpandUserProfile) && jt.TableDefinition.ObjectType == typeof(AotAutoExpandUserProfile));
+            Assert.Contains(view.JoinedTables, jt => jt.Name == nameof(AotAutoExpandDepartment) && jt.TableDefinition.ObjectType == typeof(AotAutoExpandDepartment));
+
+            var departmentName = (ForeignColumn)view.GetColumn(nameof(AotAutoExpandUserView.DepartmentName))!;
+            Assert.Equal(nameof(AotAutoExpandDepartment.Name), departmentName.TargetColumn!.Column.PropertyName);
+        }
+
+        private static TableInfo CreateAutoExpandViewInfo()
+        {
+            return new TableInfo(
+                typeof(AotAutoExpandUserView),
+                "AotAutoExpandUserViews",
+                null,
+                SyncTableMode.Never,
+                new List<ColumnInfo>
+                {
+                    new ColumnInfo { PropertyName = nameof(AotAutoExpandUserView.ProfileId), ColumnName = "ProfileId" },
+                    new ColumnInfo
+                    {
+                        PropertyName = nameof(AotAutoExpandUserView.DepartmentName),
+                        ColumnName = "DepartmentName",
+                        ForeignColumn = new ForeignColumnInfo
+                        {
+                            ForeignType = typeof(AotAutoExpandDepartment),
+                            Property = nameof(AotAutoExpandDepartment.Name)
+                        }
+                    }
+                })
+            {
+                JoinedTables = new[]
+                {
+                    new JoinedTableInfo
+                    {
+                        TargetType = typeof(AotAutoExpandUserProfile),
+                        ForeignKeys = nameof(AotAutoExpandUserView.ProfileId),
+                        AutoExpand = true
+                    }
+                }
+            };
+        }
+
+        private class AotAutoExpandUserView
+        {
+            public int ProfileId { get; set; }
+
+            public string? DepartmentName { get; set; }
+        }
+
+        private class AotAutoExpandUserProfile
+        {
+            public int Id { get; set; }
+
+            public int DepartmentId { get; set; }
+        }
+
+        private class AotAutoExpandDepartment
+        {
+            public int Id { get; set; }
+
+            public string Name { get; set; } = string.Empty;
+        }
+
         [Table("ConstantFilterEntities", SyncTable = SyncTableMode.Never)]
         private class ConstantFilterEntity
         {

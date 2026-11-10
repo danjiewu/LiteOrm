@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.1.15.0</AssemblyVersion>
-		<FileVersion>8.1.15.0</FileVersion>
+		<AssemblyVersion>8.1.16.0</AssemblyVersion>
+		<FileVersion>8.1.16.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.1.15</VersionPrefix>
+		<VersionPrefix>8.1.16</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -17,9 +17,8 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
-      8.1.15:
-      - 同步 LiteOrm.Common 8.1.15：$type 解析失败改为抛出 JsonException，不再静默退化为空实体。
-      - 新增 LISTAGG 聚合函数支持：Expr.ListAgg 可按方言生成 LISTAGG / GROUP_CONCAT / STRING_AGG / group_concat，并可与 Over 组合为窗口函数。
+      8.1.16:
+      - 同步 LiteOrm.Common 8.1.16：修复 [TableJoin(AutoExpand = true)] 未生效的 bug。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

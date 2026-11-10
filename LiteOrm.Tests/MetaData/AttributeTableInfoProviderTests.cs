@@ -71,6 +71,20 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
+        public void GetTableView_WithTableJoinAutoExpand_JoinsNestedForeignTable()
+        {
+            var provider = CreateProvider();
+
+            var tableView = provider.GetTableView(typeof(AutoExpandUserView))!;
+
+            Assert.Contains(tableView.JoinedTables, jt => jt.Name == nameof(AutoExpandUserProfile) && jt.TableDefinition.ObjectType == typeof(AutoExpandUserProfile));
+            Assert.Contains(tableView.JoinedTables, jt => jt.Name == nameof(AutoExpandDepartment) && jt.TableDefinition.ObjectType == typeof(AutoExpandDepartment));
+
+            var departmentNameColumn = (ForeignColumn)tableView.GetColumn(nameof(AutoExpandUserView.DepartmentName))!;
+            Assert.Equal(nameof(AutoExpandDepartment.Name), departmentNameColumn.TargetColumn!.Column.PropertyName);
+        }
+
+        [Fact]
         public void GetTableDefinition_WithEnumNameConstant_BuildsConstFilter()
         {
             var provider = CreateProvider();
@@ -261,6 +275,45 @@ namespace LiteOrm.Common.UnitTests
         {
             [Column("DepartmentCode")]
             public string DepartmentCode { get; set; } = string.Empty;
+        }
+
+        /// <summary>
+        /// 通过类级 <see cref="TableJoinAttribute.AutoExpand"/> 关联用户档案，
+        /// 再由档案自身的 <see cref="ForeignTypeAttribute"/> 关联部门。
+        /// </summary>
+        [Table("AutoExpandUserViews", SyncTable = SyncTableMode.Never)]
+        [TableJoin(typeof(AutoExpandUserProfile), nameof(AutoExpandUserView.ProfileId), AutoExpand = true)]
+        private class AutoExpandUserView
+        {
+            [Column("ProfileId")]
+            public int ProfileId { get; set; }
+
+            [ForeignColumn(typeof(AutoExpandUserProfile), Property = nameof(AutoExpandUserProfile.DepartmentId))]
+            public int DepartmentId { get; set; }
+
+            [ForeignColumn(typeof(AutoExpandDepartment), Property = nameof(AutoExpandDepartment.Name))]
+            public string? DepartmentName { get; set; }
+        }
+
+        [Table("AutoExpandUserProfiles", SyncTable = SyncTableMode.Never)]
+        private class AutoExpandUserProfile
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("DepartmentId")]
+            [ForeignType(typeof(AutoExpandDepartment))]
+            public int DepartmentId { get; set; }
+        }
+
+        [Table("AutoExpandDepartments", SyncTable = SyncTableMode.Never)]
+        private class AutoExpandDepartment
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("Name")]
+            public string Name { get; set; } = string.Empty;
         }
 
         private enum ConstFilterState

@@ -253,6 +253,14 @@ namespace LiteOrm
             {
                 columnRefs.Enqueue(new ColumnRef(column));
             }
+            foreach (JoinedTable joinedTable in joinedTables.Values)
+            {
+                if (!joinedTable.AutoExpand) continue;
+                foreach (ColumnDefinition joinedColumn in joinedTable.TableDefinition.Columns)
+                {
+                    columnRefs.Enqueue(new ColumnRef(joinedTable, joinedColumn));
+                }
+            }
             // 进行连接操作，直到连接队列为空
             while (columnRefs.Count > 0)
             {

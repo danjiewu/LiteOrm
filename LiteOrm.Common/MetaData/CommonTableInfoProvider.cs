@@ -253,6 +253,14 @@ namespace LiteOrm.Common
 
             // 3. 把列上的 [ForeignType] 关联展开成关联表，直到队列为空
             var columnRefs = new Queue<ColumnRef>(columns.Select(column => new ColumnRef(column)));
+            foreach (var joinedTable in joinedTables.Values)
+            {
+                if (!joinedTable.AutoExpand) continue;
+                foreach (var joinedColumn in joinedTable.TableDefinition.Columns)
+                {
+                    columnRefs.Enqueue(new ColumnRef(joinedTable, joinedColumn));
+                }
+            }
             while (columnRefs.Count > 0)
             {
                 JoinColumn(joinedTables, columnRefs);

@@ -6,13 +6,12 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程调用服务端</Description>
-    <AssemblyVersion>8.1.15.0</AssemblyVersion>
-    <FileVersion>8.1.15.0</FileVersion>
-    <VersionPrefix>8.1.15</VersionPrefix>
+    <AssemblyVersion>8.1.16.0</AssemblyVersion>
+    <FileVersion>8.1.16.0</FileVersion>
+    <VersionPrefix>8.1.16</VersionPrefix>
     <PackageReleaseNotes>
-      8.1.15:
-      - 同步 LiteOrm.Common 8.1.15 / LiteOrm 8.1.15。
-      - 同步 LiteOrm.Common 新增的 ExprExtensions.ListAgg 聚合函数扩展。
+      8.1.16:
+      - 同步 LiteOrm.Common 8.1.16 / LiteOrm 8.1.16：修复 [TableJoin(AutoExpand = true)] 未生效的 bug。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>

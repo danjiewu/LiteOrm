@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.1.16 (2026-11-10)
+
+### Bug Fixes
+
+- **Fixed `[TableJoin(AutoExpand = true)]` having no effect** (`LiteOrm.Common`): nested joined tables are now expanded, with identical behavior on the JIT and AOT paths.
+
+***
+
 ## v8.1.15 (2026-11-10)
 
 ### New Features
