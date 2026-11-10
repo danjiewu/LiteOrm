@@ -75,7 +75,6 @@ namespace LiteOrm
             }
         }
 
-        #region
         private TableDefinition? GenerateTableDefinition(
             [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
             Type objectType)
@@ -488,13 +487,11 @@ namespace LiteOrm
         {
             if (converterType is null) return null;
             if (!typeof(IDbValueConverter).IsAssignableFrom(converterType))
-                throw new ArgumentException($"属性 \"{property.DeclaringType?.FullName}.{property.Name}\" 的 ValueConverterType \"{converterType.FullName}\" 未实现 IDbValueConverter 接口。");
+                throw new ArgumentException($"The ValueConverterType '{converterType.FullName}' on property '{property.DeclaringType?.FullName}.{property.Name}' does not implement IDbValueConverter.");
             object? instance = Activator.CreateInstance(converterType);
             if (instance is not IDbValueConverter converter)
-                throw new ArgumentException($"属性 \"{property.DeclaringType?.FullName}.{property.Name}\" 的 ValueConverterType \"{converterType.FullName}\" 无法创建 IDbValueConverter 实例（缺少公共无参构造函数）。");
+                throw new ArgumentException($"The ValueConverterType '{converterType.FullName}' on property '{property.DeclaringType?.FullName}.{property.Name}' could not be instantiated as IDbValueConverter (a public parameterless constructor is required).");
             return converter;
         }
-
-        #endregion
     }
 }

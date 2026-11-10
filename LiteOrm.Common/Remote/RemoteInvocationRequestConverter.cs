@@ -373,9 +373,9 @@ namespace LiteOrm.Remote
                 // 使用 ResolveType 解析类型名（委托优先，否则 TypeResolverHelper.FindType）
                 var actualType = ResolveType(typeName);
                 if (actualType is null)
-                    throw new JsonException($"无法解析 $type 指定的类型 '{typeName}'，为避免静默退化为空值，已中止反序列化。");
+                    throw new JsonException($"Unable to resolve the type '{typeName}' specified by $type. Deserialization was aborted to avoid silently returning null.");
                 if (!element.TryGetProperty("$value", out var valueProp))
-                    throw new JsonException($"$type 包装值缺少 $value 属性（类型 '{typeName}'）。");
+                    throw new JsonException($"The $type-wrapped value is missing the $value property (type '{typeName}').");
                 return JsonSerializer.Deserialize(valueProp.GetRawText(), actualType, options);
             }
 
