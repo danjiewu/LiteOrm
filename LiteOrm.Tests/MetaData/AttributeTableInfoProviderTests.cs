@@ -1,5 +1,6 @@
 using System;
 using System.Data.Common;
+using System.Linq;
 
 using LiteOrm;
 using LiteOrm.Common;
@@ -82,6 +83,42 @@ namespace LiteOrm.Common.UnitTests
 
             var departmentNameColumn = (ForeignColumn)tableView.GetColumn(nameof(AutoExpandUserView.DepartmentName))!;
             Assert.Equal(nameof(AutoExpandDepartment.Name), departmentNameColumn.TargetColumn!.Column.PropertyName);
+        }
+
+        [Fact]
+        public void GetTableView_WithTableJoinAutoExpand_RecursivelyJoinsNestedTableJoins()
+        {
+            var provider = CreateProvider();
+
+            var tableView = provider.GetTableView(typeof(RecursiveJoinRootView))!;
+
+            Assert.Contains(tableView.JoinedTables, jt => jt.Name == nameof(RecursiveJoinLevel1) && jt.TableDefinition.ObjectType == typeof(RecursiveJoinLevel1));
+            Assert.Contains(tableView.JoinedTables, jt => jt.Name == nameof(RecursiveJoinLevel2) && jt.TableDefinition.ObjectType == typeof(RecursiveJoinLevel2));
+            Assert.Contains(tableView.JoinedTables, jt => jt.Name == nameof(RecursiveJoinLevel3) && jt.TableDefinition.ObjectType == typeof(RecursiveJoinLevel3));
+
+            // 每一级的外键都来自声明该关联的上级表，保证 JOIN 依赖顺序正确
+            var level1 = tableView.JoinedTables.Single(jt => jt.Name == nameof(RecursiveJoinLevel1));
+            var level2 = tableView.JoinedTables.Single(jt => jt.Name == nameof(RecursiveJoinLevel2));
+            var level3 = tableView.JoinedTables.Single(jt => jt.Name == nameof(RecursiveJoinLevel3));
+            Assert.Null(level1.ForeignKeys[0].Table);
+            Assert.Same(level1, level2.ForeignKeys[0].Table);
+            Assert.Same(level2, level3.ForeignKeys[0].Table);
+            Assert.Equal(nameof(RecursiveJoinLevel1.Level2Id), level2.ForeignKeys[0].Column.PropertyName);
+            Assert.Equal(nameof(RecursiveJoinLevel2.Level3Id), level3.ForeignKeys[0].Column.PropertyName);
+
+            var level3Name = (ForeignColumn)tableView.GetColumn(nameof(RecursiveJoinRootView.Level3Name))!;
+            Assert.Equal(nameof(RecursiveJoinLevel3.Name), level3Name.TargetColumn!.Column.PropertyName);
+        }
+
+        [Fact]
+        public void GetTableView_WithCyclicAutoExpandTableJoins_DoesNotJoinRootTableAgain()
+        {
+            var provider = CreateProvider();
+
+            var tableView = provider.GetTableView(typeof(CyclicJoinRootView))!;
+
+            Assert.Contains(tableView.JoinedTables, jt => jt.Name == nameof(CyclicJoinOther));
+            Assert.DoesNotContain(tableView.JoinedTables, jt => jt.TableDefinition.ObjectType == typeof(CyclicJoinRootView));
         }
 
         [Fact]
@@ -314,6 +351,77 @@ namespace LiteOrm.Common.UnitTests
 
             [Column("Name")]
             public string Name { get; set; } = string.Empty;
+        }
+
+        /// <summary>
+        /// 类级 [TableJoin] 多级链：根视图 → Level1 → Level2 → Level3，中间两级靠 AutoExpand 逐级展开。
+        /// </summary>
+        [Table("RecursiveJoinRootViews", SyncTable = SyncTableMode.Never)]
+        [TableJoin(typeof(RecursiveJoinLevel1), nameof(RecursiveJoinRootView.Level1Id), AutoExpand = true)]
+        private class RecursiveJoinRootView
+        {
+            [Column("Level1Id")]
+            public int Level1Id { get; set; }
+
+            [ForeignColumn(typeof(RecursiveJoinLevel3), Property = nameof(RecursiveJoinLevel3.Name))]
+            public string? Level3Name { get; set; }
+        }
+
+        [Table("RecursiveJoinLevel1s", SyncTable = SyncTableMode.Never)]
+        [TableJoin(typeof(RecursiveJoinLevel2), nameof(RecursiveJoinLevel1.Level2Id), AutoExpand = true)]
+        private class RecursiveJoinLevel1
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("Level2Id")]
+            public int Level2Id { get; set; }
+        }
+
+        [Table("RecursiveJoinLevel2s", SyncTable = SyncTableMode.Never)]
+        [TableJoin(typeof(RecursiveJoinLevel3), nameof(RecursiveJoinLevel2.Level3Id))]
+        private class RecursiveJoinLevel2
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("Level3Id")]
+            public int Level3Id { get; set; }
+        }
+
+        [Table("RecursiveJoinLevel3s", SyncTable = SyncTableMode.Never)]
+        private class RecursiveJoinLevel3
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("Name")]
+            public string Name { get; set; } = string.Empty;
+        }
+
+        /// <summary>
+        /// 关联环：根视图 → Other → 根视图，递归展开在主表类型处终止，不产生自连接。
+        /// </summary>
+        [Table("CyclicJoinRootViews", SyncTable = SyncTableMode.Never)]
+        [TableJoin(typeof(CyclicJoinOther), nameof(CyclicJoinRootView.OtherId), AutoExpand = true)]
+        private class CyclicJoinRootView
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("OtherId")]
+            public int OtherId { get; set; }
+        }
+
+        [Table("CyclicJoinOthers", SyncTable = SyncTableMode.Never)]
+        [TableJoin(typeof(CyclicJoinRootView), nameof(CyclicJoinOther.RootId), AutoExpand = true)]
+        private class CyclicJoinOther
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("RootId")]
+            public int RootId { get; set; }
         }
 
         private enum ConstFilterState
