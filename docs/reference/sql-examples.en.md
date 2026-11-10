@@ -204,6 +204,27 @@ FROM [Sales_202411] [T0]
 
 Actual window function SQL depends on your registered function handlers and database dialect.
 
+### 9.1 String aggregation (LISTAGG)
+
+```csharp
+using static LiteOrm.Common.Expr;
+var names = Prop("Name").ListAgg(", ", Prop("Id").Asc());
+
+var selectExpr = From(typeof(User))
+    .GroupBy(Prop("DeptId"))
+    .Select(Prop("DeptId"), names.As("Names"));
+```
+
+Typical SQL shape (Oracle / Dameng):
+
+```sql
+SELECT [T0].[DeptId], LISTAGG([T0].[Name], ', ') WITHIN GROUP (ORDER BY [T0].[Id]) AS [Names]
+FROM [Users] [T0]
+GROUP BY [T0].[DeptId]
+```
+
+MySQL renders `GROUP_CONCAT`, PostgreSQL / SQL Server render `STRING_AGG`, and SQLite renders `group_concat`.
+
 ## 10. How to View Real SQL
 
 - `SessionManager.Current?.SqlStack` provides the SQL executed in the current session.

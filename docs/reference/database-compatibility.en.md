@@ -161,6 +161,8 @@ The `[Column]` attribute's `IdentityStart` (start value, default `1`) and `Ident
 > `Max`/`Min` distinguish aggregate (`MAX`/`MIN`) from scalar (`GREATEST`/`LEAST`) via `IsAggregate`; SQLite's `max`/`min` support both.
 >
 > Date/time functions (`Now`, `Today`, `Add*`, `DateDiff*`, `Total*`, `Format`), string functions (`IndexOf`, `Substring`, `Trim`/`TrimStart`/`TrimEnd`, `Remove`), and JSON functions (`JsonExtract`, `JsonValue`, etc.) are all registered per dialect — see `LiteOrmSqlFunctionInitializer`.
+>
+> `LISTAGG` (`ExprExtensions.ListAgg`): Oracle / Dameng / generic renders `LISTAGG(...) WITHIN GROUP (ORDER BY ...)`; MySQL family renders `GROUP_CONCAT(... ORDER BY ... SEPARATOR ...)`; PostgreSQL family renders `STRING_AGG(..., ... ORDER BY ...)`; SQL Server renders `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)`; SQLite renders `group_concat(..., ... ORDER BY ...)`.
 
 #### Regular Expression Functions
 

@@ -264,6 +264,36 @@ The examples in this repository focus on `SumOver` and rely on `FunctionExpr.Ove
 2. **Partition key selection**: Choosing high-selectivity columns can improve window function performance
 3. **ORDER BY**: Sorting within the window affects results of functions like `LAG/LEAD/RANK`
 
+## 8. LISTAGG: aggregation and windows
+
+`ListAgg` is registered out of the box and concatenates a column's values with a separator. When ordering items are supplied it emits `WITHIN GROUP (ORDER BY ...)`; call `Over` on top of it to use it as a window function.
+
+```csharp
+using static LiteOrm.Common.Expr;
+
+// Aggregate: LISTAGG("Name", ', ') WITHIN GROUP (ORDER BY "Id")
+var names = Prop("Name").ListAgg(", ", Prop("Id").Asc());
+
+// Window: LISTAGG("Name", ', ') WITHIN GROUP (ORDER BY "Id") OVER (PARTITION BY "DeptId")
+var deptNames = Prop("Name")
+    .ListAgg(", ", Prop("Id").Asc())
+    .Over(new[] { Prop("DeptId") });
+
+var query = From(typeof(User))
+    .GroupBy(Prop("DeptId"))
+    .Select(Prop("DeptId"), names.As("Names"));
+```
+
+Each dialect renders its own string aggregation function:
+
+| Dialect | Generated SQL |
+|---------|---------------|
+| Oracle / Dameng / generic | `LISTAGG(...) WITHIN GROUP (ORDER BY ...)` |
+| MySQL / OceanBase / TiDB / GreatDB | `GROUP_CONCAT(... ORDER BY ... SEPARATOR ...)` |
+| PostgreSQL / KingbaseES / GaussDB | `STRING_AGG(..., ... ORDER BY ...)` |
+| SQL Server | `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)` |
+| SQLite | `group_concat(..., ... ORDER BY ...)` |
+
 ## Related Links
 
 - [Back to docs hub](../README.en.md)

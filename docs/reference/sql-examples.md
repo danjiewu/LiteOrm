@@ -210,6 +210,27 @@ FROM [Sales_202411] [T0]
 
 窗口函数的最终 SQL 取决于你注册的函数处理器和当前数据库方言。
 
+### 9.1 字符串聚合（LISTAGG）
+
+```csharp
+using static LiteOrm.Common.Expr;
+var names = Prop("Name").ListAgg(", ", Prop("Id").Asc());
+
+var selectExpr = From(typeof(User))
+    .GroupBy(Prop("DeptId"))
+    .Select(Prop("DeptId"), names.As("Names"));
+```
+
+典型 SQL 形态（Oracle / 达梦）：
+
+```sql
+SELECT [T0].[DeptId], LISTAGG([T0].[Name], ', ') WITHIN GROUP (ORDER BY [T0].[Id]) AS [Names]
+FROM [Users] [T0]
+GROUP BY [T0].[DeptId]
+```
+
+MySQL 生成 `GROUP_CONCAT`，PostgreSQL / SQL Server 生成 `STRING_AGG`，SQLite 生成 `group_concat`。
+
 ## 10. 如何查看真实 SQL
 
 - 从 `SessionManager.Current?.SqlStack` 可获取当前会话执行的 SQL。
