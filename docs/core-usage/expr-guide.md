@@ -536,7 +536,7 @@ await dao.Search(Expr.From<TestUser>()
 |------|------|
 | `.As(name)` | 生成 `SelectItemExpr` |
 | `.Distinct()` | DISTINCT |
-| `.Count()` `.Sum()` `.Avg()` `.Max()` `.Min()` `.ListAgg(separator, orderBy)` | 聚合 |
+| `.Count()` `.Sum()` `.Avg()` `.Max()` `.Min()` `.StringAgg(separator, orderBy)` | 聚合 |
 | `.Asc()` `.Desc()` | 排序 |
 | `.Over(partitionBy)` | 窗口函数 |
 

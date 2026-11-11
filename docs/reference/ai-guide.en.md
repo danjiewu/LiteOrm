@@ -594,7 +594,7 @@ Additional notes:
 | Null | `.IsNull()` `.IsNotNull()` |
 | Type conversion | `.Cast(DbValueType)` |
 | Alias | `.As("alias")` → `SelectItemExpr` |
-| Aggregate | `.Count(isDistinct)` `.Sum()` `.Avg()` `.Max()` `.Min()` `.ListAgg(separator, orderBy)` |
+| Aggregate | `.Count(isDistinct)` `.Sum()` `.Avg()` `.Max()` `.Min()` `.StringAgg(separator, orderBy)` |
 | Sort | `.Asc()` `.Desc()` → `OrderByItemExpr` |
 
 ### LogicExpr extension methods

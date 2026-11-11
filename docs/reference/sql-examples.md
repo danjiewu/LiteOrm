@@ -210,11 +210,11 @@ FROM [Sales_202411] [T0]
 
 窗口函数的最终 SQL 取决于你注册的函数处理器和当前数据库方言。
 
-### 9.1 字符串聚合（LISTAGG）
+### 9.1 字符串聚合（StringAgg）
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var names = Prop("Name").ListAgg(", ", Prop("Id").Asc());
+var names = Prop("Name").StringAgg(", ", Prop("Id").Asc());
 
 var selectExpr = From(typeof(User))
     .GroupBy(Prop("DeptId"))

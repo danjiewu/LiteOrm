@@ -540,7 +540,7 @@ Supports static form `Regex.IsMatch(...)`, instance form `new Regex(pattern).IsM
 |------|------|
 | `.As(name)` | create `SelectItemExpr` |
 | `.Distinct()` | DISTINCT |
-| `.Count()` `.Sum()` `.Avg()` `.Max()` `.Min()` `.ListAgg(separator, orderBy)` | aggregates |
+| `.Count()` `.Sum()` `.Avg()` `.Max()` `.Min()` `.StringAgg(separator, orderBy)` | aggregates |
 | `.Asc()` `.Desc()` | ordering |
 | `.Over(partitionBy)` | window function |
 

@@ -256,7 +256,7 @@ namespace LiteOrm
                 }
                 outSql.Append(")");
             });
-            sqlBuilder.RegisterFunctionSqlHandler("LISTAGG", (ref outSql, expr, context) =>
+            sqlBuilder.RegisterFunctionSqlHandler("StringAgg", (ref outSql, expr, context) =>
             {
                 // LISTAGG(expr, separator) WITHIN GROUP (ORDER BY ...)
                 // 与窗口函数一致：先输出聚合函数本身，再按需追加 WITHIN GROUP 子句，
@@ -357,7 +357,7 @@ namespace LiteOrm
                     expr.Args[i].ToSql(ref outSql, context);
                 }
             });
-            sqliteBuilder.RegisterFunctionSqlHandler("LISTAGG", (ref outSql, expr, context) =>
+            sqliteBuilder.RegisterFunctionSqlHandler("StringAgg", (ref outSql, expr, context) =>
             {
                 // SQLite 使用 group_concat(expr, separator ORDER BY ...)
                 outSql.Append("group_concat(");
@@ -474,7 +474,7 @@ namespace LiteOrm
                 outSql.Append($"JSON_ARRAY({string.Join(", ", arguments)})"));
             mySqlBuilder.RegisterSimpleFunctionSqlHandler("IsJson", (ref outSql, functionName, arguments) =>
                 outSql.Append($"JSON_VALID({string.Join(", ", arguments)})"));
-            mySqlBuilder.RegisterFunctionSqlHandler("LISTAGG", (ref outSql, expr, context) =>
+            mySqlBuilder.RegisterFunctionSqlHandler("StringAgg", (ref outSql, expr, context) =>
             {
                 // MySQL 使用 GROUP_CONCAT(expr ORDER BY ... SEPARATOR ...)
                 outSql.Append("GROUP_CONCAT(");
@@ -741,7 +741,7 @@ namespace LiteOrm
                 outSql.Append($"jsonb_build_object({string.Join(", ", arguments)})"));
             postgreSqlBuilder.RegisterSimpleFunctionSqlHandler("JsonArray", (ref outSql, functionName, arguments) =>
                 outSql.Append($"jsonb_build_array({string.Join(", ", arguments)})"));
-            postgreSqlBuilder.RegisterFunctionSqlHandler("LISTAGG", (ref outSql, expr, context) =>
+            postgreSqlBuilder.RegisterFunctionSqlHandler("StringAgg", (ref outSql, expr, context) =>
             {
                 // PostgreSQL 使用 STRING_AGG(expr, separator ORDER BY ...)
                 outSql.Append("STRING_AGG(");
@@ -834,7 +834,7 @@ namespace LiteOrm
                 outSql.Append($"JSON_ARRAY({string.Join(", ", arguments)})"));
             sqlServerBuilder.RegisterSimpleFunctionSqlHandler("IsJson", (ref outSql, functionName, arguments) =>
                 outSql.Append($"ISJSON({string.Join(", ", arguments)})"));
-            sqlServerBuilder.RegisterFunctionSqlHandler("LISTAGG", (ref outSql, expr, context) =>
+            sqlServerBuilder.RegisterFunctionSqlHandler("StringAgg", (ref outSql, expr, context) =>
             {
                 // SQL Server 使用 STRING_AGG(expr, separator) WITHIN GROUP (ORDER BY ...)
                 outSql.Append("STRING_AGG(");

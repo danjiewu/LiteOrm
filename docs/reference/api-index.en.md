@@ -132,7 +132,7 @@ Related guides:
 - `SessionManager`
 - `IArged` / `TableArgs`
 - window function extensions
-- LISTAGG aggregate extension (`ExprExtensions.ListAgg`)
+- StringAgg aggregate extension (`ExprExtensions.StringAgg`)
 - `Expr.ExistsRelated(...)`
 
 Related guides:

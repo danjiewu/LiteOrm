@@ -594,7 +594,7 @@ services.AddScoped<IEntityServiceEvent<User>, UserAuditEvent>();
 | Null | `.IsNull()` `.IsNotNull()`                                                                                 |
 | 类型转换 | `.Cast(DbValueType)`                                                                                             |
 | 别名   | `.As("alias")` → `SelectItemExpr`                                                                          |
-| 聚合   | `.Count(isDistinct)` `.Sum()` `.Avg()` `.Max()` `.Min()` `.ListAgg(separator, orderBy)`              |
+| 聚合   | `.Count(isDistinct)` `.Sum()` `.Avg()` `.Max()` `.Min()` `.StringAgg(separator, orderBy)`              |
 | 排序   | `.Asc()` `.Desc()` → `OrderByItemExpr`                                                                     |
 
 ### LogicExpr 扩展方法
