@@ -253,17 +253,47 @@ namespace LiteOrm.Common
 
             // 3. 把列上的 [ForeignType] 关联展开成关联表，直到队列为空
             var columnRefs = new Queue<ColumnRef>(columns.Select(column => new ColumnRef(column)));
-            foreach (var joinedTable in joinedTables.Values)
-            {
-                if (!joinedTable.AutoExpand) continue;
-                foreach (var joinedColumn in joinedTable.TableDefinition.Columns)
-                {
-                    columnRefs.Enqueue(new ColumnRef(joinedTable, joinedColumn));
-                }
-            }
             while (columnRefs.Count > 0)
             {
                 JoinColumn(joinedTables, columnRefs);
+            }
+
+            // 递归展开 AutoExpand 的关联表：先展开其列的 [ForeignType] 关联，再展开该类型自身的类级 [TableJoin] 关联；
+            // 新加入的关联表若也 AutoExpand，会继续参与后续展开（与 AttributeTableInfoProvider 行为保持一致）。
+            var columnExpandedTables = new HashSet<JoinedTable>();
+            var joinExpandedTables = new HashSet<JoinedTable>();
+            while (true)
+            {
+                bool enqueued = false;
+                foreach (var joinedTable in joinedTables.Values)
+                {
+                    if (!joinedTable.AutoExpand || !columnExpandedTables.Add(joinedTable)) continue;
+                    foreach (var joinedColumn in joinedTable.TableDefinition.Columns)
+                    {
+                        columnRefs.Enqueue(new ColumnRef(joinedTable, joinedColumn));
+                    }
+                    enqueued = true;
+                }
+                if (enqueued)
+                {
+                    while (columnRefs.Count > 0)
+                    {
+                        JoinColumn(joinedTables, columnRefs);
+                    }
+                    continue;
+                }
+
+                JoinedTable? pendingTable = null;
+                foreach (var joinedTable in joinedTables.Values)
+                {
+                    if (joinedTable.AutoExpand && joinExpandedTables.Add(joinedTable))
+                    {
+                        pendingTable = joinedTable;
+                        break;
+                    }
+                }
+                if (pendingTable is null) break;
+                ApplyJoinedTableInfos(joinedTables, pendingTable);
             }
 
             // 4. 解析 [ForeignColumn] 的目标列（可沿 ForeignColumn 链逐层递归）
@@ -497,6 +527,8 @@ namespace LiteOrm.Common
                     && existingJoinedTable.ForeignKeys.Count > 0
                     && !existingJoinedTable.ForeignKeys[0].Equals(columnRef))
                     throw new ArgumentException($"Duplicate table alias name \"{joinedTableName}\"");
+                // 同一关联表可能同时被 TableJoin 与 ForeignType 声明，任一声明要求 AutoExpand 都应生效
+                existingJoinedTable.AutoExpand |= foreignTableInfo.AutoExpand;
                 return;
             }
 
@@ -514,14 +546,73 @@ namespace LiteOrm.Common
             if (joinedTables.ContainsKey(joinedTableName))
                 throw new ArgumentException($"Duplicate table alias name \"{joinedTable.Name}\"");
             joinedTables[joinedTableName] = joinedTable;
+        }
 
-            // AutoExpand：把该外表的列加入队列，使后续关联路径可被继续解析
-            if (joinedTable.AutoExpand)
+        /// <summary>
+        /// 将指定关联表类型在编译期声明的 <see cref="JoinedTableInfo"/> 关联加入连接。
+        /// </summary>
+        /// <param name="joinedTables">已连接的关联表。</param>
+        /// <param name="sourceTable">声明该关联的源关联表，外键默认取自该表。</param>
+        private void ApplyJoinedTableInfos(Dictionary<string, JoinedTable> joinedTables, JoinedTable sourceTable)
+        {
+            if (!_tableInfos.TryGetValue(sourceTable.TableDefinition.ObjectType, out var tableInfo)) return;
+            if (tableInfo.JoinedTables is not { Count: > 0 }) return;
+
+            foreach (var joinInfo in tableInfo.JoinedTables)
             {
-                foreach (var column in foreignTable.Columns)
+                var actualSource = sourceTable;
+                if (joinInfo.SourceAlias is not null)
                 {
-                    columnRefs.Enqueue(new ColumnRef(joinedTable, column));
+                    if (!joinedTables.TryGetValue(joinInfo.SourceAlias, out var namedSource))
+                        throw new ArgumentException($"Source table \"{joinInfo.SourceAlias}\" does not exist in joined tables.");
+                    actualSource = namedSource;
                 }
+                else if (joinInfo.SourceType is not null)
+                {
+                    JoinedTable? matched = null;
+                    foreach (var candidate in joinedTables.Values)
+                    {
+                        if (candidate.TableDefinition.ObjectType != joinInfo.SourceType) continue;
+                        if (matched is not null)
+                            throw new ArgumentException($"Undeterminate table. More than one table of type {joinInfo.SourceType} joined.");
+                        matched = candidate;
+                    }
+                    if (matched is null)
+                        throw new ArgumentException($"Source table type {joinInfo.SourceType} does not exist in joined tables.");
+                    actualSource = matched;
+                }
+
+                var targetTableDef = BuildTableDefinitionOnly(joinInfo.TargetType);
+                if (targetTableDef is null) continue;
+
+                string alias = string.IsNullOrEmpty(joinInfo.Alias) ? joinInfo.TargetType.Name : joinInfo.Alias!;
+                if (joinedTables.TryGetValue(alias, out var existingJoinedTable))
+                {
+                    if (existingJoinedTable.TableDefinition.ObjectType != joinInfo.TargetType)
+                        throw new ArgumentException($"Duplicate table alias name \"{alias}\"");
+                    existingJoinedTable.AutoExpand |= joinInfo.AutoExpand;
+                    continue;
+                }
+
+                var joinedTable = new JoinedTable(targetTableDef, MetaDataHelper.GetJoinPrimeKeys(targetTableDef, joinInfo.PrimeKeys))
+                {
+                    JoinType = joinInfo.JoinType,
+                    AutoExpand = joinInfo.AutoExpand,
+                    Name = alias,
+                    ConstFilter = MetaDataHelper.AliasConstFilter(targetTableDef.ConstFilter, alias)
+                };
+                var foreignKeys = new List<ColumnRef>();
+                foreach (string keyName in joinInfo.ForeignKeys.Split(','))
+                {
+                    var keyColumn = actualSource.GetColumn(keyName);
+                    if (keyColumn is null)
+                        throw new ArgumentException($"Foreign key column \"{keyName}\" does not exist in source table \"{actualSource.Name}\".");
+                    foreignKeys.Add(keyColumn);
+                }
+                joinedTable.ForeignKeys = foreignKeys.AsReadOnly();
+                if (joinedTables.ContainsKey(alias))
+                    throw new ArgumentException($"Duplicate table alias name \"{alias}\"");
+                joinedTables[alias] = joinedTable;
             }
         }
     }

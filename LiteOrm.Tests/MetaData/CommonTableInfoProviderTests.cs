@@ -80,7 +80,7 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
-        public void GetTableView_WithJoinedTableAutoExpand_ResolvesNestedForeignColumn()
+        public void GetTableView_WithJoinedTableAutoExpand_RecursivelyResolvesNestedForeignColumns()
         {
             var provider = new CommonTableInfoProvider();
             provider.Register(CreateAutoExpandViewInfo());
@@ -92,13 +92,19 @@ namespace LiteOrm.Common.UnitTests
                 new List<ColumnInfo>
                 {
                     new ColumnInfo { PropertyName = nameof(AotAutoExpandUserProfile.Id), ColumnName = "Id", IsPrimaryKey = true },
-                    new ColumnInfo
+                    new ColumnInfo { PropertyName = nameof(AotAutoExpandUserProfile.DepartmentId), ColumnName = "DepartmentId" }
+                })
+            {
+                JoinedTables = new[]
+                {
+                    new JoinedTableInfo
                     {
-                        PropertyName = nameof(AotAutoExpandUserProfile.DepartmentId),
-                        ColumnName = "DepartmentId",
-                        ForeignTables = new[] { new ForeignTable { ForeignType = typeof(AotAutoExpandDepartment) } }
+                        TargetType = typeof(AotAutoExpandDepartment),
+                        ForeignKeys = nameof(AotAutoExpandUserProfile.DepartmentId),
+                        AutoExpand = true
                     }
-                }));
+                }
+            });
             provider.Register(new TableInfo(
                 typeof(AotAutoExpandDepartment),
                 "AotAutoExpandDepartments",
@@ -107,16 +113,36 @@ namespace LiteOrm.Common.UnitTests
                 new List<ColumnInfo>
                 {
                     new ColumnInfo { PropertyName = nameof(AotAutoExpandDepartment.Id), ColumnName = "Id", IsPrimaryKey = true },
-                    new ColumnInfo { PropertyName = nameof(AotAutoExpandDepartment.Name), ColumnName = "Name" }
+                    new ColumnInfo { PropertyName = nameof(AotAutoExpandDepartment.Name), ColumnName = "Name" },
+                    new ColumnInfo
+                    {
+                        PropertyName = nameof(AotAutoExpandDepartment.CompanyId),
+                        ColumnName = "CompanyId",
+                        ForeignTables = new[] { new ForeignTable { ForeignType = typeof(AotAutoExpandCompany), AutoExpand = true } }
+                    }
+                }));
+            provider.Register(new TableInfo(
+                typeof(AotAutoExpandCompany),
+                "AotAutoExpandCompanies",
+                null,
+                SyncTableMode.Never,
+                new List<ColumnInfo>
+                {
+                    new ColumnInfo { PropertyName = nameof(AotAutoExpandCompany.Id), ColumnName = "Id", IsPrimaryKey = true },
+                    new ColumnInfo { PropertyName = nameof(AotAutoExpandCompany.Name), ColumnName = "Name" }
                 }));
 
             var view = provider.GetTableView(typeof(AotAutoExpandUserView))!;
 
             Assert.Contains(view.JoinedTables, jt => jt.Name == nameof(AotAutoExpandUserProfile) && jt.TableDefinition.ObjectType == typeof(AotAutoExpandUserProfile));
             Assert.Contains(view.JoinedTables, jt => jt.Name == nameof(AotAutoExpandDepartment) && jt.TableDefinition.ObjectType == typeof(AotAutoExpandDepartment));
+            Assert.Contains(view.JoinedTables, jt => jt.Name == nameof(AotAutoExpandCompany) && jt.TableDefinition.ObjectType == typeof(AotAutoExpandCompany));
 
             var departmentName = (ForeignColumn)view.GetColumn(nameof(AotAutoExpandUserView.DepartmentName))!;
             Assert.Equal(nameof(AotAutoExpandDepartment.Name), departmentName.TargetColumn!.Column.PropertyName);
+
+            var companyName = (ForeignColumn)view.GetColumn(nameof(AotAutoExpandUserView.CompanyName))!;
+            Assert.Equal(nameof(AotAutoExpandCompany.Name), companyName.TargetColumn!.Column.PropertyName);
         }
 
         private static TableInfo CreateAutoExpandViewInfo()
@@ -138,6 +164,16 @@ namespace LiteOrm.Common.UnitTests
                             ForeignType = typeof(AotAutoExpandDepartment),
                             Property = nameof(AotAutoExpandDepartment.Name)
                         }
+                    },
+                    new ColumnInfo
+                    {
+                        PropertyName = nameof(AotAutoExpandUserView.CompanyName),
+                        ColumnName = "CompanyName",
+                        ForeignColumn = new ForeignColumnInfo
+                        {
+                            ForeignType = typeof(AotAutoExpandCompany),
+                            Property = nameof(AotAutoExpandCompany.Name)
+                        }
                     }
                 })
             {
@@ -158,6 +194,8 @@ namespace LiteOrm.Common.UnitTests
             public int ProfileId { get; set; }
 
             public string? DepartmentName { get; set; }
+
+            public string? CompanyName { get; set; }
         }
 
         private class AotAutoExpandUserProfile
@@ -168,6 +206,15 @@ namespace LiteOrm.Common.UnitTests
         }
 
         private class AotAutoExpandDepartment
+        {
+            public int Id { get; set; }
+
+            public string Name { get; set; } = string.Empty;
+
+            public int CompanyId { get; set; }
+        }
+
+        private class AotAutoExpandCompany
         {
             public int Id { get; set; }
 

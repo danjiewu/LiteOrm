@@ -71,7 +71,7 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
-        public void GetTableView_WithTableJoinAutoExpand_JoinsNestedForeignTable()
+        public void GetTableView_WithTableJoinAutoExpand_RecursivelyJoinsNestedForeignTables()
         {
             var provider = CreateProvider();
 
@@ -79,9 +79,13 @@ namespace LiteOrm.Common.UnitTests
 
             Assert.Contains(tableView.JoinedTables, jt => jt.Name == nameof(AutoExpandUserProfile) && jt.TableDefinition.ObjectType == typeof(AutoExpandUserProfile));
             Assert.Contains(tableView.JoinedTables, jt => jt.Name == nameof(AutoExpandDepartment) && jt.TableDefinition.ObjectType == typeof(AutoExpandDepartment));
+            Assert.Contains(tableView.JoinedTables, jt => jt.Name == nameof(AutoExpandCompany) && jt.TableDefinition.ObjectType == typeof(AutoExpandCompany));
 
             var departmentNameColumn = (ForeignColumn)tableView.GetColumn(nameof(AutoExpandUserView.DepartmentName))!;
             Assert.Equal(nameof(AutoExpandDepartment.Name), departmentNameColumn.TargetColumn!.Column.PropertyName);
+
+            var companyNameColumn = (ForeignColumn)tableView.GetColumn(nameof(AutoExpandUserView.CompanyName))!;
+            Assert.Equal(nameof(AutoExpandCompany.Name), companyNameColumn.TargetColumn!.Column.PropertyName);
         }
 
         [Fact]
@@ -279,7 +283,8 @@ namespace LiteOrm.Common.UnitTests
 
         /// <summary>
         /// 通过类级 <see cref="TableJoinAttribute.AutoExpand"/> 关联用户档案，
-        /// 再由档案自身的 <see cref="ForeignTypeAttribute"/> 关联部门。
+        /// 再由档案类级 <see cref="TableJoinAttribute"/> 关联部门、部门属性级 <see cref="ForeignTypeAttribute"/> 关联公司，
+        /// 验证 AutoExpand 跨 TableJoin / ForeignType 混合声明时能够递归展开。
         /// </summary>
         [Table("AutoExpandUserViews", SyncTable = SyncTableMode.Never)]
         [TableJoin(typeof(AutoExpandUserProfile), nameof(AutoExpandUserView.ProfileId), AutoExpand = true)]
@@ -293,21 +298,38 @@ namespace LiteOrm.Common.UnitTests
 
             [ForeignColumn(typeof(AutoExpandDepartment), Property = nameof(AutoExpandDepartment.Name))]
             public string? DepartmentName { get; set; }
+
+            [ForeignColumn(typeof(AutoExpandCompany), Property = nameof(AutoExpandCompany.Name))]
+            public string? CompanyName { get; set; }
         }
 
         [Table("AutoExpandUserProfiles", SyncTable = SyncTableMode.Never)]
+        [TableJoin(typeof(AutoExpandDepartment), nameof(AutoExpandUserProfile.DepartmentId), AutoExpand = true)]
         private class AutoExpandUserProfile
         {
             [Column("Id", IsPrimaryKey = true)]
             public int Id { get; set; }
 
             [Column("DepartmentId")]
-            [ForeignType(typeof(AutoExpandDepartment))]
             public int DepartmentId { get; set; }
         }
 
         [Table("AutoExpandDepartments", SyncTable = SyncTableMode.Never)]
         private class AutoExpandDepartment
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("Name")]
+            public string Name { get; set; } = string.Empty;
+
+            [Column("CompanyId")]
+            [ForeignType(typeof(AutoExpandCompany), AutoExpand = true)]
+            public int CompanyId { get; set; }
+        }
+
+        [Table("AutoExpandCompanies", SyncTable = SyncTableMode.Never)]
+        private class AutoExpandCompany
         {
             [Column("Id", IsPrimaryKey = true)]
             public int Id { get; set; }
