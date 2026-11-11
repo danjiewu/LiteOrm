@@ -364,6 +364,28 @@ namespace LiteOrm.Common.UnitTests
 
         #endregion
 
+        #region AsValue 子查询作用域
+
+        [Fact]
+        public void AsValue_SelectExpr_OpensScopeForInnerTable()
+        {
+            var inner = new SelectExpr(
+                new FromExpr(new TableExpr(typeof(TestDepartment)) { Alias = "d" }),
+                Expr.Prop("Id"));
+            var outer = new SelectExpr(
+                new FromExpr(new TableExpr(typeof(TestUser)) { Alias = "u" }),
+                Expr.Prop("Id").As("UserId"),
+                inner.AsValue().As("DepartmentId"));
+
+            string sql = ToSql(outer).Sql;
+
+            // 子查询内部未显式指定表别名的列必须绑定到子查询自己的表，而不是外层表
+            Assert.Contains("(SELECT \"d\".\"Id\"", sql);
+            Assert.DoesNotContain("(SELECT \"u\".\"Id\"", sql);
+        }
+
+        #endregion
+
         #region TableArgs 分表测试模型
 
         [Table("ShardJoinOrders_{0}")]

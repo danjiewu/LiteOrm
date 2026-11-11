@@ -61,17 +61,21 @@ namespace LiteOrm.Common
 
         // 以下优先级常量数值越大表示绑定越紧。
         /// <summary>
-        /// 根优先级，表示最外层的表达式优先级。
+        /// 根优先级，表示最外层根节点的表达式优先级。
         /// </summary>
-        private const int RootPriority = 0;
+        private const int RootPriority = -1000;
+        /// <summary>
+        /// 默认优先级，用于未显式指定优先级的嵌套表达式。
+        /// </summary>
+        private const int DefaultPriority = 0;
         /// <summary>
         /// 表示集合查询，如 SELECT ... UNION SELECT ... 的优先级，通常最低，因为它们需要整个子查询作为一个整体。
         /// </summary>
-        private const int SelectSetPriority = 1;
+        private const int SelectSetPriority = -2;
         /// <summary>
         /// 表示普通子查询（如 SELECT ...）的优先级，略高于集合查询，因为它们通常作为一个单独的表达式出现在其他操作中。
         /// </summary>
-        private const int SelectPriority = 2;
+        private const int SelectPriority = -1;
         /// <summary>
         /// 表示值列表（如 IN (...)）的优先级，通常较低，因为它们需要整个列表作为一个整体进行处理。
         /// </summary>
@@ -131,7 +135,7 @@ namespace LiteOrm.Common
             if (isRoot) context.Init();
 
             var sb = ValueStringBuilder.Create(256);
-            ToSqlInternal(ref sb, expr, context);
+            ToSqlInternal(ref sb, expr, context, RootPriority);
             string sql = sb.ToString();
             sb.Dispose();
 
@@ -300,7 +304,7 @@ namespace LiteOrm.Common
         /// <param name="expr">要转换的表达式，为空时不输出任何内容。</param>
         /// <param name="context">生成 SQL 的上下文环境。</param>
         /// <param name="priority">外层表达式优先级，当前表达式优先级更低时会补上括号。</param>
-        private static void ToSqlInternal(ref ValueStringBuilder sb, Expr? expr, SqlBuildContext context, int priority = RootPriority)
+        private static void ToSqlInternal(ref ValueStringBuilder sb, Expr? expr, SqlBuildContext context, int priority = DefaultPriority)
         {
             if (expr == null) return;
             expr = expr.Reduce()!;
@@ -1215,7 +1219,7 @@ namespace LiteOrm.Common
                 sb.Append("(");
                 using (context.BeginScope())
                 {
-                    ToSqlInternal(ref sb, expr.Source, context);
+                    ToSqlInternal(ref sb, expr.Source, context, RootPriority);
                 }
                 sb.Append(") ");
                 sb.Append(context.SqlBuilder.ToSqlName(expr.Alias!));
