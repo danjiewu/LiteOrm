@@ -1,10 +1,22 @@
 # 变更日志 (Changelog)
 
+## v8.1.17 (2026-11-11)
+
+### 改进
+
+- **调整表达式优先级**（`LiteOrm.Common`）：嵌套 `SelectExpr` 默认作为独立作用域渲染并自动补括号。
+
+***
+
 ## v8.1.16 (2026-11-10)
+
+### 新特性
+
+- **`LiteOrmRemoteOptions` 新增 `JsonSerializerOptions`**（`LiteOrm.Remote`）：客户端传输层与拦截器共用该序列化选项，需与服务端 `RemoteServerOptions.JsonSerializerOptions` 保持一致。
 
 ### 修复
 
-- **修复 `[TableJoin(AutoExpand = true)]` 未生效的 bug**（`LiteOrm.Common`）：多级关联表未展开的问题已解决，JIT 与 AOT 两条路径行为一致。
+- **修复 `[TableJoin(AutoExpand = true)]` 未生效的 bug**（`LiteOrm.Common`）：多级关联表未展开的问题已解决，JIT 与 AOT 行为一致。
 
 ***
 

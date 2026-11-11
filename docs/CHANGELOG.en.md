@@ -1,10 +1,22 @@
 # Changelog
 
+## v8.1.17 (2026-11-11)
+
+### Improvements
+
+- **Expression precedence adjustment** (`LiteOrm.Common`): nested `SelectExpr` is now rendered as an independent scope with automatic parentheses.
+
+***
+
 ## v8.1.16 (2026-11-10)
+
+### New Features
+
+- **`LiteOrmRemoteOptions` gains `JsonSerializerOptions`** (`LiteOrm.Remote`): shared by the client transport and interceptor; keep it consistent with the server's `RemoteServerOptions.JsonSerializerOptions`.
 
 ### Bug Fixes
 
-- **Fixed `[TableJoin(AutoExpand = true)]` having no effect** (`LiteOrm.Common`): nested joined tables are now expanded, with identical behavior on the JIT and AOT paths.
+- **Fixed `[TableJoin(AutoExpand = true)]` having no effect** (`LiteOrm.Common`): nested joined tables are now expanded, with identical JIT and AOT behavior.
 
 ***
 

@@ -11,6 +11,7 @@
     <VersionPrefix>8.1.16</VersionPrefix>
     <PackageReleaseNotes>
       8.1.16:
+      - 新增 LiteOrmRemoteOptions.JsonSerializerOptions：客户端传输层报文与拦截器返回值/回写参数统一使用该序列化选项。
       - 同步 LiteOrm.Common 8.1.16：修复 [TableJoin(AutoExpand = true)] 未生效的 bug。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>

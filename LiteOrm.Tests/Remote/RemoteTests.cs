@@ -295,6 +295,38 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public void AddLiteOrmRemote_Uses_Configured_JsonSerializerOptions()
+        {
+            var serializerOptions = new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            };
+
+            var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder();
+            builder.Services.AddLiteOrmRemote(opts =>
+            {
+                opts.RemoteServiceUri = new Uri("http://localhost:5000");
+                opts.JsonSerializerOptions = serializerOptions;
+            });
+            var host = builder.Build();
+
+            try
+            {
+                // 传输层与拦截器共用 LiteOrmRemoteOptions.JsonSerializerOptions
+                var transport = Assert.IsType<HttpRemoteServiceTransport>(
+                    host.Services.GetRequiredService<IRemoteServiceTransport>());
+                Assert.Same(serializerOptions, transport.SerializerOptions);
+
+                var interceptor = host.Services.GetRequiredService<RemoteServiceInvokeInterceptor>();
+                Assert.Same(serializerOptions, interceptor.SerializerOptions);
+            }
+            finally
+            {
+                host.Dispose();
+            }
+        }
+
+        [Fact]
         public void AddLiteOrmRemote_Factory_Overrides_Parameters_From_DI()
         {
             // 不通过 AddLiteOrmRemote(configure) 配置远程地址，而是用注入工厂从 DI 构造选项。

@@ -11,7 +11,8 @@
     <VersionPrefix>8.1.16</VersionPrefix>
     <PackageReleaseNotes>
       8.1.16:
-      - 同步 LiteOrm.Common 8.1.16 / LiteOrm 8.1.16：修复 [TableJoin(AutoExpand = true)] 未生效的 bug。
+      - 同步 LiteOrm.Remote 8.1.16：客户端新增 LiteOrmRemoteOptions.JsonSerializerOptions，建议与服务端 RemoteServerOptions.JsonSerializerOptions 保持一致。
+      - 同步 LiteOrm.Common 8.1.16：修复 [TableJoin(AutoExpand = true)] 未生效的 bug。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>

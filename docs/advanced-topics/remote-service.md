@@ -246,6 +246,7 @@ builder.Services.AddRemoteServer(options =>
 | `RemoteServiceUri`           | `Uri?`                                          | 远程服务基础地址。设置后自动注册基于 `HttpClient` 的 `HttpRemoteServiceTransport`                                           |
 | `RemoteServicePath`          | `string`                                        | 相对于 `RemoteServiceUri` 的请求路径，默认 `api/remote/invoke`                                                      |
 | `RemoteSignInPath`           | `string`                                        | 相对于 `RemoteServiceUri` 的登录路径，默认 `api/remote/signin`（仅在使用内置 `StaticCredentialsResolver` 时生效）              |
+| `JsonSerializerOptions`      | `JsonSerializerOptions`                         | 传输层（请求/响应报文）与拦截器（返回值、回写参数）共用的 JSON 序列化选项。默认 `UnsafeRelaxedJsonEscaping` + 大小写不敏感，需与服务端 `RemoteServerOptions.JsonSerializerOptions` 保持一致 |
 | `CredentialsResolver`        | `ICredentialsResolver?`                         | 凭据解析器实例。每次 `InvokeAsync` 时通过该解析器获取身份票据并写入 HTTP 请求头；为 `null` 表示匿名连接                                       |
 | `CredentialsResolverFactory` | `Func<IServiceProvider, ICredentialsResolver>?` | 凭据解析器工厂，接收 `IServiceProvider`，返回 `ICredentialsResolver` 实例。优先级高于 `CredentialsResolver`，便于在解析器中注入其他 DI 服务 |
 | `ConfigureHttpClient`        | `Action<HttpClient>?`                           | 配置内部 `HttpClient`（超时、默认请求头等）                                                                             |

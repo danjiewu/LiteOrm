@@ -244,6 +244,7 @@ builder.Services.AddRemoteServer(options =>
 | `RemoteServiceUri` | `Uri?` | Remote service base address. When set, automatically registers `HttpRemoteServiceTransport` based on `HttpClient` |
 | `RemoteServicePath` | `string` | Request path relative to `RemoteServiceUri`, default `api/remote/invoke` |
 | `RemoteSignInPath` | `string` | Sign-in path relative to `RemoteServiceUri`, default `api/remote/signin` (only used with built-in `StaticCredentialsResolver`) |
+| `JsonSerializerOptions` | `JsonSerializerOptions` | JSON serialization options shared by the transport (request/response payloads) and the interceptor (results and write-back arguments). Defaults to `UnsafeRelaxedJsonEscaping` + case-insensitive; keep it consistent with the server's `RemoteServerOptions.JsonSerializerOptions` |
 | `CredentialsResolver` | `ICredentialsResolver?` | Credentials resolver instance. On each `InvokeAsync`, the resolver provides an identity ticket written to the HTTP request header; `null` means anonymous connection |
 | `CredentialsResolverFactory` | `Func<IServiceProvider, ICredentialsResolver>?` | Credentials resolver factory. Receives `IServiceProvider`, returns `ICredentialsResolver` instance. Takes precedence over `CredentialsResolver`, allowing DI service injection in the resolver |
 | `ConfigureHttpClient` | `Action<HttpClient>?` | Configure the internal `HttpClient` (timeout, default headers, etc.) |

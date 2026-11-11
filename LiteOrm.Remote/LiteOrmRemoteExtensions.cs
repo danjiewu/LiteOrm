@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
+using System.Text.Json;
 
 
 namespace LiteOrm.Remote
@@ -35,6 +36,22 @@ namespace LiteOrm.Remote
         /// </para>
         /// </summary>
         public bool LogJsonPayloads { get; set; }
+
+        /// <summary>
+        /// 远程调用使用的 JSON 序列化选项。默认使用 <see cref="System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping"/> 编码，
+        /// 并启用属性名大小写不敏感匹配。
+        /// <para>
+        /// 该选项同时用于 <see cref="JsonRemoteServiceTransport"/> 的请求/响应报文序列化，
+        /// 以及 <see cref="RemoteServiceInvokeInterceptor"/> 对返回值、回写参数的反序列化，
+        /// 因此可在此统一配置命名策略（如 <c>PropertyNamingPolicy</c>）或自定义转换器。
+        /// 需与服务端 <c>RemoteServerOptions.JsonSerializerOptions</c> 保持一致。
+        /// </para>
+        /// </summary>
+        public JsonSerializerOptions JsonSerializerOptions { get; set; } = new JsonSerializerOptions
+        {
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            PropertyNameCaseInsensitive = true,
+        };
 
         /// <summary>
         /// 远程服务的基础地址。设置该值将自动注册基于 HttpClient 的 <see cref="HttpRemoteServiceTransport"/>。
@@ -208,7 +225,7 @@ namespace LiteOrm.Remote
 
                     // 解析 ICredentialsResolver：若 DI 中已注册则使用，否则匿名连接
                     var resolver = sp.GetService<ICredentialsResolver>();
-                    var transport = new HttpRemoteServiceTransport(httpClient, resolver, opts.RemoteServicePath);
+                    var transport = new HttpRemoteServiceTransport(httpClient, resolver, opts.RemoteServicePath, opts.JsonSerializerOptions);
 
                     // 记录请求/响应 JSON 报文（排障用），从 DI 解析 ILoggerFactory 提供日志
                     if (opts.LogJsonPayloads)
@@ -226,7 +243,12 @@ namespace LiteOrm.Remote
                     "Configure one of them in AddLiteOrmRemote(opts => { ... }) or register a factory via AddLiteOrmRemote(sp => ...).");
             });
 
-            services.AddSingleton<RemoteServiceInvokeInterceptor>();
+            // 拦截器与传输层共享同一份 JSON 序列化选项，保证请求/响应与返回值反序列化规则一致。
+            services.AddSingleton<RemoteServiceInvokeInterceptor>(sp =>
+                new RemoteServiceInvokeInterceptor(
+                    sp.GetRequiredService<ILoggerFactory>(),
+                    sp.GetRequiredService<IRemoteServiceTransport>(),
+                    sp.GetRequiredService<LiteOrmRemoteOptions>().JsonSerializerOptions));
             services.AddScoped<ServiceGenerateInterceptor>();
             if (options.AutoRegisterEntityServices)
             {
