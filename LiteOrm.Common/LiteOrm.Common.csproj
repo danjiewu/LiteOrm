@@ -19,6 +19,7 @@
       8.1.17:
       - 修复元数据并发构建缺陷：同一类型的视图可能被重复生成，TableDefinition.View 与缓存视图不一致。
       - TableInfoProvider.Set 不再接受 null；CommonTableInfoProvider.Register 加锁、Install 幂等。
+      - 列名缓存改为构造时一次性填充，避免并发首次访问读到半成品字典。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

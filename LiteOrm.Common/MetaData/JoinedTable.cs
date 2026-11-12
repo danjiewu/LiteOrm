@@ -32,7 +32,6 @@ namespace LiteOrm.Common
             _tableDefinition = foreignTable;
             Name = foreignTable.Name;
 
-            // 构造时一次性填充，避免并发首次访问时读到只填充了一部分的字典
             foreach (ColumnDefinition column in foreignTable.Columns)
             {
                 _namedColumnCache[column.PropertyName] = new ColumnRef(this, column);

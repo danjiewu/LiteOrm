@@ -5,6 +5,7 @@
 ### 修复
 
 - **修复元数据并发构建缺陷**（`LiteOrm.Common`）：同一类型不再重复生成视图，`TableDefinition.View` 与缓存视图保持一致。
+- **列名缓存改为构造时一次性填充**（`LiteOrm.Common`）：`SqlTable` / `JoinedTable` 在构造时建立“属性名 → 列”映射，消除并发首次访问可能读到只填充了一部分的字典、使 `GetColumn` 返回 null 的风险。
 - **`TableInfoProvider.Set` 禁止传入 null**（`LiteOrm.Common`）：传入 null 抛 `ArgumentNullException`。
 - **`CommonTableInfoProvider` 并发安全**（`LiteOrm.Common`）：`Register` 加锁，`Install` 幂等。
 

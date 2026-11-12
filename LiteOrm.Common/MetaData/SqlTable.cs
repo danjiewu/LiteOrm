@@ -17,8 +17,7 @@ namespace LiteOrm.Common
             Columns = columns.ToList().AsReadOnly();
             foreach (SqlColumn column in Columns)
             {
-                column.Table = this;
-                // 构造时一次性填充，避免并发首次访问时读到只填充了一部分的字典
+                column.Table = this;                
                 _namedColumnCache[column.PropertyName] = column;
             }
         }

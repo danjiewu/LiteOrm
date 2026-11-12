@@ -20,7 +20,7 @@
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
       8.1.17:
-      - 同步 LiteOrm.Common 8.1.17：修复元数据并发构建问题。
+      - 同步 LiteOrm.Common 8.1.17：修复元数据并发构建问题、列名缓存改为构造时一次性填充。
       - DI 解析的 TableInfoProvider 与静态 Instance 统一为同一实例，避免两套元数据缓存。
       - 新增 LiteOrmOptions.WaitForInit，可选择启动时阻塞等待初始化或在后台执行（fire-and-forget）。
     </PackageReleaseNotes>

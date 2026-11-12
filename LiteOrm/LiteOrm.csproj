@@ -18,7 +18,7 @@
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
       8.1.17:
-      - 同步 LiteOrm.Common 8.1.17：修复元数据并发构建导致的视图/表定义不一致。
+      - 同步 LiteOrm.Common 8.1.17：修复元数据并发构建导致的视图/表定义不一致；列名缓存改为构造时一次性填充。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
