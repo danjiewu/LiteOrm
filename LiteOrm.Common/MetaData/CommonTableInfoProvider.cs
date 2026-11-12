@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 
 namespace LiteOrm.Common
 {
@@ -37,12 +38,15 @@ namespace LiteOrm.Common
         /// </summary>
         private readonly HashSet<Type> _buildingViews = new();
 
+        private static int _installed;
+
         /// <summary>
         /// 将当前提供程序安装为 <see cref="TableInfoProvider.Instance"/> 的工厂。
-        /// 该方法可被多个程序集生成的模块初始化器重复调用，始终指向同一单例。
+        /// 该方法可被多个程序集生成的模块初始化器重复调用，始终指向同一单例，且只会真正替换一次全局实例。
         /// </summary>
         public static void Install()
         {
+            if (Interlocked.Exchange(ref _installed, 1) != 0) return;
             TableInfoProvider.Set(() => Instance);
         }
 
@@ -54,9 +58,14 @@ namespace LiteOrm.Common
         {
             if (tableInfo is null) throw new ArgumentNullException(nameof(tableInfo));
 
-            _tableInfos[tableInfo.ObjectType] = tableInfo;
-            _tables.TryRemove(tableInfo.ObjectType, out _);
-            _views.TryRemove(tableInfo.ObjectType, out _);
+            // 注册由模块初始化器在程序集加载时触发，可能与正在构建/读取元数据的线程并发；
+            // 与 GetTableDefinition/GetTableView 共用同一把锁，避免构建过程中缓存被清空或读到半更新状态。
+            lock (_syncLock)
+            {
+                _tableInfos[tableInfo.ObjectType] = tableInfo;
+                _tables.TryRemove(tableInfo.ObjectType, out _);
+                _views.TryRemove(tableInfo.ObjectType, out _);
+            }
         }
 
         /// <inheritdoc />
@@ -73,7 +82,11 @@ namespace LiteOrm.Common
 
             lock (_syncLock)
             {
-                if (_tables.TryGetValue(objectType, out tableDef)) return tableDef;
+                if (_tables.TryGetValue(objectType, out tableDef))
+                {
+                    EnsureViewAttached(objectType, tableDef);
+                    return tableDef;
+                }
 
                 tableDef = BuildTableDefinitionOnly(objectType);
                 if (tableDef is null) return null;
@@ -293,7 +306,7 @@ namespace LiteOrm.Common
                     }
                 }
                 if (pendingTable is null) break;
-                ApplyJoinedTableInfos(joinedTables, pendingTable);
+                ApplyJoinedTableInfos(joinedTables, pendingTable, tableInfo.ObjectType);
             }
 
             // 4. 解析 [ForeignColumn] 的目标列（可沿 ForeignColumn 链逐层递归）
@@ -553,13 +566,16 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="joinedTables">已连接的关联表。</param>
         /// <param name="sourceTable">声明该关联的源关联表，外键默认取自该表。</param>
-        private void ApplyJoinedTableInfos(Dictionary<string, JoinedTable> joinedTables, JoinedTable sourceTable)
+        /// <param name="rootType">视图主表类型，展开回到主表时终止，不产生自连接。</param>
+        private void ApplyJoinedTableInfos(Dictionary<string, JoinedTable> joinedTables, JoinedTable sourceTable, Type rootType)
         {
             if (!_tableInfos.TryGetValue(sourceTable.TableDefinition.ObjectType, out var tableInfo)) return;
             if (tableInfo.JoinedTables is not { Count: > 0 }) return;
 
             foreach (var joinInfo in tableInfo.JoinedTables)
             {
+                if (joinInfo.TargetType == rootType) continue;
+
                 var actualSource = sourceTable;
                 if (joinInfo.SourceAlias is not null)
                 {

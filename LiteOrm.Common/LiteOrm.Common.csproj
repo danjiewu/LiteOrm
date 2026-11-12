@@ -2,11 +2,11 @@
   <PropertyGroup>
     <TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
     <RootNamespace>LiteOrm.Common</RootNamespace>
-    <AssemblyVersion>8.1.16.0</AssemblyVersion>
-    <FileVersion>8.1.16.0</FileVersion>
+    <AssemblyVersion>8.1.17.0</AssemblyVersion>
+    <FileVersion>8.1.17.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <VersionPrefix>8.1.16</VersionPrefix>
+    <VersionPrefix>8.1.17</VersionPrefix>
     <Nullable>enable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
@@ -16,8 +16,10 @@
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
-      8.1.16:
-      - 修复 [TableJoin(AutoExpand = true)] 未生效的 bug。
+      8.1.17:
+      - 修复元数据并发构建缺陷：同一类型的视图可能被重复生成，TableDefinition.View 与缓存视图不一致。
+      - 修复循环 AutoExpand 关联会把主表再次 join 的问题。
+      - TableInfoProvider.Set 不再接受 null；CommonTableInfoProvider.Register 加锁、Install 幂等。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

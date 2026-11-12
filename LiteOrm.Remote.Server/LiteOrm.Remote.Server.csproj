@@ -6,12 +6,12 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程调用服务端</Description>
-    <AssemblyVersion>8.1.16.0</AssemblyVersion>
-    <FileVersion>8.1.16.0</FileVersion>
-    <VersionPrefix>8.1.16</VersionPrefix>
+    <AssemblyVersion>8.1.17.0</AssemblyVersion>
+    <FileVersion>8.1.17.0</FileVersion>
+    <VersionPrefix>8.1.17</VersionPrefix>
     <PackageReleaseNotes>
-      8.1.16:
-      - 同步 LiteOrm.Common 8.1.16 / LiteOrm 8.1.16：修复 [TableJoin(AutoExpand = true)] 未生效的 bug。
+      8.1.17:
+      - 同步 LiteOrm.Common 8.1.17 / LiteOrm 8.1.17：修复元数据并发构建导致的视图/表定义不一致与循环 AutoExpand 自连接。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>

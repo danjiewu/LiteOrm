@@ -93,7 +93,7 @@ namespace LiteOrm.DependencyInjection
                     var logger = options.LoggerFactory?.CreateLogger(nameof(LiteOrmServiceExtensions));
 
                     // 注册核心服务（Autofac 原生注册）
-                    builder.RegisterCoreServices();
+                    builder.RegisterCoreServices(options.WaitForInit);
 
                     // 注册用户上下文（服务鉴权的身份来源）
                     foreach (var registerUserContext in options.UserContextRegistrations)
@@ -244,8 +244,12 @@ namespace LiteOrm.DependencyInjection
         /// 5. <see cref="LiteOrmCoreInitializer"/> - HostedService，启动时自动同步数据库表结构。
         /// </remarks>
         /// <param name="builder">Autofac 容器构建器。</param>
+        /// <param name="waitForInit">
+        /// 是否在宿主启动时阻塞等待初始化（读取器预热与表结构同步）完成，默认为 <c>true</c>。
+        /// 为 <c>false</c> 时初始化在后台执行（fire-and-forget）。
+        /// </param>
         /// <returns>容器构建器。</returns>
-        public static ContainerBuilder RegisterCoreServices(this ContainerBuilder builder)
+        public static ContainerBuilder RegisterCoreServices(this ContainerBuilder builder, bool waitForInit = true)
         {
             if (builder == null) throw new ArgumentNullException(nameof(builder));
 
@@ -283,13 +287,20 @@ namespace LiteOrm.DependencyInjection
             builder.RegisterType<SessionManager>()
                 .InstancePerLifetimeScope();
 
-            // 表信息提供程序 - 单例
-            builder.RegisterType<AttributeTableInfoProvider>()
+            // 表信息提供程序 - 单例。
+            // 必须与静态 TableInfoProvider.Instance 指向同一实例：DAO、ExprSqlConverter、DataReaderConverter 等
+            // 框架内部逻辑直接读取静态实例，若 DI 再 new 一个 AttributeTableInfoProvider，会形成两套元数据缓存；
+            // 源生成元数据安装（CommonTableInfoProvider.Install）后更会出现“生成元数据 / 运行期特性”两套元数据并存。
+            builder.Register(_ => TableInfoProvider.Instance)
                 .As<TableInfoProvider>()
                 .SingleInstance();
 
-            // 初始化 - HostedService
-            builder.RegisterType<LiteOrmCoreInitializer>()
+            // 初始化 - HostedService；阻塞/后台执行由 LiteOrmOptions.WaitForInit 决定
+            builder.Register(c => new LiteOrmCoreInitializer(
+                c.Resolve<IDataSourceProvider>(),
+                c.Resolve<DAOContextPoolFactory>(),
+                c.ResolveOptional<ILogger<LiteOrmCoreInitializer>>(),
+                waitForInit))
                 .As<IHostedService>()
                 .SingleInstance();
 
@@ -350,6 +361,17 @@ namespace LiteOrm.DependencyInjection
             /// 日志工厂，用于记录服务注册过程中的程序集扫描日志（可选）。
             /// </summary>
             public ILoggerFactory? LoggerFactory { get; set; }
+
+            /// <summary>
+            /// 是否在宿主启动时阻塞等待 LiteOrm 初始化（读取器预热与表结构同步）完成，默认为 <c>true</c>。
+            /// <para>
+            /// 为 <c>true</c> 时 <see cref="LiteOrmCoreInitializer.StartAsync"/> 会等待全部初始化完成后再启动后续
+            /// HostedService，避免初始化与定时任务/首个请求并发访问元数据；
+            /// 为 <c>false</c> 时初始化在后台执行（fire-and-forget），启动更快，但需自行保证初始化完成前
+            /// 不依赖数据库表结构或元数据。
+            /// </para>
+            /// </summary>
+            public bool WaitForInit { get; set; } = true;
 
             /// <summary>
             /// 注册自定义 SqlBuilder（按数据源名称）。
@@ -606,7 +628,7 @@ namespace LiteOrm.DependencyInjection
                 }
             }
 
-           if (HasServiceAttribute(implementationType))
+            if (HasServiceAttribute(implementationType))
             {
                 // 带 [Service] 特性的类型自动应用服务调用拦截器
                 registration.EnableInterfaceInterceptors()

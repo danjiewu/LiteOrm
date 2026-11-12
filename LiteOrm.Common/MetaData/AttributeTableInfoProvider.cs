@@ -17,6 +17,12 @@ namespace LiteOrm
         private readonly ConcurrentDictionary<Type, TableDefinition> _tableInfoCache = new ConcurrentDictionary<Type, TableDefinition>();
         private readonly ConcurrentDictionary<Type, TableView> _tableViewCache = new ConcurrentDictionary<Type, TableView>();
         private readonly object _syncLock = new object();
+        /// <summary>
+        /// 正在构建视图的类型。构建 A 的视图时若顺带请求 A 的表定义，表定义会尝试回填视图，
+        /// 若不拦截会再次进入视图构建，产生两个 TableView 实例（表定义持有其中一个，缓存持有另一个）。
+        /// 仅在持有 <see cref="_syncLock"/> 时访问。
+        /// </summary>
+        private readonly HashSet<Type> _buildingViews = new HashSet<Type>();
 
         /// <summary>
         /// 初始化 <see cref="AttributeTableInfoProvider"/> 类的新实例。
@@ -39,16 +45,24 @@ namespace LiteOrm
             Type objectType)
         {
             if (objectType is null) return null;
-            if (_tableInfoCache.TryGetValue(objectType, out var tableDef)) return tableDef;
+            if (_tableInfoCache.TryGetValue(objectType, out var tableDef))
+            {
+                EnsureViewAttached(objectType, tableDef);
+                return tableDef;
+            }
 
             lock (_syncLock)
             {
-                if (_tableInfoCache.TryGetValue(objectType, out tableDef)) return tableDef;
+                if (_tableInfoCache.TryGetValue(objectType, out tableDef))
+                {
+                    EnsureViewAttached(objectType, tableDef);
+                    return tableDef;
+                }
                 tableDef = GenerateTableDefinition(objectType);
                 if (tableDef != null)
                 {
                     _tableInfoCache[objectType] = tableDef;
-                    tableDef.SetView(GetTableView(objectType)!);
+                    EnsureViewAttached(objectType, tableDef);
                 }
                 return tableDef;
             }
@@ -69,10 +83,45 @@ namespace LiteOrm
             lock (_syncLock)
             {
                 if (_tableViewCache.TryGetValue(objectType, out tableView)) return tableView;
-                tableView = GenerateTableView(objectType);
-                if (tableView != null) _tableViewCache[objectType] = tableView;
-                return tableView;
+
+                // 同一类型正在构建视图（如 A 关联 B、B 又回指 A）时返回 null，
+                // 由最外层构建完成后统一发布，避免无限递归和重复生成。
+                if (!_buildingViews.Add(objectType)) return null;
+                try
+                {
+                    if (!_tableInfoCache.TryGetValue(objectType, out var tableDef))
+                    {
+                        tableDef = GenerateTableDefinition(objectType);
+                        if (tableDef is null) return null;
+                        _tableInfoCache[objectType] = tableDef;
+                    }
+
+                    tableView = GenerateTableView(objectType, tableDef);
+                    if (tableView != null)
+                    {
+                        _tableViewCache[objectType] = tableView;
+                        tableDef.SetView(tableView);
+                    }
+                    return tableView;
+                }
+                finally
+                {
+                    _buildingViews.Remove(objectType);
+                }
             }
+        }
+
+        /// <summary>
+        /// 为表定义回填视图；视图已构建时直接复用，正在构建时由最外层负责回填。
+        /// </summary>
+        private void EnsureViewAttached(
+            [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
+            Type objectType,
+            TableDefinition tableDef)
+        {
+            if (tableDef.View != null) return;
+            var view = GetTableView(objectType);
+            if (view != null && tableDef.View == null) tableDef.SetView(view);
         }
 
         private TableDefinition? GenerateTableDefinition(
@@ -200,13 +249,15 @@ namespace LiteOrm
             }
         }
 
+        /// <summary>
+        /// 依据表定义构建视图。表定义由调用方创建或取自缓存，本方法不再调用
+        /// <see cref="GetTableDefinition(Type)"/>，避免“表定义回填视图 → 视图再取表定义”的循环导致同一类型生成两个视图。
+        /// </summary>
         private TableView? GenerateTableView(
             [DynamicallyAccessedMembers(Constants.RegistedMemberTypes)]
-            Type objectType)
+            Type objectType,
+            TableDefinition tableDef)
         {
-            var tableDef = GetTableDefinition(objectType);
-            if (tableDef == null) return null;
-
             TableJoinAttribute[] atts = (TableJoinAttribute[])objectType.GetCustomAttributes(typeof(TableJoinAttribute), true);
             ConcurrentDictionary<string, JoinedTable> joinedTables = new ConcurrentDictionary<string, JoinedTable>(StringComparer.OrdinalIgnoreCase);
 
@@ -296,6 +347,8 @@ namespace LiteOrm
 
                 foreach (TableJoinAttribute tableJoin in (TableJoinAttribute[])pendingTable.TableDefinition.ObjectType.GetCustomAttributes(typeof(TableJoinAttribute), true))
                 {
+                    // 展开回到主表类型时终止，不产生自连接
+                    if (tableJoin.TargetType == objectType) continue;
                     JoinTable(joinedTables, pendingTable, tableJoin);
                 }
             }

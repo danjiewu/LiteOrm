@@ -29,23 +29,59 @@ namespace LiteOrm
         /// <param name="dataSourceProvider">数据源提供者</param>
         /// <param name="daoContextPoolFactory">DAO上下文连接池工厂</param>
         /// <param name="logger">日志记录器</param>
+        /// <param name="waitForInit">
+        /// 是否在 <see cref="StartAsync"/> 中阻塞等待初始化完成。
+        /// 为 <c>false</c> 时初始化在后台执行（fire-and-forget）。
+        /// </param>
         public LiteOrmCoreInitializer(
             IDataSourceProvider dataSourceProvider,
             DAOContextPoolFactory daoContextPoolFactory,
-            ILogger<LiteOrmCoreInitializer>? logger = null)
+            ILogger<LiteOrmCoreInitializer>? logger = null,
+            bool waitForInit = true)
         {
             _dataSourceProvider = dataSourceProvider;
             _daoContextPoolFactory = daoContextPoolFactory;
             _logger = logger;
+            WaitForInit = waitForInit;
         }
 
         /// <summary>
+        /// 是否在宿主启动时阻塞等待初始化完成。
+        /// </summary>
+        public bool WaitForInit { get; }
+
+        /// <summary>
         /// 启动时执行全局单例回写和表结构同步逻辑。
+        /// <para>
+        /// <see cref="WaitForInit"/> 为 <c>true</c> 时等待全部初始化工作（读取器预热、表结构同步）完成后返回，
+        /// 避免后台任务与随后启动的定时任务/HTTP 请求并发访问尚未建好的元数据；
+        /// 为 <c>false</c> 时初始化转到后台执行（fire-and-forget），启动不被阻塞，异常只记录日志。
+        /// </para>
         /// </summary>
         public Task StartAsync(CancellationToken cancellationToken = default)
         {
-            SyncTables();
+            if (WaitForInit)
+            {
+                return SyncTablesAsync(cancellationToken);
+            }
+
+            _ = RunInitializationInBackgroundAsync(cancellationToken);
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// 后台执行初始化；异常记录日志而不影响宿主启动。
+        /// </summary>
+        private async Task RunInitializationInBackgroundAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                await SyncTablesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "LiteOrm background initialization failed.");
+            }
         }
 
         /// <summary>
@@ -59,7 +95,7 @@ namespace LiteOrm
         /// <summary>
         /// 自动同步数据库结构。
         /// </summary>
-        private void SyncTables()
+        private async Task SyncTablesAsync(CancellationToken cancellationToken)
         {
             var syncDataSources = _dataSourceProvider.Where(ds => ds.SyncTable).ToList();
             if (!syncDataSources.Any()) return;
@@ -98,8 +134,9 @@ namespace LiteOrm
                 return attr!.DataSource ?? _dataSourceProvider.DefaultDataSourceName;
             }).ToList();
 
-            //预注册读取器
-            Task.Run(() =>
+            // 预注册读取器：必须等待完成。原先的 fire-and-forget 会越过 StartAsync 继续运行，
+            // 与数据库结构同步、定时任务和首个 HTTP 请求并发访问元数据缓存。
+            await Task.Run(() =>
             {
                 int successCount = 0;
                 int failedCount = 0;
@@ -128,7 +165,7 @@ namespace LiteOrm
                     }
                 }
                 _logger?.LogInformation("Pre-registered {SucessCount} data reader converters, {FailedCount} failed", successCount, failedCount);
-            });
+            }, cancellationToken).ConfigureAwait(false);
 
             // 循环执行各个数据源的同步任务
             var syncTasks = syncDataSources.Select(async ds =>
@@ -180,8 +217,7 @@ namespace LiteOrm
                 }
             }).ToArray();
 
-            var whenAllTask = Task.WhenAll(syncTasks);
-            whenAllTask.GetAwaiter().GetResult();
+            await Task.WhenAll(syncTasks).ConfigureAwait(false);
             _logger?.LogInformation("Database schema synchronization complete");
         }
 

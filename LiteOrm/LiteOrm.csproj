@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.1.16.0</AssemblyVersion>
-		<FileVersion>8.1.16.0</FileVersion>
+		<AssemblyVersion>8.1.17.0</AssemblyVersion>
+		<FileVersion>8.1.17.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.1.16</VersionPrefix>
+		<VersionPrefix>8.1.17</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -17,8 +17,8 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
-      8.1.16:
-      - 同步 LiteOrm.Common 8.1.16：修复 [TableJoin(AutoExpand = true)] 未生效的 bug。
+      8.1.17:
+      - 同步 LiteOrm.Common 8.1.17：修复元数据并发构建导致的视图/表定义不一致与循环 AutoExpand 自连接。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

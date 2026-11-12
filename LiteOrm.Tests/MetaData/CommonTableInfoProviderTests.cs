@@ -1,5 +1,8 @@
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 using LiteOrm.Common;
 using Xunit;
@@ -37,6 +40,119 @@ namespace LiteOrm.Common.UnitTests
 
             var level3Name = (ForeignColumn)view.GetColumn(nameof(AotRecursiveRootView.Level3Name))!;
             Assert.Equal(nameof(AotRecursiveLevel3.Name), level3Name.TargetColumn!.Column.PropertyName);
+        }
+
+        [Fact]
+        public void Register_ConcurrentWithViewAndDefinitionReads_StaysConsistent()
+        {
+            var provider = new CommonTableInfoProvider();
+            var rootInfo = CreateRecursiveRootInfo();
+            provider.Register(rootInfo);
+            provider.Register(CreateRecursiveLevel1Info());
+            provider.Register(CreateRecursiveLevel2Info());
+            provider.Register(CreateRecursiveLevel3Info());
+
+            var errors = new ConcurrentBag<Exception>();
+            Parallel.For(0, 200, _ =>
+            {
+                try
+                {
+                    // 模块初始化器会在程序集加载时注册元数据，这里模拟它和读取并发发生
+                    provider.Register(rootInfo);
+
+                    var view = provider.GetTableView(typeof(AotRecursiveRootView));
+                    Assert.NotNull(view);
+                    Assert.NotNull(view!.GetColumn(nameof(AotRecursiveRootView.Level3Name)));
+                    Assert.Contains(view.JoinedTables, jt => jt.TableDefinition.ObjectType == typeof(AotRecursiveLevel1));
+
+                    var tableDef = provider.GetTableDefinition(typeof(AotRecursiveRootView));
+                    Assert.NotNull(tableDef);
+                    Assert.NotNull(tableDef!.GetColumn(nameof(AotRecursiveRootView.Level1Id)));
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(ex);
+                }
+            });
+
+            Assert.Empty(errors);
+        }
+
+        [Fact]
+        public void GetTableView_WithCyclicJoinedTableAutoExpand_DoesNotJoinRootTableAgain()
+        {
+            var provider = new CommonTableInfoProvider();
+            provider.Register(CreateCyclicRootInfo());
+            provider.Register(CreateCyclicOtherInfo());
+
+            var view = provider.GetTableView(typeof(AotCyclicRootView))!;
+
+            Assert.Contains(view.JoinedTables, jt => jt.Name == nameof(AotCyclicOther));
+            Assert.DoesNotContain(view.JoinedTables, jt => jt.TableDefinition.ObjectType == typeof(AotCyclicRootView));
+        }
+
+        private static TableInfo CreateCyclicRootInfo()
+        {
+            return new TableInfo(
+                typeof(AotCyclicRootView),
+                "AotCyclicRootViews",
+                null,
+                SyncTableMode.Never,
+                new List<ColumnInfo>
+                {
+                    new ColumnInfo { PropertyName = nameof(AotCyclicRootView.Id), ColumnName = "Id", IsPrimaryKey = true },
+                    new ColumnInfo { PropertyName = nameof(AotCyclicRootView.OtherId), ColumnName = "OtherId" }
+                })
+            {
+                JoinedTables = new[]
+                {
+                    new JoinedTableInfo
+                    {
+                        TargetType = typeof(AotCyclicOther),
+                        ForeignKeys = nameof(AotCyclicRootView.OtherId),
+                        AutoExpand = true
+                    }
+                }
+            };
+        }
+
+        private static TableInfo CreateCyclicOtherInfo()
+        {
+            return new TableInfo(
+                typeof(AotCyclicOther),
+                "AotCyclicOthers",
+                null,
+                SyncTableMode.Never,
+                new List<ColumnInfo>
+                {
+                    new ColumnInfo { PropertyName = nameof(AotCyclicOther.Id), ColumnName = "Id", IsPrimaryKey = true },
+                    new ColumnInfo { PropertyName = nameof(AotCyclicOther.RootId), ColumnName = "RootId" }
+                })
+            {
+                JoinedTables = new[]
+                {
+                    new JoinedTableInfo
+                    {
+                        TargetType = typeof(AotCyclicRootView),
+                        ForeignKeys = nameof(AotCyclicOther.RootId),
+                        AutoExpand = true
+                    }
+                }
+            };
+        }
+
+        private class AotCyclicRootView
+        {
+            public int Id { get; set; }
+
+            public int OtherId { get; set; }
+        }
+
+        private class AotCyclicOther
+        {
+            public int Id { get; set; }
+
+            public int RootId { get; set; }
         }
 
         private static TableInfo CreateRecursiveRootInfo()

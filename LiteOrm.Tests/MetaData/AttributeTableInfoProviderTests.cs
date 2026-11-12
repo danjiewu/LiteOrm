@@ -1,6 +1,7 @@
 using System;
 using System.Data.Common;
 using System.Linq;
+using System.Threading.Tasks;
 
 using LiteOrm;
 using LiteOrm.Common;
@@ -246,9 +247,71 @@ namespace LiteOrm.Common.UnitTests
             Assert.NotNull(tableDef.GetColumn(nameof(DefaultAutoColumnOrder.Name)));
         }
 
+        [Fact]
+        public void GetTableView_FirstAccess_PublishesSameViewInstanceToDefinition()
+        {
+            var provider = CreateProvider();
+
+            var tableView = provider.GetTableView(typeof(ConcurrencyProbeView))!;
+            var tableDef = provider.GetTableDefinition(typeof(ConcurrencyProbeView))!;
+
+            // 表定义回填的视图必须就是缓存返回的视图（修复前会生成两个 TableView 实例）
+            Assert.Same(tableView, tableDef.View);
+            // 属性名与列名不同时，必须按特性映射解析列名，不能退化为属性名
+            Assert.Equal("UserName", tableView.GetColumn("username")!.Name);
+        }
+
+        [Fact]
+        public void GetTableDefinition_FirstAccess_AttachesSameViewAsGetTableView()
+        {
+            var provider = CreateProvider();
+
+            var tableDef = provider.GetTableDefinition(typeof(ConcurrencyProbeView))!;
+
+            Assert.NotNull(tableDef.View);
+            Assert.Same(tableDef.View, provider.GetTableView(typeof(ConcurrencyProbeView)));
+        }
+
+        [Fact]
+        public void GetTableView_ConcurrentFirstAccess_ReturnsSingleCachedInstance()
+        {
+            var provider = CreateProvider();
+            var views = new TableView[64];
+
+            Parallel.For(0, views.Length, i => views[i] = provider.GetTableView(typeof(ConcurrencyProbeView))!);
+
+            var expected = views[0];
+            Assert.All(views, view => Assert.Same(expected, view));
+            Assert.Same(expected, provider.GetTableDefinition(typeof(ConcurrencyProbeView))!.View);
+            Assert.Equal("UserName", expected.GetColumn("username")!.Name);
+        }
+
+        [Fact]
+        public void TableInfoProvider_Set_WithNullFactory_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => TableInfoProvider.Set(null!));
+        }
+
         private static AttributeTableInfoProvider CreateProvider()
         {
             return new AttributeTableInfoProvider();
+        }
+
+        /// <summary>
+        /// 属性名（username）与列名（UserName）不同，用于验证并发构建视图后列解析仍走元数据映射。
+        /// </summary>
+        [Table("ConcurrencyProbeViews", SyncTable = SyncTableMode.Never)]
+        private class ConcurrencyProbeView
+        {
+            [Column("Id", IsPrimaryKey = true)]
+            public int Id { get; set; }
+
+            [Column("UserName")]
+            public string username { get; set; } = string.Empty;
+
+            [Column("OwnerId")]
+            [ForeignType(typeof(MultiForeignUser), Alias = "Owner")]
+            public int OwnerId { get; set; }
         }
 
         [Table("Orders")]

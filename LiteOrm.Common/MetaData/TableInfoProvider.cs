@@ -9,7 +9,7 @@ namespace LiteOrm.Common
     /// </summary>
     public abstract class TableInfoProvider
     {
-        private static Lazy<TableInfoProvider> _instance = new Lazy<TableInfoProvider>(
+        private static volatile Lazy<TableInfoProvider> _instance = new Lazy<TableInfoProvider>(
             () => new AttributeTableInfoProvider(),
             LazyThreadSafetyMode.ExecutionAndPublication);
 
@@ -21,14 +21,17 @@ namespace LiteOrm.Common
 
         /// <summary>
         /// 设置全局单例的工厂委托。工厂委托在 <see cref="Instance"/> 首次访问时通过 <see cref="Lazy{T}"/> 延迟执行并缓存结果。
-        /// 传入 null 时恢复为默认工厂（创建 <see cref="AttributeTableInfoProvider"/>）。
+        /// <para>
+        /// 该方法可能被多个程序集生成的模块初始化器在加载时调用，也可能与读取 <see cref="Instance"/> 的线程并发，
+        /// 因此以原子方式替换整个 <see cref="Lazy{T}"/>，读者要么看到旧实例、要么看到新实例，不会看到半初始化状态。
+        /// </para>
         /// </summary>
-        /// <param name="factory">返回表信息提供者实例的工厂委托；传入 null 时恢复默认工厂</param>
-        public static void Set(Func<TableInfoProvider>? factory)
+        /// <param name="factory">返回表信息提供者实例的工厂委托，不能为 null。</param>
+        /// <exception cref="ArgumentNullException">当 <paramref name="factory"/> 为 null 时抛出。</exception>
+        public static void Set(Func<TableInfoProvider> factory)
         {
-            _instance = factory is null
-                ? new Lazy<TableInfoProvider>(() => new AttributeTableInfoProvider(), LazyThreadSafetyMode.ExecutionAndPublication)
-                : new Lazy<TableInfoProvider>(factory, LazyThreadSafetyMode.ExecutionAndPublication);
+            if (factory is null) throw new ArgumentNullException(nameof(factory));
+            Interlocked.Exchange(ref _instance, new Lazy<TableInfoProvider>(factory, LazyThreadSafetyMode.ExecutionAndPublication));
         }
 
         /// <summary>

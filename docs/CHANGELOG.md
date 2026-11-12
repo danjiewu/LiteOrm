@@ -1,5 +1,21 @@
 # 变更日志 (Changelog)
 
+## v8.1.17 (2026-11-12)
+
+### 修复
+
+- **修复元数据并发构建缺陷**（`LiteOrm.Common`）：`AttributeTableInfoProvider` 构建表定义时会回头触发本类型视图的再次构建，导致同一类型生成两个 `TableView`，`TableDefinition.View` 与缓存视图不一致；现改为视图与表定义一次构建、一起发布，并增加同类型重入保护。
+- **修复循环 `AutoExpand` 关联会 join 主表**（`LiteOrm.Common`）：递归展开关联表时，被关联表指回根类型的类级 `[TableJoin]` 会被忽略，不再产生自连接；JIT 与 AOT 两条路径行为一致。
+- **`TableInfoProvider.Set` 禁止传入 null**（`LiteOrm.Common`）：参数改为非空，传入 `null` 抛 `ArgumentNullException`；全局实例仍以原子方式替换。
+- **`CommonTableInfoProvider` 并发安全**（`LiteOrm.Common`）：`Register` 与元数据构建、读取共用同一把锁，`Install` 幂等。
+
+### 改进
+
+- **DI 与静态 `TableInfoProvider` 统一**（`LiteOrm.DependencyInjection`）：容器解析的 `TableInfoProvider` 直接使用 `TableInfoProvider.Instance`，避免运行期特性与源生成元数据各持一套缓存。
+- **新增 `LiteOrmOptions.WaitForInit`**（`LiteOrm.DependencyInjection`）：控制 `LiteOrmCoreInitializer` 在启动时阻塞等待初始化完成，或转后台执行（fire-and-forget，默认 `true` 为阻塞）；读取器预热与表结构同步不再留有越过 `StartAsync` 的后台任务。
+
+***
+
 ## v8.1.16 (2026-11-10)
 
 ### 修复

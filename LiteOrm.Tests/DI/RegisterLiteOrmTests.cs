@@ -7,6 +7,7 @@ using LiteOrm.Tests.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Linq;
 using Xunit;
 
 namespace LiteOrm.Tests
@@ -33,6 +34,34 @@ namespace LiteOrm.Tests
                 .ConfigureAppConfiguration((_, config) => config.AddConfiguration(configuration))
                 .RegisterLiteOrm(configureOptions)
                 .Build();
+        }
+
+        [Fact]
+        public void RegisterLiteOrm_TableInfoProvider_ShouldBeSameAsGlobalInstance()
+        {
+            using var host = BuildHost();
+            using var scope = host.Services.CreateScope();
+
+            var resolved = scope.ServiceProvider.GetRequiredService<TableInfoProvider>();
+
+            // DI 与框架内部（DAO / ExprSqlConverter / DataReaderConverter）必须共用同一个元数据提供程序，
+            // 否则会各建一套缓存；源生成元数据安装后还会出现“生成元数据 / 运行期特性”两套元数据并存。
+            Assert.Same(TableInfoProvider.Instance, resolved);
+        }
+
+        [Fact]
+        public void RegisterLiteOrm_WaitForInit_UsesConfiguredValue()
+        {
+            using var blockingHost = BuildHost();
+            using var backgroundHost = BuildHost(options => options.WaitForInit = false);
+
+            Assert.True(GetInitializer(blockingHost).WaitForInit);
+            Assert.False(GetInitializer(backgroundHost).WaitForInit);
+        }
+
+        private static LiteOrmCoreInitializer GetInitializer(IHost host)
+        {
+            return host.Services.GetServices<IHostedService>().OfType<LiteOrmCoreInitializer>().Single();
         }
 
         [Fact]
