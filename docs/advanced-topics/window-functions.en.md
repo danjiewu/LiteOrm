@@ -264,19 +264,19 @@ The examples in this repository focus on `SumOver` and rely on `FunctionExpr.Ove
 2. **Partition key selection**: Choosing high-selectivity columns can improve window function performance
 3. **ORDER BY**: Sorting within the window affects results of functions like `LAG/LEAD/RANK`
 
-## 8. LISTAGG: aggregation and windows
+## 8. StringAgg: aggregation and windows
 
-`ListAgg` is registered out of the box and concatenates a column's values with a separator. When ordering items are supplied it emits `WITHIN GROUP (ORDER BY ...)`; call `Over` on top of it to use it as a window function.
+`StringAgg` is registered out of the box and concatenates a column's values with a separator. When ordering items are supplied it emits `WITHIN GROUP (ORDER BY ...)`; call `Over` on top of it to use it as a window function.
 
 ```csharp
 using static LiteOrm.Common.Expr;
 
 // Aggregate: LISTAGG("Name", ', ') WITHIN GROUP (ORDER BY "Id")
-var names = Prop("Name").ListAgg(", ", Prop("Id").Asc());
+var names = Prop("Name").StringAgg(", ", Prop("Id").Asc());
 
 // Window: LISTAGG("Name", ', ') WITHIN GROUP (ORDER BY "Id") OVER (PARTITION BY "DeptId")
 var deptNames = Prop("Name")
-    .ListAgg(", ", Prop("Id").Asc())
+    .StringAgg(", ", Prop("Id").Asc())
     .Over(new[] { Prop("DeptId") });
 
 var query = From(typeof(User))

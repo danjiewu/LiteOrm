@@ -162,7 +162,7 @@ LiteOrm 内置以下 6 个国产 / 兼容数据库构建器。开发指南（基
 >
 > 日期/时间函数（`Now`、`Today`、`Add*`、`DateDiff*`、`Total*`、`Format`）、字符串函数（`IndexOf`、`Substring`、`Trim`/`TrimStart`/`TrimEnd`、`Remove`）、JSON 函数（`JsonExtract`、`JsonValue` 等）均已按各方言注册，详见 `LiteOrmSqlFunctionInitializer`。
 >
-> `LISTAGG`（`ExprExtensions.ListAgg`）：Oracle / 达梦 / 通用方言生成 `LISTAGG(...) WITHIN GROUP (ORDER BY ...)`；MySQL 系生成 `GROUP_CONCAT(... ORDER BY ... SEPARATOR ...)`；PostgreSQL 系生成 `STRING_AGG(..., ... ORDER BY ...)`；SQL Server 生成 `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)`；SQLite 生成 `group_concat(..., ... ORDER BY ...)`。
+> `StringAgg`（`ExprExtensions.StringAgg`）：Oracle / 达梦 / 通用方言生成 `LISTAGG(...) WITHIN GROUP (ORDER BY ...)`；MySQL 系生成 `GROUP_CONCAT(... ORDER BY ... SEPARATOR ...)`；PostgreSQL 系生成 `STRING_AGG(..., ... ORDER BY ...)`；SQL Server 生成 `STRING_AGG(...) WITHIN GROUP (ORDER BY ...)`；SQLite 生成 `group_concat(..., ... ORDER BY ...)`。
 
 #### 正则表达式函数
 

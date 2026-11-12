@@ -263,19 +263,19 @@ var results = await saleDAO
 2. **分区键选择**：选择高选择性的列可以提高窗口函数性能
 3. **ORDER BY**：窗口内的排序影响 `LAG/LEAD/RANK` 等函数的结果
 
-## 8. LISTAGG：聚合与窗口
+## 8. StringAgg：聚合与窗口
 
-`ListAgg` 已内置注册，可直接把一列值按分隔符拼接为字符串。传入排序项时输出 `WITHIN GROUP (ORDER BY ...)`；在此基础上调用 `Over` 即可作为窗口函数使用。
+`StringAgg` 已内置注册，可直接把一列值按分隔符拼接为字符串。传入排序项时输出 `WITHIN GROUP (ORDER BY ...)`；在此基础上调用 `Over` 即可作为窗口函数使用。
 
 ```csharp
 using static LiteOrm.Common.Expr;
 
 // 聚合：LISTAGG("Name", ', ') WITHIN GROUP (ORDER BY "Id")
-var names = Prop("Name").ListAgg(", ", Prop("Id").Asc());
+var names = Prop("Name").StringAgg(", ", Prop("Id").Asc());
 
 // 窗口：LISTAGG("Name", ', ') WITHIN GROUP (ORDER BY "Id") OVER (PARTITION BY "DeptId")
 var deptNames = Prop("Name")
-    .ListAgg(", ", Prop("Id").Asc())
+    .StringAgg(", ", Prop("Id").Asc())
     .Over(new[] { Prop("DeptId") });
 
 var query = From(typeof(User))

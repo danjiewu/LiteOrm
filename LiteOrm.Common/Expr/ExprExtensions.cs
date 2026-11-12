@@ -18,7 +18,7 @@ namespace LiteOrm.Common
     /// 5. NULL 值检查表达式（IsNull/IsNotNull）
     /// 6. SQL 语句构建（Where/GroupBy/Having/Select/OrderBy/Section）
     /// 7. 排序操作（Asc/Desc）
-    /// 8. 聚合函数（Count/Sum/Avg/Max/Min/ListAgg）
+    /// 8. 聚合函数（Count/Sum/Avg/Max/Min/StringAgg）
     /// 9. 字符串函数（Upper/Lower/Length）
     ///
     /// 使用示例：
@@ -960,20 +960,20 @@ namespace LiteOrm.Common
         public static FunctionExpr Min(this ValueTypeExpr expr) => new FunctionExpr("MIN", expr) { IsAggregate = true };
 
         /// <summary>
-        /// 创建 LISTAGG 聚合函数表达式，将指定表达式的值按分隔符拼接为一个字符串。
+        /// 创建 StringAgg 聚合函数表达式，将指定表达式的值按分隔符拼接为一个字符串。
         /// 可选的排序项用于指定拼接顺序，对应 SQL 的 WITHIN GROUP (ORDER BY ...) 子句。
         /// </summary>
         /// <param name="expr">要拼接的值表达式。</param>
         /// <param name="separator">拼接值时使用的分隔符。</param>
         /// <param name="orderBy">拼接顺序的排序项数组，可为空。</param>
-        /// <returns>LISTAGG 聚合函数表达式。</returns>
+        /// <returns>StringAgg 聚合函数表达式。</returns>
         /// <example>
         /// <code>
-        /// var names = Expr.Prop("Name").ListAgg(", ", Expr.Prop("Name").Asc());
+        /// var names = Expr.Prop("Name").StringAgg(", ", Expr.Prop("Name").Asc());
         /// </code>
         /// </example>
-        public static FunctionExpr ListAgg(this ValueTypeExpr expr, string separator, params OrderByItemExpr[] orderBy) =>
-            new FunctionExpr("LISTAGG", expr, new ValueExpr(separator) { IsConst = true }, new ValueSet(orderBy)) { IsAggregate = true };
+        public static FunctionExpr StringAgg(this ValueTypeExpr expr, string separator, params OrderByItemExpr[] orderBy) =>
+            new FunctionExpr("StringAgg", expr, new ValueExpr(separator) { IsConst = true }, new ValueSet(orderBy)) { IsAggregate = true };
 
         /// <summary>
         /// 将聚合或窗口函数应用到分区窗口（OVER PARTITION BY）。

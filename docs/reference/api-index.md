@@ -132,7 +132,7 @@ LiteOrm 已不再把独立的 `API_REFERENCE` 文档作为主入口维护。
 - `SessionManager`
 - `IArged` / `TableArgs`
 - 窗口函数相关扩展
-- LISTAGG 聚合函数扩展（`ExprExtensions.ListAgg`）
+- StringAgg 聚合函数扩展（`ExprExtensions.StringAgg`）
 - `Expr.ExistsRelated(...)`
 
 对应文档：

@@ -28,7 +28,7 @@
 
 ### 新特性
 
-- **新增 `LISTAGG` 聚合函数支持**（`LiteOrm.Common` / `LiteOrm`）：新增 `ExprExtensions.ListAgg` 扩展，按方言生成 `LISTAGG` / `GROUP_CONCAT` / `STRING_AGG` / `group_concat`，支持 `WITHIN GROUP` 排序与 `OVER` 窗口。
+- **新增 `StringAgg` 聚合函数支持**（`LiteOrm.Common` / `LiteOrm`）：新增 `ExprExtensions.StringAgg` 扩展，按方言生成 `LISTAGG` / `GROUP_CONCAT` / `STRING_AGG` / `group_concat`，支持 `WITHIN GROUP` 排序与 `OVER` 窗口。
 
 ### 破坏性变更
 

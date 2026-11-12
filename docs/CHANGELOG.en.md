@@ -28,7 +28,7 @@
 
 ### New Features
 
-- **`LISTAGG` aggregate function support** (`LiteOrm.Common` / `LiteOrm`): the new `ExprExtensions.ListAgg` extension renders `LISTAGG` / `GROUP_CONCAT` / `STRING_AGG` / `group_concat` per dialect, with `WITHIN GROUP` ordering and `OVER` windows.
+- **`StringAgg` aggregate function support** (`LiteOrm.Common` / `LiteOrm`): the new `ExprExtensions.StringAgg` extension renders `LISTAGG` / `GROUP_CONCAT` / `STRING_AGG` / `group_concat` per dialect, with `WITHIN GROUP` ordering and `OVER` windows.
 
 ### Breaking changes
 

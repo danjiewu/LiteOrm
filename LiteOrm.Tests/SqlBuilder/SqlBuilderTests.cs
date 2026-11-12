@@ -209,11 +209,11 @@ namespace LiteOrm.Tests
             _ => SQLiteBuilder.Instance
         };
 
-        private static string RenderListAgg(SqlBuilder builder, bool withOrderBy = true)
+        private static string RenderStringAgg(SqlBuilder builder, bool withOrderBy = true)
         {
             var expr = withOrderBy
-                ? Expr.Prop("Name").ListAgg(", ", Expr.Prop("Id").Asc())
-                : Expr.Prop("Name").ListAgg(", ");
+                ? Expr.Prop("Name").StringAgg(", ", Expr.Prop("Id").Asc())
+                : Expr.Prop("Name").StringAgg(", ");
             return expr.ToPreparedSql(new SqlBuildContext(builder)).Sql;
         }
 
@@ -224,9 +224,9 @@ namespace LiteOrm.Tests
         [InlineData("PostgreSql", "STRING_AGG(\"name\", ', ' ORDER BY \"id\")")]
         [InlineData("SqlServer", "STRING_AGG(\"Name\", ', ') WITHIN GROUP (ORDER BY \"Id\")")]
         [InlineData("SQLite", "group_concat(\"Name\", ', ' ORDER BY \"Id\")")]
-        public void ListAgg_RendersDialectSpecificSql(string builderName, string expected)
+        public void StringAgg_RendersDialectSpecificSql(string builderName, string expected)
         {
-            Assert.Equal(expected, RenderListAgg(GetBuilder(builderName)));
+            Assert.Equal(expected, RenderStringAgg(GetBuilder(builderName)));
         }
 
         [Theory]
@@ -236,15 +236,15 @@ namespace LiteOrm.Tests
         [InlineData("PostgreSql", "STRING_AGG(\"name\", ', ')")]
         [InlineData("SqlServer", "STRING_AGG(\"Name\", ', ')")]
         [InlineData("SQLite", "group_concat(\"Name\", ', ')")]
-        public void ListAgg_WithoutOrderBy_OmitsOrderByClause(string builderName, string expected)
+        public void StringAgg_WithoutOrderBy_OmitsOrderByClause(string builderName, string expected)
         {
-            Assert.Equal(expected, RenderListAgg(GetBuilder(builderName), withOrderBy: false));
+            Assert.Equal(expected, RenderStringAgg(GetBuilder(builderName), withOrderBy: false));
         }
 
         [Fact]
-        public void ListAgg_WithOver_RendersWindowClauseAfterWithinGroup()
+        public void StringAgg_WithOver_RendersWindowClauseAfterWithinGroup()
         {
-            var expr = Expr.Prop("Name").ListAgg(", ", Expr.Prop("Id").Asc())
+            var expr = Expr.Prop("Name").StringAgg(", ", Expr.Prop("Id").Asc())
                 .Over(new[] { Expr.Prop("DeptId") }, Array.Empty<OrderByItemExpr>());
 
             string sql = expr.ToPreparedSql(new SqlBuildContext(OracleBuilder.Instance)).Sql;

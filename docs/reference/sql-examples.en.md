@@ -204,11 +204,11 @@ FROM [Sales_202411] [T0]
 
 Actual window function SQL depends on your registered function handlers and database dialect.
 
-### 9.1 String aggregation (LISTAGG)
+### 9.1 String aggregation (StringAgg)
 
 ```csharp
 using static LiteOrm.Common.Expr;
-var names = Prop("Name").ListAgg(", ", Prop("Id").Asc());
+var names = Prop("Name").StringAgg(", ", Prop("Id").Asc());
 
 var selectExpr = From(typeof(User))
     .GroupBy(Prop("DeptId"))
