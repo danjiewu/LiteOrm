@@ -32,6 +32,12 @@ namespace LiteOrm.Common
             _tableDefinition = foreignTable;
             Name = foreignTable.Name;
 
+            // 构造时一次性填充，避免并发首次访问时读到只填充了一部分的字典
+            foreach (ColumnDefinition column in foreignTable.Columns)
+            {
+                _namedColumnCache[column.PropertyName] = new ColumnRef(this, column);
+            }
+
             JoinType = TableJoinType.Left;
             List<ColumnRef> keys = new List<ColumnRef>();
             foreach (ColumnDefinition key in foreignPrimeKeys)
@@ -57,25 +63,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 属性名对应列引用的缓存，按属性名精确匹配（区分大小写）
+        /// 属性名对应列引用的缓存，按属性名精确匹配（区分大小写）。在构造时一次性填充（列集合不可变），之后只读。
         /// </summary>
         protected ConcurrentDictionary<string, ColumnRef> NamedColumnCache
         {
-            get
-            {
-                if (_namedColumnCache.Count == 0)
-                {
-                    lock (_namedColumnCache)
-                    {
-                        if (_namedColumnCache.Count == 0)
-                        {
-                            foreach (ColumnDefinition column in _tableDefinition.Columns)
-                                _namedColumnCache[column.PropertyName] = new ColumnRef(this, column);
-                        }
-                    }
-                }
-                return _namedColumnCache;
-            }
+            get { return _namedColumnCache; }
         }
 
         /// <summary>

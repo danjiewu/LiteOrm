@@ -15,7 +15,12 @@ namespace LiteOrm.Common
         internal SqlTable(IEnumerable<SqlColumn> columns)
         {
             Columns = columns.ToList().AsReadOnly();
-            foreach (SqlColumn column in Columns) column.Table = this;
+            foreach (SqlColumn column in Columns)
+            {
+                column.Table = this;
+                // 构造时一次性填充，避免并发首次访问时读到只填充了一部分的字典
+                _namedColumnCache[column.PropertyName] = column;
+            }
         }
 
         #region 私有变量
@@ -104,23 +109,11 @@ namespace LiteOrm.Common
         }
 
         /// <summary>
-        /// 属性名对应列的缓存
+        /// 属性名对应列的缓存。在构造时一次性填充（列集合不可变），之后只读。
         /// </summary>
         protected ConcurrentDictionary<string, SqlColumn> NamedColumnCache
         {
-            get
-            {
-                if (_namedColumnCache.Count == 0)
-                {
-                    lock (_namedColumnCache)
-                    {
-                        if (_namedColumnCache.Count == 0)
-                            foreach (SqlColumn column in Columns)
-                                _namedColumnCache[column.PropertyName] = column;
-                    }
-                }
-                return _namedColumnCache;
-            }
+            get { return _namedColumnCache; }
         }
 
         /// <summary>
