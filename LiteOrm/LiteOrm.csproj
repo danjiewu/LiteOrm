@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.1.17.0</AssemblyVersion>
-		<FileVersion>8.1.17.0</FileVersion>
+		<AssemblyVersion>8.1.18.0</AssemblyVersion>
+		<FileVersion>8.1.18.0</FileVersion>
 		<TargetFrameworks>net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.1.17</VersionPrefix>
+		<VersionPrefix>8.1.18</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -17,8 +17,8 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
-      8.1.17:
-      - 同步 LiteOrm.Common 8.1.17：修复元数据并发构建导致的视图/表定义不一致；列名缓存改为构造时一次性填充。
+      8.1.18:
+      - 同步 LiteOrm.Common 8.1.18：修复元数据并发构建导致的视图/表定义不一致；列名缓存改为构造时一次性填充。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

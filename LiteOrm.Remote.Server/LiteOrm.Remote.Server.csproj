@@ -6,12 +6,12 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程调用服务端</Description>
-    <AssemblyVersion>8.1.17.0</AssemblyVersion>
-    <FileVersion>8.1.17.0</FileVersion>
-    <VersionPrefix>8.1.17</VersionPrefix>
+    <AssemblyVersion>8.1.18.0</AssemblyVersion>
+    <FileVersion>8.1.18.0</FileVersion>
+    <VersionPrefix>8.1.18</VersionPrefix>
     <PackageReleaseNotes>
-      8.1.17:
-      - 同步 LiteOrm.Common 8.1.17 / LiteOrm 8.1.17：修复元数据并发构建导致的视图/表定义不一致；列名缓存改为构造时一次性填充。
+      8.1.18:
+      - 同步 LiteOrm.Common 8.1.18 / LiteOrm 8.1.18：修复元数据并发构建导致的视图/表定义不一致；列名缓存改为构造时一次性填充。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>
