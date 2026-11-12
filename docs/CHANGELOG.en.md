@@ -4,15 +4,15 @@
 
 ### Bug Fixes
 
-- **Fixed a metadata build race** (`LiteOrm.Common`): building a table definition recursively re-entered the view build for the same type, producing two `TableView` instances and leaving `TableDefinition.View` different from the cached view. The definition and its view are now built once and published together, with a re-entrancy guard per type.
-- **Fixed cyclic `AutoExpand` joins pulling in the root table** (`LiteOrm.Common`): class-level `[TableJoin]` declarations that point back to the root type are skipped during recursive expansion, so no self-join is produced; the JIT and AOT paths behave identically.
-- **`TableInfoProvider.Set` rejects null** (`LiteOrm.Common`): the parameter is now non-nullable and throws `ArgumentNullException`; the global instance is still swapped atomically.
-- **`CommonTableInfoProvider` is concurrency-safe** (`LiteOrm.Common`): `Register` shares the same lock as metadata building/reading, and `Install` is idempotent.
+- **Fixed a metadata build race** (`LiteOrm.Common`): a view is no longer generated twice and `TableDefinition.View` matches the cached view.
+- **Fixed cyclic `AutoExpand` joins pulling in the root table** (`LiteOrm.Common`): expansion stops at the root type on both the JIT and AOT paths.
+- **`TableInfoProvider.Set` rejects null** (`LiteOrm.Common`): passing null throws `ArgumentNullException`.
+- **`CommonTableInfoProvider` is concurrency-safe** (`LiteOrm.Common`): `Register` is locked and `Install` is idempotent.
 
 ### Improvements
 
-- **DI and the static `TableInfoProvider` now share one instance** (`LiteOrm.DependencyInjection`): the container resolves `TableInfoProvider.Instance` instead of creating a second provider, avoiding two metadata caches.
-- **New `LiteOrmOptions.WaitForInit`** (`LiteOrm.DependencyInjection`): controls whether `LiteOrmCoreInitializer` blocks startup until initialization completes or runs it in the background (fire-and-forget; defaults to `true`). Reader pre-registration and schema sync no longer leave background work running past `StartAsync`.
+- **DI and the static `TableInfoProvider` share one instance** (`LiteOrm.DependencyInjection`): the container resolves `TableInfoProvider.Instance`.
+- **New `LiteOrmOptions.WaitForInit`** (`LiteOrm.DependencyInjection`): block on initialization or run it in the background; defaults to blocking.
 
 ***
 
