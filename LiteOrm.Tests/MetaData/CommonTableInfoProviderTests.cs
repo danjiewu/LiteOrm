@@ -79,7 +79,7 @@ namespace LiteOrm.Common.UnitTests
         }
 
         [Fact]
-        public void GetTableView_WithCyclicJoinedTableAutoExpand_DoesNotJoinRootTableAgain()
+        public void GetTableView_WithCyclicJoinedTableAutoExpand_JoinsRootTableOnce()
         {
             var provider = new CommonTableInfoProvider();
             provider.Register(CreateCyclicRootInfo());
@@ -88,7 +88,9 @@ namespace LiteOrm.Common.UnitTests
             var view = provider.GetTableView(typeof(AotCyclicRootView))!;
 
             Assert.Contains(view.JoinedTables, jt => jt.Name == nameof(AotCyclicOther));
-            Assert.DoesNotContain(view.JoinedTables, jt => jt.TableDefinition.ObjectType == typeof(AotCyclicRootView));
+            // 允许被关联表指回主表：主表会以类型名作为别名再次 join，且循环在别名重复处终止
+            Assert.Single(view.JoinedTables, jt => jt.TableDefinition.ObjectType == typeof(AotCyclicRootView));
+            Assert.Equal(2, view.JoinedTables.Count);
         }
 
         private static TableInfo CreateCyclicRootInfo()

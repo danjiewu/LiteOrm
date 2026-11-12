@@ -347,8 +347,6 @@ namespace LiteOrm
 
                 foreach (TableJoinAttribute tableJoin in (TableJoinAttribute[])pendingTable.TableDefinition.ObjectType.GetCustomAttributes(typeof(TableJoinAttribute), true))
                 {
-                    // 展开回到主表类型时终止，不产生自连接
-                    if (tableJoin.TargetType == objectType) continue;
                     JoinTable(joinedTables, pendingTable, tableJoin);
                 }
             }

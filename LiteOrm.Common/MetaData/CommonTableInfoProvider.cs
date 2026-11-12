@@ -306,7 +306,7 @@ namespace LiteOrm.Common
                     }
                 }
                 if (pendingTable is null) break;
-                ApplyJoinedTableInfos(joinedTables, pendingTable, tableInfo.ObjectType);
+                ApplyJoinedTableInfos(joinedTables, pendingTable);
             }
 
             // 4. 解析 [ForeignColumn] 的目标列（可沿 ForeignColumn 链逐层递归）
@@ -566,16 +566,13 @@ namespace LiteOrm.Common
         /// </summary>
         /// <param name="joinedTables">已连接的关联表。</param>
         /// <param name="sourceTable">声明该关联的源关联表，外键默认取自该表。</param>
-        /// <param name="rootType">视图主表类型，展开回到主表时终止，不产生自连接。</param>
-        private void ApplyJoinedTableInfos(Dictionary<string, JoinedTable> joinedTables, JoinedTable sourceTable, Type rootType)
+        private void ApplyJoinedTableInfos(Dictionary<string, JoinedTable> joinedTables, JoinedTable sourceTable)
         {
             if (!_tableInfos.TryGetValue(sourceTable.TableDefinition.ObjectType, out var tableInfo)) return;
             if (tableInfo.JoinedTables is not { Count: > 0 }) return;
 
             foreach (var joinInfo in tableInfo.JoinedTables)
             {
-                if (joinInfo.TargetType == rootType) continue;
-
                 var actualSource = sourceTable;
                 if (joinInfo.SourceAlias is not null)
                 {

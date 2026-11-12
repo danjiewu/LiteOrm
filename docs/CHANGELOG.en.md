@@ -5,7 +5,6 @@
 ### Bug Fixes
 
 - **Fixed a metadata build race** (`LiteOrm.Common`): a view is no longer generated twice and `TableDefinition.View` matches the cached view.
-- **Fixed cyclic `AutoExpand` joins pulling in the root table** (`LiteOrm.Common`): expansion stops at the root type on both the JIT and AOT paths.
 - **`TableInfoProvider.Set` rejects null** (`LiteOrm.Common`): passing null throws `ArgumentNullException`.
 - **`CommonTableInfoProvider` is concurrency-safe** (`LiteOrm.Common`): `Register` is locked and `Install` is idempotent.
 
@@ -16,7 +15,7 @@
 
 ***
 
-## v8.1.16 (2026-11-10)
+## v8.1.16 (2026-11-11)
 
 ### Bug Fixes
 

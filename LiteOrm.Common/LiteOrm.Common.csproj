@@ -18,7 +18,6 @@
     <PackageReleaseNotes>
       8.1.17:
       - 修复元数据并发构建缺陷：同一类型的视图可能被重复生成，TableDefinition.View 与缓存视图不一致。
-      - 修复循环 AutoExpand 关联会把主表再次 join 的问题。
       - TableInfoProvider.Set 不再接受 null；CommonTableInfoProvider.Register 加锁、Install 幂等。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

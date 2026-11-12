@@ -5,7 +5,6 @@
 ### 修复
 
 - **修复元数据并发构建缺陷**（`LiteOrm.Common`）：同一类型不再重复生成视图，`TableDefinition.View` 与缓存视图保持一致。
-- **修复循环 `AutoExpand` 关联 join 主表**（`LiteOrm.Common`）：递归展开在根类型处终止，JIT 与 AOT 行为一致。
 - **`TableInfoProvider.Set` 禁止传入 null**（`LiteOrm.Common`）：传入 null 抛 `ArgumentNullException`。
 - **`CommonTableInfoProvider` 并发安全**（`LiteOrm.Common`）：`Register` 加锁，`Install` 幂等。
 
@@ -16,7 +15,7 @@
 
 ***
 
-## v8.1.16 (2026-11-10)
+## v8.1.16 (2026-11-11)
 
 ### 修复
 
