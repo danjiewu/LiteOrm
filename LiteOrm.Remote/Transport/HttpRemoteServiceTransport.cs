@@ -46,11 +46,18 @@ namespace LiteOrm.Remote
         /// <param name="httpClient">已配置好 BaseAddress 的 HttpClient 实例（建议禁用 <c>UseCookies</c>，由 <see cref="ICredentialsResolver"/> 管理票据）。</param>
         /// <param name="credentialsResolver">凭据解析器，用于获取身份认证票据。为 <c>null</c> 表示匿名连接（不带票据发起请求）。</param>
         /// <param name="requestUri">相对于 BaseAddress 的请求路径，默认为 <c>api/remote/invoke</c>。</param>
-        public HttpRemoteServiceTransport(HttpClient httpClient, ICredentialsResolver? credentialsResolver = null, string requestUri = "api/remote/invoke")
+        /// <param name="serializerOptions">JSON 序列化选项。为 <c>null</c> 时使用默认选项（UnsafeRelaxedJsonEscaping + 大小写不敏感）。</param>
+        public HttpRemoteServiceTransport(
+            HttpClient httpClient,
+            ICredentialsResolver? credentialsResolver = null,
+            string requestUri = "api/remote/invoke",
+            System.Text.Json.JsonSerializerOptions? serializerOptions = null)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _credentialsResolver = credentialsResolver;
             _requestUri = string.IsNullOrEmpty(requestUri) ? "api/remote/invoke" : requestUri;
+            if (serializerOptions is not null)
+                SerializerOptions = serializerOptions;
         }
 
         /// <inheritdoc/>

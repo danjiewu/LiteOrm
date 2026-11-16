@@ -10,7 +10,15 @@ namespace LiteOrm.Remote
     /// </summary>
     public abstract class JsonRemoteServiceTransport : IRemoteServiceTransport
     {
-        protected static readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions
+        /// <summary>
+        /// 请求/响应报文使用的 JSON 序列化选项。默认使用 <see cref="System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping"/>
+        /// 编码并启用属性名大小写不敏感匹配。
+        /// <para>
+        /// 通常由 <see cref="LiteOrmRemoteOptions.JsonSerializerOptions"/> 通过构造函数注入，
+        /// 与服务端 <c>RemoteServerOptions.JsonSerializerOptions</c> 保持一致。
+        /// </para>
+        /// </summary>
+        public JsonSerializerOptions SerializerOptions { get; set; } = new JsonSerializerOptions
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             PropertyNameCaseInsensitive = true,
@@ -41,11 +49,11 @@ namespace LiteOrm.Remote
         public virtual async Task<RemoteInvocationResponse> InvokeAsync(RemoteInvocationRequest request, CancellationToken cancellationToken = default)
         {
             if (request is null) throw new ArgumentNullException(nameof(request));
-            var json = JsonSerializer.Serialize(request, _serializerOptions);
+            var json = JsonSerializer.Serialize(request, SerializerOptions);
             LogPayload(">>> RemoteInvoke Request JSON: {Json}", json);
             var responseJson = await GetResponseJsonAsync(json, cancellationToken).ConfigureAwait(false);
             LogPayload("<<< RemoteInvoke Response JSON: {Json}", responseJson);
-            return JsonSerializer.Deserialize<RemoteInvocationResponse>(responseJson, _serializerOptions)
+            return JsonSerializer.Deserialize<RemoteInvocationResponse>(responseJson, SerializerOptions)
                 ?? throw new RemoteTransportException("Remote service returned an empty response.");
         }
 

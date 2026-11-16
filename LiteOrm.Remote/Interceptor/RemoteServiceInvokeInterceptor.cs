@@ -53,10 +53,12 @@ namespace LiteOrm.Remote
         /// 推断最派生的服务接口（叶子接口），避免回退到方法声明所在的基接口。
         /// </summary>
         private static readonly ConcurrentDictionary<Type, Type> _proxyServiceTypeCache = new();
-        private static readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions
-        {
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-        };
+
+        /// <summary>
+        /// 返回值与回写参数反序列化使用的 JSON 序列化选项。
+        /// 通常由 <see cref="LiteOrmRemoteOptions.JsonSerializerOptions"/> 注入，与传输层保持一致。
+        /// </summary>
+        public JsonSerializerOptions SerializerOptions { get; }
 
         // 反射缓存：用于在运行时以结果类型调用 InvokeTransportTaskAsync<TResult>
         private static readonly MethodInfo _invokeTransportTaskTAsyncMethod =
@@ -73,11 +75,29 @@ namespace LiteOrm.Remote
         /// <param name="loggerFactory">日志工厂</param>
         /// <param name="transport">远程调用传输层</param>
         public RemoteServiceInvokeInterceptor(ILoggerFactory loggerFactory, IRemoteServiceTransport transport)
+            : this(loggerFactory, transport, null)
+        {
+        }
+
+        /// <summary>
+        /// 初始化 <see cref="RemoteServiceInvokeInterceptor"/> 类的新实例。
+        /// </summary>
+        /// <param name="loggerFactory">日志工厂</param>
+        /// <param name="transport">远程调用传输层</param>
+        /// <param name="serializerOptions">JSON 序列化选项。为 <c>null</c> 时使用默认选项。</param>
+        public RemoteServiceInvokeInterceptor(
+            ILoggerFactory loggerFactory,
+            IRemoteServiceTransport transport,
+            JsonSerializerOptions? serializerOptions)
         {
             if (loggerFactory is null) throw new ArgumentNullException(nameof(loggerFactory));
             if (transport is null) throw new ArgumentNullException(nameof(transport));
             _logger = loggerFactory.CreateLogger<RemoteServiceInvokeInterceptor>();
-            _transport = transport;  
+            _transport = transport;
+            SerializerOptions = serializerOptions ?? new JsonSerializerOptions
+            {
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            };
         }
 
 
@@ -357,7 +377,7 @@ namespace LiteOrm.Remote
 
                     var listType = typeof(List<>).MakeGenericType(handler.ReturnType);
 
-                    var returnValues = RemoteInvocationRequestConverter.DeserializeTypedValue(valueElement.Value, listType, _serializerOptions) as IList;
+                    var returnValues = RemoteInvocationRequestConverter.DeserializeTypedValue(valueElement.Value, listType, SerializerOptions) as IList;
                     if (returnValues is null) continue;
 
                     // 逐项回写（按索引对应）
@@ -369,7 +389,7 @@ namespace LiteOrm.Remote
                 else
                 {
                     // 单对象模式：按 ReturnType 反序列化并回写
-                    var returnValue = RemoteInvocationRequestConverter.DeserializeTypedValue(valueElement.Value, handler.ReturnType, _serializerOptions);
+                    var returnValue = RemoteInvocationRequestConverter.DeserializeTypedValue(valueElement.Value, handler.ReturnType, SerializerOptions);
                     if (returnValue is null) continue;
 
                     handler.WriteBack(origArg, returnValue);
@@ -381,12 +401,12 @@ namespace LiteOrm.Remote
         /// 将 <see cref="RemoteInvocationResponse.OutArguments"/> 中的值（反序列化后可能为 <see cref="JsonElement"/> 或 <see cref="TypeWrappedValue"/>）
         /// 转换为 <see cref="JsonElement"/>。
         /// </summary>
-        private static JsonElement? ToJsonElement(object? value)
+        private JsonElement? ToJsonElement(object? value)
         {
             if (value is null) return null;
             if (value is JsonElement element) return element;
             // 如果是其他类型，序列化为 JsonElement
-            var json = JsonSerializer.Serialize(value, value.GetType(), _serializerOptions);
+            var json = JsonSerializer.Serialize(value, value.GetType(), SerializerOptions);
             return JsonDocument.Parse(json).RootElement.Clone();
         }
 
@@ -556,13 +576,13 @@ namespace LiteOrm.Remote
         /// <param name="response">远程调用响应</param>
         /// <param name="returnType">方法声明的返回类型</param>
         /// <returns>反序列化后的返回值</returns>
-        protected static object? DeserializeResult(RemoteInvocationResponse response, Type returnType)
+        protected object? DeserializeResult(RemoteInvocationResponse response, Type returnType)
         {
             var element = ToJsonElement(response.Result);
             if (element is null || element.Value.ValueKind == JsonValueKind.Null)
                 return returnType.IsValueType ? Activator.CreateInstance(returnType) : null;
 
-            return RemoteInvocationRequestConverter.DeserializeTypedValue(element.Value, returnType, _serializerOptions);
+            return RemoteInvocationRequestConverter.DeserializeTypedValue(element.Value, returnType, SerializerOptions);
         }
 
         #region 日志相关方法
