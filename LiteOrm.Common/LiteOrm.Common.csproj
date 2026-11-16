@@ -2,11 +2,11 @@
   <PropertyGroup>
     <TargetFrameworks>net11.0;net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
     <RootNamespace>LiteOrm.Common</RootNamespace>
-    <AssemblyVersion>8.2.0.0</AssemblyVersion>
-    <FileVersion>8.2.0.0</FileVersion>
+    <AssemblyVersion>8.2.1.0</AssemblyVersion>
+    <FileVersion>8.2.1.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <VersionPrefix>8.2.0</VersionPrefix>
+    <VersionPrefix>8.2.1</VersionPrefix>
     <Nullable>enable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
@@ -16,7 +16,7 @@
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
-      8.2.0:
+      8.2.1:
       - 新增 net11.0 目标框架（IsAotCompatible）。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
