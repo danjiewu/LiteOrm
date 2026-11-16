@@ -45,10 +45,9 @@
 		<PackageReference Include="Castle.Core.AsyncInterceptor" Version="2.1.0" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(TargetFramework)' == 'net11.0'">
+		<!-- Hosting.Abstractions / Logging.Abstractions 由 net11.0 目标框架提供 -->
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="11.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />

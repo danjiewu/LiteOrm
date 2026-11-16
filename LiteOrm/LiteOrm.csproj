@@ -54,10 +54,7 @@
 	</ItemGroup>
 
 
-	<ItemGroup Condition="'$(TargetFramework)' == 'net11.0'">
-		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="11.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
-	</ItemGroup>
+	<!-- net11.0 的 Microsoft.Extensions.* 抽象程序集由目标框架提供，无需引用包 -->
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
 		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
