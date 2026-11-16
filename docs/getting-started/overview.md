@@ -129,7 +129,7 @@ graph TD
 > - `LiteOrm.Remote.Server` 额外依赖 ASP.NET Core 共享框架（`Microsoft.AspNetCore.App`）。
 
 **AOT 支持说明：**
-- ✅ 表示该项目的 net8.0 / net10.0 目标已标记 `IsAotCompatible`，可在 NativeAOT 与完全裁剪（Trim）下运行。
+- ✅ 表示该项目的 net8.0 / net10.0 / net11.0 目标已标记 `IsAotCompatible`，可在 NativeAOT 与完全裁剪（Trim）下运行。
 - ❌ 表示依赖反射 / 动态代理特性，未声明 AOT 兼容：`LiteOrm.DependencyInjection`（Autofac + Castle 动态代理）、`LiteOrm.Remote` / `LiteOrm.Remote.Server`（动态类型序列化）。
 
 两种模式的用法差别与迁移注意事项见 [NativeAOT 支持](../advanced-topics/aot.md)。

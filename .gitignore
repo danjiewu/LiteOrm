@@ -42,6 +42,7 @@ msbuild.wrn
 /.trae/documents
 /count_code.ps1
 /LiteOrm.Demo/demo.db
+/benchmark.db
 /docs/series
 /msbuild.binlog
 /.workbuddy

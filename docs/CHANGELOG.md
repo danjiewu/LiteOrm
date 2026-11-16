@@ -1,5 +1,13 @@
 # 变更日志 (Changelog)
 
+## v8.2.0 (2026-11-16)
+
+### 新特性
+
+- **新增 .NET 11 目标框架**（`LiteOrm.Common` / `LiteOrm` / `LiteOrm.DependencyInjection` / `LiteOrm.Remote` / `LiteOrm.Remote.Server`）。
+
+***
+
 ## v8.1.18 (2026-11-12)
 
 ### 修复

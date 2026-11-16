@@ -131,7 +131,7 @@ graph TD
 > - `LiteOrm.Remote.Server` additionally depends on the ASP.NET Core shared framework (`Microsoft.AspNetCore.App`).
 
 **AOT support notes:**
-- ✅ means the project's net8.0 / net10.0 targets are marked `IsAotCompatible` and run under NativeAOT and full trimming.
+- ✅ means the project's net8.0 / net10.0 / net11.0 targets are marked `IsAotCompatible` and run under NativeAOT and full trimming.
 - ❌ means it relies on reflection / dynamic proxies and is not declared AOT-compatible: `LiteOrm.DependencyInjection` (Autofac + Castle dynamic proxies), `LiteOrm.Remote` / `LiteOrm.Remote.Server` (dynamic type serialization).
 
 For how the two modes differ in usage and what to watch when migrating, see [NativeAOT Support](../advanced-topics/aot.en.md).

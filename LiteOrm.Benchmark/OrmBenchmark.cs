@@ -254,8 +254,9 @@ namespace LiteOrm.Benchmark
                     // 1. 先清空/重建表结构
                     Console.WriteLine("Step 1: Cleaning and rebuilding tables...");
                     var sugar = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
-                    sugar.DbMaintenance.DropTable<BenchmarkLog>();
-                    sugar.DbMaintenance.DropTable<BenchmarkUser>();
+                    // 首次运行时表尚未创建，SqlSugar 的 DropTable 不会忽略不存在的表
+                    try { sugar.DbMaintenance.DropTable<BenchmarkLog>(); } catch { }
+                    try { sugar.DbMaintenance.DropTable<BenchmarkUser>(); } catch { }
                     sugar.CodeFirst.InitTables<BenchmarkUser, BenchmarkLog>();
 
                     var fsql = scope.ServiceProvider.GetRequiredService<IFreeSql>();
@@ -319,7 +320,6 @@ namespace LiteOrm.Benchmark
     /// 批量操作与联表查询评测，数据量由 <see cref="BatchCount"/> 参数控制。
     /// </summary>
     [MemoryDiagnoser]
-    [MediumRunJob]
     public class OrmBenchmark : OrmBenchmarkBase
     {
         [Params(10, 100, 1000, 10000)]
@@ -766,7 +766,6 @@ namespace LiteOrm.Benchmark
     /// 不参与 <c>BatchCount</c> 参数化。
     /// </summary>
     [MemoryDiagnoser]
-    [MediumRunJob]
     public class OrmSingleBenchmark : OrmBenchmarkBase
     {
         private const int SingleLoopCount = 1000;

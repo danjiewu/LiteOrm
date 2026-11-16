@@ -162,7 +162,7 @@ builder.Services.AddLiteOrm(options =>
 
 #### AOT / NativeAOT Support
 
-- The **net8.0 / net10.0** targets are AOT-compatible (`IsAotCompatible`) and work under NativeAOT and full trimming.
+- The **net8.0 / net10.0 / net11.0** targets are AOT-compatible (`IsAotCompatible`) and work under NativeAOT and full trimming.
 - When building with `PublishAot=true` or trimming enabled, `LiteOrm.Generators` emits registration code for entity types, `SqlBuilder`/`DbConnection` types, DataReader mapping delegates and property accessors at compile time, so the runtime does not rely on `Expression.Compile()` or `Assembly.GetTypes()`.
 - `Expr` trees are serialized via the source-generated `ExprJsonSerializerContext` — no reflection, NativeAOT-safe.
 - **`LiteOrm.DependencyInjection` is NOT supported under AOT**: Autofac- and Castle DynamicProxy-based AOP interception relies on runtime reflection and dynamic assembly generation, which is incompatible with NativeAOT. Use the core library's `AddLiteOrm()` for pure MS DI registration instead (see the `LiteOrm.AotDemo` project).

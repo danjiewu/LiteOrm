@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.2.0 (2026-11-16)
+
+### New Features
+
+- **Added the .NET 11 target framework** (`LiteOrm.Common` / `LiteOrm` / `LiteOrm.DependencyInjection` / `LiteOrm.Remote` / `LiteOrm.Remote.Server`).
+
+***
+
 ## v8.1.18 (2026-11-12)
 
 ### Bug Fixes

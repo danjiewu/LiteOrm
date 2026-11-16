@@ -79,7 +79,7 @@ Data sources are loaded from the `LiteOrm` section of `IConfiguration`; use the 
 
 ### AOT Support
 
-- The **net8.0 / net10.0** targets are AOT-compatible (`IsAotCompatible`), and the libraries work under NativeAOT and full trimming.
+- The **net8.0 / net10.0 / net11.0** targets are AOT-compatible (`IsAotCompatible`), and the libraries work under NativeAOT and full trimming.
 - `Expr` trees are serialized via the source-generated **`ExprJsonSerializerContext`** (registered through `[JsonConverter]` on `Expr`), so JSON round-trips of expressions require no reflection and are NativeAOT-safe.
 - When building with `PublishAot=true` / trimming enabled, the bundled source generator (`LiteOrm.Generators`) emits registration code at compile time for entity types, `SqlBuilder`/`DbConnection` types, DataReader mapping delegates and property accessors.
 - Runtime reflection-based paths are used only in the JIT fallback mode; AOT mode uses pre-registered converters and generators.
@@ -170,7 +170,7 @@ var users = await userService.SearchAsync(u => u.Age > 18);
 
 ### AOT 支持
 
-- **net8.0 / net10.0** 目标为 AOT 兼容（`IsAotCompatible`），库可在 NativeAOT 与完全裁剪（Trim）下正常工作。
+- **net8.0 / net10.0 / net11.0** 目标为 AOT 兼容（`IsAotCompatible`），库可在 NativeAOT 与完全裁剪（Trim）下正常工作。
 - `Expr` 表达式树通过源生成的 **`ExprJsonSerializerContext`** 序列化（经 `Expr` 上的 `[JsonConverter]` 自动注册），表达式的 JSON 序列化不依赖反射，天然兼容 NativeAOT。
 - 使用 `PublishAot=true` 或启用裁剪构建时，内置源生成器（`LiteOrm.Generators`）会在编译期生成实体类型、`SqlBuilder` / `DbConnection` 类型、DataReader 映射委托与属性访问器的注册代码。
 - 反射式路径仅在 JIT 回退模式下使用；AOT 模式下使用预注册的转换器与生成器。

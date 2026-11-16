@@ -162,7 +162,7 @@ builder.Services.AddLiteOrm(options =>
 
 #### AOT / NativeAOT 支持
 
-- **net8.0 / net10.0** 目标为 AOT 兼容（`IsAotCompatible`），库可在 NativeAOT 与完全裁剪下工作。
+- **net8.0 / net10.0 / net11.0** 目标为 AOT 兼容（`IsAotCompatible`），库可在 NativeAOT 与完全裁剪下工作。
 - 使用 `PublishAot=true` 或启用裁剪构建时，`LiteOrm.Generators` 在编译期生成实体类型、`SqlBuilder` / `DbConnection` 类型、DataReader 映射委托与属性访问器的注册代码，运行时不依赖 `Expression.Compile()` 或 `Assembly.GetTypes()`。
 - `Expr` 表达式树通过源生成的 `ExprJsonSerializerContext` 序列化，无反射，NativeAOT 安全。
 - **AOT 模式下不可使用 `LiteOrm.DependencyInjection`**：基于 Autofac 与 Castle DynamicProxy 的 AOP 拦截依赖运行时反射与动态程序集生成，不兼容 NativeAOT。请改用基础库 `AddLiteOrm()` 进行纯 MS DI 注册（参考 `LiteOrm.AotDemo` 工程）。
