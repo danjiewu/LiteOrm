@@ -85,7 +85,7 @@ var users = await userService.SearchAsync(Expr.From<User>().Where(u => u.Age >= 
 
 ```csharp
 using static LiteOrm.Common.Expr;
-MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
 {
     outSql.Append("DATE_FORMAT(");
     expr.Args[0].ToSql(ref outSql, context);

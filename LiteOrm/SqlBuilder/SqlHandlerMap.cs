@@ -12,7 +12,8 @@ namespace LiteOrm
     /// <param name="outSql"></param>
     /// <param name="expr"></param>
     /// <param name="context"></param>
-    public delegate void FunctionSqlHandler(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context);
+    /// <param name="priority">外层表达式优先级；处理器可据此判断输出是否需要补括号。</param>
+    public delegate void FunctionSqlHandler(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority);
 
     /// <summary>
     /// 简单函数 SQL 生成委托，直接提供函数名称和参数列表，适用于仅需调整函数格式，不需要自定义解析参数的场景。

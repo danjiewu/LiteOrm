@@ -322,14 +322,14 @@ public static class DeptSubTreeFunction
         OracleBuilder.Instance.RegisterFunctionSqlHandler("DeptSubTree", RenderOracle);
     }
 
-    static void RenderRecursive(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context)
+    static void RenderRecursive(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority)
     {
         ValueTypeExpr rootId = expr.Args[0];
         using (context.BeginScope())
             outSql.Append($"({DeptSubTree.BuildRecursiveQuery(rootId).ToSql(context)})");
     }
 
-    static void RenderOracle(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context)
+    static void RenderOracle(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority)
     {
         ValueTypeExpr rootId = expr.Args[0];
         ISqlBuilder builder = context.SqlBuilder;

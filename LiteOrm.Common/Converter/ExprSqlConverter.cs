@@ -63,55 +63,55 @@ namespace LiteOrm.Common
         /// <summary>
         /// 根优先级，表示最外层的表达式优先级。
         /// </summary>
-        private const int RootPriority = 0;
+        public const int RootPriority = 0;
         /// <summary>
         /// 表示集合查询，如 SELECT ... UNION SELECT ... 的优先级，通常最低，因为它们需要整个子查询作为一个整体。
         /// </summary>
-        private const int SelectSetPriority = 1;
+        public const int SelectSetPriority = 1;
         /// <summary>
         /// 表示普通子查询（如 SELECT ...）的优先级，略高于集合查询，因为它们通常作为一个单独的表达式出现在其他操作中。
         /// </summary>
-        private const int SelectPriority = 2;
+        public const int SelectPriority = 2;
         /// <summary>
         /// 表示值列表（如 IN (...)）的优先级，通常较低，因为它们需要整个列表作为一个整体进行处理。
         /// </summary>
-        private const int ValueListPriority = 4;
+        public const int ValueListPriority = 4;
         /// <summary>
         /// 表示逻辑 OR 操作的优先级，较低，因为 OR 通常需要整个表达式作为一个整体进行评估。
         /// </summary>
-        private const int OrPriority = 11;
+        public const int OrPriority = 11;
         /// <summary>
         /// 表示逻辑 AND 操作的优先级，略高于 OR。
         /// </summary>
-        private const int AndPriority = 12;
+        public const int AndPriority = 12;
         /// <summary>
         /// 表示比较操作（如 =、&lt;&gt;、&gt;、&lt;）的优先级，通常高于 AND 和 OR，因为它们需要先评估比较表达式的结果。
         /// </summary>
-        private const int ComparisonPriority = 13;
+        public const int ComparisonPriority = 13;
         /// <summary>
         /// 表示字符串拼接操作的优先级，通常高于比较操作，因为它们需要先计算出字符串结果。
         /// </summary>
-        private const int ConcatPriority = 14;
+        public const int ConcatPriority = 14;
         /// <summary>
         /// 表示加减算术操作的优先级，通常高于比较操作，因为它们需要先计算数值结果。
         /// </summary>
-        private const int AddSubtractPriority = 15;
+        public const int AddSubtractPriority = 15;
         /// <summary>
         /// 表示乘除取模操作的优先级，高于加减计算。
         /// </summary>
-        private const int MultiplyDivideModuloPriority = 16;
+        public const int MultiplyDivideModuloPriority = 16;
         /// <summary>
         /// 表示 NOT 操作的优先级，通常高于比较和算术操作。
         /// </summary>
-        private const int NotPriority = 17;
+        public const int NotPriority = 17;
         /// <summary>
         /// 表示一元操作（如取负、位取反）的优先级，通常高于 NOT。
         /// </summary>
-        private const int UnaryPriority = 18;
+        public const int UnaryPriority = 18;
         /// <summary>
         /// 最高优先级。
         /// </summary>
-        private const int MaxPriority = 1000;
+        public const int MaxPriority = 1000;
 
         /// <summary>
         /// 将当前表达式转换为 SQL 字符串片段。
@@ -317,7 +317,7 @@ namespace LiteOrm.Common
                 case UnaryExpr vu: ToSql(ref sb, vu, context); break;
                 case ValueExpr value: ToSql(ref sb, value, context); break;
                 case PropertyExpr prop: ToSql(ref sb, prop, context); break;
-                case FunctionExpr func: ToSql(ref sb, func, context); break;
+                case FunctionExpr func: ToSql(ref sb, func, context, priority); break;
                 case LambdaExpr lambda: ToSql(ref sb, lambda, context); break;
                 case GenericSqlExpr generic: ToSql(ref sb, generic, context); break;
                 case ForeignExpr foreign: ToSql(ref sb, foreign, context); break;
@@ -772,9 +772,10 @@ namespace LiteOrm.Common
         /// <param name="sb">用于接收 SQL 片段的字符串构建器。</param>
         /// <param name="expr">要转换的函数表达式。</param>
         /// <param name="context">生成 SQL 的上下文环境。</param>
-        private static void ToSql(ref ValueStringBuilder sb, FunctionExpr expr, SqlBuildContext context)
+        /// <param name="priority">外层表达式优先级，传给函数处理器用于判断是否需要补括号。</param>
+        private static void ToSql(ref ValueStringBuilder sb, FunctionExpr expr, SqlBuildContext context, int priority)
         {
-            context.SqlBuilder.BuildFunctionSql(ref sb, expr, context);
+            context.SqlBuilder.BuildFunctionSql(ref sb, expr, context, priority);
         }
 
         /// <summary>

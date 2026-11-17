@@ -116,7 +116,7 @@ namespace LiteOrm
         /// <param name="handler">将函数名成和参数表达式直接写入输出缓冲区的处理委托。</param>
         public static void RegisterSimpleFunctionSqlHandler<T>(this T sqlBuilder, string functionName, SimpleFunctionSqlHandler handler) where T : SqlBuilder
         {
-            SqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+            SqlBuilder.GetSqlHandlerMap<T>().RegisterFunctionSqlHandler(functionName, (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
             {
                 List<string> arguments = new List<string>();
                 foreach (var arg in expr.Args)

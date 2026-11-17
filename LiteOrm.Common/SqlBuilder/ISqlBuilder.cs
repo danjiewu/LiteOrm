@@ -93,7 +93,8 @@ namespace LiteOrm.Common
         /// <param name="outSql">接收输出 SQL 片段的字符串构建器。</param>
         /// <param name="expr">函数表达式，包含函数名及参数列表。</param>
         /// <param name="context">SQL 构建上下文，参数集合见 <see cref="SqlBuildContext.OutputParams"/>。</param>
-        void BuildFunctionSql(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context);
+        /// <param name="priority">外层表达式优先级；处理器可据此判断输出是否需要补括号。</param>
+        void BuildFunctionSql(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority = 0);
 
         /// <summary>
         /// 使用传入的 <see cref="ValueStringBuilder"/> 构建字符串连接 SQL 片段。

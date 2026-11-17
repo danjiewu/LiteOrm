@@ -122,14 +122,14 @@ public sealed class PgVectorPostgreSqlBuilder : PostgreSqlBuilder
         RegisterDistance("pgvector_cosine_distance", " <=> ");
         RegisterDistance("pgvector_inner_product", " <#> ");
 
-        Instance.RegisterFunctionSqlHandler("pgvector_vector_dims", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+        Instance.RegisterFunctionSqlHandler("pgvector_vector_dims", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
         {
             outSql.Append("vector_dims(");
             expr.Args[0].ToSql(ref outSql, context);
             outSql.Append(')');
         });
 
-        Instance.RegisterFunctionSqlHandler("pgvector_l2_normalize", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+        Instance.RegisterFunctionSqlHandler("pgvector_l2_normalize", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
         {
             outSql.Append("l2_normalize(");
             expr.Args[0].ToSql(ref outSql, context);
@@ -139,7 +139,7 @@ public sealed class PgVectorPostgreSqlBuilder : PostgreSqlBuilder
 
     private static void RegisterDistance(string functionName, string sqlOperator)
     {
-        Instance.RegisterFunctionSqlHandler(functionName, (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+        Instance.RegisterFunctionSqlHandler(functionName, (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
         {
             outSql.Append('(');
             expr.Args[0].ToSql(ref outSql, context);

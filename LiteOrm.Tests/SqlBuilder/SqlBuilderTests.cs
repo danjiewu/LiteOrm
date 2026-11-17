@@ -289,5 +289,40 @@ namespace LiteOrm.Tests
             [Column("Name", AllowNull = true)]
             public string? Name { get; set; }
         }
+
+        [Fact]
+        public void FunctionSqlHandler_ReceivesOuterExpressionPriority()
+        {
+            var context = new SqlBuildContext(PriorityProbeBuilder.Instance, null, "T0", null)
+            {
+                OutputParams = new List<Param>()
+            };
+
+            var rootSb = new ValueStringBuilder();
+            new FunctionExpr("PRIORITY_PROBE").ToSql(ref rootSb, context);
+            rootSb.Dispose();
+            Assert.Equal(ExprSqlConverter.RootPriority, PriorityProbeBuilder.LastPriority);
+
+            var logicSb = new ValueStringBuilder();
+            (Expr.Prop("X") == new FunctionExpr("PRIORITY_PROBE")).ToSql(ref logicSb, context);
+            logicSb.Dispose();
+            Assert.Equal(ExprSqlConverter.ComparisonPriority, PriorityProbeBuilder.LastPriority);
+        }
+
+        private sealed class PriorityProbeBuilder : SqlBuilder
+        {
+            public static new readonly PriorityProbeBuilder Instance = new PriorityProbeBuilder();
+            public static int LastPriority;
+
+            static PriorityProbeBuilder()
+            {
+                Instance.RegisterFunctionSqlHandler("PRIORITY_PROBE",
+                    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
+                    {
+                        LastPriority = priority;
+                        outSql.Append("probe");
+                    });
+            }
+        }
     }
 }

@@ -102,13 +102,16 @@ LambdaExprConverter.RegisterMemberHandler(typeof(User));
 public delegate void FunctionSqlHandler(
     ref ValueStringBuilder outSql,
     FunctionExpr expr,
-    SqlBuildContext context);
+    SqlBuildContext context,
+    int priority);
 ```
+
+`priority` 是外层表达式的优先级（数值越大绑定越紧）。输出运算符或自定义语法片段的处理器可以用它判断是否需要加括号，优先级常量见 `ExprSqlConverter` 的 `*Priority` 公开字段。
 
 ```csharp
 using static LiteOrm.Common.Expr;
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT",
-    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
 {
     outSql.Append("DATE_FORMAT(");
     expr.Args[0].ToSql(ref outSql, context);
@@ -155,7 +158,7 @@ LambdaExprConverter.RegisterMethodHandler("Format", (node, converter) => {
 ```csharp
 using static LiteOrm.Common.Expr;
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("DATE_FORMAT",
-    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
 {
     if (expr.Args.Count != 2)
         throw new ArgumentException("DATE_FORMAT requires 2 arguments");
@@ -224,7 +227,7 @@ LambdaExprConverter.RegisterMemberHandler(typeof(User), "Age", (node, converter)
 ```csharp
 using static LiteOrm.Common.Expr;
 SqlBuilder.Instance.RegisterFunctionSqlHandler("YEAR",
-    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
 {
     outSql.Append("YEAR(");
     expr.Args[0].ToSql(ref outSql, context);
@@ -254,7 +257,7 @@ LambdaExprConverter.RegisterMethodHandler("CustomProcess", (node, converter) => 
 ```csharp
 using static LiteOrm.Common.Expr;
 SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_PROCESS",
-    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
 {
     if (expr.Args.Count != 1)
         throw new ArgumentException("CUSTOM_PROCESS requires 1 argument");
@@ -292,21 +295,21 @@ var users = await userService.SearchAsync(
 ```csharp
 using static LiteOrm.Common.Expr;
 // MySQL
-MySqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) => {
+MySqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) => {
     outSql.Append("MYSQL_CUSTOM(");
     expr.Args[0].ToSql(ref outSql, context);
     outSql.Append(')');
 });
 
 // SQL Server
-SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) => {
+SqlServerBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) => {
     outSql.Append("dbo.CustomFunc(");
     expr.Args[0].ToSql(ref outSql, context);
     outSql.Append(')');
 });
 
 // Oracle
-OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) => {
+OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) => {
     outSql.Append("CUSTOM_FUNC(");
     expr.Args[0].ToSql(ref outSql, context);
     outSql.Append(')');
@@ -318,7 +321,7 @@ OracleBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStrin
 ```csharp
 using static LiteOrm.Common.Expr;
 // 全局注册（SqlBuilder.Instance 对应默认数据库）
-SqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) => {
+SqlBuilder.Instance.RegisterFunctionSqlHandler("CUSTOM_FUNC", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) => {
     outSql.Append("CUSTOM_FUNC(");
     expr.Args[0].ToSql(ref outSql, context);
     outSql.Append(')');
@@ -460,7 +463,7 @@ LambdaExprConverter.RegisterMethodHandler(typeof(JsonNode), "GetArrayLength", (n
 
 // 注册 MySQL 方言的 SQL 处理器
 MySqlBuilder.Instance.RegisterFunctionSqlHandler("JSON_LENGTH",
-    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+    (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
 {
     outSql.Append("JSON_LENGTH(");
     expr.Args[0].ToSql(ref outSql, context);

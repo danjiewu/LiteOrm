@@ -256,7 +256,7 @@ public class MyDamengBuilder : DamengBuilder
     {
         // Only register Dameng-specific function translations
         // For example, translate GETDATE to SYSDATE
-        this.RegisterFunctionSqlHandler("GETDATE", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+        this.RegisterFunctionSqlHandler("GETDATE", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
         {
             outSql.Append("SYSDATE");
         });

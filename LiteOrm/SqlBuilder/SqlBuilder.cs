@@ -105,7 +105,7 @@ namespace LiteOrm
         /// 适用于无需特殊处理的函数：未注册专用处理器的函数将自动使用本处理器，
         /// 也可在注册时直接引用以复用默认渲染逻辑，避免重复实现「函数名(参数)」的拼装代码。
         /// </summary>
-        public static readonly FunctionSqlHandler DefaultFunctionSqlHandler = static (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+        public static readonly FunctionSqlHandler DefaultFunctionSqlHandler = static (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
         {
             string functionName = expr.FunctionName!;
             if (!expr.IsAggregate && context.SqlBuilder is SqlBuilder sqlBuilder && sqlBuilder._functionMappings.TryGetValue(functionName, out string? mappedName))
@@ -128,7 +128,8 @@ namespace LiteOrm
         /// <param name="outSql">接收输出 SQL 片段的字符串构建器。</param>
         /// <param name="expr">函数表达式，包含函数名及参数列表。</param>
         /// <param name="context">SQL 构建上下文，参数集合见 <see cref="SqlBuildContext.OutputParams"/>。</param>
-        public virtual void BuildFunctionSql(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context)
+        /// <param name="priority">外层表达式优先级；处理器可据此判断输出是否需要补括号。</param>
+        public virtual void BuildFunctionSql(ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority = 0)
         {
             if (expr is null) throw new ArgumentNullException(nameof(expr));
             string functionName = expr.FunctionName!;
@@ -137,12 +138,12 @@ namespace LiteOrm
             {
                 if (GetSqlHandlerMap(type).TryGetFunctionSqlHandler(functionName, out var handler) && handler is not null)
                 {
-                    handler(ref outSql, expr, context);
+                    handler(ref outSql, expr, context, priority);
                     return;
                 }
                 type = type.BaseType!;
             }
-            DefaultFunctionSqlHandler(ref outSql, expr, context);
+            DefaultFunctionSqlHandler(ref outSql, expr, context, priority);
         }
 
 

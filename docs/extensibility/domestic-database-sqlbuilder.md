@@ -254,7 +254,7 @@ public class MyDamengBuilder : DamengBuilder
     {
         // 只注册达梦专属的函数翻译
         // 例如把 GETDATE 翻译为 SYSDATE
-        this.RegisterFunctionSqlHandler("GETDATE", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context) =>
+        this.RegisterFunctionSqlHandler("GETDATE", (ref ValueStringBuilder outSql, FunctionExpr expr, SqlBuildContext context, int priority) =>
         {
             outSql.Append("SYSDATE");
         });
