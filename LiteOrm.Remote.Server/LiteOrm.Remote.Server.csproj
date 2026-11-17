@@ -6,12 +6,12 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程调用服务端</Description>
-    <AssemblyVersion>8.2.1.0</AssemblyVersion>
-    <FileVersion>8.2.1.0</FileVersion>
-    <VersionPrefix>8.2.1</VersionPrefix>
+    <AssemblyVersion>8.2.2.0</AssemblyVersion>
+    <FileVersion>8.2.2.0</FileVersion>
+    <VersionPrefix>8.2.2</VersionPrefix>
     <PackageReleaseNotes>
-      8.2.1:
-      - 新增 net11.0 目标框架。
+      8.2.2:
+      - 同步 LiteOrm 8.2.2 版本。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>

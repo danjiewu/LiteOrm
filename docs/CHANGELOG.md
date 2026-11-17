@@ -1,5 +1,13 @@
 # 变更日志 (Changelog)
 
+## v8.2.2 (2026-11-17)
+
+### 破坏性变更
+
+- **函数 SQL 处理器增加 `priority` 参数**（`LiteOrm` / `LiteOrm.Common`）：`FunctionSqlHandler` 与 `BuildFunctionSql` 现在接收外层表达式优先级，处理器可据此决定是否补括号；`ExprSqlConverter` 的 `*Priority` 常量改为公开。自定义处理器需要补充第 4 个参数。
+
+***
+
 ## v8.2.1 (2026-11-16)
 
 ### 新特性

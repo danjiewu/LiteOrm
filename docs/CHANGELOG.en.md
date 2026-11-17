@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.2.2 (2026-11-17)
+
+### Breaking Changes
+
+- **Function SQL handlers now receive a `priority` parameter** (`LiteOrm` / `LiteOrm.Common`): `FunctionSqlHandler` and `BuildFunctionSql` accept the enclosing expression's priority so handlers can decide whether to add parentheses; the `*Priority` constants on `ExprSqlConverter` are now public. Custom handlers must add the fourth parameter.
+
+***
+
 ## v8.2.1 (2026-11-16)
 
 ### New Features

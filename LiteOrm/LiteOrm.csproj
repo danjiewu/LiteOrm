@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.2.1.0</AssemblyVersion>
-		<FileVersion>8.2.1.0</FileVersion>
+		<AssemblyVersion>8.2.2.0</AssemblyVersion>
+		<FileVersion>8.2.2.0</FileVersion>
 		<TargetFrameworks>net11.0;net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.2.1</VersionPrefix>
+		<VersionPrefix>8.2.2</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -17,8 +17,8 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
-      8.2.1:
-      - 新增 net11.0 目标框架。
+      8.2.2:
+      - FunctionSqlHandler 增加 priority 参数（破坏性变更），用于按外层表达式优先级决定是否补括号；内置处理器已同步。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
