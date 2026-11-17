@@ -76,6 +76,7 @@ This is the main index of the LiteOrm documentation set. For deeper coverage, fo
 |[Audit and Change Tracking](./typical-applications/audit-and-change-tracking.en.md)|Entity events, field diffs, transaction boundaries and call logs for auditing|
 |[Sensitive Data Protection](./typical-applications/sensitive-data-protection.en.md)|Encrypted column storage, global custom-type registration, blind indexes and key management|
 |[JSON Columns for Objects and Field-Level Queries](./typical-applications/json-column-mapping.en.md)|Whole-object JSON columns, converter registration, field-to-JSON-function mapping and field-level queries|
+|[Vector Search on PostgreSQL (pgvector)](./typical-applications/pgvector-vector-search.en.md)|Custom `PostgreSqlBuilder` plus `Expr`/`Lambda` extensions for `vector` columns, insert/update writes, distance ordering and top-k retrieval|
 |[Computed Columns in Practice](./typical-applications/computed-columns.en.md)|Three worked examples — tier discounts, listing status bits, cross-table display names — with generated SQL|
 |[Concurrency and Read/Write Splitting](./typical-applications/concurrency-and-read-write-splitting.en.md)|Timestamp optimistic concurrency, transaction boundaries, read-only replicas and consistency|
 |[Projection on Demand](./typical-applications/query-projection.en.md)|Four requirements comparing entity-first projection with query-time projection: list pages, exports, detail pages and grouped aggregation|
@@ -112,5 +113,5 @@ This is the main index of the LiteOrm documentation set. For deeper coverage, fo
 4. Integrating via `LiteOrm.DependencyInjection` (Autofac, AOP): read the [Config Reference](./reference/configuration-reference.en.md) first, then the transactions, logging and service authorization topics in DI Extension.
 5. Sharding, performance or dialect differences: continue with Advanced Topics.
 6. Extending the framework itself: see Extensibility.
-7. Landing a concrete business scenario (tenant isolation, data permissions, soft delete and archiving, auditing, sensitive field encryption, JSON columns for objects, concurrency and read/write splitting, projection on demand, complex queries with department trees, last-7-days filtering, dynamic sorting/paging and saved conditions): see Use Cases — every topic ships a requirement description plus copy-paste-ready code.
+7. Landing a concrete business scenario (tenant isolation, data permissions, soft delete and archiving, auditing, sensitive field encryption, JSON columns for objects, PostgreSQL pgvector vector search, concurrency and read/write splitting, projection on demand, complex queries with department trees, last-7-days filtering, dynamic sorting/paging and saved conditions): see Use Cases — every topic ships a requirement description plus copy-paste-ready code.
 8. Need to confirm a configuration key, an interface name or a term: go straight to Reference.
