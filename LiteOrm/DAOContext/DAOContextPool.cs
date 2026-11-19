@@ -62,12 +62,10 @@ namespace LiteOrm
         private readonly object _poolLock = new object();
         private bool _disposed = false;
         private int _maxPoolSize = 100;
-        private readonly List<DAOContextPool> _readOnlyPools = new List<DAOContextPool>();
+        private readonly List<ReadOnlyDAOContextPool> _readOnlyPools = new List<ReadOnlyDAOContextPool>();
         private int _readOnlyIndex = 0;
         private DatabaseSync? _databaseSync;
         private ILogger? _logger;
-        private int _readOnlyFails;
-        private long _readOnlyBlockedUntil;
         /// <summary>
         /// 当创建新的DAO上下文时触发的事件委托，允许外部订阅以进行自定义初始化或日志记录等操作。
         /// </summary>
@@ -83,16 +81,6 @@ namespace LiteOrm
         /// 获取或设置日志记录器。
         /// </summary>
         public ILogger? Logger { get => _logger; set => _logger = value; }
-
-        /// <summary>
-        /// 只读池连续失败达到该次数后进入冷却期。0 表示不启用。
-        /// </summary>
-        public int ReadOnlyFailureLimit { get; set; } = 3;
-
-        /// <summary>
-        /// 只读池冷却时长。
-        /// </summary>
-        public TimeSpan ReadOnlyCooldown { get; set; } = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// 初始化 <see cref="DAOContextPool"/> 类的新实例。
@@ -211,18 +199,21 @@ namespace LiteOrm
             if (config == null || string.IsNullOrWhiteSpace(config.ConnectionString)) return;
 
             var providerType = config.ProviderType ?? ProviderType;
-            var pool = new DAOContextPool(providerType, config.ConnectionString)
+            var pool = new ReadOnlyDAOContextPool(providerType, config.ConnectionString)
             {
                 Name = $"{Name}_ReadOnly_{_readOnlyPools.Count}",
                 PoolSize = config.PoolSize ?? PoolSize,
                 MaxPoolSize = config.MaxPoolSize ?? MaxPoolSize,
                 KeepAliveDuration = config.KeepAliveDuration ?? KeepAliveDuration,
                 ParamCountLimit = config.ParamCountLimit ?? ParamCountLimit,
-                IsReadOnlyPool = true
+                FailureLimit = config.FailureLimit ?? 3,
+                Cooldown = config.Cooldown ?? TimeSpan.FromSeconds(30),
+                Logger = _logger
             };
             pool.MasterPool = this;
             _readOnlyPools.Add(pool);
         }
+
         private void EnsureNotDisposed()
         {
             if (_disposed)
@@ -271,7 +262,7 @@ namespace LiteOrm
             Exception? lastError = null;
             for (int i = 0; i < count; i++)
             {
-                DAOContextPool pool = _readOnlyPools[(start + i) % count];
+                ReadOnlyDAOContextPool pool = _readOnlyPools[(start + i) % count];
                 if (pool.Blocked) continue;
                 try
                 {
@@ -300,7 +291,7 @@ namespace LiteOrm
             Exception? lastError = null;
             for (int i = 0; i < count; i++)
             {
-                DAOContextPool pool = _readOnlyPools[(start + i) % count];
+                ReadOnlyDAOContextPool pool = _readOnlyPools[(start + i) % count];
                 if (pool.Blocked) continue;
                 try
                 {
@@ -318,28 +309,6 @@ namespace LiteOrm
             if (lastError != null)
                 _logger?.LogWarning(lastError, "Pool '{PoolName}': all read-only pools failed, falling back to the primary pool.", Name);
             return null;
-        }
-
-        private bool Blocked
-        {
-            get
-            {
-                long until = Interlocked.Read(ref _readOnlyBlockedUntil);
-                return until > DateTime.UtcNow.Ticks;
-            }
-        }
-
-        private void MarkFailed()
-        {
-            if (ReadOnlyFailureLimit <= 0) return;
-            if (Interlocked.Increment(ref _readOnlyFails) >= ReadOnlyFailureLimit)
-                Interlocked.Exchange(ref _readOnlyBlockedUntil, DateTime.UtcNow.Add(ReadOnlyCooldown).Ticks);
-        }
-
-        private void ClearFailures()
-        {
-            Interlocked.Exchange(ref _readOnlyFails, 0);
-            Interlocked.Exchange(ref _readOnlyBlockedUntil, 0);
         }
 
         /// <summary>
@@ -506,6 +475,13 @@ namespace LiteOrm
         {
             if (context is null)
                 throw new ArgumentNullException(nameof(context));
+
+            // 只读上下文属于其子池，交还给实际所属的连接池
+            if (context.Pool is not null && !ReferenceEquals(context.Pool, this))
+            {
+                context.Pool.ReturnContext(context);
+                return;
+            }
 
             if (_disposed)
             {

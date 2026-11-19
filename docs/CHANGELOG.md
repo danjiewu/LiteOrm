@@ -8,7 +8,7 @@
 
 ### 改进
 
-- **只读连接池故障回退**（`LiteOrm`）：只读池连续失败后短暂跳过，全部不可用时自动回退主库。
+- **只读连接池故障回退**（`LiteOrm`）：只读池连续失败后短暂跳过，全部不可用时自动回退主库；失败阈值与冷却时长可在 `ReadOnlyConfigs` 的 `FailureLimit` / `Cooldown` 中配置。
 - **连接池预热**（`LiteOrm`）：新增 `DAOContextPool.Warmup` / `WarmupAsync`，可在启动阶段提前检查表结构。
 
 ***

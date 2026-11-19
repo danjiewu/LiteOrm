@@ -19,7 +19,7 @@
 <PackageReleaseNotes>
       8.2.2:
       - FunctionSqlHandler 增加 priority 参数（破坏性变更），用于按外层表达式优先级决定是否补括号；内置处理器已同步。
-      - 只读连接池连续失败后短暂跳过，全部不可用时回退主库。
+      - 只读连接池连续失败后短暂跳过，全部不可用时回退主库；失败阈值与冷却可在 ReadOnlyConfigs 的 FailureLimit / Cooldown 中配置。
       - 物化映射缓存改为有界 LRU，可通过 DataReaderConverter.SchemaCacheSize 调整。
       - 新增 DAOContextPool.Warmup / WarmupAsync，可在启动阶段提前检查表结构。
     </PackageReleaseNotes>

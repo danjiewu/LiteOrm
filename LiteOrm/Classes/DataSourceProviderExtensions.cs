@@ -64,7 +64,9 @@ namespace LiteOrm
                         PoolSize = int.TryParse(readOnlySection["PoolSize"], out var roPoolSize) ? roPoolSize : config.PoolSize,
                         MaxPoolSize = int.TryParse(readOnlySection["MaxPoolSize"], out var roMaxPoolSize) ? roMaxPoolSize : config.MaxPoolSize,
                         ParamCountLimit = int.TryParse(readOnlySection["ParamCountLimit"], out var roParamLimit) ? roParamLimit : config.ParamCountLimit,
-                        KeepAliveDuration = TimeSpan.TryParse(readOnlySection["KeepAliveDuration"], out var roKeepAlive) ? roKeepAlive : config.KeepAliveDuration
+                        KeepAliveDuration = TimeSpan.TryParse(readOnlySection["KeepAliveDuration"], out var roKeepAlive) ? roKeepAlive : config.KeepAliveDuration,
+                        FailureLimit = int.TryParse(readOnlySection["FailureLimit"], out var roFailureLimit) ? roFailureLimit : null,
+                        Cooldown = TimeSpan.TryParse(readOnlySection["Cooldown"], out var roCooldown) ? roCooldown : null
                     };
                     config.ReadOnlyConfigs.Add(readOnlyConfig);
                 }

@@ -127,6 +127,16 @@ namespace LiteOrm.Common
         public int? ParamCountLimit { get; set; }
 
         /// <summary>
+        /// 连续失败上限（可选，默认 3）。0 表示不启用冷却。
+        /// </summary>
+        public int? FailureLimit { get; set; }
+
+        /// <summary>
+        /// 冷却时长（可选，默认 30 秒）。
+        /// </summary>
+        public TimeSpan? Cooldown { get; set; }
+
+        /// <summary>
         /// 初始化一个空配置。
         /// </summary>
         public ReadOnlyDataSourceConfig()

@@ -206,6 +206,34 @@ namespace LiteOrm.Tests.Infrastructure
             pool.ReturnContext(context);
         }
 
+        [Fact]
+        public void PeekContext_ReadOnlyPools_DistributeEvenly()
+        {
+            FaultableDbConnection.Reset();
+            using var pool = CreatePool(4);
+            pool.AddReadOnlyPool(new LiteOrm.Common.ReadOnlyDataSourceConfig
+            {
+                ConnectionString = "Data Source=ReadOnlyA"
+            });
+            pool.AddReadOnlyPool(new LiteOrm.Common.ReadOnlyDataSourceConfig
+            {
+                ConnectionString = "Data Source=ReadOnlyB",
+                ProviderType = typeof(SecondDbConnection)
+            });
+
+            int a = 0, b = 0;
+            for (int i = 0; i < 40; i++)
+            {
+                var context = pool.PeekContext(readOnly: true);
+                if (context.DbConnection is FaultableDbConnection) a++;
+                else b++;
+                pool.ReturnContext(context);
+            }
+
+            Assert.Equal(20, a);
+            Assert.Equal(20, b);
+        }
+
         /// <summary>
         /// 始终打开失败的假连接，用于模拟只读副本不可用。
         /// </summary>
@@ -232,6 +260,36 @@ namespace LiteOrm.Tests.Infrastructure
                 => Task.FromException(new InvalidOperationException("Simulated read-only replica outage."));
 
             public override void Close() { }
+            public override void ChangeDatabase(string databaseName) { }
+            protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) => throw new NotSupportedException();
+            protected override DbCommand CreateDbCommand() => throw new NotSupportedException();
+        }
+
+        internal sealed class SecondDbConnection : DbConnection
+        {
+            private ConnectionState _state = ConnectionState.Closed;
+            private string _connectionString = string.Empty;
+
+            [System.Diagnostics.CodeAnalysis.AllowNull]
+            public override string ConnectionString
+            {
+                get => _connectionString;
+                set => _connectionString = value ?? string.Empty;
+            }
+
+            public override string Database => "Second";
+            public override string DataSource => "Second";
+            public override string ServerVersion => "1.0";
+            public override ConnectionState State => _state;
+
+            public override void Open() => _state = ConnectionState.Open;
+            public override Task OpenAsync(CancellationToken cancellationToken)
+            {
+                _state = ConnectionState.Open;
+                return Task.CompletedTask;
+            }
+
+            public override void Close() => _state = ConnectionState.Closed;
             public override void ChangeDatabase(string databaseName) { }
             protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) => throw new NotSupportedException();
             protected override DbCommand CreateDbCommand() => throw new NotSupportedException();

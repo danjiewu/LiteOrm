@@ -8,7 +8,7 @@
 
 ### Improvements
 
-- **Read-only pool failover** (`LiteOrm`): a read-only pool that keeps failing is skipped for a short cooldown, and traffic falls back to the primary pool when none are available.
+- **Read-only pool failover** (`LiteOrm`): a read-only pool that keeps failing is skipped for a short cooldown, and traffic falls back to the primary pool when none are available; tune `FailureLimit` / `Cooldown` per replica in `ReadOnlyConfigs`.
 - **Configurable materialization cache** (`LiteOrm`): the per-schema cache is now a bounded LRU (default 4096), adjustable via `DataReaderConverter.SchemaCacheSize`.
 - **Connection pool warmup** (`LiteOrm`): added `DAOContextPool.Warmup` / `WarmupAsync` to check table structures at startup.
 
