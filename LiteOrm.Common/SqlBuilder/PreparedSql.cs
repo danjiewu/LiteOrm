@@ -67,7 +67,7 @@ namespace LiteOrm.Common
         public PreparedSql(string sql, IEnumerable<Param> paramsList)
         {
             Sql = sql;
-            Params = paramsList.ToList();
+            Params = paramsList as List<Param> ?? paramsList.ToList();
         }
 
         /// <summary>

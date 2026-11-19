@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
+using System.Data.Common;
 
 namespace LiteOrm
 {
@@ -143,7 +144,7 @@ namespace LiteOrm
             catch (Exception ex)
             {
                 throw new InvalidOperationException($"Failed to create connection pool instance for data source '{configName}'", ex);
-            }
+            }            
 
             if (config.ReadOnlyConfigs != null)
             {
@@ -180,9 +181,41 @@ namespace LiteOrm
                     throw new InvalidOperationException($"Failed to create SqlBuilder of type {config.SqlBuilderType.FullName} for pool {configName}", ex);
                 }
             }
+
+            CheckLifetime(pool);
+
             _pools.TryAdd(configName!, pool);
         }
 
+
+        /// <summary>
+        /// 连接串生命周期短于 KeepAliveDuration 时告警，避免复用半开连接。
+        /// </summary>
+        private void CheckLifetime(DAOContextPool pool)
+        {
+            if (_logger == null || string.IsNullOrEmpty(pool.ConnectionString) || pool.KeepAliveDuration <= TimeSpan.Zero) return;
+            try
+            {
+                var builder = new DbConnectionStringBuilder { ConnectionString = pool.ConnectionString };
+                foreach (string key in new[] { "Connection Lifetime", "ConnectionLifeTime", "Connection Idle Timeout", "ConnectionIdleTimeout" })
+                {
+                    if (!builder.TryGetValue(key, out object? raw) || raw == null) continue;
+                    if (!int.TryParse(Convert.ToString(raw), out int seconds) || seconds <= 0) continue;
+                    if (TimeSpan.FromSeconds(seconds) < pool.KeepAliveDuration)
+                    {
+                        _logger.LogWarning(
+                            "Connection pool '{PoolName}': provider setting '{Key}' ({Seconds}s) is shorter than KeepAliveDuration ({KeepAlive}). " +
+                            "LiteOrm may reuse a connection already closed by the provider; align both lifetimes to avoid half-open connections.",
+                            pool.Name, key, seconds, pool.KeepAliveDuration);
+                    }
+                    return;
+                }
+            }
+            catch
+            {
+                // 格式不合法时留给 Provider 报错。
+            }
+        }
 
         /// <summary>
         /// 获取连接池

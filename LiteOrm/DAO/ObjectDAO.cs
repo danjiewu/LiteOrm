@@ -499,7 +499,7 @@ namespace LiteOrm
         public virtual void BatchInsert(IEnumerable<T> values)
         {
             var provider = SqlBuilder.BulkProvider;
-            var insertableColumns = TableDefinition.Columns.Where(column => !column.IsComputed && !column.IsIdentity && column.Mode.CanInsert()).ToArray();
+            var insertableColumns = InsertableColumns;
             var daoContext = GetDaoContext();
             if (provider is not null)
             {
@@ -983,7 +983,7 @@ namespace LiteOrm
         public async virtual Task BatchInsertAsync(IEnumerable<T> values, CancellationToken cancellationToken = default)
         {
             var provider = SqlBuilder.BulkProvider;
-            var insertableColumns = TableDefinition.Columns.Where(column => !column.IsComputed && !column.IsIdentity && column.Mode.CanInsert()).ToArray();
+            var insertableColumns = InsertableColumns;
             var daoContext = await GetDaoContextAsync(cancellationToken).ConfigureAwait(false);
             if (provider is not null)
             {

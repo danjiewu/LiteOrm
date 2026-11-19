@@ -147,6 +147,96 @@ namespace LiteOrm.Tests.Infrastructure
             }
         }
 
+        [Fact]
+        public async Task PeekContext_ConcurrentOpen_IsNotSerialized()
+        {
+            const int concurrent = 6;
+            const int openDelayMs = 100;
+
+            FaultableDbConnection.Reset();
+            FaultableDbConnection.OpenDelayMilliseconds = openDelayMs;
+            using var pool = new DAOContextPool(typeof(FaultableDbConnection), ConnectionString)
+            {
+                MaxPoolSize = concurrent,
+                PoolSize = concurrent
+            };
+
+            try
+            {
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                var tasks = new Task<DAOContext>[concurrent];
+                for (int i = 0; i < tasks.Length; i++)
+                {
+                    tasks[i] = Task.Run(() => pool.PeekContext());
+                }
+
+                var contexts = await Task.WhenAll(tasks);
+                stopwatch.Stop();
+
+                foreach (var context in contexts)
+                {
+                    pool.ReturnContext(context);
+                }
+
+                Assert.True(stopwatch.ElapsedMilliseconds < concurrent * openDelayMs * 0.7,
+                    $"Concurrent connection open took {stopwatch.ElapsedMilliseconds}ms, expected well below {concurrent * openDelayMs}ms.");
+            }
+            finally
+            {
+                FaultableDbConnection.Reset();
+            }
+        }
+
+        [Fact]
+        public void PeekContext_ReadOnlyPoolFails_FallsBackToPrimary()
+        {
+            FaultableDbConnection.Reset();
+            using var pool = CreatePool(4);
+            pool.AddReadOnlyPool(new LiteOrm.Common.ReadOnlyDataSourceConfig
+            {
+                ConnectionString = "Data Source=AlwaysFail",
+                ProviderType = typeof(AlwaysFailDbConnection)
+            });
+
+            var context = pool.PeekContext(readOnly: true);
+
+            Assert.NotNull(context);
+            Assert.Equal(ConnectionState.Open, context.DbConnection.State);
+            Assert.IsType<FaultableDbConnection>(context.DbConnection);
+            pool.ReturnContext(context);
+        }
+
+        /// <summary>
+        /// 始终打开失败的假连接，用于模拟只读副本不可用。
+        /// </summary>
+        internal sealed class AlwaysFailDbConnection : DbConnection
+        {
+            private string _connectionString = string.Empty;
+
+            [System.Diagnostics.CodeAnalysis.AllowNull]
+            public override string ConnectionString
+            {
+                get => _connectionString;
+                set => _connectionString = value ?? string.Empty;
+            }
+
+            public override string Database => "AlwaysFail";
+            public override string DataSource => "AlwaysFail";
+            public override string ServerVersion => "1.0";
+            public override ConnectionState State => ConnectionState.Closed;
+
+            public override void Open()
+                => throw new InvalidOperationException("Simulated read-only replica outage.");
+
+            public override Task OpenAsync(CancellationToken cancellationToken)
+                => Task.FromException(new InvalidOperationException("Simulated read-only replica outage."));
+
+            public override void Close() { }
+            public override void ChangeDatabase(string databaseName) { }
+            protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) => throw new NotSupportedException();
+            protected override DbCommand CreateDbCommand() => throw new NotSupportedException();
+        }
+
         /// <summary>
         /// 可控开关的假连接：<see cref="DatabaseAvailable"/> 为 false 时打开连接抛异常，
         /// 用于模拟数据库宕机。
@@ -155,6 +245,7 @@ namespace LiteOrm.Tests.Infrastructure
         {
             private static volatile bool _databaseAvailable = true;
             private static int _openAttempts;
+            private static int _openDelayMilliseconds;
 
             public static bool DatabaseAvailable
             {
@@ -164,10 +255,18 @@ namespace LiteOrm.Tests.Infrastructure
 
             public static int OpenAttempts => Volatile.Read(ref _openAttempts);
 
+            /// <summary>每次打开前的人为延迟，用于验证池锁未被持有。</summary>
+            public static int OpenDelayMilliseconds
+            {
+                get => Volatile.Read(ref _openDelayMilliseconds);
+                set => Volatile.Write(ref _openDelayMilliseconds, value);
+            }
+
             public static void Reset()
             {
                 _databaseAvailable = true;
                 Volatile.Write(ref _openAttempts, 0);
+                Volatile.Write(ref _openDelayMilliseconds, 0);
             }
 
             private ConnectionState _state = ConnectionState.Closed;
@@ -188,8 +287,13 @@ namespace LiteOrm.Tests.Infrastructure
             public override void Open()
             {
                 Interlocked.Increment(ref _openAttempts);
+
+                int delay = OpenDelayMilliseconds;
+                if (delay > 0) Thread.Sleep(delay);
+
                 if (!_databaseAvailable)
                     throw new InvalidOperationException("Simulated database outage: connection cannot be opened.");
+
                 _state = ConnectionState.Open;
             }
 

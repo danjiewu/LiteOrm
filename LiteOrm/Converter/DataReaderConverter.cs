@@ -21,8 +21,28 @@ namespace LiteOrm
     /// </summary>
     public static class DataReaderConverter
     {
-        private static readonly ConcurrentDictionary<(Type, string), Delegate> _cache =
-            new ConcurrentDictionary<(Type, string), Delegate>();
+        private const int DefaultSchemaCacheSize = 4096;
+        private static LruCache<(Type, ulong), Delegate> _cache = new LruCache<(Type, ulong), Delegate>(DefaultSchemaCacheSize);
+        private static int _schemaCacheSize = DefaultSchemaCacheSize;
+
+        /// <summary>
+        /// 按列架构的物化委托缓存容量，默认 4096；调整后缓存重建，建议启动前设置。
+        /// </summary>
+        public static int SchemaCacheSize
+        {
+            get => _schemaCacheSize;
+            set
+            {
+                if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value));
+                _schemaCacheSize = value;
+                _cache = new LruCache<(Type, ulong), Delegate>(value);
+            }
+        }
+
+        /// <summary>
+        /// 当前缓存条目数。
+        /// </summary>
+        public static int SchemaCacheCount => _cache.Count;
 
         private static readonly MethodInfo? _getValueMethod =
             typeof(DbDataReader).GetMethod(nameof(DbDataReader.GetValue), new[] { typeof(int) });
@@ -124,8 +144,13 @@ namespace LiteOrm
         /// <returns>编译后的映射委托。</returns>
         public static Func<AutoLockDataReader, TResult> GetConverterBySchema<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] TResult>(DbDataReader reader, IDbConverter dbConverter)
         {
-            string columnKey = BuildColumnKey(reader);
-            return (Func<AutoLockDataReader, TResult>)_cache.GetOrAdd((typeof(TResult), columnKey), _ => CompileDataReaderConverter<TResult>(reader, dbConverter));
+            var key = (typeof(TResult), GetSchemaHash(reader));
+            if (_cache.TryGet(key, out Delegate? cached))
+                return (Func<AutoLockDataReader, TResult>)cached;
+
+            var compiled = CompileDataReaderConverter<TResult>(reader, dbConverter);
+            _cache.Set(key, compiled);
+            return compiled;
         }
 
         /// <summary>
@@ -159,16 +184,35 @@ namespace LiteOrm
                 t => (Delegate)_getConverterByTypeMethod!.MakeGenericMethod(t).Invoke(null, new object[] { dbConverter })!);
         }
 
-        private static string BuildColumnKey(DbDataReader reader)
+        /// <summary>
+        /// 计算列架构的 64 位 FNV 哈希，避免每次查询拼接列名字符串。
+        /// </summary>
+        private static ulong GetSchemaHash(DbDataReader reader)
         {
+            const ulong offsetBasis = 14695981039346656037UL;
+            const ulong prime = 1099511628211UL;
+
+            ulong hash = offsetBasis;
             int fieldCount = reader.FieldCount;
-            var sb = new StringBuilder(fieldCount * 16);
+            hash = Mix(hash, (uint)fieldCount);
             for (int i = 0; i < fieldCount; i++)
             {
-                if (i > 0) sb.Append('|');
-                sb.Append(reader.GetName(i));
+                string name = reader.GetName(i);
+                for (int c = 0; c < name.Length; c++)
+                {
+                    hash ^= name[c];
+                    hash *= prime;
+                }
+                hash ^= (ulong)'|';
+                hash *= prime;
             }
-            return sb.ToString();
+            return hash;
+
+            static ulong Mix(ulong current, uint value)
+            {
+                current ^= value;
+                return current * prime;
+            }
         }
 
         /// <summary>

@@ -562,7 +562,7 @@ LiteOrm 相比其他 ORM 的性能优势，基于 `LiteOrm.Benchmark` 项目跑�
 |:---|:---|:---|
 | 元数据缓存 | `TableInfoProvider` 单例缓存 `TableDefinition` / `TableView` | 运行期改元数据必须早于首次查询 |
 | 命令缓存 | 以 `(Type, methodName)` 为键缓存 `DbCommand` 本体 | 键不含 SQL 文本，SQL 随元数据变化的语句必须 `useCache=false` |
-| 连接池自研 | 按数据源命名、支持只读副本轮询 | 老化、失效、归还语义都得自己处理 |
+| 连接池自研 | 按数据源命名、支持只读副本轮询；取连接时锁外打开 | 老化、失效、归还语义都得自己处理 |
 | 上下文锁 | `SemaphoreSlim(1,1)` 独占 + `AutoLockDataReader` 延长持锁 | 同一条连接串行，长结果集读取会占住连接 |
 | 结果惰性求值 | `EnumerableResult` / `ValueResult` 延迟执行 | 求值时点和命令作用域要成对释放 |
 | 双初始化线路 | `LiteOrmContext`（无 DI）/ `AddLiteOrm`（MS DI）/ `RegisterLiteOrm`（Autofac） | 三条线路互相独立，得显式选一条 |

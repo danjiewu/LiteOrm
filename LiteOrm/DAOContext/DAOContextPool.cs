@@ -66,6 +66,8 @@ namespace LiteOrm
         private int _readOnlyIndex = 0;
         private DatabaseSync? _databaseSync;
         private ILogger? _logger;
+        private int _readOnlyFails;
+        private long _readOnlyBlockedUntil;
         /// <summary>
         /// 当创建新的DAO上下文时触发的事件委托，允许外部订阅以进行自定义初始化或日志记录等操作。
         /// </summary>
@@ -81,6 +83,16 @@ namespace LiteOrm
         /// 获取或设置日志记录器。
         /// </summary>
         public ILogger? Logger { get => _logger; set => _logger = value; }
+
+        /// <summary>
+        /// 只读池连续失败达到该次数后进入冷却期。0 表示不启用。
+        /// </summary>
+        public int ReadOnlyFailureLimit { get; set; } = 3;
+
+        /// <summary>
+        /// 只读池冷却时长。
+        /// </summary>
+        public TimeSpan ReadOnlyCooldown { get; set; } = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// 初始化 <see cref="DAOContextPool"/> 类的新实例。
@@ -226,11 +238,8 @@ namespace LiteOrm
         public DAOContext PeekContext(bool readOnly = false)
         {
             EnsureNotDisposed();
-            if (readOnly && HasReadOnlyPools)
-            {
-                int index = Interlocked.Increment(ref _readOnlyIndex);
-                return _readOnlyPools[Math.Abs(index) % _readOnlyPools.Count].PeekContext();
-            }
+            if (readOnly && HasReadOnlyPools && PeekReadOnly() is { } readOnlyContext)
+                return readOnlyContext;
 
             return PeekContextInternal();
         }
@@ -244,13 +253,93 @@ namespace LiteOrm
         public async Task<DAOContext> PeekContextAsync(bool readOnly = false)
         {
             EnsureNotDisposed();
-            if (readOnly && _readOnlyPools.Count > 0)
-            {
-                int index = Interlocked.Increment(ref _readOnlyIndex);
-                return await _readOnlyPools[(index & 0x7FFFFFFF) % _readOnlyPools.Count].PeekContextAsync().ConfigureAwait(false);
-            }
+            if (readOnly && _readOnlyPools.Count > 0 && await PeekReadOnlyAsync().ConfigureAwait(false) is { } readOnlyContext)
+                return readOnlyContext;
 
             return await PeekContextInternalAsync().ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// 轮询只读池，跳过冷却中的池；全部失败返回 null。
+        /// </summary>
+        private DAOContext? PeekReadOnly()
+        {
+            int count = _readOnlyPools.Count;
+            if (count == 0) return null;
+
+            int start = (int)((uint)Interlocked.Increment(ref _readOnlyIndex) % (uint)count);
+            Exception? lastError = null;
+            for (int i = 0; i < count; i++)
+            {
+                DAOContextPool pool = _readOnlyPools[(start + i) % count];
+                if (pool.Blocked) continue;
+                try
+                {
+                    DAOContext context = pool.PeekContextInternal();
+                    pool.ClearFailures();
+                    return context;
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    pool.MarkFailed();
+                }
+            }
+
+            if (lastError != null)
+                _logger?.LogWarning(lastError, "Pool '{PoolName}': all read-only pools failed, falling back to the primary pool.", Name);
+            return null;
+        }
+
+        private async Task<DAOContext?> PeekReadOnlyAsync()
+        {
+            int count = _readOnlyPools.Count;
+            if (count == 0) return null;
+
+            int start = (int)((uint)Interlocked.Increment(ref _readOnlyIndex) % (uint)count);
+            Exception? lastError = null;
+            for (int i = 0; i < count; i++)
+            {
+                DAOContextPool pool = _readOnlyPools[(start + i) % count];
+                if (pool.Blocked) continue;
+                try
+                {
+                    DAOContext context = await pool.PeekContextInternalAsync().ConfigureAwait(false);
+                    pool.ClearFailures();
+                    return context;
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    pool.MarkFailed();
+                }
+            }
+
+            if (lastError != null)
+                _logger?.LogWarning(lastError, "Pool '{PoolName}': all read-only pools failed, falling back to the primary pool.", Name);
+            return null;
+        }
+
+        private bool Blocked
+        {
+            get
+            {
+                long until = Interlocked.Read(ref _readOnlyBlockedUntil);
+                return until > DateTime.UtcNow.Ticks;
+            }
+        }
+
+        private void MarkFailed()
+        {
+            if (ReadOnlyFailureLimit <= 0) return;
+            if (Interlocked.Increment(ref _readOnlyFails) >= ReadOnlyFailureLimit)
+                Interlocked.Exchange(ref _readOnlyBlockedUntil, DateTime.UtcNow.Add(ReadOnlyCooldown).Ticks);
+        }
+
+        private void ClearFailures()
+        {
+            Interlocked.Exchange(ref _readOnlyFails, 0);
+            Interlocked.Exchange(ref _readOnlyBlockedUntil, 0);
         }
 
         /// <summary>
@@ -304,48 +393,52 @@ namespace LiteOrm
         /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>
         private DAOContext PeekContextInternal()
         {
-            lock (_poolLock)
+            while (true)
             {
-                // 尝试从池中获取可用的上下文
-                while (_pool.Count > 0)
+                DAOContext? context = null;
+                lock (_poolLock)
                 {
-                    var context = _pool.Dequeue();
-
-                    // 检查连接是否仍然有效
-                    if (context.IsValid)
+                    // 打开连接涉及 I/O，只把出队与状态判断放在锁内
+                    while (_pool.Count > 0)
                     {
-                        // 打开失败必须销毁上下文以归还信号量许可，否则许可泄漏会使连接池在数据库恢复后仍不可用
-                        try
+                        var candidate = _pool.Dequeue();
+                        if (candidate.IsValid)
                         {
-                            context.EnsureConnectionOpen();
-                            return context;
+                            context = candidate;
+                            break;
                         }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogWarning(ex, "Pool '{PoolName}': failed to open pooled connection, disposing (ContextId: {ContextId}).", Name, context.Id);
-                            context.Dispose();
-                            throw;
-                        }
-                    }
 
-                    // 无效则销毁，这会通对应的信号量释放计数
-                    _logger?.LogDebug("Pool '{PoolName}': pooled connection is invalid or expired, disposing (ContextId: {ContextId}).", Name, context.Id);
+                        _logger?.LogDebug("Pool '{PoolName}': pooled connection is invalid or expired, disposing (ContextId: {ContextId}).", Name, candidate.Id);
+                        candidate.Dispose();
+                    }
+                }
+
+                if (context == null)
+                {
+                    var newContext = CreateNewContext();
+                    try
+                    {
+                        newContext.EnsureConnectionOpen();
+                        return newContext;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Pool '{PoolName}': failed to open new connection, disposing (ContextId: {ContextId}).", Name, newContext.Id);
+                        newContext.Dispose();
+                        throw;
+                    }
+                }
+
+                try
+                {
+                    context.EnsureConnectionOpen();
+                    return context;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Pool '{PoolName}': failed to open pooled connection, disposing (ContextId: {ContextId}).", Name, context.Id);
                     context.Dispose();
                 }
-            }
-
-            // 池为空，创建新连接
-            var newContext = CreateNewContext();
-            try
-            {
-                newContext.EnsureConnectionOpen();
-                return newContext;
-            }
-            catch (Exception ex)
-            {               
-                _logger?.LogWarning(ex, "Pool '{PoolName}': failed to open new connection, disposing (ContextId: {ContextId}).", Name, newContext.Id);
-                newContext.Dispose();
-                throw;
             }
         }
 
@@ -353,62 +446,56 @@ namespace LiteOrm
         /// 内部异步获取DAO上下文，不进行初始化检查。
         /// </summary>
         /// <returns>一个可用的 <see cref="DAOContext"/> 实例。</returns>
-        internal async Task<DAOContext> PeekContextInternalAsync()
+        internal async Task<DAOContext> PeekContextInternalAsync(CancellationToken cancellationToken = default)
         {
-            DAOContext? contextToUse = null;
-            lock (_poolLock)
+            while (true)
             {
-                // 尝试从池中获取可用的上下文
-                while (_pool.Count > 0)
+                DAOContext? context = null;
+                lock (_poolLock)
                 {
-                    var context = _pool.Dequeue();
-
-                    // 检查连接是否仍然有效
-                    if (context.IsValid)
+                    // 打开连接涉及 I/O，只把出队与状态判断放在锁内
+                    while (_pool.Count > 0)
                     {
-                        contextToUse = context;
-                        break;
+                        var candidate = _pool.Dequeue();
+                        if (candidate.IsValid)
+                        {
+                            context = candidate;
+                            break;
+                        }
+
+                        _logger?.LogDebug("Pool '{PoolName}': pooled connection is invalid or expired, disposing (ContextId: {ContextId}).", Name, candidate.Id);
+                        candidate.Dispose();
                     }
-
-                    // 无效则销毁
-                    _logger?.LogDebug("Pool '{PoolName}': pooled connection is invalid or expired, disposing (ContextId: {ContextId}).", Name, context.Id);
-                    context.Dispose();
                 }
-            }
 
-            if (contextToUse != null)
-            {
-                // 打开失败必须销毁上下文以归还信号量许可，否则许可泄漏会使连接池在数据库恢复后仍不可用
+                if (context == null)
+                {
+                    var newContext = await CreateNewContextAsync(cancellationToken).ConfigureAwait(false);
+                    try
+                    {
+                        await newContext.EnsureConnectionOpenAsync(cancellationToken).ConfigureAwait(false);
+                        return newContext;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Pool '{PoolName}': failed to open new connection, disposing (ContextId: {ContextId}).", Name, newContext.Id);
+                        await newContext.DisposeAsync().ConfigureAwait(false);
+                        throw;
+                    }
+                }
+
                 try
                 {
-                    await contextToUse.EnsureConnectionOpenAsync().ConfigureAwait(false);
-                    return contextToUse;
+                    await context.EnsureConnectionOpenAsync(cancellationToken).ConfigureAwait(false);
+                    return context;
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, "Pool '{PoolName}': failed to open pooled connection, disposing (ContextId: {ContextId}).", Name, contextToUse.Id);
-                    await contextToUse.DisposeAsync().ConfigureAwait(false);
-                    throw;
+                    _logger?.LogWarning(ex, "Pool '{PoolName}': failed to open pooled connection, disposing (ContextId: {ContextId}).", Name, context.Id);
+                    await context.DisposeAsync().ConfigureAwait(false);
                 }
             }
-
-
-            // 池为空，创建新连接
-            var newContext = CreateNewContext();
-            try
-            {
-                await newContext.EnsureConnectionOpenAsync().ConfigureAwait(false);
-                return newContext;
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Pool '{PoolName}': failed to open new connection, disposing (ContextId: {ContextId}).", Name, newContext.Id);
-                await newContext.DisposeAsync().ConfigureAwait(false);
-                throw;
-            }
         }
-
-
 
         /// <summary>
         /// 将DAO上下文返回到连接池中。
@@ -426,11 +513,20 @@ namespace LiteOrm
                 return;
             }
 
+            // Reset 可能回滚事务，放到锁外
+            try
+            {
+                context.Reset();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "Pool '{PoolName}': failed to reset returned connection, disposing (ContextId: {ContextId}).", Name, context.Id);
+                context.Dispose();
+                return;
+            }
+
             lock (_poolLock)
             {
-                // 重置上下文状态
-                context.Reset();
-
                 // 如果连接无效，销毁
                 if (!context.IsValid)
                 {
@@ -452,6 +548,68 @@ namespace LiteOrm
         }
 
         /// <summary>
+        /// 预热实体表结构，避免首个请求触发 DDL 检查。
+        /// </summary>
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2072",
+            Justification = "objectTypes elements are caller-supplied entity types; the same suppression is used by DAOContextExtensions.EnsureTables.")]
+        public void Warmup(IEnumerable<Type> objectTypes, bool continueOnError = true)
+        {
+            if (objectTypes is null) throw new ArgumentNullException(nameof(objectTypes));
+            EnsureNotDisposed();
+
+            DAOContext context = PeekContext();
+            try
+            {
+                foreach (Type type in objectTypes)
+                {
+                    try
+                    {
+                        DatabaseSync.EnsureTable(context, type);
+                    }
+                    catch (Exception ex) when (continueOnError)
+                    {
+                        _logger?.LogError(ex, "Pool '{PoolName}': failed to warm up table for type '{Type}'.", Name, type.FullName);
+                    }
+                }
+            }
+            finally
+            {
+                ReturnContext(context);
+            }
+        }
+
+        /// <summary>
+        /// 异步预热实体表结构。
+        /// </summary>
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2072",
+            Justification = "objectTypes elements are caller-supplied entity types; the same suppression is used by DAOContextExtensions.EnsureTables.")]
+        public async Task WarmupAsync(IEnumerable<Type> objectTypes, bool continueOnError = true, CancellationToken cancellationToken = default)
+        {
+            if (objectTypes is null) throw new ArgumentNullException(nameof(objectTypes));
+            EnsureNotDisposed();
+
+            DAOContext context = await PeekContextAsync().ConfigureAwait(false);
+            try
+            {
+                foreach (Type type in objectTypes)
+                {
+                    try
+                    {
+                        await DatabaseSync.EnsureTableAsync(context, type).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (continueOnError)
+                    {
+                        _logger?.LogError(ex, "Pool '{PoolName}': failed to warm up table for type '{Type}'.", Name, type.FullName);
+                    }
+                }
+            }
+            finally
+            {
+                ReturnContext(context);
+            }
+        }
+
+        /// <summary>
         /// 当连接被释放时调用，用于释放信号量计数。
         /// </summary>
         internal void OnContextDisposed()
@@ -468,34 +626,60 @@ namespace LiteOrm
         /// <returns>新创建的 <see cref="DAOContext"/> 实例。</returns>
         private DAOContext CreateNewContext()
         {
-            if (!_semaphore.Wait(10000))
+            SemaphoreSlim semaphore = _semaphore;
+            if (!semaphore.Wait(10000))
             {
                 _logger?.LogError("Pool '{PoolName}' reached max connection limit ({MaxPoolSize}), unable to create a new connection.", Name, _maxPoolSize);
                 throw new InvalidOperationException("Maximum connection limit reached, cannot create a new connection.");
             }
             try
             {
-                var connection = Activator.CreateInstance(ProviderType) as DbConnection;
-                if (connection == null)
-                    throw new InvalidOperationException("Failed to create a database connection instance.");
-
-                connection.ConnectionString = ConnectionString;
-                var context = new DAOContext(connection, this)
-                {
-                    IsReadOnly = IsReadOnlyPool,
-                    KeepAliveDuration = KeepAliveDuration,
-                    MaxFailureLimit = MaxFailureLimit
-                };
-                _logger?.LogDebug("Pool '{PoolName}': new connection created (ContextId: {ContextId}).", Name, context.Id);
-                if (OnContextCreated != null) OnContextCreated(context);
-                return context;
+                return CreateContext();
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Pool '{PoolName}': failed to create a new connection.", Name);
-                _semaphore.Release();
+                semaphore.Release();
                 throw;
             }
+        }
+
+        private async Task<DAOContext> CreateNewContextAsync(CancellationToken cancellationToken)
+        {
+            SemaphoreSlim semaphore = _semaphore;
+            if (!await semaphore.WaitAsync(10000, cancellationToken).ConfigureAwait(false))
+            {
+                _logger?.LogError("Pool '{PoolName}' reached max connection limit ({MaxPoolSize}), unable to create a new connection.", Name, _maxPoolSize);
+                throw new InvalidOperationException("Maximum connection limit reached, cannot create a new connection.");
+            }
+            try
+            {
+                return CreateContext();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Pool '{PoolName}': failed to create a new connection.", Name);
+                semaphore.Release();
+                throw;
+            }
+        }
+
+        private DAOContext CreateContext()
+        {
+            var connection = Activator.CreateInstance(ProviderType) as DbConnection;
+            if (connection == null)
+                throw new InvalidOperationException("Failed to create a database connection instance.");
+
+            connection.ConnectionString = ConnectionString;
+            var context = new DAOContext(connection, this)
+            {
+                IsReadOnly = IsReadOnlyPool,
+                KeepAliveDuration = KeepAliveDuration,
+                MaxFailureLimit = MaxFailureLimit
+            };
+            _logger?.LogDebug("Pool '{PoolName}': new connection created (ContextId: {ContextId}).", Name, context.Id);
+            if (OnContextCreated != null) OnContextCreated(context);
+            return context;
         }
 
         /// <summary>

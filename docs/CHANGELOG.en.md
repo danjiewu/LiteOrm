@@ -6,6 +6,12 @@
 
 - **Function SQL handlers now receive a `priority` parameter** (`LiteOrm` / `LiteOrm.Common`): `FunctionSqlHandler` and `BuildFunctionSql` accept the enclosing expression's priority so handlers can decide whether to add parentheses; the `*Priority` constants on `ExprSqlConverter` are now public. Custom handlers must add the fourth parameter.
 
+### Improvements
+
+- **Read-only pool failover** (`LiteOrm`): a read-only pool that keeps failing is skipped for a short cooldown, and traffic falls back to the primary pool when none are available.
+- **Configurable materialization cache** (`LiteOrm`): the per-schema cache is now a bounded LRU (default 4096), adjustable via `DataReaderConverter.SchemaCacheSize`.
+- **Connection pool warmup** (`LiteOrm`): added `DAOContextPool.Warmup` / `WarmupAsync` to check table structures at startup.
+
 ***
 
 ## v8.2.1 (2026-11-16)

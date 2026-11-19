@@ -562,7 +562,7 @@ The techniques above rest on a fixed set of internal trade-offs. Each one has a 
 |:---|:---|:---|
 | Metadata cache | `TableInfoProvider` singleton caches `TableDefinition` / `TableView` | Runtime metadata changes must happen before the first query |
 | Command cache | Caches the `DbCommand` instance keyed by `(Type, methodName)` | The key does not include SQL text, so statements whose SQL varies must pass `useCache=false` |
-| Hand-written pool | Named per data source, with read-only replica round-robin | Aging, invalidation and return semantics are all managed manually |
+| Hand-written pool | Named per data source, with read-only replica round-robin; connections are opened outside the pool lock | Aging, invalidation and return semantics are all managed manually |
 | Context lock | `SemaphoreSlim(1,1)` exclusive access plus `AutoLockDataReader` extending the hold | One connection is serial, and long result sets occupy it |
 | Lazy results | `EnumerableResult` / `ValueResult` defer execution | Evaluation point and command scope must be released together |
 | Dual init paths | `LiteOrmContext` (no DI) / `AddLiteOrm` (MS DI) / `RegisterLiteOrm` (Autofac) | The paths are independent, so one must be chosen explicitly |

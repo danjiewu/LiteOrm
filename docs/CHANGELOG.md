@@ -6,6 +6,11 @@
 
 - **函数 SQL 处理器增加 `priority` 参数**（`LiteOrm` / `LiteOrm.Common`）：`FunctionSqlHandler` 与 `BuildFunctionSql` 现在接收外层表达式优先级，处理器可据此决定是否补括号；`ExprSqlConverter` 的 `*Priority` 常量改为公开。自定义处理器需要补充第 4 个参数。
 
+### 改进
+
+- **只读连接池故障回退**（`LiteOrm`）：只读池连续失败后短暂跳过，全部不可用时自动回退主库。
+- **连接池预热**（`LiteOrm`）：新增 `DAOContextPool.Warmup` / `WarmupAsync`，可在启动阶段提前检查表结构。
+
 ***
 
 ## v8.2.1 (2026-11-16)

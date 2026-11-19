@@ -84,6 +84,12 @@ namespace LiteOrm.Common
                 return text;
             }
 
+            // 不含占位符时无需扫描与重新分配
+            if (text.IndexOf('{') < 0)
+            {
+                return text;
+            }
+
             Span<char> initialBuffer = stackalloc char[text.Length];
             var result = new ValueStringBuilder(initialBuffer);
             int i = 0;
