@@ -3,11 +3,11 @@
 	<PropertyGroup>
 		<TargetFrameworks>net11.0;net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<RootNamespace>LiteOrm.DependencyInjection</RootNamespace>
-		<AssemblyVersion>8.2.2.0</AssemblyVersion>
-		<FileVersion>8.2.2.0</FileVersion>
+		<AssemblyVersion>8.2.3.0</AssemblyVersion>
+		<FileVersion>8.2.3.0</FileVersion>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-		<VersionPrefix>8.2.2</VersionPrefix>
+		<VersionPrefix>8.2.3</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm.DependencyInjection</Title>
 		<Authors>danjiewu</Authors>

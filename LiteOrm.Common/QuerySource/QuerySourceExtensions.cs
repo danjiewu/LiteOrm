@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace LiteOrm.Common
@@ -67,7 +68,7 @@ namespace LiteOrm.Common
         /// <param name="executor">查询执行器，通常来自 <c>ObjectViewDAO&lt;T&gt;</c> 或依赖注入容器。</param>
         /// <returns>绑定到 <paramref name="executor"/> 的查询源。</returns>
         /// <exception cref="ArgumentNullException"><paramref name="query"/> 或 <paramref name="executor"/> 为 null。</exception>
-        public static QuerySource<T> AsSource<T>(this IQueryable<T> query, IQuerySourceExecutor<T> executor)
+        public static QuerySource<T> AsSource<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T>(this IQueryable<T> query, IQuerySourceExecutor<T> executor)
         {
             if (query is null) throw new ArgumentNullException(nameof(query));
             if (executor is null) throw new ArgumentNullException(nameof(executor));

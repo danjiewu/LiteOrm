@@ -67,7 +67,7 @@ namespace LiteOrm.Common
     /// 由 ORM 层实现（<c>ObjectViewDAO&lt;T&gt;</c>），<see cref="QuerySource{T1}"/> 通过它直接取数。
     /// </summary>
     /// <typeparam name="T">结果元素类型。</typeparam>
-    public interface IQuerySourceExecutor<T> : IQuerySourceExecutor
+    public interface IQuerySourceExecutor<[DynamicallyAccessedMembers(Constants.RegistedMemberTypes)] T> : IQuerySourceExecutor
     {
         /// <summary>
         /// 流式执行查询，按行返回 <typeparamref name="T"/>。

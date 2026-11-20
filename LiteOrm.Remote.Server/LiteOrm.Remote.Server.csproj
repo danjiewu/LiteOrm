@@ -6,9 +6,9 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程调用服务端</Description>
-    <AssemblyVersion>8.2.2.0</AssemblyVersion>
-    <FileVersion>8.2.2.0</FileVersion>
-    <VersionPrefix>8.2.2</VersionPrefix>
+    <AssemblyVersion>8.2.3.0</AssemblyVersion>
+    <FileVersion>8.2.3.0</FileVersion>
+    <VersionPrefix>8.2.3</VersionPrefix>
     <PackageReleaseNotes>
       8.2.2:
       - 同步 LiteOrm 8.2.2 版本。
