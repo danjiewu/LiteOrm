@@ -37,6 +37,8 @@ var complex = await userService.SearchAsync(
 
 `&&` → `AND`, `||` → `OR`, `!` → `NOT`. Operator precedence follows C# semantics: `!` > `&&` > `||`. Add parentheses to override.
 
+When one side of `&&` / `||` is a compile-time boolean constant (literal, captured variable, etc.), parsing short-circuits: if the constant already decides the result (`false && ...`, `true || ...`) the constant is returned and the other side is not parsed; otherwise the constant side is dropped (`true && ...`, `false || ...`). A `?:` with a constant condition likewise parses only the selected branch, avoiding a constant `CASE WHEN`.
+
 ### 1.2 Supported string and method handlers
 
 At startup, `LiteOrmLambdaHandlerInitializer` registers a batch of Lambda method handlers. The strings it currently supports (see `LiteOrm.Common/Initilizer/LiteOrmLambdaHandlerInitializer.cs`):

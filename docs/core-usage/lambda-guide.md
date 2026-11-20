@@ -37,6 +37,8 @@ var complex = await userService.SearchAsync(
 
 `&&` 转换为 `AND`，`||` 转换为 `OR`，`!` 转换为 `NOT`。运算符优先级遵循 C# 语义：`!` 优先于 `&&`，`&&` 优先于 `||`。如需改变优先级，请加括号。
 
+当 `&&` / `||` 的一侧是编译期可确定的布尔常量（字面量、闭包变量等）时，解析会短路：常量已决定结果（`false && ...`、`true || ...`）就直接得到该常量，另一侧不再解析；常量不影响结果（`true && ...`、`false || ...`）则省略该侧。`?:` 的条件为常量时同样只解析命中的分支，避免生成恒定的 `CASE WHEN`。
+
 ### 1.2 支持的字符串与方法
 
 LiteOrm 在启动时通过 `LiteOrmLambdaHandlerInitializer` 注册了一批 Lambda 方法处理器，以下是实际支持的字符串方法（对照源码 `LiteOrm.Common/Initilizer/LiteOrmLambdaHandlerInitializer.cs`）：

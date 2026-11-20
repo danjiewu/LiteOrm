@@ -546,30 +546,16 @@ namespace LiteOrm.Common
                 return _expressionDetector.CanEvaluate(node) ? EvaluateToExpr(node) : ConvertInternal(node.Left).AsValue().IfNull(ConvertInternal(node.Right).AsValue());
             }
 
+            // 逻辑 AND/OR 单独处理，支持常量短路
+            if (node.NodeType is ExpressionType.AndAlso or ExpressionType.And or ExpressionType.OrElse or ExpressionType.Or)
+                return ConvertLogicBinary(node);
+
             var left = ConvertInternal(node.Left);
             var right = ConvertInternal(node.Right);
 
-            // 处理逻辑 AND/OR 及加法字符串连接重载
+            // 处理加法字符串连接重载
             switch (node.NodeType)
             {
-                case ExpressionType.AndAlso:
-                case ExpressionType.And:
-                    {
-                        var andLeft = left.AsLogic();
-                        var andRight = right.AsLogic();
-                        if (andLeft is null) return andRight!;
-                        if (andRight is null) return andLeft!;
-                        return andLeft.And(andRight);
-                    }
-                case ExpressionType.Or:
-                case ExpressionType.OrElse:
-                    {
-                        var orLeft = left.AsLogic();
-                        var orRight = right.AsLogic();
-                        if (orLeft is null) return orRight!;
-                        if (orRight is null) return orLeft!;
-                        return orLeft.Or(orRight);
-                    }
                 case ExpressionType.Add:
                     // 字符串拼接映射
                     if (node.Left.Type == typeof(string) || node.Right.Type == typeof(string))
@@ -613,6 +599,57 @@ namespace LiteOrm.Common
             }
         }
 
+        /// <summary>
+        /// 转换逻辑二元运算（AND / OR）。任一侧是编译期可确定的布尔常量时短路：
+        /// 常量已能决定结果时直接返回该结果，另一侧（死分支）不再解析；
+        /// 常量不影响结果时省略该侧，只解析另一侧。
+        /// </summary>
+        /// <param name="node">逻辑二元表达式节点</param>
+        /// <returns>转换后的逻辑表达式</returns>
+        private Expr ConvertLogicBinary(BinaryExpression node)
+        {
+            bool isAnd = node.NodeType is ExpressionType.AndAlso or ExpressionType.And;
+            // 能单独决定结果的常量：AND 遇到 false，OR 遇到 true
+            bool decisiveValue = !isAnd;
+
+            var left = ConvertInternal(node.Left);
+            if (left is null) return ConvertInternal(node.Right).AsLogic()!;
+            if (TryGetBoolConstant(left, out bool leftValue))
+            {
+                if (leftValue == decisiveValue) return Expr.Const(decisiveValue);
+                return ConvertInternal(node.Right).AsLogic()!;
+            }
+
+            var right = ConvertInternal(node.Right);
+            if (right is null) return left.AsLogic()!;
+            if (TryGetBoolConstant(right, out bool rightValue))
+            {
+                if (rightValue == decisiveValue) return Expr.Const(decisiveValue);
+                return left.AsLogic()!;
+            }
+
+            return isAnd
+                ? left.AsLogic()!.And(right.AsLogic()!)
+                : left.AsLogic()!.Or(right.AsLogic()!);
+        }
+
+        /// <summary>
+        /// 判断表达式是否为编译期已求值的布尔常量（含闭包变量等不依赖 Lambda 参数的值）。
+        /// </summary>
+        /// <param name="expr">待判断的表达式</param>
+        /// <param name="value">常量值，仅在返回 true 时有效</param>
+        /// <returns>是布尔常量时返回 true</returns>
+        private static bool TryGetBoolConstant(Expr? expr, out bool value)
+        {
+            if (expr is ValueExpr { Value: bool boolValue })
+            {
+                value = boolValue;
+                return true;
+            }
+            value = false;
+            return false;
+        }
+
         private Expr ConvertUnary(UnaryExpression node)
         {
             var operand = ConvertInternal(node.Operand);
@@ -650,10 +687,13 @@ namespace LiteOrm.Common
         /// <returns>转换后的 Expr 对象</returns>
         private Expr ConvertConditional(ConditionalExpression node)
         {
-            var test = ConvertInternal(node.Test).AsLogic();
+            var test = ConvertInternal(node.Test);
+            // 条件为编译期常量时只解析命中的分支，避免生成恒定的 CASE WHEN
+            if (TryGetBoolConstant(test, out bool testValue))
+                return ConvertInternal(testValue ? node.IfTrue : node.IfFalse).AsValue();
             var ifTrue = ConvertInternal(node.IfTrue).AsValue();
             var ifFalse = ConvertInternal(node.IfFalse).AsValue();
-            return Expr.If(test!, ifTrue, ifFalse);
+            return Expr.If(test.AsLogic()!, ifTrue, ifFalse);
         }
 
         /// <summary>

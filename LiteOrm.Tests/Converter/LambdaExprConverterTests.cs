@@ -556,6 +556,65 @@ namespace LiteOrm.Tests
         }
 
         [Fact]
+        public void Binary_AndAlso_CapturedFalse_ShortCircuitsToConstant()
+        {
+            bool enabled = false;
+            Expression<Func<TestUser, bool>> expr = u => enabled && u.Age > 18;
+            var result = LambdaExprConverter.ToLogicExpr(expr);
+
+            // 左侧常量 false 已决定结果，右侧分支不再参与解析
+            var binary = Assert.IsType<LogicBinaryExpr>(result);
+            Assert.Equal(false, Assert.IsType<ValueExpr>(binary.Left).Value);
+        }
+
+        [Fact]
+        public void Binary_AndAlso_CapturedTrue_OmitsConstantSide()
+        {
+            bool enabled = true;
+            Expression<Func<TestUser, bool>> expr = u => enabled && u.Age > 18;
+            var result = LambdaExprConverter.ToLogicExpr(expr);
+
+            // 常量 true 不影响结果，只保留右侧条件
+            var binary = Assert.IsType<LogicBinaryExpr>(result);
+            Assert.Equal("Age", Assert.IsType<PropertyExpr>(binary.Left).PropertyName);
+        }
+
+        [Fact]
+        public void Binary_OrElse_CapturedTrue_ShortCircuitsToConstant()
+        {
+            bool enabled = true;
+            Expression<Func<TestUser, bool>> expr = u => enabled || u.Age > 18;
+            var result = LambdaExprConverter.ToLogicExpr(expr);
+
+            // 左侧常量 true 已决定结果，右侧分支不再参与解析
+            var binary = Assert.IsType<LogicBinaryExpr>(result);
+            Assert.Equal(true, Assert.IsType<ValueExpr>(binary.Left).Value);
+        }
+
+        [Fact]
+        public void Binary_OrElse_CapturedFalse_OmitsConstantSide()
+        {
+            bool enabled = false;
+            Expression<Func<TestUser, bool>> expr = u => enabled || u.Age > 18;
+            var result = LambdaExprConverter.ToLogicExpr(expr);
+
+            // 常量 false 不影响结果，只保留右侧条件
+            var binary = Assert.IsType<LogicBinaryExpr>(result);
+            Assert.Equal("Age", Assert.IsType<PropertyExpr>(binary.Left).PropertyName);
+        }
+
+        [Fact]
+        public void Conditional_ConstantTest_ReturnsSelectedBranch()
+        {
+            bool positive = true;
+            Expression<Func<TestUser, int>> expr = u => positive ? u.Age : 0;
+            var result = LambdaExprConverter.ToValueExpr(expr);
+
+            // 条件为常量时直接返回命中分支，不再构造 CASE WHEN
+            Assert.Equal("Age", Assert.IsType<PropertyExpr>(result).PropertyName);
+        }
+
+        [Fact]
         public void Binary_AndAlso_NullBranch_ReturnsSingleSide()
         {
             // 用 null 作为一侧时，应直接返回另一侧（由 AsLogic(null) 返回 null，再经 And 处理）
