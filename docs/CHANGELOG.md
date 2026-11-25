@@ -1,5 +1,21 @@
 # 变更日志 (Changelog)
 
+## v8.2.3 (2026-11-25)
+
+### 新特性
+
+- **只读连接池独立配置**（`LiteOrm`）：新增 `ReadOnlyDAOContextPool`，只读库在 `ReadOnlyConfigs` 中可单独设置 `FailureLimit` / `Cooldown` 等连接池参数。
+
+### 改进
+
+- **Lambda 解析支持常量短路**（`LiteOrm.Common`）：`&&` / `||` 一侧为编译期常量时短路，`?:` 条件为常量时只解析命中分支，避免生成冗余 SQL。
+
+### 修复
+
+- **修复 PublishTrimmed 构建失败**（`LiteOrm.Common`）：`IQuerySourceExecutor<T>` 与 `QuerySourceExtensions.AsSource<T>` 补充 `DynamicallyAccessedMembers` 注解，与 `ObjectViewDAO<T>` 对齐，消除 DI 校验开放泛型注册注解不一致的问题。
+
+***
+
 ## v8.2.2 (2026-11-17)
 
 ### 破坏性变更

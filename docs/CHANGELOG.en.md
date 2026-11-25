@@ -1,5 +1,21 @@
 # Changelog
 
+## v8.2.3 (2026-11-25)
+
+### New Features
+
+- **Independently configurable read-only pools** (`LiteOrm`): added `ReadOnlyDAOContextPool`; each read-only replica can now set its own pool parameters such as `FailureLimit` / `Cooldown` under `ReadOnlyConfigs`.
+
+### Improvements
+
+- **Constant short-circuiting in Lambda conversion** (`LiteOrm.Common`): `&&` / `||` short-circuit when one side is a compile-time constant, and `?:` only converts the matching branch when its condition is constant, avoiding redundant SQL.
+
+### Fixes
+
+- **Fixed PublishTrimmed build failure** (`LiteOrm.Common`): `IQuerySourceExecutor<T>` and `QuerySourceExtensions.AsSource<T>` now carry `DynamicallyAccessedMembers` annotations aligned with `ObjectViewDAO<T>`, removing the DI validation error caused by inconsistent annotations on open generic registrations.
+
+***
+
 ## v8.2.2 (2026-11-17)
 
 ### Breaking Changes

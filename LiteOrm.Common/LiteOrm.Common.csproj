@@ -16,8 +16,9 @@
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
-      8.2.2:
-      - 函数 SQL 处理器委托增加 priority 参数，可按外层表达式优先级决定是否补括号；优先级常量已公开。
+      8.2.3:
+      - Lambda 解析增加常量短路逻辑：&& / || 一侧为常量、?: 条件为常量时只解析必要分支。
+      - 修复启用 PublishTrimmed 后开放泛型 DI 注册注解不一致导致的构建失败。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

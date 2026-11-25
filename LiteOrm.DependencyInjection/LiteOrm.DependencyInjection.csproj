@@ -19,8 +19,8 @@
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.DependencyInjection.nuget.md</PackageReadmeFile>
 		<PackageReleaseNotes>
-      8.2.2:
-      - 同步 LiteOrm 8.2.2 版本。
+      8.2.3:
+      - 同步 LiteOrm 8.2.3 版本。
     </PackageReleaseNotes>
 	</PropertyGroup>
 	<PropertyGroup>
