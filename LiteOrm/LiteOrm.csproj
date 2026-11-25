@@ -19,7 +19,7 @@
 <PackageReleaseNotes>
       8.2.3:
       - 新增 ReadOnlyDAOContextPool，只读库连接池可独立配置。
-      - Lambda 解析增加常量短路逻辑：&& / || 一侧为常量、?: 条件为常量时只解析必要分支。
+      - Lambda 解析增加常量短路逻辑：&amp;&amp; / || 一侧为常量、?: 条件为常量时只解析必要分支。
       - 修复启用 PublishTrimmed 后开放泛型 DI 注册注解不一致导致的构建失败。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
