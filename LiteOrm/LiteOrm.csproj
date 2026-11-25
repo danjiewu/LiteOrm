@@ -21,7 +21,12 @@
       - 新增 ReadOnlyDAOContextPool，只读库连接池可独立配置。
       - Lambda 解析增加常量短路逻辑：&& / || 一侧为常量、?: 条件为常量时只解析必要分支。
       - 修复启用 PublishTrimmed 后开放泛型 DI 注册注解不一致导致的构建失败。
-        </PackageReleaseNotes>
+      8.2.2:
+      - FunctionSqlHandler 增加 priority 参数（破坏性变更），用于按外层表达式优先级决定是否补括号；内置处理器已同步。
+      - 只读连接池连续失败后短暂跳过，全部不可用时回退主库；失败阈值与冷却可在 ReadOnlyConfigs 的 FailureLimit / Cooldown 中配置。
+      - 物化映射缓存改为有界 LRU，可通过 DataReaderConverter.SchemaCacheSize 调整。
+      - 新增 DAOContextPool.Warmup / WarmupAsync，可在启动阶段提前检查表结构。
+    </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
