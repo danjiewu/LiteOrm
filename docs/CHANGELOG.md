@@ -2,13 +2,18 @@
 
 ## v8.2.4 (2026-11-26)
 
+### 破坏性变更
+
+- **`LiteOrmCodeGenKind.None` 重命名为 `Default`**（`LiteOrm.Common`）：`Default`（0）与未声明等价，按 AOT 构建属性自动判定；原 `None` 需改用 `Default`。
+
 ### 新特性
 
-- **服务端请求拦截器**（`LiteOrm.Remote.Server`）：新增 `IRemoteInvocationInterceptor`，可在远程调用分发前插入认证、权限、审计等逻辑；在 DI 中注册即生效，支持短路请求并自定义 HTTP 状态码。文档新增基于拦截器的静态 Key 认证示例。
+- **服务端请求拦截器**（`LiteOrm.Remote.Server`）：新增 `IRemoteInvocationInterceptor`，可在远程调用分发前执行认证、权限、审计等逻辑，支持短路并自定义状态码。
+- **新增 `LiteOrmCodeGenKind.Never`**（`LiteOrm.Common`）：显式关闭源生成，AOT 构建下同样不生成；与其他位组合时优先。
 
 ### 修复
 
-- **消除 AOT/裁剪发布告警**（`LiteOrm.Common` / `LiteOrm.Generators`）：修复类型名称解析与源生成实体注册代码触发的 `IL2068` / `IL2110` / `IL2111` 修剪告警，`PublishTrimmed` / NativeAOT 发布不再输出这些告警。
+- **消除 AOT/裁剪发布告警**（`LiteOrm.Common` / `LiteOrm.Generators`）：修复 `IL2068` / `IL2110` / `IL2111` 修剪告警，`PublishTrimmed` / NativeAOT 发布不再输出。
 
 ***
 

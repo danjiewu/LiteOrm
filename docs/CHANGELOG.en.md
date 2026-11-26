@@ -2,13 +2,18 @@
 
 ## v8.2.4 (2026-11-26)
 
+### Breaking Changes
+
+- **`LiteOrmCodeGenKind.None` renamed to `Default`** (`LiteOrm.Common`): `Default` (0) behaves like the attribute not being declared, auto-detecting from AOT build properties; existing `None` usages must switch to `Default`.
+
 ### New Features
 
-- **Server-side request interceptors** (`LiteOrm.Remote.Server`): added `IRemoteInvocationInterceptor` to run authentication, authorization, auditing, and similar logic before remote dispatch. Register it in DI to take effect; interceptors can short-circuit a request with a custom HTTP status code. The docs now include a static-key authentication example built on interceptors.
+- **Server-side request interceptors** (`LiteOrm.Remote.Server`): added `IRemoteInvocationInterceptor` to run authentication, authorization, auditing, etc. before remote dispatch, with short-circuiting and a custom status code.
+- **Added `LiteOrmCodeGenKind.Never`** (`LiteOrm.Common`): explicitly disables source generation, even under an AOT build; takes precedence when combined with other flags.
 
 ### Fixes
 
-- **Removed AOT/trimming publish warnings** (`LiteOrm.Common` / `LiteOrm.Generators`): fixed the `IL2068` / `IL2110` / `IL2111` trim warnings triggered by type-name resolution and source-generated entity registration, so `PublishTrimmed` / NativeAOT publishes no longer report them.
+- **Removed AOT/trimming publish warnings** (`LiteOrm.Common` / `LiteOrm.Generators`): fixed the `IL2068` / `IL2110` / `IL2111` trim warnings, so `PublishTrimmed` / NativeAOT publishes no longer report them.
 
 ***
 

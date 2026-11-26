@@ -19,6 +19,7 @@
 <PackageReleaseNotes>
       8.2.4:
       - 消除 PublishTrimmed / NativeAOT 发布时的 IL2068、IL2110、IL2111 修剪告警。
+      - LiteOrmCodeGenKind.None 重命名为 Default（与未声明等价），新增 Never 显式关闭源生成。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

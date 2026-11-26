@@ -31,6 +31,8 @@ namespace LiteOrm.Generators
         private const string CodeGenAttributeFullTypeName = "LiteOrm.Common.LiteOrmCodeGenAttribute";
         // 与 LiteOrm.Common.LiteOrmCodeGenKind.AutoRegister = 1 << 4 对应。
         private const int Kind_AutoRegister = 1 << 4;
+        // 与 LiteOrm.Common.LiteOrmCodeGenKind.Never = 1 << 5 对应（显式关闭全部生成）。
+        private const int Kind_Never = 1 << 5;
 
         /// <summary>
         /// 与运行时 <see cref="LiteOrm.Common.RegisterPolicy"/> 数值一致。
@@ -144,7 +146,8 @@ namespace LiteOrm.Generators
 
         /// <summary>
         /// 读取当前编译单元声明的 <c>[assembly: LiteOrmCodeGen]</c> 要生成的内容掩码。
-        /// 无此特性返回 0；存在但未传构造参数时默认生成全部（含 AutoRegister 位）。
+        /// 无此特性或声明 <c>Default</c>（0）时返回 0（按 AOT 自动判定）；声明 <c>Never</c> 时返回 Never 位；
+        /// 存在但未传构造参数时默认生成全部（含 AutoRegister 位）。
         /// </summary>
         private static int GetConfiguredKinds(Compilation compilation)
         {
@@ -156,7 +159,9 @@ namespace LiteOrm.Generators
                     if (attr.ConstructorArguments.Length > 0 &&
                         attr.ConstructorArguments[0].Value is not null)
                     {
-                        return Convert.ToInt32(attr.ConstructorArguments[0].Value);
+                        int kinds = Convert.ToInt32(attr.ConstructorArguments[0].Value);
+                        // Never 优先：与其他位组合时统一归一到 Never，确保不生成任何内容。
+                        return (kinds & Kind_Never) != 0 ? Kind_Never : kinds;
                     }
                     // All（31）：与 LiteOrm.Common.LiteOrmCodeGenKind.All 一致。
                     return (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4);

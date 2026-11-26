@@ -32,6 +32,7 @@ namespace LiteOrm.Generators
         private const int Kind_DataReaderMappers = 1 << 1;    // DataReaderMappers = 2
         private const int Kind_PropertyAccessors = 1 << 2;    // PropertyAccessors = 4
         private const int Kind_AotTypeRegistration = 1 << 3;  // AotTypeRegistration = 8
+        private const int Kind_Never = 1 << 5;                 // Never = 32（显式关闭全部生成）
         // AutoRegister = 1 << 4 (16) 由 AutoRegisterGenerator 处理，实体管道不涉及。
         // AotTypeRegistration = 1 << 3 (8) 由独立管道（CompilationProvider + aotMode）处理，
         // 实体管道仅关心 TableInfo | DataReaderMappers | PropertyAccessors 三个实体相关位。
@@ -1652,7 +1653,8 @@ namespace LiteOrm.Generators
 
         /// <summary>
         /// 读取当前编译单元声明的 <c>[assembly: LiteOrmCodeGen]</c> 要生成的内容掩码。
-        /// 无此特性返回 0；存在但未传构造参数时默认生成全部（与 <see cref="LiteOrmCodeGenKind.All"/> 一致）。
+        /// 无此特性或声明 <c>Default</c>（0）时返回 0（按 AOT 自动判定）；声明 <c>Never</c> 时返回 Never 位；
+        /// 存在但未传构造参数时默认生成全部（与 <see cref="LiteOrmCodeGenKind.All"/> 一致）。
         /// </summary>
         private static int GetConfiguredKinds(Compilation compilation)
         {
@@ -1664,7 +1666,9 @@ namespace LiteOrm.Generators
                     if (attr.ConstructorArguments.Length > 0 &&
                         attr.ConstructorArguments[0].Value is not null)
                     {
-                        return Convert.ToInt32(attr.ConstructorArguments[0].Value);
+                        int kinds = Convert.ToInt32(attr.ConstructorArguments[0].Value);
+                        // Never 优先：与其他位组合时统一归一到 Never，确保不生成任何内容。
+                        return (kinds & Kind_Never) != 0 ? Kind_Never : kinds;
                     }
                     // All（31）：与 LiteOrm.Common.LiteOrmCodeGenKind.All 一致。
                     return (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4);
