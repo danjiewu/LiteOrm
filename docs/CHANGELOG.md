@@ -2,6 +2,10 @@
 
 ## v8.2.4 (2026-11-26)
 
+### 新特性
+
+- **服务端请求拦截器**（`LiteOrm.Remote.Server`）：新增 `IRemoteInvocationInterceptor`，可在远程调用分发前插入认证、权限、审计等逻辑；在 DI 中注册即生效，支持短路请求并自定义 HTTP 状态码。文档新增基于拦截器的静态 Key 认证示例。
+
 ### 修复
 
 - **消除 AOT/裁剪发布告警**（`LiteOrm.Common` / `LiteOrm.Generators`）：修复类型名称解析与源生成实体注册代码触发的 `IL2068` / `IL2110` / `IL2111` 修剪告警，`PublishTrimmed` / NativeAOT 发布不再输出这些告警。

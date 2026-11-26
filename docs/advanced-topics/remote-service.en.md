@@ -352,6 +352,8 @@ Two grant types are supported:
 | Password | `Password` (default) | `Username` + `Password` | Authenticating user identity with explicit credentials |
 | Client Credentials | `ClientCredentials` | `ClientId` + `ClientSecret` | Authenticating client/application identity without a specific user (e.g., service-to-service calls) |
 
+> If service-to-service calls only need a shared static key, you can skip the SignIn flow and validate it with a server-side request interceptor — see [5.9 Static Key Authentication](#59-static-key-authentication).
+
 ### 5.1 How It Works
 
 ```mermaid
@@ -763,6 +765,101 @@ builder.Services.AddRemoteServer(options =>
 // Configure your own authentication middleware
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...);
 ```
+
+### 5.8 Request Interceptors (`IRemoteInvocationInterceptor`)
+
+Besides ASP.NET Core middleware, the server also supports inserting interception logic **before remote invocation dispatch**. Register an `IRemoteInvocationInterceptor` in DI and the framework runs all interceptors in registration order for every Invoke request:
+
+```csharp
+public interface IRemoteInvocationInterceptor
+{
+    // Call next to continue with later interceptors and the final dispatch; skip it to short-circuit
+    Task InvokeAsync(RemoteInvocationContext context, Func<Task> next);
+}
+```
+
+`RemoteInvocationContext` exposes:
+
+| Member | Description |
+| ------ | ----------- |
+| `HttpContext` | Current HTTP request context; read headers, query string, etc. |
+| `Request` | Parsed `RemoteInvocationRequest` (service name, method, arguments) |
+| `Response` | Invocation response; can be read or replaced after `next` |
+| `StatusCode` | HTTP status code returned to the client (default 200) |
+| `Reject(statusCode, message, errorType?)` | Sets a failure response and status code; return immediately to short-circuit |
+
+```csharp
+/// <summary>Audit interceptor: logs every remote call's service and method.</summary>
+public sealed class AuditInterceptor : IRemoteInvocationInterceptor
+{
+    private readonly ILogger<AuditInterceptor> _logger;
+
+    public AuditInterceptor(ILogger<AuditInterceptor> logger) => _logger = logger;
+
+    public async Task InvokeAsync(RemoteInvocationContext context, Func<Task> next)
+    {
+        _logger.LogInformation("Remote call: {Service}.{Method}",
+            context.Request.ServiceName, context.Request.Method?.Name);
+        await next();
+    }
+}
+
+// Register (Singleton / Scoped / Transient are all supported)
+builder.Services.AddSingleton<IRemoteInvocationInterceptor, AuditInterceptor>();
+```
+
+> Interceptors run after the request has been parsed, so `ServiceName`, `Method`, and `Arguments` are available. Requests that fail JSON parsing never reach interceptors. Multiple interceptors run in DI registration order.
+
+### 5.9 Static Key Authentication
+
+Service-to-service calls often only need a shared static key, without user login or ticket issuance. In that case, skip `IRemoteAuthenticationHandler` and validate an agreed request header (such as `X-Api-Key`) in a request interceptor.
+
+**Server: implement and register the interceptor**
+
+```csharp
+using LiteOrm.Remote.Server;
+using Microsoft.AspNetCore.Http;
+
+/// <summary>Static key interceptor: validates the X-Api-Key request header.</summary>
+public sealed class ApiKeyInterceptor : IRemoteInvocationInterceptor
+{
+    private readonly string _apiKey;
+
+    public ApiKeyInterceptor(IConfiguration configuration)
+    {
+        _apiKey = configuration["LiteOrm:RemoteServer:ApiKey"]
+            ?? throw new InvalidOperationException("Missing LiteOrm:RemoteServer:ApiKey configuration.");
+    }
+
+    public async Task InvokeAsync(RemoteInvocationContext context, Func<Task> next)
+    {
+        if (!context.HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var key)
+            || !string.Equals(key, _apiKey, StringComparison.Ordinal))
+        {
+            context.Reject(StatusCodes.Status401Unauthorized, "Invalid or missing API key.");
+            return;
+        }
+
+        await next();
+    }
+}
+
+builder.Services.AddSingleton<IRemoteInvocationInterceptor, ApiKeyInterceptor>();
+builder.Services.AddRemoteServer();
+```
+
+**Client: attach the static key header**
+
+```csharp
+builder.Services.AddLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000");
+    opts.ConfigureHttpClient = client =>
+        client.DefaultRequestHeaders.Add("X-Api-Key", "your-static-key"); // Must match the server
+});
+```
+
+No `ICredentialsResolver` or `IRemoteAuthenticationHandler` is needed; every client call carries the header. In production, use HTTPS so the static key is not exposed in transit. For finer-grained control, the same interceptor can check `context.Request.ServiceName` / `Method` to enforce service- or method-level rules.
 
 ---
 

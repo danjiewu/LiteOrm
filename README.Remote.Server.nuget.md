@@ -68,6 +68,7 @@ That's it — interfaces marked with `[Service]` and registered in DI are now re
 ### Highlights
 
 - **Zero-Controller Exposure**: no need to write controllers per service; one endpoint dispatches all `[Service]` interfaces.
+- **Request Interceptors**: register `IRemoteInvocationInterceptor` in DI to authenticate, authorize, audit, or short-circuit requests before dispatch.
 - **Ticket-based Authentication**: implement `IRemoteAuthenticationHandler` or use the built-in `IdentityRemoteAuthenticationHandler<TUser>` (obtains `SignInManager<TUser>` from DI). The SignIn/SignOut endpoints are mapped automatically.
 - **Identity Write-back**: `ArgumentOutAttribute` + `IdentityArgumentOutHandler` return auto-generated identity values to the client automatically.
 - **DI-Integrated**: services are resolved from the ASP.NET Core DI container, so scoped services and transactions work as expected.
@@ -138,6 +139,7 @@ builder.Services.AddRemoteServer();
 ### 主要特性
 
 - **零 Controller 暴露**：无需为每个服务编写 Controller；单个端点分发所有 `[Service]` 接口。
+- **请求拦截器**：在 DI 中注册 `IRemoteInvocationInterceptor`，可在分发前完成认证、权限校验、审计或短路请求。
 - **票据身份认证**：实现 `IRemoteAuthenticationHandler` 或使用内置 `IdentityRemoteAuthenticationHandler<TUser>`（从 DI 获取 `SignInManager<TUser>`）。SignIn/SignOut 端点自动映射。
 - **标识值自动回写**：`ArgumentOutAttribute` + `IdentityArgumentOutHandler` 自动把生成的标识值返回给客户端。
 - **DI 集成**：服务从 ASP.NET Core DI 容器解析，作用域服务与事务行为符合预期。

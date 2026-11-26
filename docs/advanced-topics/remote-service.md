@@ -359,6 +359,8 @@ LiteOrm.Remote 使用 **`ICredentialsResolver`** **+** **`IRemoteAuthenticationH
 | 密码模式    | `Password`（默认）      | `Username` + `Password`     | 认证用户身份，有明确的用户名/密码        |
 | 客户端凭据模式 | `ClientCredentials` | `ClientId` + `ClientSecret` | 认证客户端/应用身份，无具体用户（如服务间调用） |
 
+> 服务间调用如果只需要一个约定的静态 Key，可跳过 SignIn 流程，直接通过服务端请求拦截器校验，见 [5.9 静态 Key 认证](#59-静态-key-认证)。
+
 ### 5.1 工作原理
 
 ```mermaid
@@ -773,6 +775,101 @@ builder.Services.AddRemoteServer(options =>
 // 自行配置认证中间件
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...);
 ```
+
+### 5.8 请求拦截器（`IRemoteInvocationInterceptor`）
+
+除 ASP.NET Core 中间件外，服务端还支持在**远程调用分发前**插入拦截逻辑。将 `IRemoteInvocationInterceptor` 注册到 DI 即可，框架在每个 Invoke 请求中按注册顺序执行所有拦截器：
+
+```csharp
+public interface IRemoteInvocationInterceptor
+{
+    // 调用 next 继续后续拦截器与最终分发；不调用即短路本次请求
+    Task InvokeAsync(RemoteInvocationContext context, Func<Task> next);
+}
+```
+
+`RemoteInvocationContext` 提供：
+
+| 成员 | 说明 |
+| ---- | ---- |
+| `HttpContext` | 当前 HTTP 请求上下文，可读取请求头、查询串等 |
+| `Request` | 已解析的 `RemoteInvocationRequest`（服务名、方法、参数） |
+| `Response` | 远程调用响应，可在 `next` 之后读取或替换 |
+| `StatusCode` | 返回给客户端的 HTTP 状态码，默认 200 |
+| `Reject(statusCode, message, errorType?)` | 设置失败响应与状态码，配合直接 `return` 短路请求 |
+
+```csharp
+/// <summary>审计日志拦截器：记录每次远程调用的服务与方法。</summary>
+public sealed class AuditInterceptor : IRemoteInvocationInterceptor
+{
+    private readonly ILogger<AuditInterceptor> _logger;
+
+    public AuditInterceptor(ILogger<AuditInterceptor> logger) => _logger = logger;
+
+    public async Task InvokeAsync(RemoteInvocationContext context, Func<Task> next)
+    {
+        _logger.LogInformation("Remote call: {Service}.{Method}",
+            context.Request.ServiceName, context.Request.Method?.Name);
+        await next();
+    }
+}
+
+// 注册（Singleton / Scoped / Transient 均可）
+builder.Services.AddSingleton<IRemoteInvocationInterceptor, AuditInterceptor>();
+```
+
+> 拦截器在请求解析成功后执行，因此可直接读取 `ServiceName`、`Method` 与 `Arguments`；JSON 解析失败的请求不会进入拦截器。多个拦截器按 DI 注册顺序执行。
+
+### 5.9 静态 Key 认证
+
+服务间调用通常只需要一个共享的静态 Key，无需用户登录与票据签发。此时可跳过 `IRemoteAuthenticationHandler`，在请求拦截器中校验约定请求头（如 `X-Api-Key`）。
+
+**服务端：实现并注册拦截器**
+
+```csharp
+using LiteOrm.Remote.Server;
+using Microsoft.AspNetCore.Http;
+
+/// <summary>静态 Key 认证拦截器：校验请求头 X-Api-Key。</summary>
+public sealed class ApiKeyInterceptor : IRemoteInvocationInterceptor
+{
+    private readonly string _apiKey;
+
+    public ApiKeyInterceptor(IConfiguration configuration)
+    {
+        _apiKey = configuration["LiteOrm:RemoteServer:ApiKey"]
+            ?? throw new InvalidOperationException("Missing LiteOrm:RemoteServer:ApiKey configuration.");
+    }
+
+    public async Task InvokeAsync(RemoteInvocationContext context, Func<Task> next)
+    {
+        if (!context.HttpContext.Request.Headers.TryGetValue("X-Api-Key", out var key)
+            || !string.Equals(key, _apiKey, StringComparison.Ordinal))
+        {
+            context.Reject(StatusCodes.Status401Unauthorized, "Invalid or missing API key.");
+            return;
+        }
+
+        await next();
+    }
+}
+
+builder.Services.AddSingleton<IRemoteInvocationInterceptor, ApiKeyInterceptor>();
+builder.Services.AddRemoteServer();
+```
+
+**客户端：附加静态 Key 请求头**
+
+```csharp
+builder.Services.AddLiteOrmRemote(opts =>
+{
+    opts.RemoteServiceUri = new Uri("http://localhost:5000");
+    opts.ConfigureHttpClient = client =>
+        client.DefaultRequestHeaders.Add("X-Api-Key", "your-static-key"); // 与服务端一致
+});
+```
+
+无需注册 `ICredentialsResolver` 与 `IRemoteAuthenticationHandler`，客户端每次调用都会携带该请求头。生产环境建议配合 HTTPS 使用，避免静态 Key 在传输中泄露；需要更细粒度权限时，可在同一拦截器中结合 `context.Request.ServiceName` / `Method` 做服务级或方法级校验。
 
 ***
 

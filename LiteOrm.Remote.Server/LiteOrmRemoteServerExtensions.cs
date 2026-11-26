@@ -117,6 +117,9 @@ namespace LiteOrm.Remote.Server
         /// 推荐使用内置 <see cref="IdentityRemoteAuthenticationHandler{TUser}"/>：
         /// <c>services.AddSingleton&lt;IRemoteAuthenticationHandler, IdentityRemoteAuthenticationHandler&lt;MyUser&gt;&gt;()</c>。
         /// </para>
+        /// <para>
+        /// 请求拦截器同样通过 DI 注册：<c>services.AddSingleton&lt;IRemoteInvocationInterceptor, MyInterceptor&gt;()</c>。
+        /// </para>
         /// </summary>
         /// <param name="services">服务集合。</param>
         /// <param name="configure">配置回调，用于设置端点路径和解析器。</param>
@@ -170,6 +173,10 @@ namespace LiteOrm.Remote.Server
         /// <para>
         /// 同时映射 <see cref="RemoteServerOptions.SignInPath"/> 端点：接收 <see cref="RemoteCredentials"/> JSON，
         /// 调用 <see cref="IRemoteAuthenticationHandler.SignInAsync"/> 签发身份票据返回。
+        /// </para>
+        /// <para>
+        /// 分发前会依次执行注册在 DI 中的 <see cref="IRemoteInvocationInterceptor"/>，
+        /// 可用于静态 Key 认证、权限校验、审计日志等；拦截器短路时直接返回其设置的响应。
         /// </para>
         /// </summary>
         /// <param name="endpoints">端点路由构建器。</param>
@@ -252,7 +259,24 @@ namespace LiteOrm.Remote.Server
                     return;
                 }
 
-                var response = await dispatcher.InvokeAsync(request, context.RequestAborted).ConfigureAwait(false);
+                // 执行拦截器管道，再由最终分发器调用服务方法
+                var invocationContext = new RemoteInvocationContext(context, request);
+                await InvokeWithInterceptorsAsync(invocationContext, dispatcher).ConfigureAwait(false);
+
+                // 拦截器可能已直接写入响应体
+                if (context.Response.HasStarted)
+                    return;
+
+                var response = invocationContext.Response;
+                if (response is null)
+                {
+                    invocationContext.Reject(
+                        StatusCodes.Status500InternalServerError,
+                        "Remote invocation was intercepted without producing a response.");
+                    response = invocationContext.Response!;
+                }
+
+                context.Response.StatusCode = invocationContext.StatusCode;
 
                 // 记录服务端返回的响应 JSON 报文（排障用）
                 var responseJson = JsonSerializer.Serialize(response, serializerOptions);
@@ -270,6 +294,36 @@ namespace LiteOrm.Remote.Server
             MapSignInEndpoint(endpoints, options);
 
             return endpoints;
+        }
+
+        /// <summary>
+        /// 按注册顺序执行所有 <see cref="IRemoteInvocationInterceptor"/>，末端调用
+        /// <see cref="RemoteServiceDispatcher.InvokeAsync"/> 并将结果写入
+        /// <see cref="RemoteInvocationContext.Response"/>。
+        /// </summary>
+        private static async Task InvokeWithInterceptorsAsync(
+            RemoteInvocationContext invocationContext,
+            RemoteServiceDispatcher dispatcher)
+        {
+            var interceptors = invocationContext.HttpContext.RequestServices
+                .GetServices<IRemoteInvocationInterceptor>()
+                .ToArray();
+
+            Func<Task> next = async () =>
+            {
+                invocationContext.Response = await dispatcher
+                    .InvokeAsync(invocationContext.Request, invocationContext.HttpContext.RequestAborted)
+                    .ConfigureAwait(false);
+            };
+
+            for (int i = interceptors.Length - 1; i >= 0; i--)
+            {
+                var interceptor = interceptors[i];
+                var inner = next;
+                next = () => interceptor.InvokeAsync(invocationContext, inner);
+            }
+
+            await next().ConfigureAwait(false);
         }
 
         /// <summary>
