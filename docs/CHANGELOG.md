@@ -1,5 +1,13 @@
 # 变更日志 (Changelog)
 
+## v8.2.4 (2026-11-26)
+
+### 修复
+
+- **消除 AOT/裁剪发布告警**（`LiteOrm.Common` / `LiteOrm.Generators`）：修复类型名称解析与源生成实体注册代码触发的 `IL2068` / `IL2110` / `IL2111` 修剪告警，`PublishTrimmed` / NativeAOT 发布不再输出这些告警。
+
+***
+
 ## v8.2.3 (2026-11-25)
 
 ### 新特性

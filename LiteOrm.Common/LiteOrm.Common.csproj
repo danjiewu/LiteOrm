@@ -2,11 +2,11 @@
   <PropertyGroup>
     <TargetFrameworks>net11.0;net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
     <RootNamespace>LiteOrm.Common</RootNamespace>
-    <AssemblyVersion>8.2.3.0</AssemblyVersion>
-    <FileVersion>8.2.3.0</FileVersion>
+    <AssemblyVersion>8.2.4.0</AssemblyVersion>
+    <FileVersion>8.2.4.0</FileVersion>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
-    <VersionPrefix>8.2.3</VersionPrefix>
+    <VersionPrefix>8.2.4</VersionPrefix>
     <Nullable>enable</Nullable>
     <Title>LiteOrm.Common</Title>
     <Authors>danjiewu</Authors>
@@ -16,9 +16,8 @@
     <PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
     <Description>LiteOrm 公共库：表达式树、SQL 片段、表元数据与公共特性，由 LiteOrm 包自动引用。</Description>
     <PackageReleaseNotes>
-      8.2.3:
-      - Lambda 解析增加常量短路逻辑：&amp;&amp; / || 一侧为常量、?: 条件为常量时只解析必要分支。
-      - 修复启用 PublishTrimmed 后开放泛型 DI 注册注解不一致导致的构建失败。
+      8.2.4:
+      - 消除 PublishTrimmed / NativeAOT 发布时的 IL2068、IL2110、IL2111 修剪告警。
     </PackageReleaseNotes>
     <RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

@@ -155,6 +155,8 @@ namespace LiteOrm.Common
             Justification = "Assembly.GetType is only called when RuntimeFeature.IsDynamicCodeSupported is true (JIT mode); under AOT the method returns null early.")]
         [UnconditionalSuppressMessage("Trimming", "IL2073",
             Justification = "Return type annotation requirements are only satisfied on the AOT path (pre-registered types preserve all members); the Type returned on the JIT path is naturally available via reflection.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2068",
+            Justification = "Types in _nameToType are registered via Register(name, [DynamicallyAccessedMembers(All)] Type), which already guarantees member preservation; the annotation is only lost through the dictionary out parameter here.")]
 #endif
         [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         private static Type? FindTypeCore(string typeName)

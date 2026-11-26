@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.2.4 (2026-11-26)
+
+### Fixes
+
+- **Removed AOT/trimming publish warnings** (`LiteOrm.Common` / `LiteOrm.Generators`): fixed the `IL2068` / `IL2110` / `IL2111` trim warnings triggered by type-name resolution and source-generated entity registration, so `PublishTrimmed` / NativeAOT publishes no longer report them.
+
+***
+
 ## v8.2.3 (2026-11-25)
 
 ### New Features
