@@ -65,6 +65,11 @@ namespace LiteOrm.Service
         protected ObjectDAO<T> ObjectDAO { get; }
 
         /// <summary>
+        /// 获取服务提供程序，供派生类解析其他依赖。
+        /// </summary>
+        protected IServiceProvider ServiceProvider { get; }
+
+        /// <summary>
         /// 事件订阅者集合的惰性持有者。
         /// </summary>
         /// <remarks>
@@ -82,8 +87,9 @@ namespace LiteOrm.Service
         public EntityService(IServiceProvider serviceProvider)
             : base(serviceProvider)
         {
-            ObjectDAO = serviceProvider.GetRequiredService<ObjectDAO<T>>();
-            _eventListeners = new Lazy<IReadOnlyList<IEntityServiceEvent<T>>>(() => ResolveEventListeners(serviceProvider));
+            ServiceProvider = serviceProvider;
+            ObjectDAO = ServiceProvider.GetRequiredService<ObjectDAO<T>>();
+            _eventListeners = new Lazy<IReadOnlyList<IEntityServiceEvent<T>>>(() => ResolveEventListeners(ServiceProvider));
         }
 
         #region Event Notification
