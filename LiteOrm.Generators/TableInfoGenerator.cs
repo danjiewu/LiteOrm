@@ -156,6 +156,13 @@ namespace LiteOrm.Generators
             }
             var resolved = symbols.Value;
 
+            // 仅引用 LiteOrm.Common（未引用核心库）时，跳过依赖核心库类型的 DataReaderMappers，
+            // 保证公共库也能使用源生成且生成代码不引用核心库。
+            if (!resolved.HasReaderCore)
+                enabledKinds &= ~Kind_DataReaderMappers;
+            if (enabledKinds == 0)
+                return;
+
             // 收集每个实体的元数据描述
             var entityInfos = new List<EntityInfo>(distinctEntities.Count);
             foreach (var entity in distinctEntities)
@@ -218,6 +225,7 @@ namespace LiteOrm.Generators
             INamedTypeSymbol TableView,
             INamedTypeSymbol TableInfoProvider,
             INamedTypeSymbol? DataReaderConverter,
+            INamedTypeSymbol? AutoLockDataReader,
             INamedTypeSymbol PropertyAccessorExtension,
             INamedTypeSymbol SqlColumn,
             INamedTypeSymbol? JoinedTable,
@@ -232,7 +240,13 @@ namespace LiteOrm.Generators
             INamedTypeSymbol? TypeResolverHelper,
             INamedTypeSymbol? DisplayNameAttribute,
             INamedTypeSymbol? DescriptionAttribute
-        );
+        )
+        {
+            /// <summary>
+            /// 核心库（LiteOrm）是否可用：DataReader 映射同时依赖 DataReaderConverter 与 AutoLockDataReader。
+            /// </summary>
+            public bool HasReaderCore => DataReaderConverter != null && AutoLockDataReader != null;
+        }
 
         private static ResolvedSymbols? ResolveSymbols(Compilation compilation)
         {
@@ -246,6 +260,7 @@ namespace LiteOrm.Generators
             var tableView = compilation.GetTypeByMetadataName("LiteOrm.Common.TableView");
             var provider = compilation.GetTypeByMetadataName("LiteOrm.Common.TableInfoProvider");
             var drConverter = compilation.GetTypeByMetadataName("LiteOrm.DataReaderConverter");
+            var autoLockReader = compilation.GetTypeByMetadataName("LiteOrm.AutoLockDataReader");
             var propExt = compilation.GetTypeByMetadataName("PropertyAccessorExtension");
             var sqlColumn = compilation.GetTypeByMetadataName("LiteOrm.Common.SqlColumn");
             var joinedTable = compilation.GetTypeByMetadataName("LiteOrm.Common.JoinedTable");
@@ -268,7 +283,7 @@ namespace LiteOrm.Generators
 
             return new ResolvedSymbols(
                 tableAttr, columnAttr!, foreignColumnAttr, tableJoinAttr, foreignTypeAttr, tableDef, colDef, tableView, provider,
-                drConverter, propExt, sqlColumn, joinedTable, columnRef, foreignTable,
+                drConverter, autoLockReader, propExt, sqlColumn, joinedTable, columnRef, foreignTable,
                 dbType, columnMode, commonTableInfoProvider, tableInfo, columnInfo,
                 enumUtil, typeResolverHelper, displayNameAttr, descriptionAttr
             );
@@ -1082,8 +1097,8 @@ namespace LiteOrm.Generators
             foreach (var e in entities)
             {
                 if (e.Columns.Count == 0) continue;
-                if (symbols.DataReaderConverter != null)
-                    sb.AppendLine($"            DataReaderConverter.RegisterMapper<{e.FullName}>({e.SafeName}_Mapper);");
+                // 核心库可用性已由 GenerateAll 的掩码保证（HasReaderCore）。
+                sb.AppendLine($"            DataReaderConverter.RegisterMapper<{e.FullName}>({e.SafeName}_Mapper);");
             }
 
             sb.AppendLine("        }");

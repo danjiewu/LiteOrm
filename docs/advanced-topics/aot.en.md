@@ -55,6 +55,7 @@ Four points deserve their own paragraph:
 
 - The source generator only looks at build properties: `IsAotCompatible`, `PublishAot`, `PublishTrimmed` or `IsTrimmable` set to `true` each trigger generation on their own; you do not have to wait for `dotnet publish`. Non-AOT builds generate nothing and fall back to the runtime reflection path.
 - The generator ships inside `LiteOrm.Common` (`analyzers/dotnet/cs`), so a NuGet reference to `LiteOrm` or `LiteOrm.Common` brings it in automatically. No hand-written `ProjectReference` is needed. The explicit reference in `LiteOrm.AotDemo` exists so the generator project can be compiled straight from the source tree.
+- When only `LiteOrm.Common` is referenced (without the core library), the generator skips the core-dependent `DataReaderMappers`; table metadata and property accessors are still generated, and reading falls back to the reflection path.
 - `EmitCompilerGeneratedFiles` is a debugging aid that writes generated code to disk for inspection; drop it for release builds.
 
 ## What the Source Generator Provides at Compile Time

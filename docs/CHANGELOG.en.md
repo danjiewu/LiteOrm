@@ -1,5 +1,13 @@
 # Changelog
 
+## v8.2.5 (2026-11-27)
+
+### Fixes
+
+- **No core-dependent code when only `LiteOrm.Common` is referenced** (`LiteOrm.Generators`): `DataReaderMappers` are skipped without the core library, while table metadata and property accessors are still generated.
+
+***
+
 ## v8.2.4 (2026-11-26)
 
 ### Breaking Changes

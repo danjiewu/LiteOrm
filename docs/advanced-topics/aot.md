@@ -56,6 +56,7 @@ flowchart TB
 
 - 源生成器只认构建属性：`IsAotCompatible`、`PublishAot`、`PublishTrimmed`、`IsTrimmable` 任意一个为 `true` 都会触发生成，不必等到 `dotnet publish`。非 AOT 构建不生成代码，走反射路径。
 - 生成器由 `LiteOrm.Common` 打包（`analyzers/dotnet/cs`）。NuGet 方式引用 `LiteOrm` 或 `LiteOrm.Common` 即自动带入，不需要手写 `ProjectReference`。`LiteOrm.AotDemo` 里那条显式引用，是为了在源码树内直接编译生成器工程。
+- 仅引用 `LiteOrm.Common`、未引用核心库时，生成器不产出依赖核心库的 `DataReaderMappers`，表元数据与属性访问器照常生成，读取走反射兜底路径。
 - `EmitCompilerGeneratedFiles` 只影响调试，用来把生成代码落到磁盘上核对，发布时可以去掉。
 
 ## 源生成器在编译期提供的能力

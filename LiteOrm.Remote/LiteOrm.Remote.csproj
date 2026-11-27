@@ -6,12 +6,12 @@
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Description>LiteOrm 远程服务调用</Description>
-    <AssemblyVersion>8.2.4.0</AssemblyVersion>
-    <FileVersion>8.2.4.0</FileVersion>
-    <VersionPrefix>8.2.4</VersionPrefix>
+    <AssemblyVersion>8.2.5.0</AssemblyVersion>
+    <FileVersion>8.2.5.0</FileVersion>
+    <VersionPrefix>8.2.5</VersionPrefix>
     <PackageReleaseNotes>
-      8.2.4:
-      - 同步 LiteOrm 8.2.4 版本。
+      8.2.5:
+      - 同步 LiteOrm 8.2.5 版本。
     </PackageReleaseNotes>
     <PackageProjectUrl>https://danjiewu.github.io/LiteOrm</PackageProjectUrl>
     <PackageIcon>icon.png</PackageIcon>

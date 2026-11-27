@@ -2,12 +2,12 @@
 
 	<PropertyGroup>
 		<RootNamespace>LiteOrm</RootNamespace>
-		<AssemblyVersion>8.2.4.0</AssemblyVersion>
-		<FileVersion>8.2.4.0</FileVersion>
+		<AssemblyVersion>8.2.5.0</AssemblyVersion>
+		<FileVersion>8.2.5.0</FileVersion>
 		<TargetFrameworks>net11.0;net10.0;net8.0;netstandard2.1;netstandard2.0;</TargetFrameworks>
 		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<VersionPrefix>8.2.4</VersionPrefix>
+		<VersionPrefix>8.2.5</VersionPrefix>
 		<Nullable>enable</Nullable>
 		<Title>LiteOrm</Title>
 		<Authors>danjiewu</Authors>
@@ -17,9 +17,8 @@
 		<PackageReadmeFile>README.nuget.md</PackageReadmeFile>
 		<PackageTags>orm;sql;oracle;mysql;sql server;sqlite</PackageTags>
 <PackageReleaseNotes>
-      8.2.4:
-      - 消除 PublishTrimmed / NativeAOT 发布时的 IL2068、IL2110、IL2111 修剪告警。
-      - LiteOrmCodeGenKind.None 重命名为 Default（与未声明等价），新增 Never 显式关闭源生成。
+      8.2.5:
+      - 仅引用 LiteOrm.Common 时不再生成依赖核心库的 DataReaderMappers，表元数据与属性访问器照常生成。
     </PackageReleaseNotes>
 		<Copyright>Copyright @ 2026 danjiewu</Copyright>
 		<RepositoryUrl>https://github.com/danjiewu/LiteOrm.git</RepositoryUrl>

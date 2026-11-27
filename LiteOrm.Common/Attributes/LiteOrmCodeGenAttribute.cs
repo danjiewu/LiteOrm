@@ -27,7 +27,7 @@ namespace LiteOrm.Common
         Default = 0,
         /// <summary>TableInfo 注册器（实体/视图表元数据及类型名、枚举映射）。</summary>
         TableInfo = 1 << 0,
-        /// <summary>DataReader 映射器（实体映射委托与转换器字段）。</summary>
+        /// <summary>DataReader 映射器（实体映射委托与转换器字段）。依赖 LiteOrm 核心程序集（AutoLockDataReader / DataReaderConverter），仅引用 LiteOrm.Common 时自动跳过。</summary>
         DataReaderMappers = 1 << 1,
         /// <summary>属性访问器（PropertyAccessor 委托）。</summary>
         PropertyAccessors = 1 << 2,
