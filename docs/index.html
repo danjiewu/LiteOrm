@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LiteOrm — 轻量级高性能 .NET ORM 框架</title>
-<meta name="description" content="LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，结合微 ORM 的速度与完整 ORM 的功能性。性能接近原生 Dapper，远超 EF Core，支持 11 种数据库。">
+<title data-i18n="page.title">LiteOrm — 轻量级高性能 .NET ORM 框架</title>
+<meta name="description" content="LiteOrm 是一个轻量级、高性能的 .NET ORM 框架，结合微 ORM 的速度与完整 ORM 的功能性。性能接近原生 Dapper，远超 EF Core，支持 11 种数据库。" data-i18n-content="page.description">
 <link rel="icon" href="./assets/logo/favicon.ico" sizes="48x48">
 <link rel="icon" href="./assets/logo/logo-mark.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="./assets/logo/logo-mark-256.png">
-<meta property="og:title" content="LiteOrm — 轻量级高性能 .NET ORM 框架">
-<meta property="og:description" content="微 ORM 的速度 × 完整 ORM 的能力。1 万条插入 178ms，内存分配仅为竞品 1/3，支持 11 种数据库。">
+<meta property="og:title" content="LiteOrm — 轻量级高性能 .NET ORM 框架" data-i18n-content="page.ogTitle">
+<meta property="og:description" content="微 ORM 的速度 × 完整 ORM 的能力。1 万条插入 178ms，内存分配仅为竞品 1/3，支持 11 种数据库。" data-i18n-content="page.ogDescription">
 <meta property="og:type" content="website">
 <meta property="og:image" content="./assets/logo/logo-mark-512.png">
 <style>
@@ -44,6 +44,8 @@ img{max-width:100%}
 .nav-github{display:flex;align-items:center;gap:8px;color:var(--text-2);font-size:14.5px}
 .nav-github:hover{color:var(--text-1);text-decoration:none}
 .nav-github svg{fill:currentColor}
+.lang-toggle{display:inline-flex;align-items:center;justify-content:center;min-width:40px;font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--text-2);background:rgba(17,30,51,.4);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer;transition:color .15s,border-color .15s}
+.lang-toggle:hover{color:var(--cyan);border-color:var(--cyan)}
 
 .hero{position:relative;overflow:hidden;padding:96px 0 72px}
 .hero-bg{position:absolute;inset:0;pointer-events:none}
@@ -152,6 +154,7 @@ table.bench .best{color:#34D399;font-weight:700}
 .db-name{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--text-1)}
 .db-desc{font-size:12.5px;color:var(--text-3)}
 .db-chip.domestic::after{content:'国产';position:absolute;top:-9px;right:12px;font-size:11px;color:#04121F;background:var(--grad);border-radius:4px;padding:1px 8px;font-weight:700}
+html[lang="en"] .db-chip.domestic::after{content:'CN'}
 .db-note{margin-top:24px;font-size:13.5px;color:var(--text-3)}
 
 .docs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
@@ -211,23 +214,24 @@ table.bench .best{color:#34D399;font-weight:700}
 
 <header class="nav">
   <div class="container nav-inner">
-    <a class="nav-logo" href="./" aria-label="LiteOrm 首页">
+    <a class="nav-logo" href="./" aria-label="LiteOrm 首页" data-i18n-aria-label="nav.home">
       <img class="nav-icon" src="./assets/logo/logo-mark.svg" alt="" width="38" height="38">
       <span>Lite<span class="brand-orm">Orm</span></span>
     </a>
-    <nav class="nav-links" aria-label="主导航">
-      <a href="#features">特性</a>
-      <a href="#query">查询方式</a>
-      <a href="#benchmark">性能</a>
-      <a href="#databases">数据库</a>
-      <a href="#docs">文档</a>
+    <nav class="nav-links" aria-label="主导航" data-i18n-aria-label="nav.main">
+      <a href="#features" data-i18n="nav.features">特性</a>
+      <a href="#query" data-i18n="nav.query">查询方式</a>
+      <a href="#benchmark" data-i18n="nav.benchmark">性能</a>
+      <a href="#databases" data-i18n="nav.databases">数据库</a>
+      <a href="#docs" data-i18n="nav.docs">文档</a>
     </nav>
     <div class="nav-cta">
+      <button class="lang-toggle" id="langToggle" type="button" aria-label="Switch to English">EN</button>
       <a class="nav-github" href="https://github.com/danjiewu/LiteOrm" target="_blank" rel="noopener">
         <svg width="19" height="19" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
         GitHub
       </a>
-      <a class="btn btn-primary" style="padding:8px 18px;font-size:14px" href="./getting-started/first-example-di.md">快速开始</a>
+      <a class="btn btn-primary" style="padding:8px 18px;font-size:14px" href="./getting-started/first-example-di.md" data-en-href="./getting-started/first-example-di.en.md" data-i18n="cta.getStarted">快速开始</a>
     </div>
   </div>
 </header>
@@ -253,33 +257,33 @@ table.bench .best{color:#34D399;font-weight:700}
   </div>
   <div class="container hero-inner">
     <div>
-      <span class="hero-badge"><span class="dot" aria-hidden="true"></span>v8.2.4 现已发布 · 支持 .NET 11 / NativeAOT</span>
-      <h1>轻如无物<span class="grad-text">，快如闪电</span></h1>
-      <p class="hero-sub">LiteOrm 是一个<strong>轻量级、高性能的 .NET ORM 框架</strong>——微 ORM 的执行效率，完整 ORM 的易用性。适合对性能敏感且需要灵活处理复杂 SQL 的业务场景。</p>
+      <span class="hero-badge"><span class="dot" aria-hidden="true"></span><span data-i18n="hero.badge">v8.2.4 现已发布 · 支持 .NET 11 / NativeAOT</span></span>
+      <h1 data-i18n="hero.title">轻如无物<span class="grad-text">，快如闪电</span></h1>
+      <p class="hero-sub" data-i18n="hero.sub">LiteOrm 是一个<strong>轻量级、高性能的 .NET ORM 框架</strong>——微 ORM 的执行效率，完整 ORM 的易用性。适合对性能敏感且需要灵活处理复杂 SQL 的业务场景。</p>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="./getting-started/first-example-di.md">
-          快速开始
+        <a class="btn btn-primary" href="./getting-started/first-example-di.md" data-en-href="./getting-started/first-example-di.en.md">
+          <span data-i18n="cta.getStarted">快速开始</span>
           <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M1 8h12.5L9 3.5 10.5 2 16 8l-5.5 6L9 12.5l4.5-4.5H1z"/></svg>
         </a>
         <a class="btn btn-ghost" href="https://github.com/danjiewu/LiteOrm" target="_blank" rel="noopener">
           <svg width="17" height="17" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg>
-          GitHub 星标
+          <span data-i18n="cta.star">GitHub 星标</span>
         </a>
       </div>
       <div class="install">
         <span class="ps1" aria-hidden="true">❯</span>
         <span class="cmd">dotnet add package <span class="pkg">LiteOrm</span></span>
-        <button class="copy-btn" id="copyBtn" aria-label="复制安装命令" title="复制安装命令">
+        <button class="copy-btn" id="copyBtn" aria-label="复制安装命令" title="复制安装命令" data-i18n-aria-label="hero.copy" data-i18n-title="hero.copy">
           <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg>
         </button>
       </div>
     </div>
-    <div class="terminal" role="img" aria-label="LiteOrm 代码示例：定义实体、查询并生成参数化 SQL">
+    <div class="terminal" role="img" aria-label="LiteOrm 代码示例：定义实体、查询并生成参数化 SQL" data-i18n-aria-label="hero.terminalAria">
       <div class="terminal-bar" aria-hidden="true">
         <span class="tdot tdot-r"></span><span class="tdot tdot-y"></span><span class="tdot tdot-g"></span>
         <span class="terminal-title">Program.cs</span>
       </div>
-      <div class="terminal-body"><pre style="font-family:inherit;margin:0"><code><span class="tok-cm">// 1. 定义实体，特性即映射</span>
+      <div class="terminal-body"><pre style="font-family:inherit;margin:0"><code><span class="tok-cm" data-i18n="code.comment1">// 1. 定义实体，特性即映射</span>
 <span class="tok-kw">[</span><span class="tok-ty">Table</span><span class="tok-pn">(</span><span class="tok-str">"Users"</span><span class="tok-pn">)]</span>
 <span class="tok-kw">public class</span> <span class="tok-ty">User</span>
 <span class="tok-pn">{</span>
@@ -291,29 +295,29 @@ table.bench .best{color:#34D399;font-weight:700}
     <span class="tok-kw">public int</span> Age <span class="tok-pn">{</span> <span class="tok-kw">get</span><span class="tok-pn">;</span> <span class="tok-kw">set</span><span class="tok-pn">;</span> <span class="tok-pn">}</span>
 <span class="tok-pn">}</span>
 
-<span class="tok-cm">// 2. 一行注册，一行查询</span>
+<span class="tok-cm" data-i18n="code.comment2">// 2. 一行注册，一行查询</span>
 builder<span class="tok-pn">.</span>Host<span class="tok-pn">.</span><span class="tok-api">RegisterLiteOrm</span><span class="tok-pn">();</span>
 
 <span class="tok-kw">var</span> adults <span class="tok-pn">=</span> <span class="tok-kw">await</span> userService<span class="tok-pn">.</span><span class="tok-api">SearchAsync</span><span class="tok-pn">(</span>
     u <span class="tok-pn">=&gt;</span> u<span class="tok-pn">.</span>Age <span class="tok-pn">&gt;=</span> <span class="tok-num">18</span> <span class="tok-pn">&amp;&amp;</span> u<span class="tok-pn">.</span>UserName<span class="tok-pn">!.</span><span class="tok-fn">StartsWith</span><span class="tok-pn">(</span><span class="tok-str">"A"</span><span class="tok-pn">));</span>
 
 <hr class="divider">
-<span class="terminal-out-label">生成 SQL</span>
+<span class="terminal-out-label" data-i18n="code.sqlLabel">生成 SQL</span>
 <span class="tok-sql-kw">SELECT</span> [T0]<span class="tok-pn">.</span>[Id]<span class="tok-pn">,</span> [T0]<span class="tok-pn">.</span>[UserName]<span class="tok-pn">,</span> [T0]<span class="tok-pn">.</span>[Age]
 <span class="tok-sql-kw">FROM</span> [Users] [T0]
 <span class="tok-sql-kw">WHERE</span> [T0]<span class="tok-pn">.</span>[Age] <span class="tok-sql-kw">&gt;=</span> @0 <span class="tok-sql-kw">AND</span> [T0]<span class="tok-pn">.</span>[UserName] <span class="tok-sql-kw">LIKE</span> @1
-<span class="tok-cm">-- 全程参数化，杜绝 SQL 注入</span></code></pre></div>
+<span class="tok-cm" data-i18n="code.comment3">-- 全程参数化，杜绝 SQL 注入</span></code></pre></div>
     </div>
   </div>
 </div>
 
 <div class="stats">
   <div class="container stats-inner">
-    <div class="stat"><span class="stat-v">178<span class="unit">ms</span></span><span class="stat-l">插入 1 万条</span></div>
-    <div class="stat"><span class="stat-v">1/3</span><span class="stat-l">内存分配仅为竞品均值</span></div>
-    <div class="stat"><span class="stat-v">11<span class="unit">种</span></span><span class="stat-l">数据库方言</span></div>
-    <div class="stat"><span class="stat-v">AOT</span><span class="stat-l">NativeAOT / Trim 兼容</span></div>
-    <div class="stat"><span class="stat-v">.NET 8+</span><span class="stat-l">兼容 Framework 4.6.1+</span></div>
+    <div class="stat"><span class="stat-v">178<span class="unit">ms</span></span><span class="stat-l" data-i18n="stat.inserts">插入 1 万条</span></div>
+    <div class="stat"><span class="stat-v">1/3</span><span class="stat-l" data-i18n="stat.memory">内存分配仅为竞品均值</span></div>
+    <div class="stat"><span class="stat-v">11<span class="unit" data-i18n="stat.unit">种</span></span><span class="stat-l" data-i18n="stat.dialects">数据库方言</span></div>
+    <div class="stat"><span class="stat-v">AOT</span><span class="stat-l" data-i18n="stat.aotDesc">NativeAOT / Trim 兼容</span></div>
+    <div class="stat"><span class="stat-v">.NET 8+</span><span class="stat-l" data-i18n="stat.netDesc">兼容 Framework 4.6.1+</span></div>
   </div>
 </div>
 
@@ -321,39 +325,39 @@ builder<span class="tok-pn">.</span>Host<span class="tok-pn">.</span><span class
   <div class="container">
     <div class="sec-head">
       <div class="sec-tag">Features</div>
-      <h2>为什么选择 LiteOrm</h2>
-      <p>兼顾微型 ORM 的执行效率和完整 ORM 的易用性——不隐藏 SQL，也不强迫你手写 SQL。</p>
+      <h2 data-i18n="features.title">为什么选择 LiteOrm</h2>
+      <p data-i18n="features.desc">兼顾微型 ORM 的执行效率和完整 ORM 的易用性——不隐藏 SQL，也不强迫你手写 SQL。</p>
     </div>
     <div class="grid-3">
       <div class="card">
         <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg></div>
-        <h3>极速性能</h3>
-        <p>性能接近原生 Dapper，远超 EF Core。批量插入、更新、关联查询全面领先，内存分配最小。</p>
+        <h3 data-i18n="card.speed.title">极速性能</h3>
+        <p data-i18n="card.speed.desc">性能接近原生 Dapper，远超 EF Core。批量插入、更新、关联查询全面领先，内存分配最小。</p>
       </div>
       <div class="card">
         <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3M8 12h8M12 8v8"/></svg></div>
-        <h3>三种查询方式</h3>
-        <p><code>Lambda</code>、<code>Expr</code>、<code>ExprString</code> 自由混用：强类型过滤、动态条件拼装、DAO 层手写 SQL 片段各得其所。</p>
+        <h3 data-i18n="card.query.title">三种查询方式</h3>
+        <p data-i18n="card.query.desc"><code>Lambda</code>、<code>Expr</code>、<code>ExprString</code> 自由混用：强类型过滤、动态条件拼装、DAO 层手写 SQL 片段各得其所。</p>
       </div>
       <div class="card">
         <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 7.5 16 16.5M8 16.5 16 7.5"/></svg></div>
-        <h3>自动关联查询</h3>
-        <p>通过 <code>[ForeignType]</code> / <code>[TableJoin]</code> 特性声明关联，无需手写 JOIN，<code>ExistsRelated</code> 一键按关联表过滤。</p>
+        <h3 data-i18n="card.join.title">自动关联查询</h3>
+        <p data-i18n="card.join.desc">通过 <code>[ForeignType]</code> / <code>[TableJoin]</code> 特性声明关联，无需手写 JOIN，<code>ExistsRelated</code> 一键按关联表过滤。</p>
       </div>
       <div class="card">
         <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 3v18M5 8l7-5 7 5M5 3h4M15 3h4"/><circle cx="12" cy="21" r="1.5"/></svg></div>
-        <h3>声明式事务</h3>
-        <p><code>[Transaction]</code> 特性实现 AOP 事务管理，支持嵌套与回滚，业务代码零侵入。</p>
+        <h3 data-i18n="card.tx.title">声明式事务</h3>
+        <p data-i18n="card.tx.desc"><code>[Transaction]</code> 特性实现 AOP 事务管理，支持嵌套与回滚，业务代码零侵入。</p>
       </div>
       <div class="card">
         <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="2.5"/><path d="M4 5v14c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5V5M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/></svg></div>
-        <h3>11 种数据库方言</h3>
-        <p>SQL Server、MySQL、Oracle、PostgreSQL、SQLite，内置达梦、金仓、GaussDB、OceanBase、TiDB、GreatDB 国产数据库支持。</p>
+        <h3 data-i18n="card.db.title">11 种数据库方言</h3>
+        <p data-i18n="card.db.desc">SQL Server、MySQL、Oracle、PostgreSQL、SQLite，内置达梦、金仓、GaussDB、OceanBase、TiDB、GreatDB 国产数据库支持。</p>
       </div>
       <div class="card">
         <div class="card-icon"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/><circle cx="19" cy="12" r="2.5"/></svg></div>
-        <h3>分表与读写分离</h3>
-        <p><code>IArged</code> 接口支持分表路由，多数据源与只读副本开箱即用，中大型系统的常规需求全覆盖。</p>
+        <h3 data-i18n="card.shard.title">分表与读写分离</h3>
+        <p data-i18n="card.shard.desc"><code>IArged</code> 接口支持分表路由，多数据源与只读副本开箱即用，中大型系统的常规需求全覆盖。</p>
       </div>
     </div>
   </div>
@@ -363,34 +367,34 @@ builder<span class="tok-pn">.</span>Host<span class="tok-pn">.</span><span class
   <div class="container">
     <div class="sec-head">
       <div class="sec-tag">Query</div>
-      <h2>同一查询，三种写法</h2>
-      <p>三种方式最终都生成参数化 SQL。Lambda 最直观，Expr 适合动态拼装，ExprString 留给需要精确控制 SQL 的 DAO 层。</p>
+      <h2 data-i18n="query.title">同一查询，三种写法</h2>
+      <p data-i18n="query.desc">三种方式最终都生成参数化 SQL。Lambda 最直观，Expr 适合动态拼装，ExprString 留给需要精确控制 SQL 的 DAO 层。</p>
     </div>
     <div class="code-tabs">
-      <div class="tabs-bar" role="tablist" aria-label="查询方式切换">
+      <div class="tabs-bar" role="tablist" aria-label="查询方式切换" data-i18n-aria-label="query.tabs">
         <button class="tab-btn" role="tab" id="tab-lambda" aria-controls="panel-lambda" aria-selected="true">Lambda</button>
         <button class="tab-btn" role="tab" id="tab-expr" aria-controls="panel-expr" aria-selected="false">Expr</button>
         <button class="tab-btn" role="tab" id="tab-exprstring" aria-controls="panel-exprstring" aria-selected="false">ExprString</button>
       </div>
-      <div class="tab-panel active" role="tabpanel" id="panel-lambda" aria-labelledby="tab-lambda"><pre style="font-family:inherit;margin:0"><code><span class="tok-cm">// 像写 C# 一样写查询，强类型、可读性最好</span>
+      <div class="tab-panel active" role="tabpanel" id="panel-lambda" aria-labelledby="tab-lambda"><pre style="font-family:inherit;margin:0"><code><span class="tok-cm" data-i18n="lambda.comment1">// 像写 C# 一样写查询，强类型、可读性最好</span>
 <span class="tok-kw">var</span> users <span class="tok-pn">=</span> <span class="tok-kw">await</span> userService<span class="tok-pn">.</span><span class="tok-api">SearchAsync</span><span class="tok-pn">(</span>
     u <span class="tok-pn">=&gt;</span> u<span class="tok-pn">.</span>Age <span class="tok-pn">&gt;=</span> <span class="tok-num">18</span> <span class="tok-pn">&amp;&amp;</span> u<span class="tok-pn">.</span>UserName<span class="tok-pn">!.</span><span class="tok-fn">StartsWith</span><span class="tok-pn">(</span><span class="tok-str">"A"</span><span class="tok-pn">));</span>
 
-<span class="tok-cm">// 排序 + 分页</span>
+<span class="tok-cm" data-i18n="lambda.comment2">// 排序 + 分页</span>
 <span class="tok-kw">var</span> page <span class="tok-pn">=</span> <span class="tok-kw">await</span> userService<span class="tok-pn">.</span><span class="tok-api">SearchAsync</span><span class="tok-pn">(</span>
     q <span class="tok-pn">=&gt;</span> q<span class="tok-pn">.</span><span class="tok-fn">Where</span><span class="tok-pn">(</span>u <span class="tok-pn">=&gt;</span> u<span class="tok-pn">.</span>Age <span class="tok-pn">&gt;=</span> <span class="tok-num">18</span><span class="tok-pn">)</span>
           <span class="tok-pn">.</span><span class="tok-fn">OrderByDescending</span><span class="tok-pn">(</span>u <span class="tok-pn">=&gt;</span> u<span class="tok-pn">.</span>CreateTime<span class="tok-pn">)</span>
           <span class="tok-pn">.</span><span class="tok-fn">Skip</span><span class="tok-pn">(</span><span class="tok-num">20</span><span class="tok-pn">).</span><span class="tok-fn">Take</span><span class="tok-pn">(</span><span class="tok-num">10</span><span class="tok-pn">));</span></code></pre></div>
-      <div class="tab-panel" role="tabpanel" id="panel-expr" aria-labelledby="tab-expr"><pre style="font-family:inherit;margin:0"><code><span class="tok-cm">// 动态拼装条件，适合查询构造器与后台筛选</span>
+      <div class="tab-panel" role="tabpanel" id="panel-expr" aria-labelledby="tab-expr"><pre style="font-family:inherit;margin:0"><code><span class="tok-cm" data-i18n="expr.comment1">// 动态拼装条件，适合查询构造器与后台筛选</span>
 <span class="tok-kw">using static</span> <span class="tok-ty">LiteOrm.Common.Expr</span><span class="tok-pn">;</span>
 
 <span class="tok-kw">var</span> expr <span class="tok-pn">=</span> <span class="tok-pn">(</span><span class="tok-api">Prop</span><span class="tok-pn">(</span><span class="tok-str">"Age"</span><span class="tok-pn">)</span> <span class="tok-pn">&gt;=</span> <span class="tok-num">18</span><span class="tok-pn">)</span>
           <span class="tok-pn">&amp;</span> <span class="tok-api">Prop</span><span class="tok-pn">(</span><span class="tok-str">"UserName"</span><span class="tok-pn">).</span><span class="tok-fn">StartsWith</span><span class="tok-pn">(</span><span class="tok-str">"A"</span><span class="tok-pn">);</span>
 <span class="tok-kw">var</span> users <span class="tok-pn">=</span> <span class="tok-kw">await</span> userService<span class="tok-pn">.</span><span class="tok-api">SearchAsync</span><span class="tok-pn">(</span>expr<span class="tok-pn">);</span>
 
-<span class="tok-cm">// 条件可序列化为 JSON，跨层传递、前端直传</span>
+<span class="tok-cm" data-i18n="expr.comment2">// 条件可序列化为 JSON，跨层传递、前端直传</span>
 <span class="tok-kw">string</span> json <span class="tok-pn">=</span> expr<span class="tok-pn">.</span><span class="tok-api">ToJson</span><span class="tok-pn">();</span></code></pre></div>
-      <div class="tab-panel" role="tabpanel" id="panel-exprstring" aria-labelledby="tab-exprstring"><pre style="font-family:inherit;margin:0"><code><span class="tok-cm">// 插值字符串手写 SQL 片段，仅 DAO 层使用</span>
+      <div class="tab-panel" role="tabpanel" id="panel-exprstring" aria-labelledby="tab-exprstring"><pre style="font-family:inherit;margin:0"><code><span class="tok-cm" data-i18n="exprstring.comment1">// 插值字符串手写 SQL 片段，仅 DAO 层使用</span>
 <span class="tok-kw">using static</span> <span class="tok-ty">LiteOrm.Common.Expr</span><span class="tok-pn">;</span>
 
 <span class="tok-kw">int</span> minAge <span class="tok-pn">=</span> <span class="tok-num">18</span><span class="tok-pn">;</span>
@@ -398,9 +402,9 @@ builder<span class="tok-pn">.</span>Host<span class="tok-pn">.</span><span class
     <span class="tok-str">$"WHERE {</span><span class="tok-api">Prop</span><span class="tok-pn">(</span><span class="tok-str">"Age"</span><span class="tok-pn">)</span><span class="tok-str">} &gt; {</span>minAge<span class="tok-str">}"</span><span class="tok-pn">)</span>
     <span class="tok-pn">.</span><span class="tok-api">ToListAsync</span><span class="tok-pn">();</span>
 
-<span class="tok-cm">// 插值项自动参数化，既灵活又安全</span></code></pre></div>
+<span class="tok-cm" data-i18n="exprstring.comment2">// 插值项自动参数化，既灵活又安全</span></code></pre></div>
     </div>
-    <p class="code-note">Service 层提供 Lambda / <code>Expr</code> 入口与 <code>SearchAs</code> 投影查询；DAO 层额外开放 <code>ExprString</code>、<code>DataTable</code> 查询等底层能力。详见<a href="./core-usage/query-overview.md">查询总览</a>。</p>
+    <p class="code-note" data-i18n="query.note">Service 层提供 Lambda / <code>Expr</code> 入口与 <code>SearchAs</code> 投影查询；DAO 层额外开放 <code>ExprString</code>、<code>DataTable</code> 查询等底层能力。详见<a href="./core-usage/query-overview.md">查询总览</a>。</p>
   </div>
 </section>
 
@@ -408,13 +412,13 @@ builder<span class="tok-pn">.</span>Host<span class="tok-pn">.</span><span class
   <div class="container">
     <div class="sec-head">
       <div class="sec-tag">Benchmark</div>
-      <h2>用数据说话</h2>
-      <p>.NET 10.0.11 · MySQL · BenchmarkDotNet MediumRun。以下为 10000 条批次实测耗时。</p>
+      <h2 data-i18n="bench.title">用数据说话</h2>
+      <p data-i18n="bench.desc">.NET 10.0.11 · MySQL · BenchmarkDotNet MediumRun。以下为 10000 条批次实测耗时。</p>
     </div>
     <div class="bench-scroll">
       <table class="bench">
         <thead>
-          <tr><th>框架</th><th>插入</th><th>更新</th><th>Upsert</th><th>关联查询</th></tr>
+          <tr><th data-i18n="bench.th.framework">框架</th><th data-i18n="bench.th.insert">插入</th><th data-i18n="bench.th.update">更新</th><th data-i18n="bench.th.upsert">Upsert</th><th data-i18n="bench.th.joined">关联查询</th></tr>
         </thead>
         <tbody>
           <tr class="hl"><td>LiteOrm</td><td><span class="best">178.12 ms</span></td><td><span class="best">280.36 ms</span></td><td><span class="best">247.92 ms</span></td><td><span class="best">78.65 ms</span></td></tr>
@@ -425,16 +429,16 @@ builder<span class="tok-pn">.</span>Host<span class="tok-pn">.</span><span class
         </tbody>
       </table>
     </div>
-    <p class="bench-meta">测试环境：Linux Ubuntu 24.04.4 LTS · Intel Xeon Silver 4314 2.40GHz · 异步批量操作。完整报告见 <a href="https://github.com/danjiewu/LiteOrm/blob/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md" target="_blank" rel="noopener">LiteOrm.Benchmark</a>。</p>
+    <p class="bench-meta" data-i18n="bench.meta">测试环境：Linux Ubuntu 24.04.4 LTS · Intel Xeon Silver 4314 2.40GHz · 异步批量操作。完整报告见 <a href="https://github.com/danjiewu/LiteOrm/blob/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md" target="_blank" rel="noopener">LiteOrm.Benchmark</a>。</p>
     <div class="mem-chart">
-      <h3>内存分配对比（1000 条，KB）</h3>
-      <p class="sub">插入 / 更新 / Upsert / 关联查询四项分配之和，最省内存意味着更低的 GC 压力与更稳的延迟</p>
+      <h3 data-i18n="mem.title">内存分配对比（1000 条，KB）</h3>
+      <p class="sub" data-i18n="mem.sub">插入 / 更新 / Upsert / 关联查询四项分配之和，最省内存意味着更低的 GC 压力与更稳的延迟</p>
       <div class="mem-row hl"><span class="mem-name">LiteOrm</span><div class="mem-track"><div class="mem-bar" data-w="6431" role="img" aria-label="LiteOrm 6431 KB"></div></div><span class="mem-val">6,431</span></div>
       <div class="mem-row"><span class="mem-name">Dapper</span><div class="mem-track"><div class="mem-bar" data-w="18365" role="img" aria-label="Dapper 18365 KB"></div></div><span class="mem-val">18,365</span></div>
       <div class="mem-row"><span class="mem-name">FreeSql</span><div class="mem-track"><div class="mem-bar" data-w="32912" role="img" aria-label="FreeSql 32912 KB"></div></div><span class="mem-val">32,912</span></div>
       <div class="mem-row"><span class="mem-name">SqlSugar</span><div class="mem-track"><div class="mem-bar" data-w="74954" role="img" aria-label="SqlSugar 74954 KB"></div></div><span class="mem-val">74,954</span></div>
       <div class="mem-row"><span class="mem-name">EF Core</span><div class="mem-track"><div class="mem-bar" data-w="90752" role="img" aria-label="EF Core 90752 KB"></div></div><span class="mem-val">90,752</span></div>
-      <p class="bench-meta">数据口径：插入 / 更新 / Upsert / 关联查询四项分配之和（1000 条批次），源自 LiteOrm.Benchmark 实测，详见<a href="https://github.com/danjiewu/LiteOrm/blob/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md" target="_blank" rel="noopener">性能报告</a>。</p>
+      <p class="bench-meta" data-i18n="mem.meta">数据口径：插入 / 更新 / Upsert / 关联查询四项分配之和（1000 条批次），源自 LiteOrm.Benchmark 实测，详见<a href="https://github.com/danjiewu/LiteOrm/blob/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md" target="_blank" rel="noopener">性能报告</a>。</p>
     </div>
   </div>
 </section>
@@ -443,8 +447,8 @@ builder<span class="tok-pn">.</span>Host<span class="tok-pn">.</span><span class
   <div class="container">
     <div class="sec-head">
       <div class="sec-tag">Databases</div>
-      <h2>广泛的数据库支持</h2>
-      <p>一套实体映射，适配主流与国产数据库。国产方言自动检测、优先匹配，无需额外配置。</p>
+      <h2 data-i18n="db.title">广泛的数据库支持</h2>
+      <p data-i18n="db.desc">一套实体映射，适配主流与国产数据库。国产方言自动检测、优先匹配，无需额外配置。</p>
     </div>
     <div class="db-grid">
       <div class="db-chip"><span class="db-name">SQL Server</span><span class="db-desc">2012+</span></div>
@@ -452,14 +456,14 @@ builder<span class="tok-pn">.</span>Host<span class="tok-pn">.</span><span class
       <div class="db-chip"><span class="db-name">Oracle</span><span class="db-desc">12c+</span></div>
       <div class="db-chip"><span class="db-name">PostgreSQL</span><span class="db-desc">—</span></div>
       <div class="db-chip"><span class="db-name">SQLite</span><span class="db-desc">—</span></div>
-      <div class="db-chip domestic"><span class="db-name">达梦 DM</span><span class="db-desc">Oracle 兼容</span></div>
-      <div class="db-chip domestic"><span class="db-name">KingbaseES</span><span class="db-desc">PostgreSQL 兼容</span></div>
-      <div class="db-chip domestic"><span class="db-name">GaussDB</span><span class="db-desc">openGauss 系</span></div>
-      <div class="db-chip domestic"><span class="db-name">OceanBase</span><span class="db-desc">MySQL 兼容</span></div>
-      <div class="db-chip domestic"><span class="db-name">TiDB</span><span class="db-desc">MySQL 兼容</span></div>
-      <div class="db-chip domestic"><span class="db-name">GreatDB</span><span class="db-desc">MySQL 兼容</span></div>
+      <div class="db-chip domestic"><span class="db-name">达梦 DM</span><span class="db-desc" data-i18n="db.compat.oracle">Oracle 兼容</span></div>
+      <div class="db-chip domestic"><span class="db-name">KingbaseES</span><span class="db-desc" data-i18n="db.compat.pg">PostgreSQL 兼容</span></div>
+      <div class="db-chip domestic"><span class="db-name">GaussDB</span><span class="db-desc" data-i18n="db.compat.opengauss">openGauss 系</span></div>
+      <div class="db-chip domestic"><span class="db-name">OceanBase</span><span class="db-desc" data-i18n="db.compat.mysql">MySQL 兼容</span></div>
+      <div class="db-chip domestic"><span class="db-name">TiDB</span><span class="db-desc" data-i18n="db.compat.mysql">MySQL 兼容</span></div>
+      <div class="db-chip domestic"><span class="db-name">GreatDB</span><span class="db-desc" data-i18n="db.compat.mysql">MySQL 兼容</span></div>
     </div>
-    <p class="db-note">国产 / 兼容数据库 Builder 继承主流方言，仅覆盖差异点；旧版本数据库可通过 <a href="./advanced-topics/custom-paging.md">自定义分页</a> 与 <a href="./extensibility/custom-sqlbuilder.md">自定义 SqlBuilder</a> 扩展。详见<a href="./reference/database-compatibility.md">数据库兼容性说明</a>。</p>
+    <p class="db-note" data-i18n="db.note">国产 / 兼容数据库 Builder 继承主流方言，仅覆盖差异点；旧版本数据库可通过 <a href="./advanced-topics/custom-paging.md">自定义分页</a> 与 <a href="./extensibility/custom-sqlbuilder.md">自定义 SqlBuilder</a> 扩展。详见<a href="./reference/database-compatibility.md">数据库兼容性说明</a>。</p>
   </div>
 </section>
 
@@ -467,80 +471,80 @@ builder<span class="tok-pn">.</span>Host<span class="tok-pn">.</span><span class
   <div class="container">
     <div class="sec-head">
       <div class="sec-tag">Documentation</div>
-      <h2>按学习路径组织的文档</h2>
-      <p>从入门到落地，每个场景都有可直接抄的代码。中英双语，AI 友好。</p>
+      <h2 data-i18n="docs.title">按学习路径组织的文档</h2>
+      <p data-i18n="docs.desc">从入门到落地，每个场景都有可直接抄的代码。中英双语，AI 友好。</p>
     </div>
     <div class="docs-grid">
       <div class="doc-card">
-        <h3>入门篇</h3>
-        <div class="en">Getting Started</div>
+        <h3 data-i18n="doccard.gettingStarted">入门篇</h3>
+        <div class="en" data-i18n="doccard.gettingStarted.en">Getting Started</div>
         <ul>
-          <li><a href="./getting-started/overview.md">框架概览</a></li>
-          <li><a href="./getting-started/installation.md">安装与环境要求</a></li>
-          <li><a href="./getting-started/first-example-di.md">第一个示例（DI 版）</a></li>
-          <li><a href="./getting-started/first-example-manual.md">第一个示例（无 DI）</a></li>
+          <li><a href="./getting-started/overview.md" data-en-href="./getting-started/overview.en.md" data-i18n="docs.overview">框架概览</a></li>
+          <li><a href="./getting-started/installation.md" data-en-href="./getting-started/installation.en.md" data-i18n="docs.installation">安装与环境要求</a></li>
+          <li><a href="./getting-started/first-example-di.md" data-en-href="./getting-started/first-example-di.en.md" data-i18n="docs.firstDi">第一个示例（DI 版）</a></li>
+          <li><a href="./getting-started/first-example-manual.md" data-en-href="./getting-started/first-example-manual.en.md" data-i18n="docs.firstManual">第一个示例（无 DI）</a></li>
         </ul>
       </div>
       <div class="doc-card">
-        <h3>核心使用篇</h3>
-        <div class="en">Core Usage</div>
+        <h3 data-i18n="doccard.coreUsage">核心使用篇</h3>
+        <div class="en" data-i18n="doccard.coreUsage.en">Core Usage</div>
         <ul>
-          <li><a href="./core-usage/query-overview.md">查询总览与选型</a></li>
-          <li><a href="./core-usage/lambda-guide.md">Lambda 查询指南</a></li>
-          <li><a href="./core-usage/expr-guide.md">Expr 使用指南</a></li>
-          <li><a href="./core-usage/associations.md">关联查询</a></li>
+          <li><a href="./core-usage/query-overview.md" data-en-href="./core-usage/query-overview.en.md" data-i18n="docs.queryOverview">查询总览与选型</a></li>
+          <li><a href="./core-usage/lambda-guide.md" data-en-href="./core-usage/lambda-guide.en.md" data-i18n="docs.lambda">Lambda 查询指南</a></li>
+          <li><a href="./core-usage/expr-guide.md" data-en-href="./core-usage/expr-guide.en.md" data-i18n="docs.expr">Expr 使用指南</a></li>
+          <li><a href="./core-usage/associations.md" data-en-href="./core-usage/associations.en.md" data-i18n="docs.associations">关联查询</a></li>
         </ul>
       </div>
       <div class="doc-card">
-        <h3>DI 扩展</h3>
-        <div class="en">DI Extension</div>
+        <h3 data-i18n="doccard.di">DI 扩展</h3>
+        <div class="en" data-i18n="doccard.di.en">DI Extension</div>
         <ul>
-          <li><a href="./reference/configuration-reference.md">配置参考</a></li>
-          <li><a href="./di/transactions.md">事务与并发控制</a></li>
-          <li><a href="./di/logging.md">日志与诊断</a></li>
-          <li><a href="./di/service-authorization.md">服务鉴权</a></li>
+          <li><a href="./reference/configuration-reference.md" data-en-href="./reference/configuration-reference.en.md" data-i18n="docs.config">配置参考</a></li>
+          <li><a href="./di/transactions.md" data-en-href="./di/transactions.en.md" data-i18n="docs.transactions">事务与并发控制</a></li>
+          <li><a href="./di/logging.md" data-en-href="./di/logging.en.md" data-i18n="docs.logging">日志与诊断</a></li>
+          <li><a href="./di/service-authorization.md" data-en-href="./di/service-authorization.en.md" data-i18n="docs.auth">服务鉴权</a></li>
         </ul>
       </div>
       <div class="doc-card">
-        <h3>高级特性篇</h3>
-        <div class="en">Advanced Topics</div>
+        <h3 data-i18n="doccard.advanced">高级特性篇</h3>
+        <div class="en" data-i18n="doccard.advanced.en">Advanced Topics</div>
         <ul>
-          <li><a href="./advanced-topics/sharding-and-tableargs.md">分表分库</a></li>
-          <li><a href="./advanced-topics/window-functions.md">窗口函数</a></li>
-          <li><a href="./advanced-topics/aot.md">AOT 支持</a></li>
-          <li><a href="./advanced-topics/security.md">安全性</a></li>
+          <li><a href="./advanced-topics/sharding-and-tableargs.md" data-en-href="./advanced-topics/sharding-and-tableargs.en.md" data-i18n="docs.sharding">分表分库</a></li>
+          <li><a href="./advanced-topics/window-functions.md" data-en-href="./advanced-topics/window-functions.en.md" data-i18n="docs.window">窗口函数</a></li>
+          <li><a href="./advanced-topics/aot.md" data-en-href="./advanced-topics/aot.en.md" data-i18n="docs.aot">AOT 支持</a></li>
+          <li><a href="./advanced-topics/security.md" data-en-href="./advanced-topics/security.en.md" data-i18n="docs.security">安全性</a></li>
         </ul>
       </div>
       <div class="doc-card">
-        <h3>扩展开发篇</h3>
-        <div class="en">Extensibility</div>
+        <h3 data-i18n="doccard.ext">扩展开发篇</h3>
+        <div class="en" data-i18n="doccard.ext.en">Extensibility</div>
         <ul>
-          <li><a href="./extensibility/expression-extension.md">表达式扩展</a></li>
-          <li><a href="./extensibility/expr-serialization.md">Expr 序列化格式</a></li>
-          <li><a href="./extensibility/frontend-querystring.md">前端 QueryString 查询</a></li>
-          <li><a href="./extensibility/domestic-database-sqlbuilder.md">国产数据库接入指南</a></li>
+          <li><a href="./extensibility/expression-extension.md" data-en-href="./extensibility/expression-extension.en.md" data-i18n="docs.extExpr">表达式扩展</a></li>
+          <li><a href="./extensibility/expr-serialization.md" data-en-href="./extensibility/expr-serialization.en.md" data-i18n="docs.extSerialization">Expr 序列化格式</a></li>
+          <li><a href="./extensibility/frontend-querystring.md" data-en-href="./extensibility/frontend-querystring.en.md" data-i18n="docs.extQueryString">前端 QueryString 查询</a></li>
+          <li><a href="./extensibility/domestic-database-sqlbuilder.md" data-en-href="./extensibility/domestic-database-sqlbuilder.en.md" data-i18n="docs.extDomestic">国产数据库接入指南</a></li>
         </ul>
       </div>
       <div class="doc-card">
-        <h3>应用场景</h3>
-        <div class="en">Use Cases</div>
+        <h3 data-i18n="doccard.cases">应用场景</h3>
+        <div class="en" data-i18n="doccard.cases.en">Use Cases</div>
         <ul>
-          <li><a href="./typical-applications/tenant-isolation.md">多租户隔离</a></li>
-          <li><a href="./typical-applications/data-permission.md">数据权限</a></li>
-          <li><a href="./typical-applications/soft-delete-and-archive.md">软删除与归档</a></li>
-          <li><a href="./typical-applications/sensitive-data-protection.md">敏感字段加密</a></li>
-          <li><a href="./typical-applications/json-column-mapping.md">对象 JSON 列存储</a></li>
-          <li><a href="./typical-applications/pgvector-vector-search.md">PostgreSQL 向量检索</a></li>
+          <li><a href="./typical-applications/tenant-isolation.md" data-en-href="./typical-applications/tenant-isolation.en.md" data-i18n="docs.tenant">多租户隔离</a></li>
+          <li><a href="./typical-applications/data-permission.md" data-en-href="./typical-applications/data-permission.en.md" data-i18n="docs.dataPerm">数据权限</a></li>
+          <li><a href="./typical-applications/soft-delete-and-archive.md" data-en-href="./typical-applications/soft-delete-and-archive.en.md" data-i18n="docs.softDelete">软删除与归档</a></li>
+          <li><a href="./typical-applications/sensitive-data-protection.md" data-en-href="./typical-applications/sensitive-data-protection.en.md" data-i18n="docs.sensitive">敏感字段加密</a></li>
+          <li><a href="./typical-applications/json-column-mapping.md" data-en-href="./typical-applications/json-column-mapping.en.md" data-i18n="docs.json">对象 JSON 列存储</a></li>
+          <li><a href="./typical-applications/pgvector-vector-search.md" data-en-href="./typical-applications/pgvector-vector-search.en.md" data-i18n="docs.pgvector">PostgreSQL 向量检索</a></li>
         </ul>
       </div>
     </div>
     <div class="doc-ref">
-      <a href="./reference/api-index.md">API 索引</a>
-      <a href="./reference/sql-examples.md">SQL 生成示例</a>
-      <a href="./reference/glossary.md">术语表</a>
-      <a href="./reference/example-index.md">示例索引</a>
-      <a href="./reference/ai-guide.md">AI 使用指南</a>
-      <a href="./CHANGELOG.md">变更日志</a>
+      <a href="./reference/api-index.md" data-en-href="./reference/api-index.en.md" data-i18n="docs.apiIndex">API 索引</a>
+      <a href="./reference/sql-examples.md" data-en-href="./reference/sql-examples.en.md" data-i18n="docs.sqlExamples">SQL 生成示例</a>
+      <a href="./reference/glossary.md" data-en-href="./reference/glossary.en.md" data-i18n="docs.glossary">术语表</a>
+      <a href="./reference/example-index.md" data-en-href="./reference/example-index.en.md" data-i18n="docs.exampleIndex">示例索引</a>
+      <a href="./reference/ai-guide.md" data-en-href="./reference/ai-guide.en.md" data-i18n="docs.aiGuide">AI 使用指南</a>
+      <a href="./CHANGELOG.md" data-en-href="./CHANGELOG.en.md" data-i18n="docs.changelog">变更日志</a>
     </div>
   </div>
 </section>
@@ -549,49 +553,272 @@ builder<span class="tok-pn">.</span>Host<span class="tok-pn">.</span><span class
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a class="nav-logo" href="./" aria-label="LiteOrm 首页">
+        <a class="nav-logo" href="./" aria-label="LiteOrm 首页" data-i18n-aria-label="nav.home">
           <img class="nav-icon" src="./assets/logo/logo-mark.svg" alt="" width="34" height="34">
           <span>Lite<span class="brand-orm">Orm</span></span>
         </a>
-        <p>轻量级、高性能的 .NET ORM 框架。微 ORM 的速度，完整 ORM 的能力。</p>
+        <p data-i18n="footer.brand">轻量级、高性能的 .NET ORM 框架。微 ORM 的速度，完整 ORM 的能力。</p>
       </div>
       <div>
-        <h4>软件包</h4>
+        <h4 data-i18n="footer.packages">软件包</h4>
         <ul>
-          <li><a href="https://www.nuget.org/packages/LiteOrm/" target="_blank" rel="noopener">LiteOrm（核心库）</a></li>
+          <li><a href="https://www.nuget.org/packages/LiteOrm/" target="_blank" rel="noopener" data-i18n="footer.coreLib">LiteOrm（核心库）</a></li>
           <li><a href="https://www.nuget.org/packages/LiteOrm.DependencyInjection/" target="_blank" rel="noopener">LiteOrm.DependencyInjection</a></li>
           <li><a href="https://www.nuget.org/packages/LiteOrm.Remote/" target="_blank" rel="noopener">LiteOrm.Remote</a></li>
           <li><a href="https://www.nuget.org/packages/LiteOrm.Remote.Server/" target="_blank" rel="noopener">LiteOrm.Remote.Server</a></li>
         </ul>
       </div>
       <div>
-        <h4>资源</h4>
+        <h4 data-i18n="footer.resources">资源</h4>
         <ul>
-          <li><a href="./README.md">文档中心</a></li>
-          <li><a href="https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo" target="_blank" rel="noopener">Demo 项目</a></li>
-          <li><a href="https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests" target="_blank" rel="noopener">单元测试</a></li>
-          <li><a href="https://github.com/danjiewu/LiteOrm/blob/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md" target="_blank" rel="noopener">性能报告</a></li>
+          <li><a href="./README.md" data-en-href="./README.en.md" data-i18n="footer.docsCenter">文档中心</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Demo" target="_blank" rel="noopener" data-i18n="footer.demo">Demo 项目</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm/tree/master/LiteOrm.Tests" target="_blank" rel="noopener" data-i18n="footer.tests">单元测试</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm/blob/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md" target="_blank" rel="noopener" data-i18n="footer.bench">性能报告</a></li>
         </ul>
       </div>
       <div>
-        <h4>社区</h4>
+        <h4 data-i18n="footer.community">社区</h4>
         <ul>
-          <li><a href="https://github.com/danjiewu/LiteOrm" target="_blank" rel="noopener">GitHub 仓库</a></li>
-          <li><a href="https://github.com/danjiewu/LiteOrm/issues" target="_blank" rel="noopener">提交 Issue</a></li>
-          <li><a href="https://github.com/danjiewu/LiteOrm/pulls" target="_blank" rel="noopener">提交 PR</a></li>
-          <li><a href="https://github.com/danjiewu/LiteOrm/blob/master/LICENSE" target="_blank" rel="noopener">MIT 协议</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm" target="_blank" rel="noopener" data-i18n="footer.repo">GitHub 仓库</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm/issues" target="_blank" rel="noopener" data-i18n="footer.issue">提交 Issue</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm/pulls" target="_blank" rel="noopener" data-i18n="footer.pr">提交 PR</a></li>
+          <li><a href="https://github.com/danjiewu/LiteOrm/blob/master/LICENSE" target="_blank" rel="noopener" data-i18n="footer.license">MIT 协议</a></li>
         </ul>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2026 LiteOrm · 基于 MIT 协议发布</span>
+      <span data-i18n="footer.copyright">© 2026 LiteOrm · 基于 MIT 协议发布</span>
       <div class="footer-badges">
-        <img src="https://img.shields.io/nuget/v/LiteOrm.svg" alt="NuGet 版本" loading="lazy">
+        <img src="https://img.shields.io/nuget/v/LiteOrm.svg" alt="NuGet 版本" data-i18n-alt="footer.nugetAlt" loading="lazy">
         <img src="https://img.shields.io/github/license/danjiewu/LiteOrm.svg" alt="License" loading="lazy">
       </div>
     </div>
   </div>
 </footer>
+
+<script>
+(function(){
+  var EN = {
+    'page.title': 'LiteOrm — Lightweight, High-Performance .NET ORM',
+    'page.description': 'LiteOrm is a lightweight, high-performance .NET ORM framework that pairs micro-ORM speed with full-ORM productivity. Nearly as fast as raw Dapper and far ahead of EF Core, with support for 11 databases.',
+    'page.ogTitle': 'LiteOrm — Lightweight, High-Performance .NET ORM',
+    'page.ogDescription': 'Micro-ORM speed × full-ORM capability. 10K inserts in 178 ms, one-third the allocations of peers, 11 database dialects.',
+
+    'nav.home': 'LiteOrm home',
+    'nav.main': 'Main navigation',
+    'nav.features': 'Features',
+    'nav.query': 'Query Styles',
+    'nav.benchmark': 'Performance',
+    'nav.databases': 'Databases',
+    'nav.docs': 'Docs',
+
+    'cta.getStarted': 'Get Started',
+    'cta.star': 'Star on GitHub',
+    'hero.copy': 'Copy install command',
+    'hero.badge': 'v8.2.4 released · Supports .NET 11 / NativeAOT',
+    'hero.title': 'Weightless<span class="grad-text">, lightning fast</span>',
+    'hero.sub': 'LiteOrm is a <strong>lightweight, high-performance .NET ORM framework</strong> — micro-ORM execution speed with full-ORM ergonomics. A fit for performance-sensitive workloads that still need flexible, complex SQL.',
+    'hero.terminalAria': 'LiteOrm code sample: define an entity, query it and see the parameterized SQL',
+
+    'code.comment1': '// 1. Define the entity — attributes are the mapping',
+    'code.comment2': '// 2. One line to register, one line to query',
+    'code.sqlLabel': 'Generated SQL',
+    'code.comment3': '-- Fully parameterized — no SQL injection',
+
+    'stat.inserts': '10K inserts',
+    'stat.memory': 'Allocations vs. peers’ average',
+    'stat.unit': '',
+    'stat.dialects': 'Database dialects',
+    'stat.aotDesc': 'NativeAOT / Trim compatible',
+    'stat.netDesc': 'Compatible with Framework 4.6.1+',
+
+    'features.title': 'Why LiteOrm',
+    'features.desc': 'Micro-ORM execution speed with full-ORM ergonomics — SQL stays visible, and you never have to hand-write it unless you want to.',
+    'card.speed.title': 'Blazing performance',
+    'card.speed.desc': 'Performance close to raw Dapper and far ahead of EF Core. Batch inserts, updates and joined queries all lead the field, with minimal allocations.',
+    'card.query.title': 'Three query styles',
+    'card.query.desc': '<code>Lambda</code>, <code>Expr</code> and <code>ExprString</code> mix freely: strongly typed filters, dynamically composed conditions and hand-written SQL fragments in the DAO layer each have their place.',
+    'card.join.title': 'Automatic associations',
+    'card.join.desc': 'Declare relations with <code>[ForeignType]</code> / <code>[TableJoin]</code> and skip hand-written JOINs; <code>ExistsRelated</code> filters by related tables in one call.',
+    'card.tx.title': 'Declarative transactions',
+    'card.tx.desc': 'The <code>[Transaction]</code> attribute brings AOP transaction management with nesting and rollback — zero intrusion into business code.',
+    'card.db.title': '11 database dialects',
+    'card.db.desc': 'SQL Server, MySQL, Oracle, PostgreSQL and SQLite, plus built-in support for Chinese databases: DM, KingbaseES, GaussDB, OceanBase, TiDB and GreatDB.',
+    'card.shard.title': 'Sharding & read/write splitting',
+    'card.shard.desc': 'The <code>IArged</code> interface routes shards, while multiple data sources and read replicas work out of the box — everything a mid-to-large system typically needs.',
+
+    'query.title': 'One query, three ways',
+    'query.desc': 'All three styles generate parameterized SQL. Lambda is the most direct, Expr is built for dynamic composition, and ExprString is for DAO layers that need precise control over SQL.',
+    'query.tabs': 'Query style tabs',
+    'lambda.comment1': '// Write queries like C# — strongly typed and the most readable',
+    'lambda.comment2': '// Sorting + paging',
+    'expr.comment1': '// Compose conditions dynamically — ideal for query builders and admin filters',
+    'expr.comment2': '// Conditions serialize to JSON for cross-layer transport and direct frontend input',
+    'exprstring.comment1': '// Hand-write SQL fragments with interpolated strings — DAO layer only',
+    'exprstring.comment2': '// Interpolated values are parameterized automatically — flexible and safe',
+    'query.note': 'Services expose Lambda / <code>Expr</code> entries plus <code>SearchAs</code> projection queries; the DAO layer additionally opens up <code>ExprString</code>, <code>DataTable</code> queries and more. See the <a href="./core-usage/query-overview.en.md">Query Overview</a>.',
+
+    'bench.title': 'Let the numbers speak',
+    'bench.desc': '.NET 10.0.11 · MySQL · BenchmarkDotNet MediumRun. Timings below are for 10,000-row batches.',
+    'bench.th.framework': 'Framework',
+    'bench.th.insert': 'Insert',
+    'bench.th.update': 'Update',
+    'bench.th.upsert': 'Upsert',
+    'bench.th.joined': 'Joined Query',
+    'bench.meta': 'Test environment: Linux Ubuntu 24.04.4 LTS · Intel Xeon Silver 4314 2.40GHz · async batch operations. Full report in <a href="https://github.com/danjiewu/LiteOrm/blob/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md" target="_blank" rel="noopener">LiteOrm.Benchmark</a>.',
+    'mem.title': 'Memory allocations (1,000 rows, KB)',
+    'mem.sub': 'Total allocations across insert / update / upsert / joined query — less memory means lower GC pressure and steadier latency',
+    'mem.meta': 'Measured as the sum of allocations for insert / update / upsert / joined query (1,000-row batches) in LiteOrm.Benchmark. See the <a href="https://github.com/danjiewu/LiteOrm/blob/master/LiteOrm.Benchmark/LiteOrm.Benchmark.OrmBenchmark-report-github.md" target="_blank" rel="noopener">benchmark report</a>.',
+
+    'db.title': 'Broad database support',
+    'db.desc': 'One entity mapping adapts to mainstream and Chinese databases alike. Chinese dialects are auto-detected and matched first, with no extra configuration.',
+    'db.compat.oracle': 'Oracle compatible',
+    'db.compat.pg': 'PostgreSQL compatible',
+    'db.compat.opengauss': 'openGauss family',
+    'db.compat.mysql': 'MySQL compatible',
+    'db.note': 'Chinese / compatible database builders inherit from the mainstream dialects and only override the differences. Older database versions can be extended via <a href="./advanced-topics/custom-paging.en.md">custom paging</a> and a <a href="./extensibility/custom-sqlbuilder.en.md">custom SqlBuilder</a>. See the <a href="./reference/database-compatibility.en.md">database compatibility notes</a>.',
+
+    'docs.title': 'Docs organized by learning path',
+    'docs.desc': 'From first steps to production — every scenario ships copy-paste-ready code. Bilingual and AI-friendly.',
+
+    'doccard.gettingStarted': 'Getting Started',
+    'doccard.gettingStarted.en': '入门篇',
+    'doccard.coreUsage': 'Core Usage',
+    'doccard.coreUsage.en': '核心使用篇',
+    'doccard.di': 'DI Extension',
+    'doccard.di.en': 'DI 扩展',
+    'doccard.advanced': 'Advanced Topics',
+    'doccard.advanced.en': '高级特性篇',
+    'doccard.ext': 'Extensibility',
+    'doccard.ext.en': '扩展开发篇',
+    'doccard.cases': 'Use Cases',
+    'doccard.cases.en': '应用场景',
+
+    'docs.overview': 'Framework Overview',
+    'docs.installation': 'Installation & Requirements',
+    'docs.firstDi': 'First Example (DI)',
+    'docs.firstManual': 'First Example (No DI)',
+    'docs.queryOverview': 'Query Overview & Selection',
+    'docs.lambda': 'Lambda Query Guide',
+    'docs.expr': 'Expr Guide',
+    'docs.associations': 'Associations',
+    'docs.config': 'Configuration Reference',
+    'docs.transactions': 'Transactions & Concurrency',
+    'docs.logging': 'Logging & Diagnostics',
+    'docs.auth': 'Service Authorization',
+    'docs.sharding': 'Sharding',
+    'docs.window': 'Window Functions',
+    'docs.aot': 'AOT Support',
+    'docs.security': 'Security',
+    'docs.extExpr': 'Expression Extensions',
+    'docs.extSerialization': 'Expr Serialization Format',
+    'docs.extQueryString': 'Frontend QueryString',
+    'docs.extDomestic': 'Domestic Database Guide',
+    'docs.tenant': 'Tenant Isolation',
+    'docs.dataPerm': 'Data Permissions',
+    'docs.softDelete': 'Soft Delete & Archive',
+    'docs.sensitive': 'Sensitive Field Encryption',
+    'docs.json': 'JSON Columns for Objects',
+    'docs.pgvector': 'PostgreSQL Vector Search',
+    'docs.apiIndex': 'API Index',
+    'docs.sqlExamples': 'SQL Generation Examples',
+    'docs.glossary': 'Glossary',
+    'docs.exampleIndex': 'Example Index',
+    'docs.aiGuide': 'AI Guide',
+    'docs.changelog': 'Changelog',
+
+    'footer.brand': 'A lightweight, high-performance .NET ORM. Micro-ORM speed with full-ORM capability.',
+    'footer.packages': 'Packages',
+    'footer.resources': 'Resources',
+    'footer.community': 'Community',
+    'footer.coreLib': 'LiteOrm (core)',
+    'footer.docsCenter': 'Documentation',
+    'footer.demo': 'Demo Project',
+    'footer.tests': 'Unit Tests',
+    'footer.bench': 'Benchmark Report',
+    'footer.repo': 'GitHub Repository',
+    'footer.issue': 'Report an Issue',
+    'footer.pr': 'Submit a PR',
+    'footer.license': 'MIT License',
+    'footer.copyright': '© 2026 LiteOrm · Released under the MIT License',
+    'footer.nugetAlt': 'NuGet version'
+  };
+
+  var htmlNodes = [].slice.call(document.querySelectorAll('[data-i18n]'));
+  var zhHTML = {};
+  htmlNodes.forEach(function(el){
+    var key = el.getAttribute('data-i18n');
+    if(!(key in zhHTML)) zhHTML[key] = el.innerHTML;
+  });
+
+  var attrSpecs = [
+    ['data-i18n-aria-label', 'aria-label'],
+    ['data-i18n-title', 'title'],
+    ['data-i18n-content', 'content'],
+    ['data-i18n-alt', 'alt']
+  ];
+  var attrItems = [];
+  attrSpecs.forEach(function(spec){
+    [].slice.call(document.querySelectorAll('[' + spec[0] + ']')).forEach(function(el){
+      attrItems.push({
+        el: el,
+        key: el.getAttribute(spec[0]),
+        attr: spec[1],
+        zh: el.getAttribute(spec[1])
+      });
+    });
+  });
+
+  var hrefItems = [].slice.call(document.querySelectorAll('[data-en-href]')).map(function(el){
+    return {el: el, zh: el.getAttribute('href'), en: el.getAttribute('data-en-href')};
+  });
+
+  function applyLang(lang){
+    var isEn = lang === 'en';
+    document.documentElement.setAttribute('lang', isEn ? 'en' : 'zh-CN');
+
+    htmlNodes.forEach(function(el){
+      var key = el.getAttribute('data-i18n');
+      var val = (isEn && key in EN) ? EN[key] : zhHTML[key];
+      if(val !== undefined) el.innerHTML = val;
+    });
+
+    attrItems.forEach(function(item){
+      var val = (isEn && item.key in EN) ? EN[item.key] : item.zh;
+      if(val !== undefined) item.el.setAttribute(item.attr, val);
+    });
+
+    hrefItems.forEach(function(item){
+      item.el.setAttribute('href', isEn ? item.en : item.zh);
+    });
+
+    var toggle = document.getElementById('langToggle');
+    if(toggle){
+      toggle.textContent = isEn ? '中文' : 'EN';
+      toggle.setAttribute('aria-label', isEn ? '切换到中文' : 'Switch to English');
+    }
+
+    try{ localStorage.setItem('liteorm-lang', lang); }catch(e){}
+  }
+
+  var toggleBtn = document.getElementById('langToggle');
+  if(toggleBtn){
+    toggleBtn.addEventListener('click', function(){
+      applyLang(document.documentElement.getAttribute('lang') === 'en' ? 'zh' : 'en');
+    });
+  }
+
+  var initial = 'zh';
+  try{
+    var m = /[?&]lang=(en|zh)\b/.exec(location.search);
+    var saved = localStorage.getItem('liteorm-lang');
+    if(m) initial = m[1];
+    else if(saved === 'en' || saved === 'zh') initial = saved;
+  }catch(e){}
+  applyLang(initial);
+})();
+</script>
 
 <script>
 (function(){
